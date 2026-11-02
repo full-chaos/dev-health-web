@@ -15,7 +15,7 @@ import {
     ACR,
     INVESTIGATIONS_PATH,
     ORACLE,
-    connect,
+    authorize,
     investigations,
     references,
     secretsOf,
@@ -65,8 +65,9 @@ test.use({
     },
 });
 
+// Each case makes one silent authorization, in its own tab: web allows one user 6 a minute.
 test.afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 6_000));
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
 });
 
 type OperationCounts = {
@@ -94,10 +95,10 @@ async function oracleCalls(): Promise<Calls> {
     return (await response.json()) as Calls;
 }
 
-/** The surface a case asks from: the panel, connected, with an empty composer. */
+/** The surface a case asks from: the panel, authorized, with an empty composer. */
 async function panel(page: Page): Promise<{ calls: AcrCall[]; surface: Locator }> {
     const calls = watchAcr(page);
-    await connect(page);
+    await authorize(page);
     await page.getByRole("button", { name: "Open Ask Dev" }).click();
     const surface = page.getByTestId("ask-dev-panel");
     await expect(surface.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();

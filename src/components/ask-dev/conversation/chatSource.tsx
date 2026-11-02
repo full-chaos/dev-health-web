@@ -33,7 +33,6 @@ import {
 } from "@/lib/ask-dev/transcript";
 
 import { pageHintsOf, useAskDevPageProposal } from "../pageContext/AskDevPageContext";
-import { ConnectAskDev } from "./AskDevConnect";
 import { useAskDevEvidenceOpener } from "./AskDevEvidence";
 import {
     useAskDevConversation,
@@ -43,6 +42,7 @@ import {
 } from "./AskDevConversationContext";
 import {
     IN_FLIGHT,
+    type AuthorizationFailure,
     type ConversationSnapshot,
     type ConversationStore,
     type StoreTurn,
@@ -57,8 +57,10 @@ import { useTestModeTurns } from "./testModeAnswer";
  * Web's conversation behind ask-dev's seam (CHAOS-12383; `ChatSource` in `@full-chaos/ask-dev/render`).
  * One render of Ask Dev exists, in ask-dev; this file gives it web's store, and draws nothing itself.
  *
- * Web's rules stay on this side: consent (`slots.connect`), the partition and its clear, the 401
- * rule (a `connect` turn), page context, and the single run per thread. No token crosses the seam.
+ * Web's rules stay on this side: the partition and its clear, the 401 rule, page context, and the
+ * single run per thread. No token crosses the seam. A signed-in user never meets a consent step
+ * (CHAOS-12474), so this source never sends the render's `connect` states and offers no
+ * `slots.connect`: `authorizationOutcomeOf` says what a turn shows instead.
  *
  * A source holds per-store state and outlives a page: a batch goes on when the viewer minimizes to
  * the panel. So there is one per store (`chatSourceOf`), subscribed for the store's whole life.
@@ -181,6 +183,29 @@ function pending(turn: StoreTurn, progress: ChatProgress, place?: BatchPlace): A
 }
 
 /**
+ * What a turn shows when no ACR token came from the web session (CHAOS-12474). The render's own
+ * words, none of which is a connect step: the named failure with its Try again, ACR's rate limit,
+ * and the refusals that trying again cannot help. An impersonating session, and one on its way to
+ * the normal sign-in, read as "not available in this session".
+ */
+function authorizationOutcomeOf(
+    reason: AuthorizationFailure,
+    retry: boolean,
+): ChatAssistantTurn["outcome"] {
+    switch (reason) {
+        case "failed":
+            return statusOutcome({ kind: "failed" }, retry);
+        case "rate_limited":
+            return statusOutcome({ kind: "not_run", reason: "rate_limited" }, retry);
+        case "not_entitled":
+            return statusOutcome({ kind: "not_run", reason: "not_entitled" });
+        case "impersonating":
+        case "session_ended":
+            return statusOutcome({ kind: "not_run", reason: "access_denied" });
+    }
+}
+
+/**
  * One outcome of the store on the seam. Exhaustive: a kind added to `TurnOutcome` does not compile
  * until it is mapped. Every `IN_FLIGHT` kind is `pending`, or the composer would stay open.
  */
@@ -252,6 +277,8 @@ function outcomeOf(turn: StoreTurn, place?: BatchPlace): AssistantOutcome {
                     ? {}
                     : { lastSeenRunningAt: iso(outcome.lastSeenRunningAt) }),
             });
+        case "authorization_failed":
+            return authorizationOutcomeOf(outcome.reason, outcome.retry);
         case "stream_unavailable":
         case "unsaved":
         case "abandoned":
@@ -259,7 +286,6 @@ function outcomeOf(turn: StoreTurn, place?: BatchPlace): AssistantOutcome {
         case "stalled":
         case "canceled":
         case "thread_closed":
-        case "connect":
         case "unavailable":
         case "restore_failed":
         case "halted":
@@ -347,7 +373,11 @@ type Batch = {
  * state in which the next item cannot be answered either. A plain failure does not. A Stop ends it
  * too, wherever it was pressed (the panel calls the store directly): `turn.stop` says so at once.
  */
-const ENDS_BATCH = new Set<TurnOutcome["kind"]>(["canceled", "connect", "thread_closed"]);
+const ENDS_BATCH = new Set<TurnOutcome["kind"]>([
+    "canceled",
+    "authorization_failed",
+    "thread_closed",
+]);
 
 /** A refusal for the whole viewer: the next item gets the same answer. Any other is the item's own. */
 const ENDS_BATCH_NOT_RUN = new Set<string>(["access_denied", "no_repository", "not_entitled"]);
@@ -435,9 +465,6 @@ function carryOf(
               }),
     };
 }
-
-/** Web's Connect link: the auth flow is the host's, and ask-dev cannot hold it. */
-const connectSlot = () => <ConnectAskDev testId="ask-dev-connect" />;
 
 export function createChatSource({
     store,
@@ -780,7 +807,6 @@ export function createChatSource({
             store.reloadTurn(webIdOf(turnId));
         },
         newConversation: () => store.newConversation(),
-        slots: { connect: connectSlot },
         history: {
             load() {
                 store.loadHistory();

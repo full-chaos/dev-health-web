@@ -248,20 +248,44 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         });
     });
 
-    it("a conversation read with no ACR token shows Connect Ask Dev, read-only, with no Try again", async () => {
+    // CHAOS-12474: no ACR token on a conversation read is a failed read, and its Try again is the
+    // user's act. No state says Connect.
+    it("a conversation read with no ACR token is read-only, with Try again and no Connect", async () => {
         const transport = seeded();
         transport.threads.set(THREAD_A, { fail: new TransportFailure("authorization_required") });
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        const connect = await within(page()).findByTestId("ask-dev-conversation-connect");
-        expect(connect).toHaveTextContent(TRANSCRIPT_COPY.connect);
-        const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
-        expect(link.getAttribute("href")).toMatch(/^\/ask-dev\/oauth\/start\?return=%2F/u);
-        expect(within(page()).queryByTestId("ask-dev-conversation-retry")).toBeNull();
+        const failed = await within(page()).findByTestId("ask-dev-conversation-read-failed");
+        expect(failed).toHaveTextContent(TRANSCRIPT_COPY.readFailed);
+        expect(within(failed).queryByRole("link")).toBeNull();
+        expect(within(page()).getByTestId("ask-dev-conversation-retry")).toBeVisible();
         expect(within(page()).getByTestId("ask-dev-composer-locked")).toHaveTextContent(
             TRANSCRIPT_COPY.lockedReadOnly,
         );
-        expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
+        expect(page().textContent).not.toMatch(/connect ask dev|authorization_required/iu);
+    });
+
+    // CHAOS-12474: the URL names the conversation, so its read may run the silent step.
+    it("a conversation opened by the /dev URL is a user's act; one restored from the hint is not", async () => {
+        const transport = seeded();
+        nav.go(`/dev?thread=${THREAD_A}`);
+        const { unmount } = renderShell(transport);
+        await waitFor(() => expect(transport.threadReads.at(-1)?.userAct).toBe(true));
+        unmount();
+
+        const restored = seeded();
+        nav.go("/dashboard");
+        window.sessionStorage.setItem(
+            THREAD_HINT_KEY,
+            JSON.stringify({
+                thread_id: THREAD_B,
+                partition: partitionTag(PARTITION),
+                expires_at: null,
+            }),
+        );
+        renderShell(restored);
+        await waitFor(() => expect(restored.threadReads.length).toBeGreaterThan(0));
+        expect(restored.threadReads.every((read) => read.userAct !== true)).toBe(true);
     });
 
     // CHAOS-12439: ACR's 409 no_repository on a conversation read. Reading again cannot help.
@@ -400,20 +424,19 @@ describe("the panel's history (design §4.3)", () => {
         );
     });
 
-    // CHAOS-12336 (T14b, the lead's ruling 2 = A): no ACR token, or ACR's 401, shows Connect Ask Dev.
-    it("a list with no ACR token shows Connect Ask Dev, a link back here, and no Try again", async () => {
+    // CHAOS-12474: no ACR token on the list is a failed read with Try again, never an empty list.
+    it("a list with no ACR token says the read failed: no Connect, and no claim of no conversations", async () => {
         const transport = seeded();
         transport.listPages.splice(0, 1, { fail: new TransportFailure("authorization_required") });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
-        const connect = await within(panel()).findByTestId("ask-dev-history-connect");
-        expect(connect).toHaveTextContent(HISTORY_COPY.connect);
-        const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
-        expect(link.getAttribute("href")).toMatch(/^\/ask-dev\/oauth\/start\?return=%2F/u);
-        expect(within(panel()).queryByTestId("ask-dev-history-retry")).toBeNull();
-        expect(within(panel()).queryByTestId("ask-dev-history-read-failed")).toBeNull();
-        expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
+        const failed = await within(panel()).findByTestId("ask-dev-history-read-failed");
+        expect(failed).toHaveTextContent(HISTORY_COPY.readFailed);
+        expect(within(panel()).getByTestId("ask-dev-history-retry")).toBeVisible();
+        expect(within(panel()).queryByTestId("ask-dev-history-empty")).toBeNull();
+        expect(panel().textContent).not.toContain(HISTORY_COPY.empty);
+        expect(panel().textContent).not.toMatch(/connect ask dev|authorization_required/iu);
     });
 
     // CHAOS-12439: ACR's 409 no_repository on the list. Reading again cannot help.

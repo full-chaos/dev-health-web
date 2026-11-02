@@ -18,7 +18,7 @@ vi.mock("next-auth/react", () => ({
     }),
 }));
 
-import { EVIDENCE_COPY, NOT_RUN_COPY, CHAT_STATUS_COPY } from "@full-chaos/ask-dev/render";
+import { EVIDENCE_COPY, NOT_RUN_COPY } from "@full-chaos/ask-dev/render";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import {
@@ -220,11 +220,16 @@ describe("evidenceStateOf", () => {
 });
 
 describe("evidenceFailureOf", () => {
-    it("no access is Connect, with no retry", () => {
-        expect(evidenceFailureOf(new TransportFailure("authorization_required"))).toEqual({
-            state: { kind: "connect" },
-            retry: false,
-        });
+    // CHAOS-12474: no state here is a connect step.
+    it.each([
+        ["authorization_required", { kind: "unavailable" }, true],
+        ["authorization_failed", { kind: "unavailable" }, true],
+        ["authorization_limited", { kind: "unavailable" }, true],
+        ["not_entitled", { kind: "denied" }, false],
+        ["impersonating", { kind: "denied" }, false],
+        ["session_ended", { kind: "unavailable" }, false],
+    ] as const)("%s is %j, retry %s", (reason, state, retry) => {
+        expect(evidenceFailureOf(new TransportFailure(reason))).toEqual({ state, retry });
     });
 
     it("403 is denied, with no retry", () => {
@@ -438,20 +443,23 @@ describe("a reference in the render", () => {
         expect(shown.textContent).not.toMatch(/no_repository|409/u);
     });
 
-    it("no access shows Connect, with a link back here and no Try again", async () => {
+    it("no access says the read failed, and Try again reads once per click: no Connect", async () => {
         const transport = seeded();
         transport.evidence.set(`${REF}|${RESULT_A}`, {
-            fail: new TransportFailure("authorization_required"),
+            fail: new TransportFailure("authorization_failed"),
         });
         await openOnPage(transport);
         const shown = await body();
-        await waitFor(() => expect(shown).toHaveAttribute("data-state", "connect"));
-        expect(shown).toHaveTextContent(CHAT_STATUS_COPY.connect);
-        expect(within(shown).getByTestId("ask-dev-evidence-connect")).toHaveAttribute(
-            "href",
-            expect.stringMatching(/^\/ask-dev\/oauth\/start\?return=/u),
+        await waitFor(() => expect(shown).toHaveAttribute("data-state", "unavailable"));
+        expect(shown).toHaveTextContent(EVIDENCE_COPY.unavailable);
+        expect(within(shown).queryByRole("link")).toBeNull();
+        expect(shown.textContent).not.toMatch(/\bconnect\b/iu);
+
+        transport.evidence.set(`${REF}|${RESULT_A}`, view("Back."));
+        await userEvent.click(within(shown).getByRole("button", { name: CTA_LABELS.tryAgain }));
+        await waitFor(() =>
+            expect(screen.getByTestId("ask-dev-evidence-body")).toHaveTextContent("Back."),
         );
-        expect(within(shown).queryByRole("button")).toBeNull();
     });
 
     it("unavailable reads again on Try again, with the same result id", async () => {

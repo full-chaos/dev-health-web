@@ -126,10 +126,16 @@ export class TransportRefusal extends Error {
  *   sent.
  * - `invalid_upstream`: the stream broke the event grammar or a cap before a valid terminal. The
  *   transport aborted it.
- * - `authorization_required`: the browser holds no ACR access token, or ACR answered 401 and the
- *   token store had no other token. Nothing ran; the way on is to connect Ask Dev to ACR. On a 401
- *   the transport tells the store, reads the token once more, and sends the call once more only
- *   with a different (refreshed) token: at most 2 requests (CHAOS-12305).
+ * - `authorization_required`: no token for this call, and no way to one from here: a background
+ *   read, which never starts the silent step (P1-6), an ACR client that is off, or a second 401.
+ * - `authorization_failed`, `authorization_limited`, `not_entitled`, `impersonating` and
+ *   `session_ended`: the silent step ran (CHAOS-12474) and gave no token, for that reason. Nothing
+ *   ran. Only the first two can be helped by the user's next act, and nothing here tries again.
+ *   `session_ended` has already gone to the normal sign-in.
+ *
+ * On a 401 the transport tells the store, reads the token once more, makes one silent attempt when
+ * that gives no other token, and sends the call once more only with a different token: at most 2
+ * requests (CHAOS-12305, CHAOS-12474).
  *
  * The browser's abort is a disconnect, and a disconnect ends ACR's run (plan §2.7.4), so the store
  * ends the turn with the reason and does not poll the submission status.
@@ -140,6 +146,11 @@ export const TRANSPORT_FAILURE_REASONS = [
     "budget_exhausted",
     "invalid_upstream",
     "authorization_required",
+    "authorization_failed",
+    "authorization_limited",
+    "not_entitled",
+    "impersonating",
+    "session_ended",
 ] as const;
 
 export type TransportFailureReason = (typeof TRANSPORT_FAILURE_REASONS)[number];
@@ -297,6 +308,11 @@ export type AskDevTransport = {
         readonly threadId: string;
         readonly before?: string | undefined;
         readonly signal: AbortSignal;
+        /**
+         * The user opened this conversation (CHAOS-12474): with no token, the read may run the
+         * silent step. Unset, a background read: a restore from the hint, an earlier page.
+         */
+        readonly userAct?: boolean | undefined;
     }) => Promise<ThreadView | null>;
     /**
      * `DELETE /api/v1/context-fabric/threads/{thread_id}` (CHAOS-11956). ACR answers 204 for the

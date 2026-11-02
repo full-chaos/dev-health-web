@@ -12,9 +12,12 @@ import {
 import { useEvidenceDrawerIfMounted } from "@/components/evidence/EvidenceDrawerProvider";
 
 import { useAskDevShell } from "../AskDevShellContext";
-import { ConnectAskDev } from "./AskDevConnect";
-import { noRepositoryInScope, type ConversationStore } from "./conversationStore";
-import { TransportFailure, TransportRefusal, type EvidenceView } from "./transport";
+import {
+    authorizationFailureOf,
+    noRepositoryInScope,
+    type ConversationStore,
+} from "./conversationStore";
+import { TransportRefusal, type EvidenceView } from "./transport";
 
 const detailOf = (view: EvidenceView): ChatEvidenceDetail => ({
     refId: view.refId,
@@ -50,7 +53,7 @@ export function evidenceStateOf(view: EvidenceView | null): ChatEvidenceState {
 
 export type EvidenceAnswer = {
     readonly state: ChatEvidenceState;
-    /** "Try again" is offered: only `unavailable` draws it. */
+    /** "Try again" is offered: only `unavailable` draws it. A click reads, and authorizes, once. */
     readonly retry: boolean;
 };
 
@@ -58,9 +61,13 @@ const UNAVAILABLE: ChatEvidenceState = { kind: "unavailable" };
 
 /** What a read that threw means. ACR's own `retryable` says whether another read can help. */
 export function evidenceFailureOf(error: unknown): EvidenceAnswer {
-    if (error instanceof TransportFailure && error.reason === "authorization_required") {
-        return { state: { kind: "connect" }, retry: false };
+    const access = authorizationFailureOf(error);
+    if (access === "impersonating" || access === "not_entitled") {
+        return { state: { kind: "denied" }, retry: false };
     }
+    // On its way to the normal sign-in: nothing to try here.
+    if (access === "session_ended") return { state: UNAVAILABLE, retry: false };
+    if (access !== undefined) return { state: UNAVAILABLE, retry: true };
     if (noRepositoryInScope(error)) return { state: { kind: "no_repository" }, retry: false };
     if (error instanceof TransportRefusal) {
         if (error.status === 403) return { state: { kind: "denied" }, retry: false };
@@ -120,7 +127,6 @@ export function AskDevEvidence({
         <ChatEvidenceBody
             state={shown?.state ?? { kind: "loading" }}
             onRetry={shown?.retry === true ? again : undefined}
-            connect={<ConnectAskDev testId="ask-dev-evidence-connect" />}
         />
     );
 }

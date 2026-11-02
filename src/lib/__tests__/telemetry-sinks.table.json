@@ -103,6 +103,10 @@
         "log": 2,
         "sentry": 0
     },
+    "src/app/api/ask-dev/authorize/route.ts": {
+        "log": 2,
+        "sentry": 0
+    },
     "src/app/api/ask-dev/investigations/route.ts": {
         "log": 7,
         "sentry": 0
@@ -312,7 +316,7 @@
         "sentry": 0
     },
     "src/lib/ask-dev/acr-auth.ts": {
-        "log": 8,
+        "log": 10,
         "sentry": 0
     },
     "src/lib/ask-dev/acr-transport/browserTransport.ts": {
@@ -321,14 +325,6 @@
     },
     "src/components/ask-dev/conversation/feedbackStore.ts": {
         "log": 4,
-        "sentry": 0
-    },
-    "src/components/ask-dev/oauth/AcrOAuthCallback.tsx": {
-        "log": 2,
-        "sentry": 0
-    },
-    "src/components/ask-dev/oauth/AcrOAuthStart.tsx": {
-        "log": 2,
         "sentry": 0
     },
     "src/components/ask-dev/conversation/testModeAnswer.ts": {

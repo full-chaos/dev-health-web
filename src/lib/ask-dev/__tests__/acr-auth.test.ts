@@ -4,11 +4,9 @@ import { AcrOAuthMock } from "../../../../tests/mocks/acr-oauth";
 import * as defaultTab from "../acr-auth";
 import {
     ACR_AUTHORIZATION_TTL_MS,
+    ACR_AUTHORIZE_ROUTE,
     ACR_CLONE_CHECK_MS,
     ACR_OAUTH_REQUEST_TIMEOUT_MS,
-    ACR_BROWSER_SCOPE,
-    ACR_PENDING_AUTHORIZATION_KEY,
-    ACR_SPENT_KEY,
     ACR_TAB_KEY,
     ACR_TABS_CHANNEL,
     ACR_TOKEN_FAMILY_KEY,
@@ -16,8 +14,7 @@ import {
     type AcrPrincipalRead,
     type AcrTabChannel,
     type AcrTabMessage,
-    beginAcrAuthorization,
-    completeAcrAuthorization,
+    authorizeAcrSilently,
     discoverAcrAuthorizationServer,
     getAcrAccessToken,
     pkceChallenge,
@@ -25,7 +22,11 @@ import {
     reportAcrTokenRejected,
     setAcrAuthDependenciesForTest,
 } from "../acr-auth";
-import { acrBrowserClientConfig, type AcrBrowserClientConfig } from "../acr-browser-config";
+import {
+    ACR_BROWSER_SCOPE,
+    acrBrowserClientConfig,
+    type AcrBrowserClientConfig,
+} from "../acr-browser-config";
 import { acrBrowserSignOut } from "../acr-sign-out";
 
 /**
@@ -52,13 +53,13 @@ const getSession = vi.hoisted(() => vi.fn());
 vi.mock("next-auth/react", () => ({ getSession }));
 
 /**
- * CHAOS-12303 (c2 of the T13 split): the browser's ACR authorization flow and token store. The
- * shapes are acr-api's at the web pin bd92be5a:
+ * CHAOS-12303 (c2 of the T13 split), CHAOS-12474: the browser's ACR authorization flow and token
+ * store. The shapes are acr-api's at the web pin bd92be5a:
  * - metadata: `internal/api/oauth_routes.go:61-110`;
  * - the token body: `oauth_routes.go:764-771`, where `refresh_token` appears only with the browser
  *   refresh grant;
- * - errors: `{error}` with 400;
- * - the callback: `redirect_uri?code&state&iss`, or `?error&state&iss`.
+ * - errors: `{error}` with 400.
+ * Web's route is a fake here: its own test runs it for real against a stub of ACR.
  */
 
 const ISSUER = "https://acr.fullchaos.dev";
@@ -66,6 +67,7 @@ const WEB = "https://www.fullchaos.dev";
 const CONFIG = acrBrowserClientConfig(ISSUER, WEB) as AcrBrowserClientConfig;
 const ACCESS = `fcacr_${"A".repeat(43)}`;
 const REFRESH = `acrrt_${"R".repeat(43)}`;
+const CODE = "acr-code-of-this-test";
 const TAB_ID = /^[A-Za-z0-9_-]{22}$/u;
 /** The web session's principal the family and the token are bound to (CHAOS-12305). */
 const USER: AcrPrincipal = { userId: "user-1", orgId: "org-1" };
@@ -147,10 +149,14 @@ function harvestSecrets(form: Record<string, string>, answer: Record<string, unk
     }
 }
 
-/** The state of an authorize URL, a secret for the log guard (CHAOS-12369). */
-function harvestAuthorizeUrl(url: string) {
-    const state = new URL(url).searchParams.get("state");
-    if (state !== null) secretsByKind.state.add(state);
+/** What the browser asked web's route, as the route read it. */
+type RouteBody = { readonly code_challenge: string; readonly state: string };
+
+/** The state of a route call, a secret for the log guard (CHAOS-12369). */
+function routeBodyOf(init: RequestInit | undefined): RouteBody {
+    const body = JSON.parse(String(init?.body)) as RouteBody;
+    secretsByKind.state.add(body.state);
+    return body;
 }
 
 type Call = { url: string; init: RequestInit | undefined };
@@ -158,16 +164,19 @@ type Call = { url: string; init: RequestInit | undefined };
 let now = 1_800_000_000_000;
 let storage: MemoryStorage;
 let calls: Call[];
-let navigated: string[];
 let tokenResponse: () => Response;
+/** What web's route answers: by default the code for the state it was sent. */
+let routeResponse: (body: RouteBody) => Response;
+/** What `/api/auth/session` answers when the session read gave nothing: by default a live session. */
+let sessionAnswer: () => Response;
 let metadata: unknown;
-/** The origin's localStorage, shared by every tab (a clone shares it too). */
-let shared: MemoryStorage;
 /**
  * What the fake `principal` seam answers: the current web session, null (signed out) or an
  * impersonating session (CHAOS-12306).
  */
 let principal: AcrPrincipalRead;
+/** Session reads to answer first, in order, before `principal`. */
+let scriptedReads: AcrPrincipalRead[] = [];
 /** An impersonating web session: the seam's answer while an admin impersonates (CHAOS-12306). */
 const IMPERSONATING: AcrPrincipalRead = { impersonating: true };
 
@@ -182,13 +191,8 @@ function json(status: number, body: unknown) {
 function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | undefined = CONFIG) {
     setAcrAuthDependenciesForTest({
         now: () => now,
-        principal: async () => principal,
+        principal: async () => (scriptedReads.length > 0 ? scriptedReads.shift()! : principal),
         storage: () => tab,
-        shared: () => shared,
-        navigate: (url) => {
-            navigated.push(url);
-            harvestAuthorizeUrl(url);
-        },
         config: () => config ?? undefined,
         channel: () => null,
         fetch: async (input, init) => {
@@ -196,6 +200,8 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
             calls.push({ url, init });
             if (url === `${ISSUER}/.well-known/oauth-authorization-server`)
                 return json(200, metadata);
+            if (url === ACR_AUTHORIZE_ROUTE) return routeResponse(routeBodyOf(init));
+            if (url === "/api/auth/session") return sessionAnswer();
             if (url === `${ISSUER}/token`) {
                 harvestSecrets(
                     Object.fromEntries(new URLSearchParams(String(init?.body ?? ""))),
@@ -212,9 +218,7 @@ beforeEach(() => {
     storages = [];
     for (const level of Object.values(log)) level.mockClear();
     storage = new MemoryStorage();
-    shared = new MemoryStorage();
     calls = [];
-    navigated = [];
     principal = USER;
     getSession.mockReset();
     metadata = METADATA;
@@ -226,6 +230,9 @@ beforeEach(() => {
             scope: ACR_BROWSER_SCOPE,
             refresh_token: REFRESH,
         });
+    routeResponse = ({ state }) => json(200, { code: CODE, state, iss: ISSUER });
+    sessionAnswer = () => json(200, { user: { id: "user-1" } });
+    scriptedReads = [];
     configure(storage);
 });
 
@@ -254,44 +261,64 @@ async function turns(count: number) {
     }
 }
 
-/** Starts an authorization in `tab` and returns the authorize URL it navigated to. */
-async function begin(tab: MemoryStorage = storage, returnTo = "/dev?thread=t1") {
-    configure(tab);
-    expect(await beginAcrAuthorization(returnTo)).toEqual({ kind: "redirected" });
-    return new URL(navigated.at(-1)!);
-}
-
-function callback(params: Record<string, string>) {
-    const url = new URL(CONFIG.redirectUri);
-    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-    return url.href;
-}
-
 function tokenCalls() {
     return calls.filter((call) => call.url === `${ISSUER}/token`);
 }
 
-describe("beginAcrAuthorization", () => {
-    it("sends the tab to ACR's /authorize with PKCE S256, a state, the exact redirect and the issuer as resource", async () => {
-        const authorize = await begin();
-        expect(`${authorize.origin}${authorize.pathname}`).toBe(`${ISSUER}/authorize`);
-        const params = Object.fromEntries(authorize.searchParams);
-        expect(params).toEqual({
-            response_type: "code",
-            client_id: `${WEB}/oauth/acr-client.json`,
-            redirect_uri: `${WEB}/ask-dev/oauth/callback`,
-            code_challenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
-            code_challenge_method: "S256",
-            state: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
-            resource: ISSUER,
-            scope: "context:read evidence:read",
+function routeCalls() {
+    return calls.filter((call) => call.url === ACR_AUTHORIZE_ROUTE);
+}
+
+/** What `tab` asked the route, and sent to `/token`, in its one authorization. */
+function askedAndExchanged() {
+    const [route] = routeCalls();
+    const [exchange] = tokenCalls();
+    return {
+        route: routeBodyOf(route!.init),
+        form: Object.fromEntries(exchange!.init!.body as URLSearchParams),
+    };
+}
+
+describe("authorizeAcrSilently: the ask", () => {
+    it("asks web's route with the challenge and the state, and only them", async () => {
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token", token: ACCESS });
+        const [route] = routeCalls();
+        expect(route!.init).toMatchObject({
+            method: "POST",
+            credentials: "same-origin",
+            cache: "no-store",
+            // A session that ended is the proxy's redirect, which this call must see, not follow.
+            redirect: "manual",
         });
-        const pending = JSON.parse(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)!);
-        expect(pending.state).toBe(params.state);
-        expect(await pkceChallenge(pending.verifier)).toBe(params.code_challenge);
-        expect(pending.verifier).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-        expect(pending.expiresAt).toBe(now + ACR_AUTHORIZATION_TTL_MS);
-        expect(pending.returnTo).toBe("/dev?thread=t1");
+        const { route: body } = askedAndExchanged();
+        expect(Object.keys(body).sort()).toEqual(["code_challenge", "state"]);
+        expect(body.code_challenge).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+        expect(body.state).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    });
+
+    it("keeps the verifier: it goes to ACR's /token, and in no request to web", async () => {
+        await authorizeAcrSilently();
+        const { route, form } = askedAndExchanged();
+        const verifier = form.code_verifier!;
+        expect(verifier).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+        expect(route.code_challenge).toBe(await pkceChallenge(verifier));
+        expect(String(routeCalls()[0]!.init?.body)).not.toContain(verifier);
+        expect(JSON.stringify(routeCalls()[0]!.init?.headers)).not.toContain(verifier);
+        expect(routeCalls()[0]!.url).not.toContain(verifier);
+    });
+
+    it("stores no verifier and no state anywhere while it runs (r1 on #1663, moved)", async () => {
+        const seen: string[] = [];
+        routeResponse = ({ state }) => {
+            seen.push(JSON.stringify(storage.snapshot()));
+            return json(200, { code: CODE, state, iss: ISSUER });
+        };
+        await authorizeAcrSilently();
+        const { route, form } = askedAndExchanged();
+        expect(seen).toHaveLength(1);
+        // So a duplicated tab copies nothing it could finish this authorization with.
+        expect(seen[0]).not.toContain(route.state);
+        expect(seen[0]).not.toContain(form.code_verifier);
     });
 
     it("computes S256 as RFC 7636 appendix B does", async () => {
@@ -301,80 +328,464 @@ describe("beginAcrAuthorization", () => {
     });
 
     it("draws a new state and verifier every time", async () => {
-        const first = await begin();
-        const second = await begin();
-        expect(first.searchParams.get("state")).not.toBe(second.searchParams.get("state"));
-        expect(first.searchParams.get("code_challenge")).not.toBe(
-            second.searchParams.get("code_challenge"),
-        );
-    });
-
-    it("returns to /dev for a return path that is not a same-origin path", async () => {
-        await begin(storage, "https://evil.example/x");
-        expect(JSON.parse(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)!).returnTo).toBe("/dev");
-        await begin(storage, "//evil.example/x");
-        expect(JSON.parse(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)!).returnTo).toBe("/dev");
+        await authorizeAcrSilently();
+        reportAcrTokenRejected(ACCESS);
+        await authorizeAcrSilently();
+        const [first, second] = routeCalls().map((call) => routeBodyOf(call.init));
+        expect(first!.state).not.toBe(second!.state);
+        expect(first!.code_challenge).not.toBe(second!.code_challenge);
     });
 
     it("reads the metadata with no credential and no cache", async () => {
-        await begin();
-        const [discovery] = calls;
-        expect(discovery!.init).toMatchObject({
-            method: "GET",
-            credentials: "omit",
-            cache: "no-store",
+        await authorizeAcrSilently();
+        expect(calls[0]).toMatchObject({
+            url: `${ISSUER}/.well-known/oauth-authorization-server`,
+            init: { method: "GET", credentials: "omit", cache: "no-store", redirect: "error" },
         });
     });
 
     it("is off without a configured client, and sends nothing", async () => {
         configure(storage, null);
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "off" });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "off" });
         expect(calls).toEqual([]);
-        expect(navigated).toEqual([]);
     });
 
-    it("does not start when the metadata cannot be read", async () => {
+    it("does not ask the route when the metadata cannot be read", async () => {
         metadata = { ...METADATA, issuer: "https://other.example" };
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "unavailable" });
-        expect(navigated).toEqual([]);
-        expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "unavailable" });
+        expect(routeCalls()).toEqual([]);
     });
 
-    it("does not start while impersonating: no metadata read, no navigation, nothing stored (CHAOS-12306)", async () => {
+    it("sends nothing while impersonating: no metadata read, no route call (CHAOS-12306)", async () => {
         principal = IMPERSONATING;
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "impersonating" });
         expect(calls).toEqual([]);
-        expect(navigated).toEqual([]);
-        expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
     });
 
     it("drops a family stored before the impersonation started (codex r1 on #1680)", async () => {
         storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
         principal = IMPERSONATING;
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "impersonating" });
         expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        expect(calls).toEqual([]);
     });
 
-    it("still starts with no web session: begin has no signed-out refusal (CHAOS-12306)", async () => {
-        principal = null;
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+    // Codex r1 P2 on #1714: a code the route issued for user A was stored as user B's family.
+    it("makes no attempt when the first session read gives nothing: no code can reach another user", async () => {
+        scriptedReads = [null];
+        principal = { userId: "user-b", orgId: "org-1" };
+        expect(await authorizeAcrSilently()).toEqual({
+            kind: "failed",
+            reason: "principal_unknown",
+        });
+        expect(routeCalls()).toEqual([]);
+        expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("refuses a code when the session changed from A to B: no /token call and no family", async () => {
+        scriptedReads = [USER];
+        principal = { userId: "user-b", orgId: "org-1" };
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "signed_out" });
+        expect(routeCalls()).toHaveLength(1);
+        expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    // The read gives null both for no session and for a failed read. The endpoint can say which,
+    // as `UserMenu` asks it. A session that ended still goes to the normal sign-in.
+    it.each([
+        ["null", () => json(200, null)],
+        ["an empty object", () => json(200, {})],
+    ])(
+        "with no session read and %s from the endpoint, the session has ended",
+        async (_, answer) => {
+            principal = null;
+            sessionAnswer = answer;
+            expect(await authorizeAcrSilently()).toEqual({ kind: "session_ended" });
+            expect(routeCalls()).toEqual([]);
+            expect(calls.map((call) => call.url)).toEqual(["/api/auth/session"]);
+            expect(calls[0]!.init).toMatchObject({ credentials: "same-origin", cache: "no-store" });
+        },
+    );
+
+    it.each([
+        ["a live session", () => json(200, { user: { id: "user-1" } })],
+        ["a 503", () => json(503, {})],
+        ["no JSON", () => new Response("<html>", { status: 200 })],
+        [
+            "no answer",
+            () => {
+                throw new TypeError("Failed to fetch");
+            },
+        ],
+    ])(
+        "with no session read and %s from the endpoint, it is a named failure",
+        async (_, answer) => {
+            principal = null;
+            sessionAnswer = answer;
+            expect(await authorizeAcrSilently()).toEqual({
+                kind: "failed",
+                reason: "principal_unknown",
+            });
+            expect(routeCalls()).toEqual([]);
+        },
+    );
+
+    it("the next act tries again when the session reads", async () => {
+        scriptedReads = [null];
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "failed" });
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token" });
+        expect(routeCalls()).toHaveLength(1);
     });
 
     it("reads no session while the client is off (prod until the T13 roll)", async () => {
-        const reads = vi.fn(async () => IMPERSONATING);
+        const read = vi.fn(async () => principal);
+        configure(storage, null);
         setAcrAuthDependenciesForTest({
-            principal: reads,
             config: () => undefined,
-            fetch: async (input, init) => {
-                calls.push({ url: String(input), init });
-                return json(404, {});
-            },
+            storage: () => storage,
+            principal: read,
+            channel: () => null,
         });
-        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "off" });
-        expect(await getAcrAccessToken()).toEqual({ kind: "off" });
-        expect(reads).not.toHaveBeenCalled();
+        expect(await authorizeAcrSilently()).toEqual({ kind: "off" });
+        expect(read).not.toHaveBeenCalled();
+    });
+
+    it("never touches the location, whatever it ends in", async () => {
+        const location = new Proxy(
+            {},
+            {
+                get: () => {
+                    throw new Error("the store read window.location");
+                },
+                set: () => {
+                    throw new Error("the store wrote window.location");
+                },
+            },
+        );
+        vi.stubGlobal("window", { location });
+        await authorizeAcrSilently();
+        reportAcrTokenRejected(ACCESS);
+        routeResponse = () => json(401, {});
+        expect(await authorizeAcrSilently()).toEqual({ kind: "session_ended" });
+    });
+
+    it("sends no request when it is imported, and getAcrAccessToken never starts it", async () => {
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
         expect(calls).toEqual([]);
+    });
+});
+
+describe("authorizeAcrSilently: what the route answers", () => {
+    it.each([
+        ["401", () => json(401, { error: { code: "signed_out" } }), { kind: "session_ended" }],
+        ["429", () => json(429, { error: { code: "rate_limited" } }), { kind: "rate_limited" }],
+        [
+            "429 from web's budget",
+            () => json(429, { error: { code: "user_rate_limited" } }),
+            { kind: "rate_limited" },
+        ],
+        [
+            "403 impersonating",
+            () => json(403, { error: { code: "impersonating" } }),
+            { kind: "impersonating" },
+        ],
+        [
+            "403 not_entitled",
+            () => json(403, { error: { code: "not_entitled" } }),
+            { kind: "not_entitled" },
+        ],
+        ["404 client_off", () => json(404, { error: { code: "client_off" } }), { kind: "off" }],
+        [
+            "403 origin_refused",
+            () => json(403, { error: { code: "origin_refused" } }),
+            { kind: "failed", reason: "refused" },
+        ],
+        [
+            "502 acr_refused",
+            () => json(502, { error: { code: "acr_refused" } }),
+            { kind: "failed", reason: "refused" },
+        ],
+        [
+            "503 acr_unavailable",
+            () => json(503, { error: { code: "acr_unavailable" } }),
+            { kind: "failed", reason: "unavailable" },
+        ],
+        [
+            "the proxy's 503, in text",
+            () => new Response("Service temporarily unavailable.", { status: 503 }),
+            { kind: "failed", reason: "unavailable" },
+        ],
+        [
+            "the proxy's redirect to sign-in",
+            () => ({ type: "opaqueredirect", status: 0, ok: false }) as Response,
+            { kind: "session_ended" },
+        ],
+        [
+            "no JSON",
+            () => new Response("<html>", { status: 200 }),
+            { kind: "failed", reason: "invalid_answer" },
+        ],
+    ] as const)("%s: named, and no token", async (_, answer, outcome) => {
+        routeResponse = answer;
+        expect(await authorizeAcrSilently()).toEqual(outcome);
+        expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+    });
+
+    it.each([
+        ["no code", { state: "x", iss: ISSUER }],
+        ["an empty code", { code: "", state: "x", iss: ISSUER }],
+        ["no state", { code: CODE, iss: ISSUER }],
+        ["no iss", { code: CODE, state: "x" }],
+        ["a list", [CODE]],
+    ])("a 200 with %s is an invalid answer", async (_, body) => {
+        routeResponse = () => json(200, body);
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "invalid_answer" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("exchanges the code with a form POST and holds the token in memory only", async () => {
+        expect(await authorizeAcrSilently()).toEqual({
+            kind: "token",
+            token: ACCESS,
+            issuer: ISSUER,
+        });
+
+        const [exchange] = tokenCalls();
+        expect(exchange!.init).toMatchObject({
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            credentials: "omit",
+            cache: "no-store",
+        });
+        // Only CORS-safelisted headers: the browser sends it with no preflight.
+        expect(Object.keys(exchange!.init!.headers as Record<string, string>)).toEqual([
+            "Content-Type",
+        ]);
+        const form = Object.fromEntries(exchange!.init!.body as URLSearchParams);
+        expect(form).toEqual({
+            grant_type: "authorization_code",
+            code: CODE,
+            redirect_uri: `${WEB}/ask-dev/oauth/callback`,
+            client_id: `${WEB}/oauth/acr-client.json`,
+            code_verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
+            resource: ISSUER,
+        });
+
+        expect(await getAcrAccessToken()).toEqual({ kind: "token", token: ACCESS, issuer: ISSUER });
+        // The access token is in no storage; the refresh token only in the family entry.
+        const stored = JSON.stringify(storage.snapshot());
+        expect(stored).not.toContain(ACCESS);
+        // CHAOS-12305: v2, a random family id (the refresh lock's name), bound to the web principal.
+        expect(readAcrHeldFamily()).toEqual({
+            v: 2,
+            familyId: expect.stringMatching(TAB_ID),
+            issuer: ISSUER,
+            clientId: `${WEB}/oauth/acr-client.json`,
+            refreshToken: REFRESH,
+            tokenEndpoint: `${ISSUER}/token`,
+            revocationEndpoint: `${ISSUER}/revoke`,
+            userId: "user-1",
+            orgId: "org-1",
+        });
+    });
+
+    /** The route answers the code, and `then` changes the world while it does. */
+    function whileTheRouteAnswers(then: () => void) {
+        routeResponse = ({ state }) => {
+            then();
+            return json(200, { code: CODE, state, iss: ISSUER });
+        };
+    }
+
+    it("with no web session at the exchange, sends no code and stores nothing (CHAOS-12305)", async () => {
+        whileTheRouteAnswers(() => {
+            principal = null;
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "signed_out" });
+        expect(tokenCalls()).toEqual([]);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("while impersonating at the exchange, sends no code and stores nothing (CHAOS-12306)", async () => {
+        whileTheRouteAnswers(() => {
+            principal = IMPERSONATING;
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "impersonating" });
+        expect(tokenCalls()).toEqual([]);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("while impersonating at the exchange, also drops a family stored before (codex r1 on #1680)", async () => {
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+        whileTheRouteAnswers(() => {
+            principal = IMPERSONATING;
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "impersonating" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("binds a code to the session that asked: another user at the exchange gets nothing", async () => {
+        whileTheRouteAnswers(() => {
+            principal = { userId: "user-2", orgId: "org-1" };
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "signed_out" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("draws a new family id for every exchange", async () => {
+        await authorizeAcrSilently();
+        const first = readAcrHeldFamily()!.familyId;
+        reportAcrTokenRejected(ACCESS);
+        await authorizeAcrSilently();
+        expect(readAcrHeldFamily()!.familyId).not.toBe(first);
+    });
+
+    it("while the client turned off during the ask, sends no code and stores nothing", async () => {
+        whileTheRouteAnswers(() => configure(storage, null));
+        expect(await authorizeAcrSilently()).toEqual({ kind: "off" });
+        expect(tokenCalls()).toEqual([]);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("refuses a state this tab did not send, and sends no code", async () => {
+        routeResponse = () => json(200, { code: CODE, state: "x".repeat(43), iss: ISSUER });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "state_mismatch" });
+        expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+    });
+
+    it("refuses an answer once the tab's id is another's (a copied tab)", async () => {
+        whileTheRouteAnswers(() => {
+            storage.setItem(ACR_TAB_KEY, "O".repeat(22));
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "wrong_tab" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("refuses an answer after the authorization expired", async () => {
+        whileTheRouteAnswers(() => {
+            now += ACR_AUTHORIZATION_TTL_MS;
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "expired" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it.each([
+        ["another iss", "https://evil.example"],
+        ["an empty iss", ""],
+    ])("refuses %s", async (_, iss) => {
+        routeResponse = ({ state }) => json(200, { code: CODE, state, iss });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "iss_mismatch" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("refuses an answer when the configured issuer changed since the ask", async () => {
+        whileTheRouteAnswers(() => {
+            configure(storage, acrBrowserClientConfig("https://acr2.fullchaos.dev", WEB));
+        });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "iss_mismatch" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("maps a refused code (400 invalid_grant) to token_refused and holds nothing", async () => {
+        tokenResponse = () => json(400, { error: "invalid_grant" });
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "token_refused" });
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+    });
+
+    it("maps a 503 to token_unavailable", async () => {
+        tokenResponse = () => json(503, {});
+        expect(await authorizeAcrSilently()).toEqual({
+            kind: "failed",
+            reason: "token_unavailable",
+        });
+    });
+
+    it.each([
+        ["an access token of another shape", { access_token: "eyJhbGciOi.x.y" }],
+        ["another token type", { token_type: "DPoP" }],
+        ["no lifetime", { expires_in: undefined }],
+        ["a zero lifetime", { expires_in: 0 }],
+        ["a refresh token of another shape", { refresh_token: "rt-1" }],
+    ])("refuses a token response with %s", async (_, change) => {
+        tokenResponse = () =>
+            json(200, {
+                access_token: ACCESS,
+                token_type: "Bearer",
+                expires_in: 600,
+                refresh_token: REFRESH,
+                ...change,
+            });
+        expect(await authorizeAcrSilently()).toEqual({
+            kind: "failed",
+            reason: "invalid_token_response",
+        });
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+    });
+
+    it("holds no family when ACR gives no refresh token", async () => {
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify({ v: 1, stale: true }));
+        tokenResponse = () =>
+            json(200, { access_token: ACCESS, token_type: "Bearer", expires_in: 600 });
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+    });
+});
+
+describe("two callers in one tab (CHAOS-12474)", () => {
+    it("make one authorization, and share its token", async () => {
+        const [first, second, third] = await Promise.all([
+            authorizeAcrSilently(),
+            authorizeAcrSilently(),
+            authorizeAcrSilently(),
+        ]);
+        expect(first).toMatchObject({ kind: "token", token: ACCESS });
+        expect(second).toEqual(first);
+        expect(third).toEqual(first);
+        expect(routeCalls()).toHaveLength(1);
+        expect(tokenCalls()).toHaveLength(1);
+    });
+
+    it("make one attempt when it fails too: one failure, not two calls to ACR's limit", async () => {
+        routeResponse = () => json(429, { error: { code: "rate_limited" } });
+        const outcomes = await Promise.all([authorizeAcrSilently(), authorizeAcrSilently()]);
+        expect(outcomes).toEqual([{ kind: "rate_limited" }, { kind: "rate_limited" }]);
+        expect(routeCalls()).toHaveLength(1);
+    });
+
+    it("a caller that read no token before the attempt ended gets its token, with no request", async () => {
+        await authorizeAcrSilently();
+        const sent = calls.length;
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token", token: ACCESS });
+        expect(calls).toHaveLength(sent);
+    });
+
+    it("the next act after a failure tries again, once", async () => {
+        routeResponse = () => json(503, {});
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "failed" });
+        routeResponse = ({ state }) => json(200, { code: CODE, state, iss: ISSUER });
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token" });
+        expect(routeCalls()).toHaveLength(2);
+    });
+
+    it("does not take a token held for another principal for an answer", async () => {
+        await authorizeAcrSilently();
+        principal = { userId: "user-2", orgId: "org-1" };
+        await authorizeAcrSilently();
+        expect(routeCalls()).toHaveLength(2);
+    });
+
+    it("gives no token when a fetch throws where nothing expects it", async () => {
+        routeResponse = () => {
+            throw new TypeError("Failed to fetch");
+        };
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "unavailable" });
     });
 });
 
@@ -413,420 +824,29 @@ describe("discoverAcrAuthorizationServer", () => {
     });
 });
 
-describe("completeAcrAuthorization", () => {
-    async function started() {
-        const authorize = await begin();
-        return authorize.searchParams.get("state")!;
-    }
-
-    it("exchanges the code with a form POST and holds the token in memory only", async () => {
-        const state = await started();
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state, iss: ISSUER }),
-        );
-        expect(outcome).toEqual({ kind: "authorized", returnTo: "/dev?thread=t1" });
-
-        const [exchange] = tokenCalls();
-        expect(exchange!.init).toMatchObject({
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            credentials: "omit",
-            cache: "no-store",
-        });
-        // Only CORS-safelisted headers: the browser sends it with no preflight.
-        expect(Object.keys(exchange!.init!.headers as Record<string, string>)).toEqual([
-            "Content-Type",
-        ]);
-        const form = Object.fromEntries(exchange!.init!.body as URLSearchParams);
-        expect(form).toEqual({
-            grant_type: "authorization_code",
-            code: "c-1",
-            redirect_uri: `${WEB}/ask-dev/oauth/callback`,
-            client_id: `${WEB}/oauth/acr-client.json`,
-            code_verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
-            resource: ISSUER,
-        });
-
-        expect(await getAcrAccessToken()).toEqual({ kind: "token", token: ACCESS, issuer: ISSUER });
-        // The access token is in no storage; the refresh token only in the family entry.
-        const stored = JSON.stringify(storage.snapshot());
-        expect(stored).not.toContain(ACCESS);
-        expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
-        // CHAOS-12305: v2, a random family id (the refresh lock's name), bound to the web principal.
-        expect(readAcrHeldFamily()).toEqual({
-            v: 2,
-            familyId: expect.stringMatching(TAB_ID),
-            issuer: ISSUER,
-            clientId: `${WEB}/oauth/acr-client.json`,
-            refreshToken: REFRESH,
-            tokenEndpoint: `${ISSUER}/token`,
-            revocationEndpoint: `${ISSUER}/revoke`,
-            userId: "user-1",
-            orgId: "org-1",
-        });
-    });
-
-    it("with no web session, sends no code and stores nothing (CHAOS-12305)", async () => {
-        const state = await started();
-        principal = null;
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toEqual({ kind: "failed", reason: "signed_out", returnTo: "/dev?thread=t1" });
-        expect(tokenCalls()).toEqual([]);
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        // Read before the one-exchange claim: the start is not spent either.
-        expect(shared.getItem(ACR_SPENT_KEY)).toBeNull();
-        principal = USER;
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("while impersonating, sends no code, spends nothing and stores nothing (CHAOS-12306)", async () => {
-        const state = await started();
-        principal = IMPERSONATING;
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toEqual({ kind: "failed", reason: "impersonating", returnTo: "/dev?thread=t1" });
-        expect(tokenCalls()).toEqual([]);
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        expect(shared.getItem(ACR_SPENT_KEY)).toBeNull();
-        principal = USER;
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("while impersonating, also drops a family stored before (codex r1 on #1680)", async () => {
-        const state = await started();
-        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
-        principal = IMPERSONATING;
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "impersonating" });
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("draws a new family id for every exchange", async () => {
-        let state = await started();
-        await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
-        const first = readAcrHeldFamily()!.familyId;
-        state = await started();
-        await completeAcrAuthorization(callback({ code: "c-2", state, iss: ISSUER }));
-        expect(readAcrHeldFamily()!.familyId).not.toBe(first);
-    });
-
-    it("while the client is off (prod until the T13 roll), sends no code and stores nothing", async () => {
-        const state = await started();
-        const before = JSON.stringify(storage.snapshot());
-        configure(storage, null);
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toEqual({ kind: "failed", reason: "off", returnTo: "/dev" });
-        expect(tokenCalls()).toEqual([]);
-        expect(JSON.stringify(storage.snapshot())).toBe(before);
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        expect(shared.getItem("ask-dev:acr-spent")).toBeNull();
-        expect(await getAcrAccessToken()).toEqual({ kind: "off" });
-    });
-
-    it("refuses a state this tab did not start, and sends no code", async () => {
-        await started();
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state: "x".repeat(43), iss: ISSUER }),
-        );
-        expect(outcome).toMatchObject({ kind: "failed", reason: "state_mismatch" });
-        expect(tokenCalls()).toEqual([]);
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-    });
-
-    it("refuses another tab's state: the pending entry lives in that tab only", async () => {
-        const otherTab = new MemoryStorage();
-        const state = (await begin(otherTab)).searchParams.get("state")!;
-        configure(storage);
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state, iss: ISSUER }),
-        );
-        expect(outcome).toMatchObject({ kind: "failed", reason: "no_pending" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("refuses a pending entry bound to another tab id (a copied entry)", async () => {
-        const state = await started();
-        storage.setItem(ACR_TAB_KEY, "B".repeat(22));
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state, iss: ISSUER }),
-        );
-        expect(outcome).toMatchObject({ kind: "failed", reason: "wrong_tab" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("refuses a callback after the authorization expired", async () => {
-        const state = await started();
-        now += ACR_AUTHORIZATION_TTL_MS;
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state, iss: ISSUER }),
-        );
-        expect(outcome).toMatchObject({ kind: "failed", reason: "expired" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it.each([
-        ["another issuer", "https://evil.example"],
-        ["no iss", null],
-    ])("refuses a callback with %s", async (_, iss) => {
-        const state = await started();
-        const params: Record<string, string> = { code: "c-1", state };
-        if (iss !== null) params.iss = iss;
-        const outcome = await completeAcrAuthorization(callback(params));
-        expect(outcome).toMatchObject({ kind: "failed", reason: "iss_mismatch" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("refuses a callback when the configured issuer changed since the start", async () => {
-        const state = await started();
-        configure(storage, acrBrowserClientConfig("https://acr2.fullchaos.dev", WEB));
-        const outcome = await completeAcrAuthorization(
-            callback({ code: "c-1", state, iss: ISSUER }),
-        );
-        expect(outcome).toMatchObject({ kind: "failed", reason: "iss_mismatch" });
-    });
-
-    it("refuses a replayed callback: the pending entry is single use", async () => {
-        const state = await started();
-        const url = callback({ code: "c-1", state, iss: ISSUER });
-        expect(await completeAcrAuthorization(url)).toMatchObject({ kind: "authorized" });
-        expect(await completeAcrAuthorization(url)).toMatchObject({
-            kind: "failed",
-            reason: "no_pending",
-        });
-        expect(tokenCalls()).toHaveLength(1);
-    });
-
-    it("spends the pending entry on a refused callback too", async () => {
-        await started();
-        await completeAcrAuthorization(
-            callback({ code: "c-1", state: "y".repeat(43), iss: ISSUER }),
-        );
-        expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
-    });
-
-    it("gives access_denied its own outcome, and names other errors only from the RFC set", async () => {
-        let state = await started();
-        expect(
-            await completeAcrAuthorization(
-                callback({ error: "access_denied", state, iss: ISSUER }),
-            ),
-        ).toEqual({ kind: "denied", error: "access_denied", returnTo: "/dev?thread=t1" });
-        state = await started();
-        expect(
-            await completeAcrAuthorization(
-                callback({ error: "<script>x</script>", state, iss: ISSUER }),
-            ),
-        ).toMatchObject({ kind: "denied", error: "other" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("checks state and iss before it trusts an error", async () => {
-        await started();
-        expect(
-            await completeAcrAuthorization(
-                callback({ error: "access_denied", state: "z".repeat(43), iss: ISSUER }),
-            ),
-        ).toMatchObject({ kind: "failed", reason: "state_mismatch" });
-    });
-
-    it("maps a refused code (400 invalid_grant) to token_refused and holds nothing", async () => {
-        const state = await started();
-        tokenResponse = () => json(400, { error: "invalid_grant" });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "token_refused" });
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-    });
-
-    it("maps a 503 to token_unavailable", async () => {
-        const state = await started();
-        tokenResponse = () => json(503, { error: "temporarily_unavailable" });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "token_unavailable" });
-    });
-
-    it.each([
-        ["an access token of another shape", { access_token: "eyJhbGciOi.x.y" }],
-        ["another token type", { token_type: "DPoP" }],
-        ["no lifetime", { expires_in: undefined }],
-        ["a zero lifetime", { expires_in: 0 }],
-        ["a refresh token of another shape", { refresh_token: "rt-1" }],
-    ])("refuses a token response with %s", async (_, change) => {
-        const state = await started();
-        tokenResponse = () =>
-            json(200, {
-                access_token: ACCESS,
-                token_type: "Bearer",
-                expires_in: 600,
-                refresh_token: REFRESH,
-                ...change,
-            });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "invalid_token_response" });
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-    });
-
-    it("holds no family when ACR gives no refresh token", async () => {
-        const state = await started();
-        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify({ v: 1, stale: true }));
-        tokenResponse = () =>
-            json(200, { access_token: ACCESS, token_type: "Bearer", expires_in: 600 });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "authorized" });
-        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-        expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
-    });
-});
-
-describe("a duplicated tab (copied sessionStorage) — r1 on #1663", () => {
-    it("cannot exchange a code for an authorization the original already completed", async () => {
-        const state = (await begin()).searchParams.get("state")!;
-        const clone = duplicate(storage);
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "authorized" });
-
-        configure(clone);
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-2", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "already_used" });
-        expect(tokenCalls()).toHaveLength(1);
-    });
-
-    it("lets one start give one exchange: when the copy completes first, the original cannot", async () => {
-        const state = (await begin()).searchParams.get("state")!;
-        const clone = duplicate(storage);
-        configure(clone);
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-2", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "authorized" });
-
-        configure(storage);
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "already_used" });
-        expect(tokenCalls()).toHaveLength(1);
-    });
-
-    it("writes the spent marker only inside the origin-wide lock", async () => {
-        const state = (await begin()).searchParams.get("state")!;
-        let inLock = false;
-        const names: string[] = [];
-        const original = shared.setItem.bind(shared);
-        shared.setItem = (key, value) => {
-            expect(inLock, "the spent marker is written outside the lock").toBe(true);
-            original(key, value);
-        };
-        setAcrAuthDependenciesForTest({
-            now: () => now,
-            principal: async () => principal,
-            storage: () => storage,
-            shared: () => shared,
-            config: () => CONFIG,
-            fetch: async (input, init) => {
-                calls.push({ url: String(input), init });
-                return tokenResponse();
-            },
-            lock: async (name, task) => {
-                names.push(name);
-                inLock = true;
-                try {
-                    return await task();
-                } finally {
-                    inLock = false;
-                }
-            },
-        });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "authorized" });
-        expect(names).toEqual(["ask-dev:acr-authorization"]);
-    });
-
-    it.each([
-        ["no shared storage", () => null],
-        [
-            "a shared store that refuses the write",
-            () => {
-                const refusing = new MemoryStorage();
-                refusing.setItem = () => {
-                    throw new Error("QuotaExceededError");
-                };
-                return refusing;
-            },
-        ],
-        [
-            "a shared store that drops the write",
-            () => {
-                const dropping = new MemoryStorage();
-                dropping.setItem = () => undefined;
-                return dropping;
-            },
-        ],
-    ])("fails closed with %s: no code is sent (r2 on #1663)", async (_, store) => {
-        const state = (await begin()).searchParams.get("state")!;
-        setAcrAuthDependenciesForTest({
-            now: () => now,
-            principal: async () => principal,
-            storage: () => storage,
-            shared: store as () => Storage | null,
-            config: () => CONFIG,
-            fetch: async (input, init) => {
-                calls.push({ url: String(input), init });
-                return tokenResponse();
-            },
-        });
-        expect(
-            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
-        ).toMatchObject({ kind: "failed", reason: "claim_unavailable" });
-        expect(tokenCalls()).toEqual([]);
-    });
-
-    it("stores no state in shared storage, only its hash, and drops it after the expiry", async () => {
-        const state = (await begin()).searchParams.get("state")!;
-        await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
-        const spent = JSON.stringify(shared.snapshot());
-        expect(spent).not.toContain(state);
-        expect(spent).not.toMatch(/fcacr_|acrrt_/u);
-        now += ACR_AUTHORIZATION_TTL_MS;
-        const next = (await begin()).searchParams.get("state")!;
-        await completeAcrAuthorization(callback({ code: "c-3", state: next, iss: ISSUER }));
-        expect(Object.keys(JSON.parse(shared.getItem("ask-dev:acr-spent")!))).toHaveLength(1);
-    });
-});
-
 describe("deadlines (r3 on #1663)", () => {
-    /**
-     * The claim hashes the state on real async I/O, which no count of event-loop turns bounds on a
-     * slow runner (CHAOS-12349). Wait on the real clock (only setTimeout is faked) for up to 5 s.
-     */
-    async function untilExchangeInFlight() {
-        const until = Date.now() + 5_000;
-        while (tokenCalls().length === 0 && Date.now() < until) {
-            await new Promise((resolve) => setImmediate(resolve));
-        }
-    }
-
     afterEach(() => {
         vi.useRealTimers();
     });
 
-    /** A fetch that never answers, until its signal aborts. */
+    /** Real turns until the request to `url` is in flight (only setTimeout is faked). */
+    async function untilInFlight(url: string) {
+        const until = Date.now() + 5_000;
+        while (!calls.some((call) => call.url === url) && Date.now() < until) {
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+    }
+
+    /** A fetch that never answers `url`, until its signal aborts. */
     function stalled(url: string) {
         return (input: RequestInfo | URL, init?: RequestInit) => {
-            calls.push({ url: String(input), init });
-            if (String(input) !== url) {
+            const called = String(input);
+            calls.push({ url: called, init });
+            if (called === `${ISSUER}/.well-known/oauth-authorization-server` && called !== url) {
                 return Promise.resolve(json(200, metadata));
+            }
+            if (called === ACR_AUTHORIZE_ROUTE && called !== url) {
+                return Promise.resolve(routeResponse(routeBodyOf(init)));
             }
             return new Promise<Response>((_, reject) => {
                 init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
@@ -834,92 +854,48 @@ describe("deadlines (r3 on #1663)", () => {
         };
     }
 
-    it("gives up on metadata ACR never answers, after ACR_OAUTH_REQUEST_TIMEOUT_MS", async () => {
+    async function endsAtTheDeadline(url: string, reason: string) {
         vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
         setAcrAuthDependenciesForTest({
             now: () => now,
             principal: async () => principal,
             storage: () => storage,
-            shared: () => shared,
-            navigate: (url) => navigated.push(url),
             config: () => CONFIG,
+            channel: () => null,
             lock: (_name, task) => task(),
-            fetch: stalled(`${ISSUER}/.well-known/oauth-authorization-server`),
+            fetch: stalled(url),
         });
-        const outcome = beginAcrAuthorization("/dev");
+        const outcome = authorizeAcrSilently();
+        await untilInFlight(url);
+        expect(calls.filter((call) => call.url === url)).toHaveLength(1);
         await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
         let settled = false;
         void outcome.then(() => (settled = true));
         await vi.advanceTimersByTimeAsync(0);
         expect(settled).toBe(false);
         await vi.advanceTimersByTimeAsync(1);
-        expect(await outcome).toEqual({ kind: "unavailable" });
-        expect(navigated).toEqual([]);
+        expect(await outcome).toEqual({ kind: "failed", reason });
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+    }
+
+    it("gives up on metadata ACR never answers, after ACR_OAUTH_REQUEST_TIMEOUT_MS", async () => {
+        await endsAtTheDeadline(`${ISSUER}/.well-known/oauth-authorization-server`, "unavailable");
+        expect(routeCalls()).toEqual([]);
+    });
+
+    it("gives up on a route that never answers", async () => {
+        await endsAtTheDeadline(ACR_AUTHORIZE_ROUTE, "unavailable");
+        expect(tokenCalls()).toEqual([]);
     });
 
     it("gives up on a token exchange ACR never answers, and holds nothing", async () => {
-        const state = (await begin()).searchParams.get("state")!;
-        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-        setAcrAuthDependenciesForTest({
-            now: () => now,
-            principal: async () => principal,
-            storage: () => storage,
-            shared: () => shared,
-            config: () => CONFIG,
-            lock: (_name, task) => task(),
-            fetch: stalled(`${ISSUER}/token`),
-        });
-        const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
-        await untilExchangeInFlight();
-        expect(tokenCalls()).toHaveLength(1);
-        await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
-        let settled = false;
-        void outcome.then(() => (settled = true));
-        await vi.advanceTimersByTimeAsync(0);
-        expect(settled).toBe(false);
-        await vi.advanceTimersByTimeAsync(1);
-        expect(await outcome).toMatchObject({ kind: "failed", reason: "token_unavailable" });
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
-    });
-
-    it("waits for the exchange however slow the claim's hash is (CHAOS-12349)", async () => {
-        // CI's runner took longer than 200 event-loop turns for the digest: make it slower still.
-        const digest = crypto.subtle.digest.bind(crypto.subtle);
-        vi.spyOn(crypto.subtle, "digest").mockImplementation(async (...args) => {
-            for (let turn = 0; turn < 400; turn += 1) {
-                await new Promise((resolve) => setImmediate(resolve));
-            }
-            return digest(...(args as Parameters<typeof digest>));
-        });
-        const state = (await begin()).searchParams.get("state")!;
-        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-        setAcrAuthDependenciesForTest({
-            now: () => now,
-            principal: async () => principal,
-            storage: () => storage,
-            shared: () => shared,
-            config: () => CONFIG,
-            lock: (_name, task) => task(),
-            fetch: stalled(`${ISSUER}/token`),
-        });
-        const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
-        await untilExchangeInFlight();
-        expect(tokenCalls()).toHaveLength(1);
-        await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
-        let settled = false;
-        void outcome.then(() => (settled = true));
-        await vi.advanceTimersByTimeAsync(0);
-        expect(settled).toBe(false);
-        await vi.advanceTimersByTimeAsync(1);
-        expect(await outcome).toMatchObject({ kind: "failed", reason: "token_unavailable" });
-        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        await endsAtTheDeadline(`${ISSUER}/token`, "token_unavailable");
     });
 });
 
 describe("getAcrAccessToken", () => {
     async function authorized() {
-        const state = (await begin()).searchParams.get("state")!;
-        await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token" });
     }
 
     it("asks for authorization before any flow, and is off without a client", async () => {
@@ -1048,6 +1024,28 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         };
     }
 
+    /** Web's route over this ACR: `/authorize` with the server's values, then no-click consent. */
+    function webRoute({ code_challenge: challenge, state }: RouteBody): Response {
+        const authorize = new URL(`${ISSUER}/authorize`);
+        authorize.search = new URLSearchParams({
+            response_type: "code",
+            client_id: CONFIG.clientId,
+            redirect_uri: CONFIG.redirectUri,
+            code_challenge: challenge,
+            code_challenge_method: "S256",
+            state,
+            resource: ISSUER,
+            scope: ACR_BROWSER_SCOPE,
+        }).toString();
+        const redirect = acr.handle({ method: "GET", url: authorize.href });
+        const answer = new URL(redirect.headers.Location!).searchParams;
+        return json(200, {
+            code: answer.get("code"),
+            state: answer.get("state"),
+            iss: answer.get("iss"),
+        });
+    }
+
     async function acrFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         const url = String(input);
         calls.push({ url, init });
@@ -1061,6 +1059,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             // Real turns, so two requests would overlap if nothing serialized them.
             await turns(5);
             const body = init?.body === undefined || init.body === null ? null : String(init.body);
+            if (url === ACR_AUTHORIZE_ROUTE) return webRoute(routeBodyOf(init));
             const answer = acr.handle({ method: init?.method ?? "GET", url, body });
             if (isToken) {
                 const entry = {
@@ -1096,11 +1095,6 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         return {
             now: () => now,
             storage: () => tab,
-            shared: () => shared,
-            navigate: (url: string) => {
-                navigated.push(url);
-                harvestAuthorizeUrl(url);
-            },
             config: () => CONFIG,
             principal: async () => principal,
             lock: locks.lock,
@@ -1121,13 +1115,9 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         return { auth, signOut };
     }
 
-    /** The whole flow at ACR: begin, ACR's no-click consent, the callback. */
+    /** The whole flow at ACR: the ask, web's route with ACR's no-click consent, the exchange. */
     async function signIn(auth: Tab = defaultTab) {
-        expect(await auth.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
-        const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
-        expect(await auth.completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
-            kind: "authorized",
-        });
+        expect(await auth.authorizeAcrSilently()).toMatchObject({ kind: "token" });
     }
 
     function refreshLog() {
@@ -1244,11 +1234,10 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
 
             getSession.mockResolvedValue(null);
-            const state = (await begin()).searchParams.get("state")!;
-            setAcrAuthDependenciesForTest(browserPrincipal);
-            expect(
-                await completeAcrAuthorization(callback({ code: "c-9", state, iss: ISSUER })),
-            ).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(await defaultTab.authorizeAcrSilently()).toEqual({
+                kind: "failed",
+                reason: "principal_unknown",
+            });
         });
 
         it("reads is_impersonating from the NextAuth session: user.id stays the admin's (CHAOS-12306)", async () => {
@@ -1268,20 +1257,15 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
             const sent = calls.length;
-            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({
-                kind: "impersonating",
-            });
+            expect(await defaultTab.authorizeAcrSilently()).toEqual({ kind: "impersonating" });
             expect(calls).toHaveLength(sent);
             expect(getSession).toHaveBeenLastCalledWith({ broadcast: false });
 
-            getSession.mockResolvedValue({ user: admin, expires: "" });
-            const state = (await begin()).searchParams.get("state")!;
-            setAcrAuthDependenciesForTest(browserPrincipal);
+            // The impersonation starts while the route answers: the code is not sent.
             getSession.mockResolvedValue(impersonating);
+            getSession.mockResolvedValueOnce({ user: admin, expires: "" });
             const tokenRequests = tokenCalls().length;
-            expect(
-                await completeAcrAuthorization(callback({ code: "c-9", state, iss: ISSUER })),
-            ).toMatchObject({ kind: "failed", reason: "impersonating" });
+            expect(await defaultTab.authorizeAcrSilently()).toEqual({ kind: "impersonating" });
             expect(tokenCalls()).toHaveLength(tokenRequests);
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         });
@@ -1559,18 +1543,18 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             });
             expect(hub.posted).toHaveLength(2);
 
-            // The original asks with its own id; nobody holds it now, so after the wait it serves.
+            // The original had no id to ask with at its first use, so it does not ask now.
             expect(await settled(original.auth.getAcrAccessToken())).toMatchObject({
                 kind: "token",
             });
-            expect(hub.posted).toHaveLength(3);
+            expect(hub.posted).toHaveLength(2);
             expect(storage.getItem(ACR_TAB_KEY)).toBe(originalId);
         });
 
         it("waits the whole check when nobody answers, then serves", async () => {
-            const hub = channelHub();
-            const tab = await openTab(storage, hub.join());
-            await signIn(tab.auth);
+            await signIn(await openTab(storage).then(({ auth }) => auth));
+            // A page load with an id to ask about: nobody on this channel holds it.
+            const tab = await openTab(storage, channelHub().join());
             let done = false;
             const call = tab.auth.getAcrAccessToken().finally(() => (done = true));
             await vi.advanceTimersByTimeAsync(ACR_CLONE_CHECK_MS - 1);
@@ -1646,12 +1630,10 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             const elsewhere = new MemoryStorage();
             const there = await openTab(elsewhere, hub.join());
             await signIn(there.auth);
-            storage.setItem(ACR_PENDING_AUTHORIZATION_KEY, "{}");
             expect(storedFamily(elsewhere)).not.toBeNull();
 
             await here.signOut.acrBrowserSignOut.clearAllTabs();
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
-            expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
             expect(hub.posted).toContainEqual({ type: "clear" });
             await turns(2);
             expect(elsewhere.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
@@ -1760,11 +1742,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             return tokenLog.filter((entry) => entry.form.grant_type === "authorization_code");
         }
 
-        async function callback() {
-            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
-            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
-            return defaultTab.completeAcrAuthorization(redirect.headers.Location!);
-        }
+        const exchange = () => defaultTab.authorizeAcrSilently();
 
         it("a clear while the principal is read (an observed impersonation start or org switch): the held token is not served (codex r3 on #1680)", async () => {
             await signIn();
@@ -1804,11 +1782,27 @@ describe("the token store across tabs (CHAOS-12305)", () => {
 
         it("a sign-out while the code exchange is in flight: nothing is stored or held", async () => {
             fates.push({ during: async () => defaultTab.clearAcrTokensInAllTabs() });
-            expect(await callback()).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(await exchange()).toMatchObject({ kind: "failed", reason: "signed_out" });
             expect(codeExchanges()).toHaveLength(1);
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
             expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
             expect(refreshLog()).toEqual([]);
+        });
+
+        it("a clear while the route answers: the code is not sent", async () => {
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    // The second read is after the route answered.
+                    if (reads === 2) defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            expect(await exchange()).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(codeExchanges()).toEqual([]);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         });
 
         it("an impersonation started while the code exchange ran: nothing is stored or held (CHAOS-12306)", async () => {
@@ -1819,11 +1813,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
                     principal = IMPERSONATING;
                 },
             });
-            expect(await callback()).toEqual({
-                kind: "failed",
-                reason: "impersonating",
-                returnTo: "/dev",
-            });
+            expect(await exchange()).toEqual({ kind: "impersonating" });
             expect(codeExchanges()).toHaveLength(1);
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
             principal = USER;
@@ -1841,7 +1831,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
                     principal = next;
                 },
             });
-            expect(await callback()).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(await exchange()).toMatchObject({ kind: "failed", reason: "signed_out" });
             expect(codeExchanges()).toHaveLength(1);
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
             principal = USER;
@@ -1861,6 +1851,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         const RACE = "ask-dev acr token store clear overtook";
         const CLONE = "ask-dev acr token store clone dropped";
         const RECEIVED = "ask-dev acr token store clear received";
+        const ATTEMPT = "ask-dev acr token store authorization";
 
         /** What the store logged since `mark`: [level, message, fields], in order. */
         function since(mark: number) {
@@ -2112,11 +2103,35 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             ]);
         });
 
-        it("begin while impersonating: dropped, check begin", async () => {
+        /** The lines of this attempt, past its own one-line end. */
+        const withoutEnd = (lines: ReturnType<typeof since>) =>
+            lines.filter(([, message]) => message !== ATTEMPT);
+
+        it("every attempt ends in one line, an enum and no more", async () => {
+            const mark = sink.length;
+            await signIn();
+            expect(since(mark).filter(([, message]) => message === ATTEMPT)).toEqual([
+                ["info", ATTEMPT, { outcome: "authorized" }],
+            ]);
+        });
+
+        it("a failed attempt names its end at Warn", async () => {
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                fetch: () => Promise.reject(new TypeError("Failed to fetch")),
+            });
+            const mark = sink.length;
+            await defaultTab.authorizeAcrSilently();
+            expect(since(mark)).toEqual([
+                ["warn", ATTEMPT, { outcome: "failed", reason: "unavailable" }],
+            ]);
+        });
+
+        it("an impersonating start: dropped, check begin", async () => {
             principal = IMPERSONATING;
             const mark = sink.length;
-            expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
-            expect(since(mark)).toEqual([
+            expect(await defaultTab.authorizeAcrSilently()).toEqual({ kind: "impersonating" });
+            expect(withoutEnd(since(mark))).toEqual([
                 ["warn", PRINCIPAL, { check: "begin", reason: "impersonating" }],
             ]);
         });
@@ -2124,17 +2139,20 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         it.each([
             ["no session", null, "no_session"],
             ["an impersonating session", IMPERSONATING, "impersonating"],
-        ] as const)("%s at the callback: check callback_before", async (_, next, reason) => {
-            await signIn();
-            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
-            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
-            principal = next;
-            const mark = sink.length;
-            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
-                kind: "failed",
+            ["another user", { userId: "user-2", orgId: "org-1" }, "mismatch"],
+        ] as const)("%s at the exchange: check exchange_before", async (_, next, reason) => {
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    return reads === 1 ? principal : next;
+                },
             });
-            expect(since(mark)).toEqual([
-                ["warn", PRINCIPAL, { check: "callback_before", reason }],
+            const mark = sink.length;
+            await defaultTab.authorizeAcrSilently();
+            expect(withoutEnd(since(mark))).toEqual([
+                ["warn", PRINCIPAL, { check: "exchange_before", reason }],
             ]);
         });
 
@@ -2143,58 +2161,47 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             ["another user", { userId: "user-2", orgId: "org-1" }, "mismatch"],
             ["an impersonating session", IMPERSONATING, "impersonating"],
         ] as const)(
-            "%s by the end of the code exchange: check callback_after",
+            "%s by the end of the code exchange: check exchange_after",
             async (_, next, reason) => {
                 fates.push({
                     during: async () => {
                         principal = next;
                     },
                 });
-                expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({
-                    kind: "redirected",
-                });
-                const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
                 const mark = sink.length;
-                expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
-                    kind: "failed",
-                });
-                expect(since(mark)).toEqual([
-                    ["warn", PRINCIPAL, { check: "callback_after", reason }],
+                await defaultTab.authorizeAcrSilently();
+                expect(withoutEnd(since(mark))).toEqual([
+                    ["warn", PRINCIPAL, { check: "exchange_after", reason }],
                 ]);
             },
         );
 
-        it("a clear while the code exchange runs: the race, where callback", async () => {
+        it("a clear while the code exchange runs: the race, where exchange", async () => {
             fates.push({ during: async () => defaultTab.clearAcrTokensInAllTabs() });
-            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
-            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
             const mark = sink.length;
-            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+            expect(await defaultTab.authorizeAcrSilently()).toMatchObject({
                 kind: "failed",
                 reason: "signed_out",
             });
-            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
+            expect(withoutEnd(since(mark))).toEqual([["warn", RACE, { where: "exchange" }]]);
         });
 
-        it("a clear before the code exchange starts is the same race: where callback (codex r2 on #1681)", async () => {
-            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
-            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+        it("a clear before the code exchange starts is the same race: where exchange (codex r2 on #1681)", async () => {
             let reads = 0;
             setAcrAuthDependenciesForTest({
                 ...depsFor(storage),
                 principal: async () => {
                     reads += 1;
-                    // The first read is before the exchange: the label must not name the exchange.
-                    if (reads === 1) defaultTab.clearAcrTokensInAllTabs();
+                    if (reads === 2) defaultTab.clearAcrTokensInAllTabs();
                     return principal;
                 },
             });
             const mark = sink.length;
-            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+            expect(await defaultTab.authorizeAcrSilently()).toMatchObject({
                 kind: "failed",
                 reason: "signed_out",
             });
-            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
+            expect(withoutEnd(since(mark))).toEqual([["warn", RACE, { where: "exchange" }]]);
         });
 
         it.each([
@@ -2259,8 +2266,7 @@ describe("module load (P1-6, CHAOS-12305)", () => {
         tab.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
         vi.stubGlobal("window", {
             sessionStorage: tab,
-            localStorage: shared,
-            location: { origin: WEB, replace: vi.fn() },
+            location: { origin: WEB },
         });
         vi.resetModules();
         await import("../acr-auth");
@@ -2298,6 +2304,7 @@ describe("no secret in any log call (CHAOS-12369)", () => {
             "ask-dev acr token store clear overtook",
             "ask-dev acr token store clone dropped",
             "ask-dev acr token store clear received",
+            "ask-dev acr token store authorization",
         ]) {
             expect(messages).toContain(message);
         }

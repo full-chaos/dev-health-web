@@ -4,10 +4,12 @@ import { join } from "node:path";
 
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { serveAskDevAuthorize } from "./mocks/acr-browser-client";
 import { ACR_DEV_BROWSER_CLIENT_ID, AcrOAuthMock } from "./mocks/acr-oauth";
 
 /**
- * CHAOS-12303 (c2 of the T13 split): the browser's ACR authorization flow, offline.
+ * CHAOS-12303 (c2 of the T13 split), CHAOS-12474: the browser's silent ACR authorization, offline.
+ * A user signed in to web never sees a connect step, and the page never leaves.
  *
  * acr-api is `tests/mocks/acr-oauth.ts`. Its answers are acr-api's own, captured on askdev-1, and
  * it keeps ACR's rules: `iss` on the redirect, single-use codes, PKCE S256 and the 30 s refresh
@@ -19,8 +21,8 @@ import { ACR_DEV_BROWSER_CLIENT_ID, AcrOAuthMock } from "./mocks/acr-oauth";
  */
 
 const SHOTS = process.env.ASK_DEV_ACR_SHOTS ?? "";
-const PENDING_KEY = "ask-dev:acr-authorization";
 const FAMILY_KEY = "ask-dev:acr-family";
+const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 
 async function shot(page: Page, name: string) {
     if (SHOTS === "") return;
@@ -31,9 +33,20 @@ async function shot(page: Page, name: string) {
 type Harness = {
     readonly acr: AcrOAuthMock;
     readonly origin: string;
-    /** Every Location the mock's /authorize answered (the callback URLs). */
-    readonly redirects: string[];
 };
+
+test.describe.configure({ mode: "serial" });
+
+test.beforeEach(async ({ request }) => {
+    const response = await request.post(`${MOCK}/__test/entitlements`, {
+        data: { scenario: "provisioned" },
+    });
+    expect(response.ok()).toBe(true);
+});
+
+test.afterEach(async ({ request }) => {
+    await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "unprovisioned" } });
+});
 
 /** Turns the browser client on for this context, as runtime config does in production. */
 async function clientOn(context: BrowserContext, origin: string) {
@@ -52,8 +65,8 @@ async function clientOn(context: BrowserContext, origin: string) {
     });
 }
 
-/** Serves ACR's four OAuth endpoints on the issuer origin from the mock. */
-async function acrOn(context: BrowserContext, harness: Harness, follow = true) {
+/** Serves ACR's OAuth endpoints on the issuer origin from the mock, and web's route over it. */
+async function acrOn(context: BrowserContext, harness: Harness) {
     await context.route(
         (url) => harness.acr.owns(url.href),
         async (route) => {
@@ -63,12 +76,6 @@ async function acrOn(context: BrowserContext, harness: Harness, follow = true) {
                 url: request.url(),
                 body: request.postData(),
             });
-            if (answer.headers.Location !== undefined)
-                harness.redirects.push(answer.headers.Location);
-            if (!follow && answer.headers.Location !== undefined) {
-                await route.fulfill({ status: 204, body: "" });
-                return;
-            }
             await route.fulfill({
                 status: answer.status,
                 headers: answer.headers,
@@ -76,20 +83,17 @@ async function acrOn(context: BrowserContext, harness: Harness, follow = true) {
             });
         },
     );
+    await serveAskDevAuthorize(context, harness.acr, harness.origin, harness.origin);
 }
 
-async function setUp(
-    page: Page,
-    options: { follow?: boolean; on?: boolean } = {},
-): Promise<Harness> {
+async function setUp(page: Page, options: { on?: boolean } = {}): Promise<Harness> {
     const origin = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3000").origin;
     const harness: Harness = {
         acr: new AcrOAuthMock({ issuer: origin, redirectUri: `${origin}/ask-dev/oauth/callback` }),
         origin,
-        redirects: [],
     };
     if (options.on !== false) await clientOn(page.context(), origin);
-    await acrOn(page.context(), harness, options.follow ?? true);
+    await acrOn(page.context(), harness);
     return harness;
 }
 
@@ -97,15 +101,27 @@ const tokenCalls = (harness: Harness) => harness.acr.calls.filter((call) => call
 const authorizeCalls = (harness: Harness) =>
     harness.acr.calls.filter((call) => call.kind === "authorize");
 
-const callbackCard = (page: Page) => page.getByTestId("ask-dev-acr-callback");
+/** The panel, open on /dashboard. A panel open sends nothing: History is the act here. */
+async function openHistory(page: Page) {
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    const panel = page.getByTestId("ask-dev-panel");
+    await panel.getByTestId("ask-dev-history-toggle").click();
+    return panel;
+}
 
 test.describe("Ask Dev ACR browser authorization (offline)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    test("connects: start → ACR → callback → token → back where the user was", async ({ page }) => {
+    test("authorizes with no step and no navigation: route → token, on the same page", async ({
+        page,
+    }) => {
         const harness = await setUp(page);
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await page.waitForURL((url) => url.pathname === "/dashboard");
+        const pages: string[] = [];
+        page.on("framenavigated", (frame) => {
+            if (frame === page.mainFrame()) pages.push(frame.url());
+        });
+        await openHistory(page);
         await expect.poll(() => tokenCalls(harness).length).toBe(1);
 
         const [authorize] = authorizeCalls(harness);
@@ -132,19 +148,18 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
             params.code_challenge,
         );
 
-        // Nothing of the flow is left in the URL; the access token is in no storage and no cookie.
+        // The page never left, and nothing of the flow reached a URL.
+        expect(pages.filter((url) => /oauth|authorize|code=|state=/u.test(url))).toEqual([]);
         expect(page.url()).not.toMatch(/code=|state=|iss=/u);
         const stored = await page.evaluate(
-            ([pending, family]) => ({
-                pending: window.sessionStorage.getItem(pending),
+            ([family]) => ({
                 family: window.sessionStorage.getItem(family),
                 session: JSON.stringify({ ...window.sessionStorage }),
                 local: JSON.stringify({ ...window.localStorage }),
                 cookie: document.cookie,
             }),
-            [PENDING_KEY, FAMILY_KEY] as const,
+            [FAMILY_KEY] as const,
         );
-        expect(stored.pending).toBeNull();
         // CHAOS-12305: v2 binds the family to the web principal and names it for the refresh lock.
         expect(JSON.parse(stored.family!)).toMatchObject({
             v: 2,
@@ -157,124 +172,53 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
         });
         for (const where of [stored.session, stored.local, stored.cookie]) {
             expect(where).not.toMatch(/fcacr_/u);
+            // CHAOS-12474: the verifier stays in one call's memory.
+            expect(where).not.toContain(form.code_verifier!);
         }
         expect(stored.local).not.toMatch(/acrrt_/u);
-
-        // Back does not start the flow again: the start page replaced itself with ACR.
-        await page.goBack();
-        await page.waitForLoadState("domcontentloaded");
-        expect(page.url()).not.toContain("/ask-dev/oauth/");
-        expect(authorizeCalls(harness)).toHaveLength(1);
     });
 
-    test("a replayed callback URL is refused, and the code is never sent twice", async ({
+    test("a denied consent is a failed read with Try again, and sends no code", async ({
         page,
     }) => {
         const harness = await setUp(page);
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await page.waitForURL((url) => url.pathname === "/dashboard");
-        const [callbackUrl] = harness.redirects;
-
-        await page.goto(callbackUrl!);
-        await expect(callbackCard(page)).toHaveAttribute("data-state", "failed");
-        await expect(
-            page.getByRole("heading", { name: "This sign-in link is not valid here" }),
-        ).toBeVisible();
-        // The page scrubbed the replayed URL too.
-        expect(new URL(page.url()).search).toBe("");
-        expect(tokenCalls(harness)).toHaveLength(1);
-        await shot(page, "callback-not-valid");
-    });
-
-    test("a consent denial has its own state, and sends no code", async ({ page }) => {
-        const harness = await setUp(page);
         harness.acr.consent = "deny";
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect(
-            page.getByRole("heading", { name: "Ask Dev was not connected" }),
-        ).toBeVisible();
-        await expect(page.getByRole("link", { name: "Return to Ask Dev" })).toHaveAttribute(
-            "href",
-            "/dashboard",
-        );
+        const panel = await openHistory(page);
+        await expect(panel.getByTestId("ask-dev-history-read-failed")).toBeVisible();
         expect(tokenCalls(harness)).toHaveLength(0);
-        await shot(page, "callback-denied");
+        await shot(page, "authorize-refused");
     });
 
-    test("a callback naming another issuer is refused, and sends no code", async ({ page }) => {
+    test("an answer naming another issuer is refused, and sends no code", async ({ page }) => {
         const harness = await setUp(page);
         harness.acr.redirectIss = "https://evil.example";
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect(
-            page.getByRole("heading", { name: "This sign-in link is not valid here" }),
-        ).toBeVisible();
+        const panel = await openHistory(page);
+        await expect(panel.getByTestId("ask-dev-history-read-failed")).toBeVisible();
         expect(tokenCalls(harness)).toHaveLength(0);
     });
 
-    test("another tab cannot complete this tab's authorization", async ({ page, context }) => {
-        const harness = await setUp(page, { follow: false });
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect.poll(() => harness.redirects.length).toBe(1);
-        const [callbackUrl] = harness.redirects;
-
-        const other = await context.newPage();
-        await other.goto(callbackUrl!);
-        await expect(
-            other.getByRole("heading", { name: "This sign-in link is not valid here" }),
-        ).toBeVisible();
-        expect(tokenCalls(harness)).toHaveLength(0);
-
-        // The tab that started it still can: the other tab took nothing from it.
-        await page.goto(callbackUrl!);
-        await page.waitForURL((url) => url.pathname === "/dashboard");
-        expect(tokenCalls(harness)).toHaveLength(1);
-        await other.close();
-    });
-
-    test("a duplicated tab and the original cannot both exchange a code for one start (r1)", async ({
+    test("a tab keeps its own family: another tab authorizes for itself", async ({
         page,
         context,
     }) => {
-        const harness = await setUp(page, { follow: false });
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect.poll(() => harness.redirects.length).toBe(1);
-        const [callbackUrl] = harness.redirects;
-        // A duplicated tab gets a copy of the original's sessionStorage, pending entry included.
-        const copied = await page.evaluate(() => JSON.stringify({ ...window.sessionStorage }));
-
-        const clone = await context.newPage();
-        await clone.addInitScript((entries) => {
-            for (const [key, value] of Object.entries(
-                JSON.parse(entries) as Record<string, string>,
-            )) {
-                window.sessionStorage.setItem(key, value);
-            }
-        }, copied);
-        await clone.goto(callbackUrl!);
-        await clone.waitForURL((url) => url.pathname === "/dashboard");
-        expect(tokenCalls(harness)).toHaveLength(1);
-
-        await page.goto(callbackUrl!);
-        await expect(
-            page.getByRole("heading", { name: "This sign-in link is not valid here" }),
-        ).toBeVisible();
-        expect(tokenCalls(harness)).toHaveLength(1);
-        await clone.close();
+        const harness = await setUp(page);
+        await openHistory(page);
+        await expect.poll(() => tokenCalls(harness).length).toBe(1);
+        const other = await context.newPage();
+        await openHistory(other);
+        await expect.poll(() => tokenCalls(harness).length).toBe(2);
+        await other.close();
     });
 
-    test("without the browser client the start page sends nothing", async ({ page }) => {
+    test("without the browser client nothing is sent", async ({ page }) => {
         const harness = await setUp(page, { on: false });
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect(
-            page.getByRole("heading", { name: "Ask Dev sign-in is not available" }),
-        ).toBeVisible();
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        await expect(page.getByTestId("ask-dev-panel")).toBeVisible();
         expect(harness.acr.calls).toEqual([]);
-        await shot(page, "start-off");
     });
 
-    test("ACR unreachable: the start page offers Try again, and Try again starts it", async ({
-        page,
-    }) => {
+    test("ACR unreachable: Try again repeats the act, and works", async ({ page }) => {
         const harness = await setUp(page);
         let fail = true;
         await page
@@ -283,61 +227,32 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
                 if (fail) await route.fulfill({ status: 503, body: "" });
                 else await route.fallback();
             });
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await expect(
-            page.getByRole("heading", { name: "Ask Dev could not be reached" }),
-        ).toBeVisible();
-        await shot(page, "start-unavailable");
+        const panel = await openHistory(page);
+        const retry = panel.getByTestId("ask-dev-history-retry");
+        await expect(retry).toBeVisible();
+        await shot(page, "authorize-unavailable");
+        expect(tokenCalls(harness)).toHaveLength(0);
         fail = false;
-        await page.getByRole("button", { name: "Try again" }).click();
-        await page.waitForURL((url) => url.pathname === "/dashboard");
-        expect(tokenCalls(harness)).toHaveLength(1);
-    });
-});
-
-test.describe("Ask Dev ACR browser authorization, signed out (CHAOS-12305)", () => {
-    test.use({
-        viewport: { width: 1280, height: 900 },
-        storageState: { cookies: [], origins: [] },
+        await retry.click();
+        await expect.poll(() => tokenCalls(harness).length).toBe(1);
     });
 
-    test("a callback with no web session sends no code and asks the user to sign in", async ({
+    test("a web session that has ended goes to the normal sign-in, and sends no code", async ({
         page,
     }) => {
         const harness = await setUp(page);
-        const state = "s".repeat(43);
-        // This tab started an authorization (as the start page would), then the web session ended.
-        await page.addInitScript(
-            ([origin, pendingState]) => {
-                const tab = "t".repeat(22);
-                window.sessionStorage.setItem("ask-dev:acr-tab", tab);
-                window.sessionStorage.setItem(
-                    "ask-dev:acr-authorization",
-                    JSON.stringify({
-                        v: 1,
-                        state: pendingState,
-                        verifier: "v".repeat(43),
-                        tabId: tab,
-                        issuer: origin,
-                        clientId: "https://localhost/acr/dev-browser-client",
-                        redirectUri: `${origin}/ask-dev/oauth/callback`,
-                        tokenEndpoint: `${origin}/token`,
-                        revocationEndpoint: `${origin}/revoke`,
-                        returnTo: "/dev",
-                        expiresAt: Date.now() + 600_000,
-                    }),
-                );
-            },
-            [harness.origin, state] as const,
+        await page.context().route(`${harness.origin}/api/ask-dev/authorize`, (route) =>
+            route.fulfill({
+                status: 401,
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                body: JSON.stringify({ error: { code: "signed_out" } }),
+            }),
         );
-        await page.goto(
-            `/ask-dev/oauth/callback?code=c-1&iss=${encodeURIComponent(harness.origin)}&state=${state}`,
+        const signIn = page.waitForRequest((request) => request.url().includes("/auth/signin"));
+        await openHistory(page);
+        expect(new URL((await signIn).url()).searchParams.get("callbackUrl")).toMatch(
+            /^\/dashboard/u,
         );
-        await expect(
-            page.getByRole("heading", { name: "Sign in to connect Ask Dev" }),
-        ).toBeVisible();
-        expect(new URL(page.url()).search).toBe("");
         expect(tokenCalls(harness)).toHaveLength(0);
-        await shot(page, "callback-signed-out");
     });
 });

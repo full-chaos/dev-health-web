@@ -196,6 +196,9 @@ export class FakeTransport implements AskDevTransport {
     readonly readGates = new Map<string, Promise<void>>();
     /** Thread reads: by `thread_id`, or `thread_id|before` for an earlier page. */
     readonly threads = new Map<string, ThreadView | null | { readonly fail: unknown }>();
+    /** Every `readThread`, with whether the store said the user opened it (CHAOS-12474). */
+    readonly threadReads: { readonly threadId: string; readonly userAct: boolean | undefined }[] =
+        [];
     readonly threadCalls: {
         readonly threadId: string;
         readonly before?: string | undefined;
@@ -291,6 +294,7 @@ export class FakeTransport implements AskDevTransport {
     };
 
     readonly readThread = async (call: {
+        readonly userAct?: boolean | undefined;
         readonly threadId: string;
         readonly before?: string | undefined;
         readonly signal?: AbortSignal | undefined;
@@ -300,6 +304,7 @@ export class FakeTransport implements AskDevTransport {
             before: call.before,
             signal: call.signal,
         });
+        this.threadReads.push({ threadId: call.threadId, userAct: call.userAct });
         if (this.threadGate !== undefined) await this.threadGate;
         const key = call.before === undefined ? call.threadId : `${call.threadId}|${call.before}`;
         const answer = this.threads.get(key);

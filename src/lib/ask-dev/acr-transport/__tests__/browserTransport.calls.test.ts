@@ -5,7 +5,7 @@ vi.mock("@/lib/logger", () => ({ logger: log }));
 
 import * as streamEnvelopeValidators from "@/lib/acr/streamEnvelopeValidators";
 import * as streamValidators from "@/lib/acr/streamValidators";
-import type { AcrAccessToken } from "@/lib/ask-dev/acr-auth";
+import type { AcrAccessToken, AcrSilentOutcome } from "@/lib/ask-dev/acr-auth";
 import type { AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import {
     TransportFailure,
@@ -41,6 +41,8 @@ let token: AcrAccessToken;
 let fetchMock: ReturnType<typeof vi.fn>;
 /** What the transport told the token store ACR refused (CHAOS-12305). */
 let rejected: ReturnType<typeof vi.fn<(token: string) => void>>;
+/** What the silent step answers; off, so a test here sees "authorization required" (CHAOS-12474). */
+const authorizeAnswer = (): AcrSilentOutcome => ({ kind: "off" });
 const signal = new AbortController().signal;
 
 function transport(): AskDevTransport {
@@ -49,6 +51,7 @@ function transport(): AskDevTransport {
         now: () => 1_800_000_000_000,
         token: () => token,
         rejected: (refused: string) => rejected(refused),
+        authorize: async () => authorizeAnswer(),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });
@@ -453,6 +456,7 @@ describe("attach", () => {
             now: () => 1_800_000_000_000,
             token: () => token,
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => ({
                 ...streamValidators,
@@ -564,6 +568,7 @@ describe("every T14b call", () => {
                 return typeof next === "function" ? next() : next;
             },
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -690,6 +695,7 @@ describe("every T14b call", () => {
             now: () => 1_800_000_000_000,
             token: tokenRead,
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });

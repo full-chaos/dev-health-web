@@ -98,9 +98,9 @@ const EXACT_PUBLIC_PATHS = [
     "/sitemap.xml",
     // CHAOS-12302: ACR fetches web's OAuth client metadata document with no credential.
     "/oauth/acr-client.json",
-    // CHAOS-12303 (r2, r3 on #1663): the ACR browser client's callback. Its URL carries a code, a
-    // state and an iss, so the page must run and scrub it before anything else; no sign-in
-    // redirect, auth timeout or org redirect may answer in its place. It reads no session.
+    // CHAOS-12303, CHAOS-12474: the ACR browser client's registered redirect. No browser lands here
+    // and no page serves it now, so it answers 404. A URL that reached it anyway (an old tab) may
+    // hold a code and a state: no sign-in redirect may copy them into a callbackUrl.
     "/ask-dev/oauth/callback",
 ];
 
@@ -122,7 +122,7 @@ export function isPublicPath(pathname: string): boolean {
  * this stays in place even after ops's routes are gone for real, as
  * harmless defense in depth.
  */
-/** The ACR browser client's exact redirect URI path (CHAOS-12303). */
+/** The ACR browser client's exact redirect URI path (CHAOS-12303); no page serves it. */
 const ACR_CALLBACK_PATH = "/ask-dev/oauth/callback";
 
 const DELETED_ASK_DEV_PATH_FAMILIES = [

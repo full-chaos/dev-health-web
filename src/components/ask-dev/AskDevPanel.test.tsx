@@ -12,6 +12,7 @@ import {
 import { AppShell } from "@/components/shell/AppShell";
 import { EVIDENCE_DRAWER_TITLE } from "@/components/evidence/EvidenceDrawerShell";
 import { Drawer } from "@/components/ui/Drawer";
+import { preloadAskDevRender } from "@/test/askDevRender";
 import {
     claimRightDrawer,
     resetRightDrawerForTest,
@@ -114,6 +115,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
+
+preloadAskDevRender();
 
 describe("Ask Dev panel — desktop (non-modal right region)", () => {
     beforeEach(() => setViewport(true));

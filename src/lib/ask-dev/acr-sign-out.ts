@@ -7,7 +7,7 @@
  * page, not only after the Ask Dev panel has loaded:
  * - `heldFamily` is sync and reads the stored family directly (sessionStorage), whoever is signed
  *   in. It is null when no family is held, or when ACR advertised no revocation endpoint.
- * - `clearAllTabs` clears this tab (the family, a pending authorization, the token in memory) and
+ * - `clearAllTabs` clears this tab (the family and the token in memory) and
  *   tells the origin's other tabs to clear theirs (BroadcastChannel `ask-dev:acr-tabs`).
  *
  * Every page imports this module (through `signOutEverywhere`), so its load starts the tab
