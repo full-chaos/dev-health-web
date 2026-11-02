@@ -188,4 +188,42 @@ describe("SankeyChart", () => {
             expect.objectContaining({ type: "node", name: "Unresolved" }),
         );
     });
+    it("cuts a path-like name to its last segment by default (A7)", () => {
+        render(<SankeyChart nodes={[{ id: "r1", name: "acme/web" }]} links={[]} />);
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ label: { formatter: (params: unknown) => string } }> };
+        };
+        expect(props.option.series[0].label.formatter({ name: "r1" })).toBe("web");
+    });
+
+    it("draws a served name as given under verbatimNodeNames (CHAOS-12581)", () => {
+        // Two repositories that end in the same segment stay two words, and a served word is
+        // never rewritten (CHAOS-4690).
+        render(
+            <SankeyChart
+                nodes={[
+                    { id: "r1", name: "acme/web" },
+                    { id: "r2", name: "other/web" },
+                ]}
+                links={[]}
+                verbatimNodeNames
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ label: { formatter: (params: unknown) => string } }> };
+        };
+        const label = props.option.series[0].label.formatter;
+        expect(label({ name: "r1" })).toBe("acme/web");
+        expect(label({ name: "r2" })).toBe("other/web");
+    });
+
+    it("leaves animation to the theme by default, and turns it off when asked (CHAOS-12581)", () => {
+        render(<SankeyChart nodes={sampleNodes} links={sampleLinks} />);
+        const first = chartSpy.mock.calls[0][0] as { option: Record<string, unknown> };
+        expect("animation" in first.option).toBe(false);
+        chartSpy.mockClear();
+        render(<SankeyChart nodes={sampleNodes} links={sampleLinks} animation={false} />);
+        const second = chartSpy.mock.calls[0][0] as { option: { animation?: boolean } };
+        expect(second.option.animation).toBe(false);
+    });
 });
