@@ -192,7 +192,7 @@ function forgetConversation(deps: SignOutDeps): void {
     } catch (error) {
         deps.log.error(
             { errorName: errorName(error), step: "ask_dev_conversation_forget" },
-            "sign-out: forgetting this tab's Ask Dev conversation failed",
+            "sign-out: forgetting this tab's Ask Dev restore hint failed",
         );
     }
 }
