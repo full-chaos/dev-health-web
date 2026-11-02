@@ -103,6 +103,16 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
         expect(repositoryScopeFailures(result, REPOSITORY)).toContain(failure);
     });
 
+    it("refuses a subject of another kind that carries the repository's name", () => {
+        const result = structuredClone(repositoryAnswer) as unknown as {
+            subject_resolution: { committed: Array<{ kind: string }> };
+        };
+        result.subject_resolution.committed[0]!.kind = "project";
+        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toContain(
+            'the answer committed project "full-chaos/dev-health-web", not repository "full-chaos/dev-health-web"',
+        );
+    });
+
     it("refuses a repository answer that holds no claim about the repository", () => {
         const result = structuredClone(repositoryAnswer) as unknown as {
             claimed_facts: unknown[];
