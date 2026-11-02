@@ -306,3 +306,61 @@ describe("proposePageContext", () => {
         expect(routeIdForPath("/diagnose/")).toBe<ApprovedRouteId>("diagnose_overview");
     });
 });
+
+describe("the organization goes only with no narrower entity (lead's ruling on CHAOS-12215)", () => {
+    const organization = { kind: "organization", id: "organization:org-1", label: "Acme" };
+    const repository = { kind: "repository", id: "repository:repo-1", label: "acme/api" };
+    const team = { kind: "team", id: "team:team-1", label: "Core" };
+
+    it("drops it beside a repository, and says why by kind only", () => {
+        const proposal = proposePageContext({
+            pathname: "/investment",
+            entityRefs: [organization, repository],
+        });
+        expect(proposal?.entityRefs).toEqual([repository]);
+        expect(proposal?.dropped).toEqual([{ kind: "organization", reason: "wider_than_page" }]);
+    });
+
+    it("keeps it on a page with nothing narrower", () => {
+        const proposal = proposePageContext({
+            pathname: "/investment",
+            entityRefs: [organization],
+        });
+        expect(proposal?.entityRefs).toEqual([organization]);
+        expect(proposal?.dropped).toEqual([]);
+    });
+
+    it("does not count an entity the route refused as narrower", () => {
+        const proposal = proposePageContext({
+            pathname: "/data-health",
+            entityRefs: [organization, team],
+        });
+        expect(proposal?.entityRefs).toEqual([organization]);
+    });
+
+    it("keeps two narrower entities", () => {
+        const proposal = proposePageContext({
+            pathname: "/cognitive-load",
+            entityRefs: [organization, team, repository],
+        });
+        expect(proposal?.entityRefs).toEqual([team, repository]);
+    });
+
+    it.each(APPROVED_ROUTE_IDS)(
+        "%s: never sends the organization beside a narrower entity",
+        (id) => {
+            const kinds = PAGE_CONTEXT_ROUTES[id].kinds as readonly string[];
+            const narrower = kinds
+                .filter((kind) => kind !== "organization")
+                .map((kind) => ({ kind, id: `${kind}:one`, label: kind }));
+            const proposal = proposePageContext({
+                pathname: examplePath(PAGE_CONTEXT_ROUTES[id].paths[0]!),
+                entityRefs: [organization, ...narrower],
+            });
+            const sent = proposal?.entityRefs.map((ref) => ref.kind) ?? [];
+            expect(sent).toEqual(
+                narrower.length > 0 ? narrower.map((ref) => ref.kind) : ["organization"],
+            );
+        },
+    );
+});

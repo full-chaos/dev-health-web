@@ -15,7 +15,8 @@ import { useAskDevPageContext } from "./AskDevPageContext";
  * is the session's (`useOrgId`) with the name the shell loaded, and only while the shell shows
  * that same organization: during a switch the shell moves first, so an id and a name of two
  * organizations are never paired (codex r2 on #1647). Until the name is there it is not proposed,
- * so a chip never shows an id. Renders nothing; registering sends nothing.
+ * so a chip never shows an id. The registry keeps the organization only with no narrower entity.
+ * Renders nothing; registering sends nothing.
  */
 const NONE: readonly PageEntityInput[] = [];
 

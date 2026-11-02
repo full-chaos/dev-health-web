@@ -16,6 +16,7 @@ import { nonBlank, SUBJECT_KIND_VOCABULARY, type SubjectHintKind } from "./conve
  *   evidence rather than approved direct scopes"). Each route takes only the scope kinds it lists.
  * - **Content:** a proposal carries kind, id and label, rebuilt field by field. No DOM text and no
  *   filter state (CHAOS-3584) can travel with it.
+ * - **Narrowest scope:** the organization goes only when the page has no narrower entity.
  *
  * Showing the proposal as chips, removing it, and sending it with a question is I-22 (CHAOS-3584).
  * Pure: no React, no request.
@@ -147,7 +148,13 @@ export type PageEntityRef = {
 };
 
 export type DropReason =
-    "unknown_kind" | "evidence_only" | "not_for_route" | "invalid_ref" | "duplicate" | "over_limit";
+    | "unknown_kind"
+    | "evidence_only"
+    | "not_for_route"
+    | "invalid_ref"
+    | "duplicate"
+    | "over_limit"
+    | "wider_than_page";
 
 export type PageContextProposal = {
     readonly routeId: ApprovedRouteId;
@@ -195,7 +202,18 @@ export function proposePageContext(input: {
             entityRefs.push({ kind: ref.kind as ScopeKind, id: ref.id, label: ref.label });
         }
     }
-    return { routeId, entityRefs, dropped };
+    // A page that shows one repository is about that repository. With the organization beside it,
+    // a repository ACR cannot resolve falls to an organization-level answer and nothing says so
+    // (lead's ruling on CHAOS-12215, result `8496692a`).
+    const narrow = entityRefs.filter((ref) => ref.kind !== "organization");
+    if (narrow.length === 0 || narrow.length === entityRefs.length) {
+        return { routeId, entityRefs, dropped };
+    }
+    return {
+        routeId,
+        entityRefs: narrow,
+        dropped: [...dropped, { kind: "organization", reason: "wider_than_page" }],
+    };
 }
 
 /** The proposal as ACR subject hints: kind, id, label and the page-context source, nothing else. */

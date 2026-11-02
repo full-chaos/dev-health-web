@@ -21,7 +21,8 @@ import { AskDevPageContextProvider, useAskDevPageProposal } from "../AskDevPageC
 import { AskDevPageEntities } from "../AskDevPageEntities";
 
 // CHAOS-11938: a server page states its entities through this component; with `organization`
-// the active organization goes first, by ACR's id and the name the shell loaded.
+// the active organization goes too, by ACR's id and the name the shell loaded. The registry keeps
+// it only with no narrower entity.
 const ON = { ask_dev_contextual_entrypoints: true };
 const TEAM: PageEntityInput = { kind: "team", id: "team:linear:TEAMA", label: "Platform" };
 const ACME = { id: "org-1", name: "Acme", hasData: true, lastMetricsAt: null };
@@ -60,14 +61,18 @@ beforeEach(() => {
 });
 
 describe("AskDevPageEntities", () => {
-    it("proposes the active organization first, by ACR's id and its name, then the page's entities", async () => {
-        renderPage({ orgId: "org-1", organization: ACME, entities: [TEAM] });
+    it("proposes the active organization, by ACR's id and its name, on a page with nothing narrower", async () => {
+        renderPage({ orgId: "org-1", organization: ACME, entities: [] });
         await waitFor(() =>
             expect(proposed()).toEqual([
                 { kind: "organization", id: "organization:org-1", label: "Acme" },
-                TEAM,
             ]),
         );
+    });
+
+    it("proposes the page's entity alone when it is narrower than the organization", async () => {
+        renderPage({ orgId: "org-1", organization: ACME, entities: [TEAM] });
+        await waitFor(() => expect(proposed()).toEqual([TEAM]));
     });
 
     it("proposes no organization while the shell and the session name different ones (codex r2 on #1647)", async () => {

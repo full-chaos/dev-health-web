@@ -154,11 +154,7 @@ describe("the proposal: chips before submit, and nothing sent by opening", () =>
             name: CONTEXT_CHIPS_COPY.title,
         });
         expect(group).toBeInTheDocument();
-        expect(chipText()).toEqual([
-            "Organization:E2E Organization",
-            "Repository:full-chaos/dev-health-web",
-            "Team:Platform",
-        ]);
+        expect(chipText()).toEqual(["Repository:full-chaos/dev-health-web", "Team:Platform"]);
         // No id is drawn.
         expect(group.textContent).not.toContain("repo:full-chaos");
         expect(transport.calls).toEqual([]);
@@ -214,12 +210,6 @@ describe("sending: the chips left in place go as subject hints", () => {
         await waitFor(() => expect(transport.calls).toHaveLength(1));
         expect(sentHints(transport)).toEqual([
             {
-                kind: "organization",
-                id: "org-1",
-                label: "E2E Organization",
-                source: "ask_dev_page_context",
-            },
-            {
                 kind: "repository",
                 id: "repo:full-chaos/dev-health-web",
                 label: "full-chaos/dev-health-web",
@@ -238,10 +228,26 @@ describe("sending: the chips left in place go as subject hints", () => {
                 name: "Remove Repository full-chaos/dev-health-web",
             }),
         );
-        expect(chipText()).toEqual(["Organization:E2E Organization", "Team:Platform"]);
+        expect(chipText()).toEqual(["Team:Platform"]);
         await ask();
         await waitFor(() => expect(transport.calls).toHaveLength(1));
-        expect(sentHints(transport)?.map((hint) => hint.kind)).toEqual(["organization", "team"]);
+        expect(sentHints(transport)?.map((hint) => hint.kind)).toEqual(["team"]);
+    });
+
+    it("does not bring the organization back when the narrower chip is removed", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        renderShell(transport, { "/investment": [ORG, REPO] });
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(
+            within(panel()).getByRole("button", {
+                name: "Remove Repository full-chaos/dev-health-web",
+            }),
+        );
+        expect(within(panel()).queryByTestId("ask-dev-context")).toBeNull();
+        await ask();
+        await waitFor(() => expect(transport.calls).toHaveLength(1));
+        expect(transport.calls[0]!.request).not.toHaveProperty("requested_scope");
     });
 
     it("sends no hint and draws no chip when every chip was removed", async () => {
@@ -276,12 +282,6 @@ describe("sending: the chips left in place go as subject hints", () => {
         await ask("Why?");
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(sentHints(transport, 1)).toEqual([
-            {
-                kind: "organization",
-                id: "org-1",
-                label: "E2E Organization",
-                source: "ask_dev_page_context",
-            },
             {
                 kind: committed.kind,
                 id: committed.canonical_id,
@@ -350,21 +350,23 @@ describe("navigation changes the proposal, not the committed scope", () => {
         const transport = new FakeTransport();
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         renderShell(transport, {
-            "/investment": [ORG, REPO],
-            "/metrics": [TEAM, ORG],
+            "/investment": [REPO, TEAM],
+            "/metrics": [TEAM, REPO],
         });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.click(
-            within(panel()).getByRole("button", { name: "Remove Organization E2E Organization" }),
+            within(panel()).getByRole("button", {
+                name: "Remove Repository full-chaos/dev-health-web",
+            }),
         );
         await ask();
         await waitFor(() => expect(transport.calls).toHaveLength(1));
         const sent = structuredClone(sentHints(transport));
 
         act(() => nav.go("/metrics"));
-        // The organization removed on the last page is proposed again: removals belong to a proposal.
+        // The repository removed on the last page is proposed again: removals belong to a proposal.
         await waitFor(() =>
-            expect(chipText()).toEqual(["Team:Platform", "Organization:E2E Organization"]),
+            expect(chipText()).toEqual(["Team:Platform", "Repository:full-chaos/dev-health-web"]),
         );
         expect(sentHints(transport)).toEqual(sent);
         expect(transport.calls).toHaveLength(1);

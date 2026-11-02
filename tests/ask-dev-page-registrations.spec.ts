@@ -39,7 +39,6 @@ const ANSWER = {
     ],
 };
 
-const ORG = { kind: "organization", id: "organization:org-e2e", label: "E2E Organization" };
 const TEAM = { kind: "team", id: "team:core", label: "core" };
 const WEB_REPO = {
     kind: "repository",
@@ -130,19 +129,13 @@ test.describe("each approved page states its context", () => {
         await setScenario(request, "provisioned");
     });
 
-    test("flow: the organization and the page's one team, sent as hints and nothing else", async ({
+    test("flow: the page's one team, sent as a hint, and nothing else", async ({
         page,
     }, testInfo) => {
-        const panel = await expectChips(page, `/metrics?f=${ONE_TEAM}`, [
-            "Organization:E2E Organization",
-            "Team:core",
-        ]);
+        const panel = await expectChips(page, `/metrics?f=${ONE_TEAM}`, ["Team:core"]);
         await panel.screenshot({ path: testInfo.outputPath("context-flow-desktop.png") });
         expect(await askAndReadScope(page, panel)).toEqual({
-            subject_hints: [
-                { ...ORG, source: SOURCE },
-                { ...TEAM, source: SOURCE },
-            ],
+            subject_hints: [{ ...TEAM, source: SOURCE }],
         });
     });
 
@@ -183,32 +176,24 @@ test.describe("each approved page states its context", () => {
         });
     });
 
-    test("cognitive load: the organization, the team and the repository filter", async ({
-        page,
-    }) => {
+    test("cognitive load: the team and the repository filter", async ({ page }) => {
         await expectChips(
             page,
             `/cognitive-load?f=${filter({
                 scope: { level: "team", ids: ["core"] },
                 what: { repos: ["dev-health-web"] },
             })}`,
-            ["Organization:E2E Organization", "Team:core", "Repository:dev-health-web"],
+            ["Team:core", "Repository:dev-health-web"],
         );
     });
 
-    test("bottlenecks: the organization and the page's one repository, by its served id", async ({
-        page,
-    }) => {
+    test("bottlenecks: the page's one repository, by its served id", async ({ page }) => {
         const panel = await expectChips(page, `/bottleneck?f=${ONE_REPO}`, [
-            "Organization:E2E Organization",
             "Repository:dev-health-web",
         ]);
         // The filter holds the name; the hint carries the id the served name map gives it.
         expect(await askAndReadScope(page, panel)).toEqual({
-            subject_hints: [
-                { ...ORG, source: SOURCE },
-                { ...WEB_REPO, source: SOURCE },
-            ],
+            subject_hints: [{ ...WEB_REPO, source: SOURCE }],
         });
     });
 
@@ -243,11 +228,8 @@ test.describe("investment", () => {
         await setScenario(request, "provisioned-investment");
     });
 
-    test("the organization and the page's one team", async ({ page }) => {
-        await expectChips(page, `/investment?f=${ONE_TEAM}`, [
-            "Organization:E2E Organization",
-            "Team:core",
-        ]);
+    test("the page's one team", async ({ page }) => {
+        await expectChips(page, `/investment?f=${ONE_TEAM}`, ["Team:core"]);
     });
 });
 
@@ -267,7 +249,7 @@ test.describe("mobile (390px)", () => {
             })}`,
         );
         const sheet = await openAskDev(page, page.getByTestId("ask-dev-sheet"));
-        await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveCount(3);
+        await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveCount(2);
         await sheet.getByTestId("ask-dev-context").scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("context-cognitive-load-mobile.png") });
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
