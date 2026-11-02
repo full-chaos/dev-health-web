@@ -10,6 +10,7 @@ import {
     secretsOf,
     watchAcr,
     watchAuthorization,
+    watchPageLoad,
 } from "../../tests/live/ask-dev/stack";
 
 /**
@@ -129,4 +130,35 @@ describe("the words a panel must not say", () => {
             expect(words).not.toMatch(CONNECT_WORDS);
         },
     );
+});
+
+describe("what a page that never drew was waiting for (CHAOS-11940)", () => {
+    function page() {
+        const listeners: Record<string, (value: unknown) => void> = {};
+        const watched = {
+            on: ((name: string, listener: (value: unknown) => void) => {
+                listeners[name] = listener;
+            }) as never,
+            evaluate: () => Promise.resolve(false),
+        };
+        return { listeners, report: watchPageLoad(watched as never) };
+    }
+    const request = (url: string, method = "GET") => ({ url: () => url, method: () => method });
+
+    it("names each open and failed request by method, host and path, never its query", async () => {
+        const { listeners, report } = page();
+        const open = request(`${ACR}/api/v1/context-fabric/threads?token=${BEARER}`);
+        const done = request("http://localhost:3000/_next/static/chunks/main.js");
+        const failed = request("http://localhost:3000/_next/static/chunks/app.js?v=1");
+        for (const each of [open, done, failed]) listeners.request!(each);
+        listeners.requestfinished!(done);
+        listeners.requestfailed!(failed);
+        const text = await report();
+        expect(JSON.parse(text)).toEqual({
+            hydrated: false,
+            open: [`GET ${new URL(ACR).host}/api/v1/context-fabric/threads`],
+            failed: ["GET localhost:3000/_next/static/chunks/app.js"],
+        });
+        expect(text).not.toContain(BEARER);
+    });
 });
