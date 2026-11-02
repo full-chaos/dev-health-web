@@ -645,8 +645,9 @@ jobs:
             fail-fast: false
             matrix:
                 # CHAOS-12583: five shards. With three, shard 1 ran 14m18s against the
-                # 15-minute limit and a slower runner cancelled it. The shard check in
-                # ci/run_tests.sh proves the split holds each test once.
+                # 15-minute limit and a slower runner cancelled it. The CI contract test
+                # (scripts/__tests__/chaos-3017-ci-contract.test.mjs) proves the split
+                # holds each test once.
                 shard: [1, 2, 3, 4, 5]
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

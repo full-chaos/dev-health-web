@@ -73,16 +73,16 @@ describe("CHAOS-3017 CI contracts", () => {
         },
     );
 
-    it("fans default E2E into three independent shards and dedicated suites", () => {
+    it("fans default E2E into five independent shards and dedicated suites", () => {
         const workflow = contents(TESTS_WORKFLOW);
         const defaultE2e = job(workflow, "e2e-default");
 
         expect(defaultE2e).toMatch(/fail-fast: false/);
-        expect(matrixShardLabels(defaultE2e)).toEqual(["1/3", "2/3", "3/3"]);
+        expect(matrixShardLabels(defaultE2e)).toEqual(["1/5", "2/5", "3/5", "4/5", "5/5"]);
         expect(defaultE2e).not.toMatch(/^\s+(?:exclude|include):/mu);
         expect(defaultE2e).toMatch(/^        if: needs\.changes\.outputs\.e2e == 'true'$/mu);
         expect(defaultE2e).toMatch(
-            /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
+            /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/5$/mu,
         );
         // Route-stress suites and Context Fabric share the onboarding runner
         // (GitHub concurrency limits); all suites must still run, in one job.

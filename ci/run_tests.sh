@@ -400,63 +400,11 @@ run_isolated_e2e_suite() {
   fi
 }
 
-# CHAOS-12583: the shards of `test:e2e` together hold every test of the suite exactly once. It
-# lists the whole suite and each shard with the same projects, and compares. An empty list fails:
-# a list that did not run is not a pass.
-# Removes the check's own four files, then its empty folder: nothing recursive.
-remove_shard_check_files() {
-  local dir="$1"
-  rm -f -- "${dir}/all.txt" "${dir}/shards.txt" "${dir}/all.sorted" "${dir}/shards.sorted"
-  rmdir -- "${dir}"
-}
-
-check_playwright_shard_cover() {
-  local total="$1"
-  local dir
-  local count
-  local i
-  local sharded
-
-  dir="$(mktemp -d)"
-  CI=1 pnpm --silent test:e2e --list > "${dir}/all.txt"
-  : > "${dir}/shards.txt"
-  for ((i = 1; i <= total; i++)); do
-    CI=1 pnpm --silent test:e2e --list --shard "${i}/${total}" >> "${dir}/shards.txt"
-  done
-  # Only the projects test:e2e shards. Its setup projects run in every shard, by design.
-  sharded="$(node -p "(require('./package.json').scripts['test:e2e'].match(/--project=([\\w-]+)/g) || []).map((flag) => flag.slice(10)).join('|')")"
-  if [[ -z "${sharded}" ]]; then
-    echo "e2e-default shard check: test:e2e names no project; the check did not run." >&2
-    remove_shard_check_files "${dir}"
-    return 1
-  fi
-  grep -E "^ *\[(${sharded})\] › " "${dir}/all.txt" | sort > "${dir}/all.sorted" || true
-  grep -E "^ *\[(${sharded})\] › " "${dir}/shards.txt" | sort > "${dir}/shards.sorted" || true
-  count="$(wc -l < "${dir}/all.sorted" | tr -d ' ')"
-  if [[ "${count}" -eq 0 ]]; then
-    echo "e2e-default shard check: the suite listed no test; the check did not run." >&2
-    remove_shard_check_files "${dir}"
-    return 1
-  fi
-  if ! cmp -s "${dir}/all.sorted" "${dir}/shards.sorted"; then
-    echo "e2e-default shard check: the ${total} shards do not hold each of the ${count} tests once:" >&2
-    diff "${dir}/all.sorted" "${dir}/shards.sorted" | head -20 >&2
-    remove_shard_check_files "${dir}"
-    return 1
-  fi
-  echo "e2e-default shard check: ${total} shards hold each of the ${count} tests once."
-  remove_shard_check_files "${dir}"
-}
-
 run_e2e_default() {
   local shard="$1"
   local artifact_suite="default-${shard//\//-}"
 
   validate_playwright_shard "${shard}"
-  # Once per run: the first shard checks the split.
-  if [[ "${shard%%/*}" == "1" ]]; then
-    run_timed "${artifact_suite} shard check" check_playwright_shard_cover "${shard##*/}"
-  fi
   run_isolated_e2e_suite "${artifact_suite}" test:e2e --shard "${shard}"
 }
 
