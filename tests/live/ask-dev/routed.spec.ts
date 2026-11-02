@@ -7,7 +7,6 @@ import {
     type APIRequestContext,
     type BrowserContext,
     type Locator,
-    type Page,
 } from "@playwright/test";
 
 import { questionFor, type QuestionCase } from "./questions";
@@ -15,13 +14,12 @@ import {
     ACR,
     INVESTIGATIONS_PATH,
     ORACLE,
-    authorize,
+    ask,
     investigations,
+    panel,
     references,
     secretsOf,
     signIn,
-    watchAcr,
-    type AcrCall,
 } from "./stack";
 
 /**
@@ -93,22 +91,6 @@ async function oracleCalls(): Promise<Calls> {
     const response = await oracle.get(`${ORACLE}/service/calls`);
     expect(response.status(), "the oracle's counts cannot be read").toBe(200);
     return (await response.json()) as Calls;
-}
-
-/** The surface a case asks from: the panel, authorized, with an empty composer. */
-async function panel(page: Page): Promise<{ calls: AcrCall[]; surface: Locator }> {
-    const calls = watchAcr(page);
-    await authorize(page);
-    await page.getByRole("button", { name: "Open Ask Dev" }).click();
-    const surface = page.getByTestId("ask-dev-panel");
-    await expect(surface.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
-    return { calls, surface };
-}
-
-async function ask(surface: Locator, question: string): Promise<void> {
-    const input = surface.getByRole("textbox", { name: "Ask a question" });
-    await input.fill(question);
-    await input.press("Enter");
 }
 
 const stages = (surface: Locator) => surface.locator("li.chat__stage");
