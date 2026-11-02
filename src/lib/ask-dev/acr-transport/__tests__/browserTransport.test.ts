@@ -270,7 +270,7 @@ describe("investigate: the stream", () => {
             (async () => {
                 for await (const event of transport().investigate(call())) events.push(event);
             })(),
-        ).rejects.toEqual(new TransportFailure("invalid_upstream"));
+        ).rejects.toEqual(new TransportFailure("invalid_upstream", "seq_gap"));
         expect(events.map((event) => event.type)).toEqual(["accepted"]);
         const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(init.signal?.aborted).toBe(true);
@@ -417,7 +417,7 @@ describe("investigate: the full checks load in parallel (option (c))", () => {
             (async () => {
                 for await (const event of t.investigate(call())) events.push(event);
             })(),
-        ).rejects.toEqual(new TransportFailure("invalid_upstream"));
+        ).rejects.toEqual(new TransportFailure("invalid_upstream", "schema", true));
         expect(events.map((event) => event.type)).toEqual(["accepted"]);
     });
 
@@ -932,16 +932,18 @@ describe("submissionStatus and readResult", () => {
         await expect(transport().readResult("result_x", signal)).rejects.toMatchObject({
             status: 404,
         });
+        // An object the pinned result schemas refuse is an answer this page cannot read
+        // (CHAOS-12593: grammar schema, unreadableAnswer).
         fetchMock.mockResolvedValueOnce(jsonResponse({ status: "complete" }, 200));
         await expect(transport().readResult("result_x", signal)).rejects.toEqual(
-            new TransportFailure("invalid_upstream"),
+            new TransportFailure("invalid_upstream", "schema", true),
         );
         // A body the views could read, but that breaks the schema, is refused too.
         fetchMock.mockResolvedValueOnce(
             jsonResponse({ ...(result as object), unexpected_field: 1 }, 200),
         );
         await expect(transport().readResult("result_x", signal)).rejects.toEqual(
-            new TransportFailure("invalid_upstream"),
+            new TransportFailure("invalid_upstream", "schema", true),
         );
     });
 });

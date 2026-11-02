@@ -178,6 +178,19 @@ describe("restoring a thread (AC-2, design §4.2)", () => {
         expect(transport.readCalls).toHaveLength(7);
     });
 
+    it("a stored answer this page's contract refuses is unreadable, with no Load again (CHAOS-12594)", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(1), "done", { resultId: resultId(1) })]);
+        transport.readErrors.set(
+            resultId(1),
+            new TransportFailure("invalid_upstream", "schema", true),
+        );
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        expect(kinds(store)).toEqual(["unreadable"]);
+        expect(store.reloadTurn(snap(store).turns[0]!.id)).toBe(false);
+    });
+
     it("an answer ACR does not serve now (404) is unavailable; a failed read offers Load again, a GET", async () => {
         seedThread(THREAD_A, [
             threadTurn(sub(1), "done", { resultId: resultId(1) }),
