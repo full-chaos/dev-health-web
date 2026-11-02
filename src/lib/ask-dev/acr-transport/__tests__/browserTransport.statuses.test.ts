@@ -31,7 +31,13 @@ const OPENAPI = JSON.parse(
 ) as {
     paths: Record<string, Record<string, { operationId?: string; responses?: object }>>;
 };
-const TRANSPORT_SOURCE = readFileSync(join(__dirname, "../browserTransport.ts"), "utf8");
+// The calls are ask-dev's and web's own reads are here: a row is held against both files.
+const TRANSPORT_SOURCE = [
+    join(__dirname, "../browserTransport.ts"),
+    join(process.cwd(), "node_modules/@full-chaos/ask-dev/src/acr-client/transport.ts"),
+]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
 
 const OK = "success: the body is parsed and returned";
 const AUTH =

@@ -9,7 +9,7 @@ import {
     MAX_BODY_BYTES,
     MAX_EVENT_BYTES,
     MAX_STREAM_BYTES,
-} from "../limits";
+} from "@full-chaos/ask-dev/acr-client";
 
 /** CHAOS-12104 (T14a; ported from #1608): the caps are held to the pinned contract. */
 describe("the transport's caps", () => {

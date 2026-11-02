@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { sourceFiles } from "@/test/sourceTree";
@@ -10,9 +10,17 @@ import { sourceFiles } from "@/test/sourceTree";
  * depending on them again. A client module is a file with the `"use client"` directive or one that
  * imports `next-auth/react`. It is a source scan, not a module-graph walk: a server-free helper that
  * a client module imports is not checked here (the e2e session check covers the served bytes).
+ * Ask-dev's ACR browser client is page JS too, so its files are scanned with web's.
  */
 const SRC = join(process.cwd(), "src");
-const clientModules = sourceFiles(SRC)
+const ACR_CLIENT = join(process.cwd(), "node_modules/@full-chaos/ask-dev/src/acr-client");
+const acrClientModules = readdirSync(ACR_CLIENT)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => ({
+        file: `@full-chaos/ask-dev/acr-client/${name}`,
+        text: readFileSync(join(ACR_CLIENT, name), "utf8"),
+    }));
+const webClientModules = sourceFiles(SRC)
     .filter((f) => /\.tsx?$/u.test(f) && !/\.(test|spec)\.tsx?$/u.test(f))
     .filter((f) => !/__(tests|generated)__/u.test(f))
     .map((f) => ({ file: relative(SRC, f), text: readFileSync(f, "utf8") }))
@@ -20,6 +28,7 @@ const clientModules = sourceFiles(SRC)
         ({ text }) =>
             /^\s*["']use client["'];?/u.test(text) || /from\s+["']next-auth\/react["']/u.test(text),
     );
+const clientModules = [...webClientModules, ...acrClientModules];
 
 /**
  * Any mention of a token key in a client module: a property read (`session.access_token`), a
@@ -30,7 +39,7 @@ const clientModules = sourceFiles(SRC)
  */
 const READS_TOKEN = /\b(?:access_token|refresh_token)\b/u;
 const ALLOWED: Record<string, { readonly reason: string; readonly lines: readonly string[] }> = {
-    "lib/ask-dev/acr-auth.ts": {
+    "@full-chaos/ask-dev/acr-client/auth.ts": {
         reason: "ACR's browser OAuth client: it parses ACR's own token answer (fcacr_/acrrt_), never an Ops token. It imports next-auth/react only to read the web principal (CHAOS-12305).",
         lines: [
             'grant_type: "refresh_token",',
@@ -48,6 +57,7 @@ describe("no Ops token in client code (CHAOS-12088)", () => {
         const files = clientModules.map(({ file }) => file);
         expect(files).toContain("components/auth/OnboardForm.tsx");
         expect(files).toContain("components/navigation/OrgSwitcher.tsx");
+        expect(files).toContain("@full-chaos/ask-dev/acr-client/auth.ts");
         expect(clientModules.length).toBeGreaterThan(50);
     });
 
