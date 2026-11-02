@@ -101,6 +101,12 @@ type SankeyChartProps = {
     verbatimNodeNames?: boolean;
     /** `false` turns animation off, for a reader who asks for reduced motion. */
     animation?: boolean;
+    /**
+     * Per-column label placement, passed to ECharts as the series' `levels`. A narrow host (Ask
+     * Dev's panel at phone width) puts the last column's labels inside, where the default right-hand
+     * labels would fall off the canvas (CHAOS-12581).
+     */
+    labelPositionByDepth?: ReadonlyArray<{ depth: number; position: "left" | "right" | "inside" }>;
     onItemClickAction?: (item: {
         type: "node" | "link";
         name?: string;
@@ -174,6 +180,7 @@ export function SankeyChart({
     showNodeValues = false,
     verbatimNodeNames = false,
     animation,
+    labelPositionByDepth,
     onItemClickAction,
 }: SankeyChartProps) {
     const chartTheme = useChartTheme();
@@ -388,6 +395,14 @@ export function SankeyChart({
                         borderWidth: 1,
                     },
                     nodeGap: 14,
+                    ...(labelPositionByDepth === undefined
+                        ? {}
+                        : {
+                              levels: labelPositionByDepth.map(({ depth, position }) => ({
+                                  depth,
+                                  label: { position },
+                              })),
+                          }),
                 },
             ],
         };
@@ -410,6 +425,7 @@ export function SankeyChart({
         tooltipFormatterAction,
         displayNameForKey,
         animation,
+        labelPositionByDepth,
     ]);
 
     // Memoize onEvents to prevent re-renders

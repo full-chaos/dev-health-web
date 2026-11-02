@@ -226,4 +226,25 @@ describe("SankeyChart", () => {
         const second = chartSpy.mock.calls[0][0] as { option: { animation?: boolean } };
         expect(second.option.animation).toBe(false);
     });
+    it("places a column's labels by depth only when asked (CHAOS-12581)", () => {
+        render(<SankeyChart nodes={sampleNodes} links={sampleLinks} />);
+        const plain = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<Record<string, unknown>> };
+        };
+        expect("levels" in plain.option.series[0]!).toBe(false);
+        chartSpy.mockClear();
+        render(
+            <SankeyChart
+                nodes={sampleNodes}
+                links={sampleLinks}
+                labelPositionByDepth={[{ depth: 1, position: "left" }]}
+            />,
+        );
+        const placed = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ levels?: unknown }> };
+        };
+        expect(placed.option.series[0]!.levels).toEqual([
+            { depth: 1, label: { position: "left" } },
+        ]);
+    });
 });

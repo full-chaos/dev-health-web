@@ -54,7 +54,10 @@ test.describe("a served team repository flow draws as web's sankey (CHAOS-12581)
             await seed(page);
             await page.goto("/dashboard");
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
-            const panel = page.getByRole("complementary", { name: "Ask Dev" });
+            // A side panel on desktop; at phone width the panel opens as a dialog.
+            const panel = page
+                .getByRole("complementary", { name: "Ask Dev" })
+                .or(page.getByRole("dialog", { name: "Ask Dev" }));
             await expect(panel.getByRole("article", { name: "Answer" })).toBeVisible();
             const inPanel = await expectSankey(panel);
             await inPanel.evaluate((node) => node.scrollIntoView({ block: "center" }));

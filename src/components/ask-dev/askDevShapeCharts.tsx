@@ -23,6 +23,12 @@ const SankeyChart = dynamic(
 const TREEMAP_HEIGHT = 260;
 const SANKEY_HEIGHT = 360;
 
+/**
+ * The theme column's labels sit inside the chart, left of their nodes: in the panel at phone
+ * width the default right-hand labels fall off the canvas, and the reader loses the theme words.
+ */
+const SANKEY_LABELS = [{ depth: 1, position: "left" }] as const;
+
 type Tile = { readonly name?: string; readonly value?: number };
 
 /** A served ratio as a reader's share. Only the format: the number stays the shape's own. */
@@ -138,6 +144,7 @@ function AskDevSankey({
         <SankeyChart
             animation={!reduceMotion}
             height={SANKEY_HEIGHT}
+            labelPositionByDepth={SANKEY_LABELS}
             links={graph.links}
             nodes={graph.nodes}
             tooltipFormatterAction={(params) => {

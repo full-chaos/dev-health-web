@@ -15,6 +15,7 @@ type ChartProps = {
     readonly links: SankeyLink[];
     readonly animation?: boolean;
     readonly verbatimNodeNames?: boolean;
+    readonly labelPositionByDepth?: ReadonlyArray<{ depth: number; position: string }>;
     readonly tooltipFormatterAction: (params: unknown, unit: string) => string;
 };
 
@@ -101,6 +102,10 @@ describe("the host's sankey for a verified shape (CHAOS-12581)", () => {
 
     it("keeps the served words as given: no entity-label rewrite", async () => {
         expect((await drawn()).verbatimNodeNames).toBe(true);
+    });
+
+    it("puts the theme labels inside the chart, so a narrow panel keeps them", async () => {
+        expect((await drawn()).labelPositionByDepth).toEqual([{ depth: 1, position: "left" }]);
     });
 
     it("leaves a zero link to the value table", async () => {
