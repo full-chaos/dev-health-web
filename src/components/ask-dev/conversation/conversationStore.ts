@@ -273,6 +273,17 @@ const aboveAccessLimit = (error: unknown): boolean =>
     error.error.error.code === "upstream_unavailable" &&
     !error.error.error.retryable;
 
+/**
+ * True once ACR holds the current thread: it admitted a turn (`accepted`), or the turns came from
+ * it. Only a thread ACR does not hold can be "not saved" (CHAOS-12503).
+ */
+export const threadAdmitted = (snapshot: ConversationSnapshot): boolean =>
+    snapshot.turns.some(
+        (turn) =>
+            turn.threadId === snapshot.threadId &&
+            (turn.origin === "restored" || turn.reservedResultId !== undefined),
+    );
+
 /** ACR says that reading again cannot help, so nothing offers a retry. */
 export const readCannotHelp = (error: unknown): boolean =>
     noRepositoryInScope(error) || aboveAccessLimit(error);
@@ -782,6 +793,10 @@ export class ConversationStore {
     private historyAbort = new AbortController();
     /** Threads this partition deleted: a late list page cannot bring one back. */
     private readonly deleted = new Set<string>();
+    /** No thread was selected yet in this load: only that first selection can be the lost one. */
+    private firstSelection = true;
+    /** The thread being read is the conversation this tab lost to the reload (CHAOS-12503). */
+    private readingLostThread = false;
     /** Aborts deletes; only a partition clear does (a list read again must not abort a delete). */
     private deleteAbort = new AbortController();
     /** The current thread's `earlier_turns_cursor`, opaque. */
@@ -992,7 +1007,11 @@ export class ConversationStore {
      * §4.2): zero investigation calls. Selecting the thread already shown is a no-op. A malformed
      * id, or ACR's 404, gives the neutral read-only `unavailable` state.
      */
-    selectThread(threadId: string, source: "incoming" | "local"): boolean {
+    selectThread(
+        threadId: string,
+        source: "incoming" | "local",
+        lostThread: string | null = null,
+    ): boolean {
         if (!this.snapshot.ready) return false;
         const { thread } = this.snapshot;
         if (
@@ -1002,6 +1021,8 @@ export class ConversationStore {
             return false;
         }
         this.resetSelection("selection_changed");
+        this.readingLostThread = this.firstSelection && threadId === lostThread;
+        this.firstSelection = false;
         if (!isCorrelationId(threadId)) {
             this.hints.clear();
             logger.info(
@@ -1410,6 +1431,19 @@ export class ConversationStore {
                 { thread_id: threadId, stage: "read", status: 404, selection },
                 "ask-dev thread restore failed",
             );
+            if (this.readingLostThread) {
+                // This tab's own conversation, which ACR never held: a question it refused, or a
+                // tab closed before it admitted one. The reader lost nothing they can reopen, so
+                // this is a fresh conversation with the "not saved" notice, never a closed
+                // composer. "local" lets the page drop the dead id from the URL (CHAOS-12503).
+                this.commit({
+                    ...this.snapshot,
+                    threadId: null,
+                    selectionSource: "local",
+                    thread: { kind: "new" },
+                });
+                return;
+            }
             this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
             return;
         }
