@@ -34,5 +34,5 @@ directory by DIGEST (`__tests__/testdata/decision-golden.digest`). Go runs the p
 ## Server-only guard
 
 Each module starts with `import "server-only"`; `__tests__/serverOnly.test.ts` holds that. The module rows of
-`SERVER_ONLY_MODULES` (client-bundle scan) are not added yet: the scan needs each marker in the server output, and no route
-imports this client yet. The first consumer adds the rows in its PR.
+`SERVER_ONLY_MODULES` (client-bundle scan) are registered: the first consumer is `src/lib/acr/grantScopes.ts`. The production
+transport and its workload credential are not here yet (`src/lib/acr/authorizeTransport.ts` is the seam; CHAOS-12661).
