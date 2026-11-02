@@ -1266,6 +1266,10 @@ async function browserTokenScenario(page: Page, baseURL: string | undefined, pla
     expect(access, "the page received an access token from ACR's /token").toMatch(
         /^fcacr_[A-Za-z0-9_-]{43}$/u,
     );
+    // The family lands one session read after /token: the sign-out guard reads it first.
+    await expect
+        .poll(() => page.evaluate(() => window.sessionStorage.getItem("ask-dev:acr-family")))
+        .not.toBeNull();
     const family = await page.evaluate(
         () =>
             JSON.parse(window.sessionStorage.getItem("ask-dev:acr-family") ?? "null") as {
