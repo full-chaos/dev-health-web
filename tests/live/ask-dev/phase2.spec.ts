@@ -10,7 +10,7 @@ import {
     type Page,
 } from "@playwright/test";
 
-import { pageQuestionFor, questionFor } from "./questions";
+import { latencyQuestionFor, pageQuestionFor, questionFor, type LatencyCase } from "./questions";
 import {
     ACR,
     INVESTIGATIONS_PATH,
@@ -26,7 +26,8 @@ import {
 
 /**
  * CHAOS-11940: the Phase 2 exits on a deployed stack (plan §4). The questions go to acr's
- * `modeloracle`, never to a real model. Exit P2-4 is CHAOS-3598's, and P2-6 is CHAOS-11939's.
+ * `modeloracle`, never to a real model. P2-4 is CHAOS-3598's case on this harness; P2-6 is
+ * CHAOS-11939's.
  *
  * "A repository page" is `/metrics` scoped to one repository (lead's ruling on CHAOS-11899): web has
  * no repository detail page. The question names no subject, so the page's hint is the only one.
@@ -60,8 +61,25 @@ test.beforeAll(async ({ browser, baseURL }) => {
     await context.close();
 });
 
+/**
+ * A click on the launcher that opens nothing is a state a user sees (lead's ruling on #1740). The
+ * open step retries it, so every firing is counted here and the run says how many. One firing is
+ * recorded; a second in the same run fails it.
+ */
+const launcherRetries: string[] = [];
+const MAX_LAUNCHER_RETRIES = 1;
+
 test.afterAll(async () => {
     await oracle?.dispose();
+    console.log(
+        `launcher-retry: ${String(launcherRetries.length)} in this run${
+            launcherRetries.length > 0 ? `: ${launcherRetries.join("; ")}` : ""
+        }`,
+    );
+    expect(
+        launcherRetries.length,
+        `the launcher opened nothing on a first click more than once: ${launcherRetries.join("; ")}`,
+    ).toBeLessThanOrEqual(MAX_LAUNCHER_RETRIES);
 });
 
 test.use({
@@ -92,7 +110,21 @@ async function panelOn(page: Page, path: string): Promise<{ calls: AcrCall[]; su
             throw new Error(`the page did not draw: ${await waitingFor()}`, { cause: error });
         });
     const surface = page.getByTestId("ask-dev-panel");
-    await expect(composer(surface)).toBeEnabled();
+    // On a busy stack a first click once opened nothing (CHAOS-3598 run p4a). It is clicked again
+    // only while the launcher says it is closed, and every retry is recorded: a retry is a finding.
+    let clicks = 1;
+    await expect(async () => {
+        if ((await launcher(page).getAttribute("aria-expanded")) !== "true") {
+            clicks += 1;
+            await launcher(page).click({ timeout: 10_000 });
+        }
+        await expect(composer(surface)).toBeEnabled({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    if (clicks > 1) {
+        const firing = `${new Date().toISOString()} ${path}: the panel opened on click ${String(clicks)}`;
+        launcherRetries.push(firing);
+        test.info().annotations.push({ type: "launcher-retry", description: firing });
+    }
     return { calls, surface };
 }
 
@@ -219,6 +251,48 @@ test("P2-3: a tampered id gives a clarification or not-found, never the organiza
     await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
     expect(investigations(calls).length).toBe(1);
 });
+
+// CHAOS-3598: the question chris saw answered as a readiness check at organization scope.
+for (const [name, surface, replicate] of [
+    ["latencyPage1", "page", 1],
+    ["latencyPage2", "page", 2],
+    ["latencyDev1", "dev", 1],
+    ["latencyDev2", "dev", 2],
+] as const satisfies readonly (readonly [LatencyCase, "page" | "dev", number])[]) {
+    const where = surface === "page" ? "a repository page" : "/dev, with no hint";
+    test(`P2-4: review latency from ${where}, replicate ${String(replicate)}`, async ({ page }) => {
+        const { calls, surface: panel } =
+            surface === "page"
+                ? await panelOn(page, ONE_REPOSITORY)
+                : await panelOn(page, "/dashboard");
+        if (surface === "page") {
+            await expect(chips(panel)).toHaveText([`Repository:${REPOSITORY}`]);
+        } else {
+            await page.getByRole("button", { name: "Open full page" }).click();
+            await expect(page).toHaveURL(/\/dev/u);
+        }
+        const asking = surface === "page" ? panel : page.getByTestId("ask-dev-page");
+        await expect(chips(asking)).toHaveCount(surface === "page" ? 1 : 0);
+        await ask(asking, latencyQuestionFor(name, NONCE));
+        const answer = asking.getByRole("article", { name: "Answer" });
+        await expect(answer).toHaveCount(1, { timeout: 90_000 });
+        expect(investigations(calls).length).toBe(1);
+        if (surface === "page") {
+            // (a) An investigation of the repository's own delivery facts, not the readiness
+            // check chris saw ("Not ready: required work is still open"). Every answer draws the
+            // "Readiness gaps" panel, so only the answer's own lead text is read for that.
+            await expect(answer).not.toHaveAttribute("data-state", NOT_ANSWERED);
+            await expect(answer).toContainText(REPOSITORY);
+            await expect(answer).toContainText(/metrics ·/iu);
+            await expect(answer.getByTestId("answer-panel")).not.toContainText(
+                /not ready|required work/iu,
+            );
+        } else {
+            // (b) A clarification or not-found, never an answer at organization scope.
+            await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
+        }
+    });
+}
 
 test.describe("P2-5: accessibility", () => {
     test("keyboard path: Control+J opens the panel, Escape closes it, focus returns", async ({
