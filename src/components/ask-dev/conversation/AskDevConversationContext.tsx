@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 
 import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
+import { registerSignOutCancel } from "@/lib/ask-dev/signOutCancel";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
 import {
@@ -188,6 +189,14 @@ export function AskDevConversationProvider({
     }, [store, feedback, partition, impersonating]);
     // Leaving the shell (sign-out, another route group) ends the run with it.
     useEffect(() => () => store?.clear("unmounted"), [store]);
+    // CHAOS-12574: sign-out asks this store to cancel its live runs first, while the token is held.
+    useEffect(
+        () =>
+            store === null
+                ? undefined
+                : registerSignOutCancel((signal) => store.cancelForSignOut(signal)),
+        [store],
+    );
     useEffect(() => () => feedback?.reset(), [feedback]);
 
     // The marker as this page load found it (the server and hydration render none). Read once: a

@@ -330,15 +330,12 @@ test.describe("the store owns the live stream (AC1)", () => {
         );
     });
 
-    // A known defect, pinned: with the lease on, sign-out sends no cancel and ACR's run goes on to
-    // `done` (reproduced 2026-11-02, CHAOS-12574). The fix turns this into `abandoned`: this case
-    // then fails, and the fix flips it.
-    test("sign-out mid-run (run lease on): ACR's run goes on, until CHAOS-12574", async ({
-        page,
-    }, testInfo) => {
+    // CHAOS-12574: with the lease on, dropping the stream does not end ACR's run, so sign-out sends
+    // ACR's cancel first, while the tab still holds its token.
+    test("sign-out mid-run (run lease on) ends ACR's run", async ({ page }, testInfo) => {
         await signOutCase(page, testInfo, "signOutLeaseOn", {
-            state: "done",
-            why: "the lease-on sign-out now ends ACR's run: CHAOS-12574 landed, so expect abandoned",
+            state: "abandoned",
+            why: "after sign-out ACR's run was not ended: no cancel reached it",
         });
     });
 

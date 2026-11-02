@@ -24,6 +24,7 @@ vi.mock("@/lib/ask-dev/acr-auth", async (importOriginal) => {
 });
 
 import { ACR_TOKEN_FAMILY_KEY } from "@/lib/ask-dev/acr-auth";
+import { cancelLiveRunForSignOut } from "@/lib/ask-dev/signOutCancel";
 import { acrBrowserClientOff, acrBrowserClientOn } from "@/test/acrBrowserClient";
 
 import {
@@ -172,6 +173,40 @@ describe("AskDevConversationProvider", () => {
         });
         view.unmount();
         expect(transport.calls[0]!.signal.aborted).toBe(true);
+    });
+
+    // CHAOS-12574: sign-out reaches this store, and asks ACR to cancel its live run, while the tab
+    // still holds its token. An unmounted shell's store is no longer reached.
+    it("lets sign-out cancel the live run, and no longer once the shell unmounts", async () => {
+        const transport = new FakeTransport();
+        const gate = deferred();
+        transport.cancelAnswers.push({ kind: "running" });
+        transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
+        const view = render(
+            <AskDevConversationProvider transport={transport}>
+                <Probe />
+            </AskDevConversationProvider>,
+        );
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        act(() => {
+            probe.current!.store.submit("Which projects are at risk?");
+        });
+        await waitFor(() =>
+            expect(probe.current!.snapshot.turns.at(-1)?.reservedResultId).toBeDefined(),
+        );
+
+        const store = probe.current!.store;
+        const reached = vi.spyOn(store, "cancelForSignOut");
+        await cancelLiveRunForSignOut(new AbortController().signal);
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
+        expect(reached).toHaveBeenCalledTimes(1);
+
+        view.unmount();
+        await cancelLiveRunForSignOut(new AbortController().signal);
+        // The unmounted shell's store is not reached at all (it would find no run anyway).
+        expect(reached).toHaveBeenCalledTimes(1);
+        expect(transport.cancelCalls).toHaveLength(1);
+        gate.resolve();
     });
 });
 

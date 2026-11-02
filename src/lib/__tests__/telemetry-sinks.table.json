@@ -296,7 +296,7 @@
         "sentry": 0
     },
     "src/components/ask-dev/conversation/conversationStore.ts": {
-        "log": 46,
+        "log": 48,
         "sentry": 0
     },
     "src/components/ask-dev/conversation/testModeTransport.ts": {

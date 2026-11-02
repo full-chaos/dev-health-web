@@ -1021,6 +1021,39 @@ export class ConversationStore {
     }
 
     /**
+     * Sign-out (CHAOS-12574): asks ACR to cancel every run this tab holds that ACR admitted (the
+     * submitted run and any observed one), while the tab still holds its ACR token. With the run
+     * lease on, the disconnect that `clear` makes does not cancel a run; without it, ACR answers
+     * `not_leased` and the disconnect is the cancel. A run not yet admitted has nothing to cancel.
+     * Best effort: a failed call is logged, and the turns are left to the `clear` that follows.
+     */
+    async cancelForSignOut(signal: AbortSignal): Promise<void> {
+        const runs = [this.active, ...this.observed.values()].filter(
+            (run): run is ActiveRun =>
+                run !== null && (run.origin === "restored" || run.requestId !== null),
+        );
+        await Promise.all(
+            runs.map(async (run) => {
+                try {
+                    const answer = await this.transport.cancel({
+                        submissionId: run.submissionId,
+                        signal,
+                    });
+                    logger.info(
+                        { submission_id: run.submissionId, answer: answer.kind },
+                        "ask-dev sign-out cancel answered",
+                    );
+                } catch (error) {
+                    logger.warn(
+                        { submission_id: run.submissionId, status: failureStatus(error) },
+                        "ask-dev sign-out cancel not sent",
+                    );
+                }
+            }),
+        );
+    }
+
+    /**
      * Starts a new, empty conversation (a local selection): the old one stays on ACR and in the
      * history. Its run, if any, is dropped from this tab; ACR keeps a leased run going.
      */

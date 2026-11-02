@@ -431,6 +431,23 @@ describe("Stop through the cancel endpoint (design §5.4)", () => {
         expect(infoEvents("ask-dev run canceled")).toHaveLength(1);
     });
 
+    // CHAOS-12574: ACR reported the restored run running, so it is admitted, and sign-out cancels
+    // it even before its attach delivered an event.
+    it("sign-out asks ACR to cancel a restored run, before its attach delivered anything", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        transport.attachScripts.push([{ wait: gate.promise }, accepted0(), resultAt(2)]);
+        transport.cancelAnswers.push({ kind: "running" });
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(transport.attachCalls).toHaveLength(1));
+
+        await store.cancelForSignOut(new AbortController().signal);
+
+        expect(transport.cancelCalls).toEqual([SUB]);
+        gate.resolve();
+    });
+
     it("404 on a restored run: it cannot be stopped, and the store keeps observing", async () => {
         const store = makeStore();
         transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
