@@ -545,7 +545,8 @@ describe("investigate: refusals", () => {
     });
 
     // The lead's ruling: ACR writes `Retry-After` as whole seconds only. Any other form, an
-    // HTTP-date among them, is no value: there is no date parser.
+    // HTTP-date among them, is no value: there is no date parser. The longest wait ACR names is an
+    // allowance reset, at most 31 days (CHAOS-12564): a longer value is no value.
     it.each([
         ["whole seconds", "7", 7],
         ["whole seconds with spaces", " 7 ", 7],
@@ -553,7 +554,10 @@ describe("investigate: refusals", () => {
         ["a fraction", "1.5", undefined],
         ["a negative value", "-3", undefined],
         ["an empty value", "", undefined],
-        ["seven digits", "1234567", undefined],
+        ["ACR's allowance wait, about 29 days", "2475944", 2475944],
+        ["31 days", "2678400", 2678400],
+        ["one second past 31 days", "2678401", undefined],
+        ["eight digits", "12345678", undefined],
         ["a unit", "7s", undefined],
         ["no header", undefined, undefined],
     ] as const)("a 429 with Retry-After as %s (%j) gives %s", async (_, header, seconds) => {
