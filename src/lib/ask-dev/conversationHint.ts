@@ -1,18 +1,38 @@
 /**
- * This tab's Ask Dev restore hint (E6 design v5 §4.4): the conversation the tab shows, kept in
- * session storage so a reload restores it. The conversation store writes and reads it; sign-out
- * forgets it (CHAOS-12575). A small module of its own, so sign-out, which every page loads, does
- * not load the store.
+ * What this tab keeps of its Ask Dev conversation in session storage, and the one place that
+ * names the keys: the restore hint (E6 design v5 §4.4) and the unsaved-conversation marker
+ * (CHAOS-11934, CHAOS-12503). The conversation store and its provider write and read them;
+ * sign-out forgets them (CHAOS-12575, CHAOS-12605). A small module of its own, so sign-out, which
+ * every page loads, does not load the store.
  */
 
 /** Session storage: the hint of this tab's current conversation. */
 export const THREAD_HINT_KEY = "ask-dev:thread";
 
 /**
- * Sign-out step 3 (CHAOS-12575): removes this tab's restore hint. Left in place, the same user's
- * next session restored a conversation it had no token to read: "This conversation could not be
- * read", with the composer disabled. Throws when the storage cannot be used; sign-out logs it.
+ * CHAOS-11934 (plan §2.5): conversations live in this tab's memory until Phase 4 (E6) stores them,
+ * so a reload loses one. This session-storage marker lets the reloaded tab say so: it holds a tag
+ * of the (org, principal) whose conversation had a turn, never a question, an answer or an id.
  */
-export function forgetThreadHint(): void {
-    window.sessionStorage.removeItem(THREAD_HINT_KEY);
+export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
+
+/**
+ * The browser-minted thread id of that conversation while ACR does not hold it (CHAOS-12503), and
+ * nothing else: the id the URL already shows. Admission removes it. A 404 for this id is this tab's
+ * own unsaved conversation. A 404 for any other id stays "not available".
+ */
+export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
+
+/**
+ * Sign-out step 3: removes this tab's restore hint (CHAOS-12575) and its unsaved-conversation
+ * marker (CHAOS-12605). Left in place, the same user's next session restored a conversation it had
+ * no token to read ("This conversation could not be read", with the composer disabled), or said a
+ * reload had started a new conversation when the user had signed out and in. Throws when the
+ * storage cannot be used; sign-out logs it.
+ */
+export function forgetTabConversation(): void {
+    const storage = window.sessionStorage;
+    storage.removeItem(THREAD_HINT_KEY);
+    storage.removeItem(UNSAVED_CONVERSATION_KEY);
+    storage.removeItem(UNSAVED_THREAD_KEY);
 }

@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 
 import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
+import { UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY } from "@/lib/ask-dev/conversationHint";
 import { registerSignOutCancel } from "@/lib/ask-dev/signOutCancel";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
@@ -51,20 +52,6 @@ const FeedbackContext = createContext<FeedbackStore | null>(null);
  * show an entry only when the feedback store is bound to it (codex r1 on #1658).
  */
 const SessionPartitionContext = createContext<string | null | undefined>(undefined);
-
-/**
- * CHAOS-11934 (plan §2.5): conversations live in this tab's memory until Phase 4 (E6) stores them,
- * so a reload loses one. This session-storage marker lets the reloaded tab say so: it holds a tag
- * of the (org, principal) whose conversation had a turn, never a question, an answer or an id.
- */
-export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
-
-/**
- * The browser-minted thread id of that conversation while ACR does not hold it (CHAOS-12503), and
- * nothing else: the id the URL already shows. Admission removes it. A 404 for this id is this tab's
- * own unsaved conversation. A 404 for any other id stays "not available".
- */
-export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
 
 /** True when this tab lost a conversation of this (org, principal) to a reload. */
 const NotSavedContext = createContext(false);

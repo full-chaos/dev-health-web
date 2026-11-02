@@ -31,11 +31,11 @@ import {
     AskDevConversationProvider,
     partitionKey,
     partitionTag,
-    UNSAVED_CONVERSATION_KEY,
     useAskDevConversation,
     useAskDevNotSaved,
 } from "../AskDevConversationContext";
 import { deferred, FakeTransport, resultEvent, captureResult, accepted } from "./fakeTransport";
+import { UNSAVED_CONVERSATION_KEY } from "@/lib/ask-dev/conversationHint";
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
 

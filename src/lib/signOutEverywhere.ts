@@ -1,7 +1,7 @@
 import { signOut } from "next-auth/react";
 
 import { acrBrowserSignOut, type AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
-import { forgetThreadHint } from "@/lib/ask-dev/conversationHint";
+import { forgetTabConversation } from "@/lib/ask-dev/conversationHint";
 import { cancelLiveRunForSignOut } from "@/lib/ask-dev/signOutCancel";
 import { logger } from "@/lib/logger";
 
@@ -17,8 +17,9 @@ import { logger } from "@/lib/logger";
  *    shows "Signed out on this device; other sessions may stay active".
  * 2. Revoke the ACR token family with its refresh token, at ACR's revocation endpoint (the browser
  *    calls ACR directly). Nothing is sent when the browser holds no family.
- * 3. Clear the ACR token state in every tab, and forget this tab's Ask Dev conversation (its
- *    restore hint, CHAOS-12575): the next session must not restore a conversation it cannot read.
+ * 3. Clear the ACR token state in every tab, and forget this tab's Ask Dev conversation: its
+ *    restore hint (CHAOS-12575), so the next session restores no conversation it cannot read, and
+ *    its unsaved-conversation marker (CHAOS-12605), so it does not say a reload lost one.
  * 4. NextAuth `signOut()`: to the same place as before on success; to the sign-in page with the
  *    partial notice when step 1 failed.
  *
@@ -40,7 +41,7 @@ export type SignOutDeps = {
     /** Asks ACR to cancel this tab's live Ask Dev runs; it stops when `signal` aborts. */
     readonly cancelLiveRun: (signal: AbortSignal) => Promise<void>;
     readonly fetch: typeof fetch;
-    /** Forgets this tab's Ask Dev conversation (its restore hint). */
+    /** Forgets this tab's Ask Dev conversation (its restore hint and unsaved marker). */
     readonly forgetConversation: () => void;
     readonly hook: AcrSignOutHook;
     readonly log: { readonly error: LogFn; readonly info: LogFn; readonly warn: LogFn };
@@ -63,7 +64,7 @@ function defaultDeps(): SignOutDeps {
     return {
         cancelLiveRun: cancelLiveRunForSignOut,
         fetch: (input, init) => fetch(input, init),
-        forgetConversation: forgetThreadHint,
+        forgetConversation: forgetTabConversation,
         hook: acrBrowserSignOut,
         log: {
             error: (fields, message) => log.error(fields, message),
@@ -192,7 +193,7 @@ function forgetConversation(deps: SignOutDeps): void {
     } catch (error) {
         deps.log.error(
             { errorName: errorName(error), step: "ask_dev_conversation_forget" },
-            "sign-out: forgetting this tab's Ask Dev restore hint failed",
+            "sign-out: forgetting this tab's Ask Dev conversation failed",
         );
     }
 }
