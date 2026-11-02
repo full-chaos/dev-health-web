@@ -46,9 +46,15 @@ export function repositoryScopeFailures(
         );
     }
     const claims = result.claimed_facts ?? [];
+    // A claim is about the repository when its subject IS the repository: the kind and the id,
+    // since an id alone may be shared by a subject of another kind (Codex r1).
     if (
         subject === undefined ||
-        !claims.some((claim) => claim.subject.canonical_id === subject.canonical_id)
+        !claims.some(
+            (claim) =>
+                claim.subject.kind === subject.kind &&
+                claim.subject.canonical_id === subject.canonical_id,
+        )
     ) {
         failures.push("no claim is about the repository");
     }
@@ -60,8 +66,8 @@ export function repositoryScopeFailures(
 
 /**
  * The terminal result of one investigation event stream (`text/event-stream`), or undefined when
- * the stream holds none. Each frame's `data:` lines are one JSON event; the terminal result is the
- * event of type `result`.
+ * the stream holds none. Each frame's `data:` lines are one JSON event. The first terminal event,
+ * `result` or `error`, ends the stream: a result after an error is not the stream's answer.
  */
 export function terminalResultOf(stream: string): ScopedResult | undefined {
     for (const frame of stream.split(/\r?\n\r?\n/u)) {
@@ -77,13 +83,10 @@ export function terminalResultOf(stream: string): ScopedResult | undefined {
         } catch {
             continue;
         }
-        if (
-            typeof event === "object" &&
-            event !== null &&
-            (event as { type?: unknown }).type === "result"
-        ) {
-            return (event as { result: ScopedResult }).result;
-        }
+        if (typeof event !== "object" || event === null) continue;
+        const type = (event as { type?: unknown }).type;
+        if (type === "error") return undefined;
+        if (type === "result") return (event as { result: ScopedResult }).result;
     }
     return undefined;
 }

@@ -123,6 +123,23 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
         ]);
     });
 
+    it("refuses a claim of another kind that shares the repository's canonical id (Codex r1)", () => {
+        const result = structuredClone(repositoryAnswer) as unknown as {
+            subject_resolution: { committed: Array<{ canonical_id: string }> };
+            claimed_facts: Array<{
+                subject: { kind: string; canonical_id: string; label?: string };
+            }>;
+        };
+        const id = result.subject_resolution.committed[0]!.canonical_id;
+        result.claimed_facts = result.claimed_facts.map((claim) => ({
+            ...claim,
+            subject: { kind: "team", canonical_id: id, label: "CHAOS" },
+        }));
+        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toEqual([
+            "no claim is about the repository",
+        ]);
+    });
+
     it("refuses a repository answer with a claim about the organization", () => {
         const result = structuredClone(repositoryAnswer) as unknown as {
             claimed_facts: Array<{ subject: unknown }>;
@@ -159,6 +176,17 @@ describe("the terminal result of a captured event stream (CHAOS-12637)", () => {
         expect(terminalResultOf(capture.replace(/\n/gu, "\r\n"))).toEqual(
             terminalResultOf(capture),
         );
+    });
+
+    it("takes no result after an error: the first terminal is the stream's end (Codex r1)", () => {
+        const frames = capture.split("\n\n");
+        const result = frames.findIndex((frame) => /^event: result$/mu.test(frame));
+        const error =
+            'event: error\ndata: {"schema_version":"context_fabric_investigation_event.v1","type":"error","seq":99}';
+        const errorFirst = [...frames.slice(0, result), error, ...frames.slice(result)].join(
+            "\n\n",
+        );
+        expect(terminalResultOf(errorFirst)).toBeUndefined();
     });
 
     it("finds no result in a stream that ends in an error", () => {
