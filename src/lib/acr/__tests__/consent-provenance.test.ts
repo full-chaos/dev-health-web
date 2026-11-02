@@ -56,7 +56,7 @@ const STATUS_URL = "http://ops.example.test/api/v1/admin/impersonate/status";
 function opsAccessToken(claims: Record<string, unknown>): string {
     const encode = (value: object) =>
         Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
-    return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
+    return `${encode({ alg: "EdDSA", typ: "at+jwt", kid: "kid-1" })}.${encode({
         sub: "user-123",
         tv: 1,
         ...claims,
@@ -524,19 +524,6 @@ describe("impersonation refusal by state", () => {
 
     it("Given a same-org session flagged as impersonating, when the status read says no, then the consent is still refused", async () => {
         authenticate({ impersonated_org_id: "org-123", is_impersonating: true });
-        const observed = installOps({ impersonating: false });
-        installAcr(observed);
-
-        await expect(
-            previewOAuthConsent({ handle: HANDLE, signal: signal() }),
-        ).rejects.toMatchObject({
-            code: acrRuntimeErrorCodes.notEntitled,
-        });
-        expect(observed.acrClaims).toHaveLength(0);
-    });
-
-    it("Given an Ops token minted for an impersonation, when previewing, then the consent is refused", async () => {
-        authenticate({}, { impersonating_user_id: "admin-1", sid: SERVER_SID });
         const observed = installOps({ impersonating: false });
         installAcr(observed);
 

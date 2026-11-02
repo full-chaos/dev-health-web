@@ -49,15 +49,14 @@ vi.mock("@/lib/logger", () => {
 import "@/lib/auth";
 import { logSessionBranch } from "@/lib/authSessionLog";
 import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+import { ISSUER, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 
 const ACCESS_TOKEN = "access-token-must-not-be-logged";
 const REFRESH_TOKEN = "refresh-token-must-not-be-logged";
 const EMAIL = "person@example.test";
 const SERVED_TEXT = "served-error-text-must-not-be-logged";
-const hs256Access = () => {
-    const part = (value: string) => Buffer.from(value).toString("base64url");
-    return `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: "ses_LogsAAAAAAAAAAAAAAAAAA", exp: 4102444800 }))}.${part("sig")}`;
-};
+const signedAccess = () => mint({ sid: "ses_LogsAAAAAAAAAAAAAAAAAA", exp: inSeconds(1800) });
 const ALLOWED_FIELDS = ["operation", "branch", "status", "errorName", "failures"];
 
 type Token = Record<string, unknown>;
@@ -95,9 +94,14 @@ function validationDueToken(): Token {
 }
 
 function backendAnswers(status: number, body: unknown = { detail: SERVED_TEXT }): void {
+    const keyed = eddsaFetch({});
     vi.stubGlobal(
         "fetch",
-        vi.fn(async () => new Response(JSON.stringify(body), { status })),
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+            String(input).startsWith(`${ISSUER}/.well-known/`)
+                ? keyed(input, init)
+                : new Response(JSON.stringify(body), { status }),
+        ),
     );
 }
 
@@ -124,10 +128,13 @@ async function run(token: Token): Promise<Token> {
 beforeEach(() => {
     warn.mockReset();
     resetValidationMemoForTests();
+    resetKeySetCacheForTests();
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 });
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
 });
 
 describe("refresh branches name themselves in the log", () => {
@@ -212,7 +219,7 @@ describe("refresh branches name themselves in the log", () => {
     });
 
     it("refresh_invalid_response: a 2xx answer with no refresh token ends the session and is named", async () => {
-        backendAnswers(200, { access_token: hs256Access() });
+        backendAnswers(200, { access_token: signedAccess() });
 
         const token = await run(refreshDueToken());
 
@@ -223,7 +230,7 @@ describe("refresh branches name themselves in the log", () => {
         ]);
     });
 
-    it("token_shape_refused: a refresh answer whose access token is not HS256-shaped ends the session", async () => {
+    it("refresh_invalid_response: a refresh answer whose access token does not verify ends the session", async () => {
         backendAnswers(200, { access_token: "not-a-token", refresh_token: "next-refresh" });
 
         const token = await run(refreshDueToken());
@@ -231,16 +238,18 @@ describe("refresh branches name themselves in the log", () => {
         expect(token.access_token).toBeUndefined();
         expect(token.refresh_token).toBeUndefined();
         expect(token.error).toBe("refresh_failed");
-        expect(branchLines()).toEqual([{ operation: "refresh", branch: "token_shape_refused" }]);
+        expect(branchLines()).toEqual([
+            { operation: "refresh", branch: "refresh_invalid_response" },
+        ]);
     });
 
-    it("a refresh that succeeds writes no branch line", async () => {
-        backendAnswers(200, { access_token: hs256Access(), refresh_token: "next-refresh" });
+    it("a refresh that succeeds writes only the missing-session-token count", async () => {
+        backendAnswers(200, { access_token: signedAccess(), refresh_token: "next-refresh" });
 
         const token = await run(refreshDueToken());
 
         expect(token.error).toBeUndefined();
-        expect(branchLines()).toEqual([]);
+        expect(branchLines()).toEqual([{ operation: "refresh", branch: "session_token_missing" }]);
     });
 });
 

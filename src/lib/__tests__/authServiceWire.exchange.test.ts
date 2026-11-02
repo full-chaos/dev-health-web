@@ -8,9 +8,8 @@ import {
 } from "@/lib/authServiceWire";
 import { ACTOR, ISSUER, SID, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 
-// CHAOS-10876 C2: the answers of switch-org, change-password and the social exchange are read by the
-// class setting. Under hs256_compat nothing is read; under eddsa the access token and the service
-// token are read the way C1 reads the login answer.
+// CHAOS-10876 C2: the answers of switch-org, change-password and the social exchange are read the
+// way the login answer is: the access token and the service token.
 
 vi.mock("@/lib/authSessionLog", () => ({
     logSessionBranch: vi.fn(),
@@ -19,13 +18,7 @@ vi.mock("@/lib/authSessionLog", () => ({
 
 const fetchMock = vi.fn();
 const eddsa: WireConfig = {
-    tokenClassRaw: "eddsa",
     issuer: ISSUER,
-    backendUrl: "http://auth.test",
-};
-const hs256: WireConfig = {
-    tokenClassRaw: undefined,
-    issuer: undefined,
     backendUrl: "http://auth.test",
 };
 const logged = () => vi.mocked(logSessionBranch).mock.calls.map(([f]) => f);
@@ -44,7 +37,7 @@ afterEach(() => {
 });
 
 describe("readExchangeAnswer", () => {
-    it("readExchangeAnswer: class eddsa reads the access token and the service token and returns exp, sid, actor and the token", async () => {
+    it("readExchangeAnswer: reads the access token and the service token and returns exp, sid, actor and the token", async () => {
         const exp = inSeconds(1800);
         const service = mint({ aud: "auth-service", exp });
         const got = await readExchangeAnswer(
@@ -87,7 +80,7 @@ describe("readExchangeAnswer", () => {
         expect(got).toEqual({ kind: "refused" });
     });
 
-    it("class eddsa: the key set unavailable is unavailable", async () => {
+    it("the key set unavailable is unavailable", async () => {
         fetchMock.mockImplementation(async () => new Response("down", { status: 503 }));
         const exp = inSeconds(1800);
         const got = await readExchangeAnswer(
@@ -98,7 +91,7 @@ describe("readExchangeAnswer", () => {
         expect(got).toEqual({ kind: "unavailable" });
     });
 
-    it("class eddsa: an absent field is accepted and counted under the operation", async () => {
+    it("an absent field is accepted and counted under the operation", async () => {
         const got = await readExchangeAnswer(
             { accessToken: mint(), sessionAccessToken: undefined },
             eddsa,
@@ -110,47 +103,29 @@ describe("readExchangeAnswer", () => {
         ]);
     });
 
-    it("class hs256_compat: the access token is not read and a present field is ignored and counted under the operation", async () => {
-        for (const operation of OPERATIONS) {
-            vi.mocked(logSessionBranch).mockClear();
-            const got = await readExchangeAnswer(
-                { accessToken: "not-a-token-at-all", sessionAccessToken: "svc-value" },
-                hs256,
-                operation,
-            );
-            expect(got, operation).toEqual({ kind: "legacy" });
-            expect(logged()).toEqual([{ operation, branch: "session_token_ignored" }]);
-        }
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-
-    it("class hs256_compat: an absent field keeps today's path with no log line", async () => {
-        expect(
-            await readExchangeAnswer(
-                { accessToken: "x", sessionAccessToken: undefined },
-                hs256,
-                "switch_org",
-            ),
-        ).toEqual({ kind: "legacy" });
-        expect(logged()).toEqual([]);
-    });
-
-    it("an unknown class or a missing issuer is refused, counted auth_config_invalid under the operation, and nothing is fetched", async () => {
-        const unknown = { ...eddsa, tokenClassRaw: "nope" };
+    it("a missing issuer is refused, counted auth_config_invalid under the operation, and nothing is fetched", async () => {
         const noIssuer = { ...eddsa, issuer: undefined };
         expect(
-            await readExchangeAnswer({ accessToken: mint() }, unknown, "change_password"),
+            await readExchangeAnswer({ accessToken: mint() }, noIssuer, "change_password"),
         ).toEqual({ kind: "refused" });
         expect(await readExchangeAnswer({ accessToken: mint() }, noIssuer, "social_login")).toEqual(
-            {
-                kind: "refused",
-            },
+            { kind: "refused" },
         );
         expect(fetchMock).not.toHaveBeenCalled();
         expect(logged()).toEqual([
             { operation: "change_password", branch: "auth_config_invalid" },
             { operation: "social_login", branch: "auth_config_invalid" },
         ]);
+    });
+
+    it("an HS256 access token is refused for every operation", async () => {
+        const hs256 = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from("{}").toString("base64url")}.c2ln`;
+        for (const operation of OPERATIONS) {
+            expect(
+                await readExchangeAnswer({ accessToken: hs256 }, eddsa, operation),
+                operation,
+            ).toEqual({ kind: "refused" });
+        }
     });
 
     it("no log line holds a token, a session id or an actor id", async () => {
@@ -169,14 +144,11 @@ describe("readExchangeAnswer", () => {
 });
 
 describe("wireConfigFromEnv", () => {
-    it("reads the class, the issuer and the backend URL from the server environment", () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
+    it("reads the issuer and the backend URL from the server environment, and no class", () => {
         vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
         vi.stubEnv("BACKEND_URL", "http://backend.test");
-        expect(wireConfigFromEnv()).toMatchObject({
-            tokenClassRaw: "eddsa",
-            issuer: ISSUER,
-            backendUrl: "http://backend.test",
-        });
+        const config = wireConfigFromEnv();
+        expect(config).toMatchObject({ issuer: ISSUER, backendUrl: "http://backend.test" });
+        expect(config).not.toHaveProperty("tokenClassRaw");
     });
 });

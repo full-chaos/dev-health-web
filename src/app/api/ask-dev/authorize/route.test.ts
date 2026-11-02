@@ -176,7 +176,7 @@ function route(hit: Hit): Answer {
 function opsToken(claims: Record<string, unknown>): string {
     const encode = (value: object) =>
         Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
-    return `${encode({ alg: "HS256" })}.${encode({ sub: "user-123", ...claims })}.c2ln`;
+    return `${encode({ alg: "EdDSA", typ: "at+jwt", kid: "kid-1" })}.${encode({ sub: "user-123", ...claims })}.c2ln`;
 }
 
 function signIn(user: Record<string, unknown> = {}): void {

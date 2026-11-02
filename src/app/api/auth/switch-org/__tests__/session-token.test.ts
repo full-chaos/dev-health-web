@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// CHAOS-10876 C2: the switch-org answer under the class setting. The seal is mocked so the pair it
+// CHAOS-10876 C2: the switch-org answer. The seal is mocked so the pair it
 // is given can be read; the key source and the readers are the real ones.
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn(), sealSessionHandoff: vi.fn() }));
@@ -50,7 +50,6 @@ function call() {
 const pairGiven = () => vi.mocked(sealSessionHandoff).mock.calls[0]?.[1] as Record<string, unknown>;
 
 function eddsaEnv() {
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 }
 
@@ -142,22 +141,14 @@ describe("POST /api/auth/switch-org under eddsa", () => {
         expect(sealSessionHandoff).not.toHaveBeenCalled();
     });
 
-    it("an unknown class gives the fixed 502 and calls no backend", async () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
+    it("no pinned issuer gives the fixed 502 and calls no backend", async () => {
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         fetchMock.mockImplementation(eddsaFetch({}));
         const response = await call();
         expect(response.status).toBe(502);
         expect(await response.json()).toEqual({ error: "Organization switch failed" });
         expect(fetchMock).not.toHaveBeenCalled();
         expect(logged()).toEqual([{ operation: "switch_org", branch: "auth_config_invalid" }]);
-    });
-
-    it("eddsa without an issuer gives the fixed 502 and calls no backend", async () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
-        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
-        const response = await call();
-        expect(response.status).toBe(502);
-        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("answers the org and the handoff only: no token in the body, any header, a redirect or a cookie", async () => {
@@ -181,20 +172,14 @@ describe("POST /api/auth/switch-org under eddsa", () => {
     });
 });
 
-describe("POST /api/auth/switch-org under hs256_compat", () => {
-    it("the pair is unchanged: no new field, the access token is not read, and a present field is counted", async () => {
-        fetchMock.mockResolvedValue(
-            answer(0, { session_access_token: "svc-value" }, "not-a-decodable-token")(),
-        );
+describe("POST /api/auth/switch-org with an HS256 access token", () => {
+    it("is refused with the fixed 502 and nothing is sealed", async () => {
+        eddsaEnv();
+        const part = (value: string) => Buffer.from(value).toString("base64url");
+        const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part("{}")}.${part("sig")}`;
+        fetchMock.mockImplementation(eddsaFetch({ [SWITCH]: answer(0, {}, hs256) }));
         const response = await call();
-        expect(response.status).toBe(200);
-        expect(Object.keys(pairGiven()).sort()).toEqual([
-            "access_token",
-            "expires_in",
-            "refresh_token",
-            "user",
-        ]);
-        expect(pairGiven().access_token).toBe("not-a-decodable-token");
-        expect(logged()).toEqual([{ operation: "switch_org", branch: "session_token_ignored" }]);
+        expect(response.status).toBe(502);
+        expect(sealSessionHandoff).not.toHaveBeenCalled();
     });
 });

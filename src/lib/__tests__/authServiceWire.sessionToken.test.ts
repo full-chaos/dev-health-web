@@ -9,8 +9,8 @@ import {
     type WireConfig,
 } from "@/lib/authServiceWire";
 
-// CHAOS-10876 C1: session_access_token (aud auth-service) is read with the access token under class
-// eddsa, kept apart from it, and never read under hs256_compat.
+// CHAOS-10876 C1: session_access_token (aud auth-service) is read with the access token and kept
+// apart from it.
 
 vi.mock("@/lib/authSessionLog", () => ({
     logSessionBranch: vi.fn(),
@@ -91,13 +91,11 @@ const json = (status: number, body: unknown) =>
 const fetchMock = vi.fn();
 let now = NOW;
 const cfg = (over: Partial<WireConfig> = {}): WireConfig => ({
-    tokenClassRaw: "eddsa",
     issuer: ISSUER,
     backendUrl: BACKEND,
     nowSeconds: () => now,
     ...over,
 });
-const hsCfg = () => cfg({ tokenClassRaw: "hs256_compat", issuer: undefined });
 const discovery = () =>
     new Response(
         JSON.stringify({
@@ -136,8 +134,19 @@ const read = (accessToken: string, sessionAccessToken: unknown, c = cfg()) =>
     readAnswerTokens({ accessToken, sessionAccessToken }, c, "login");
 const refusedSession = { ok: false, reason: "refused", cause: "session" };
 
-describe("readAnswerTokens, class eddsa", () => {
-    it("class eddsa: the session token is read with aud auth-service and kept with its exp", async () => {
+describe("readAnswerTokens", () => {
+    it("an HS256 access token is refused, with or without a session token", async () => {
+        route();
+        for (const value of [service(), undefined]) {
+            expect(await read(hs256(), value)).toEqual({
+                ok: false,
+                reason: "refused",
+                cause: "verify",
+            });
+        }
+    });
+
+    it("the session token is read with aud auth-service and kept with its exp", async () => {
         route();
         const tok = service();
         expect(await read(access(), tok)).toMatchObject({
@@ -148,13 +157,13 @@ describe("readAnswerTokens, class eddsa", () => {
         });
     });
 
-    it("class eddsa: a session token with the wrong audience is refused", async () => {
+    it("a session token with the wrong audience is refused", async () => {
         route();
         expect(await read(access(), access())).toEqual(refusedSession);
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_unverified" }]);
     });
 
-    it("class eddsa: a session token that fails verification is refused", async () => {
+    it("a session token that fails verification is refused", async () => {
         route();
         expect(await read(access(), service({ signer: stranger.privateKey }))).toEqual(
             refusedSession,
@@ -162,19 +171,19 @@ describe("readAnswerTokens, class eddsa", () => {
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_unverified" }]);
     });
 
-    it("class eddsa: a session token with another sid is refused", async () => {
+    it("a session token with another sid is refused", async () => {
         route();
         expect(await read(access(), service({ sid: OTHER_SID }))).toEqual(refusedSession);
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_sid_mismatch" }]);
     });
 
-    it("class eddsa: a session token with another sub is refused", async () => {
+    it("a session token with another sub is refused", async () => {
         route();
         expect(await read(access(), service({ sub: OTHER_SUB }))).toEqual(refusedSession);
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_sub_mismatch" }]);
     });
 
-    it("class eddsa: a session token whose exp is later than the access token's is refused (must equal)", async () => {
+    it("a session token whose exp is later than the access token's is refused (must equal)", async () => {
         route();
         expect(await read(access({ exp: EXP - 100 }), service({ exp: EXP - 99 }))).toEqual(
             refusedSession,
@@ -182,26 +191,26 @@ describe("readAnswerTokens, class eddsa", () => {
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_exp_mismatch" }]);
     });
 
-    it("class eddsa: a session token whose exp is earlier than the access token's is refused (must equal)", async () => {
+    it("a session token whose exp is earlier than the access token's is refused (must equal)", async () => {
         route();
         expect(await read(access(), service({ exp: EXP - 1 }))).toEqual(refusedSession);
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_exp_mismatch" }]);
     });
 
-    it("class eddsa: a session token with a non-EdDSA alg is refused", async () => {
+    it("a session token with a non-EdDSA alg is refused", async () => {
         route();
         expect(await read(access(), service({ alg: "HS256" }))).toEqual(refusedSession);
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_unverified" }]);
     });
 
-    it("class eddsa: a session token with a kid the key list lacks is refused without a second key refresh", async () => {
+    it("a session token with a kid the key list lacks is refused without a second key refresh", async () => {
         route();
         expect(await read(access(), service({ kid: "kid-9" }))).toEqual(refusedSession);
         expect(calls(JWKS_URL)).toHaveLength(1);
         expect(calls(DISCOVERY_URL)).toHaveLength(1);
     });
 
-    it("class eddsa: a session token that is not a non-empty string is refused as malformed", async () => {
+    it("a session token that is not a non-empty string is refused as malformed", async () => {
         for (const value of ["", 7, null, {}, [], true]) {
             vi.mocked(logSessionBranch).mockClear();
             route();
@@ -210,7 +219,7 @@ describe("readAnswerTokens, class eddsa", () => {
         }
     });
 
-    it("class eddsa: an absent session token is accepted and counted as session_token_missing", async () => {
+    it("an absent session token is accepted and counted as session_token_missing", async () => {
         route();
         expect(await read(access(), undefined)).toMatchObject({
             ok: true,
@@ -219,7 +228,7 @@ describe("readAnswerTokens, class eddsa", () => {
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_missing" }]);
     });
 
-    it("class eddsa: the verified act is returned apart from sub, and is null when the claim is absent", async () => {
+    it("the verified act is returned apart from sub, and is null when the claim is absent", async () => {
         route();
         const got = await read(access({ act: ACTOR }), service());
         expect(got).toMatchObject({ ok: true, sub: SUB, actor: ACTOR });
@@ -229,7 +238,7 @@ describe("readAnswerTokens, class eddsa", () => {
         expect(await read(access(), service())).toMatchObject({ ok: true, actor: null });
     });
 
-    it("class eddsa: the actor is read from the access token only, not from the session token", async () => {
+    it("the actor is read from the access token only, not from the session token", async () => {
         route();
         expect(await read(access(), service({ act: ACTOR }))).toMatchObject({
             ok: true,
@@ -261,29 +270,6 @@ describe("readAnswerTokens, class eddsa", () => {
     });
 });
 
-describe("readAnswerTokens, class hs256_compat", () => {
-    it("class hs256_compat: a present session token is ignored, never stored, counted as session_token_ignored", async () => {
-        for (const value of [service(), "garbage", 7, null, ""]) {
-            vi.mocked(logSessionBranch).mockClear();
-            const got = await read(hs256(), value, hsCfg());
-            expect(got, JSON.stringify(value)).toMatchObject({
-                ok: true,
-                session: { kind: "ignored" },
-            });
-            expect(logged()).toEqual([{ operation: "login", branch: "session_token_ignored" }]);
-        }
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-
-    it("class hs256_compat: an absent session token keeps today's path with no extra log line", async () => {
-        expect(await read(hs256(), undefined, hsCfg())).toMatchObject({
-            ok: true,
-            session: { kind: "absent" },
-        });
-        expect(logged()).toEqual([]);
-    });
-});
-
 describe("passwordLogin with a session token", () => {
     const loginUrl = `${BACKEND}/api/v1/auth/login`;
     const loginAnswer = (accessToken: string, extra: Record<string, unknown> = {}) =>
@@ -297,7 +283,7 @@ describe("passwordLogin with a session token", () => {
         });
     const creds = { email: "a@example.test", password: "pw" };
 
-    it("login under eddsa keeps the session token, its exp and the verified actor", async () => {
+    it("login keeps the session token, its exp and the verified actor", async () => {
         const tok = service();
         route({
             [loginUrl]: () => loginAnswer(access({ act: ACTOR }), { session_access_token: tok }),
@@ -320,21 +306,12 @@ describe("passwordLogin with a session token", () => {
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_sid_mismatch" }]);
     });
 
-    it("login under eddsa with no session token is accepted and counted", async () => {
+    it("login with no session token is accepted and counted", async () => {
         route({ [loginUrl]: () => loginAnswer(access()) });
         const got = await passwordLogin(creds, cfg());
         expect(got).toMatchObject({ kind: "ok" });
         expect(got).not.toHaveProperty("sessionAccessToken");
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_missing" }]);
-    });
-
-    it("a session token never appears in the login result under hs256_compat", async () => {
-        route({
-            [loginUrl]: () => loginAnswer(hs256(), { session_access_token: "svc-token-value" }),
-        });
-        const got = await passwordLogin(creds, hsCfg());
-        expect(JSON.stringify(got)).not.toContain("svc-token-value");
-        expect(got).not.toHaveProperty("sessionAccessToken");
     });
 });
 
@@ -349,7 +326,7 @@ describe("refreshSession with a session token", () => {
             ...extra,
         });
 
-    it("refresh under eddsa carries the session token, its exp and the verified actor", async () => {
+    it("refresh carries the session token, its exp and the verified actor", async () => {
         const tok = service();
         route({
             [refreshUrl]: () => rotated(access({ act: ACTOR }), { session_access_token: tok }),
@@ -363,7 +340,7 @@ describe("refreshSession with a session token", () => {
         });
     });
 
-    it("refresh under eddsa with no session token rotates without one", async () => {
+    it("refresh with no session token rotates without one", async () => {
         route({ [refreshUrl]: () => rotated(access()) });
         const got = await refreshSession("ref-1", cfg());
         expect(got).toMatchObject({ kind: "rotated" });
@@ -383,14 +360,5 @@ describe("refreshSession with a session token", () => {
             reason: "token_refused",
         });
         expect(logged()).toEqual([{ operation: "refresh", branch: "session_token_exp_mismatch" }]);
-    });
-
-    it("refresh under hs256_compat ignores a present session token and counts it", async () => {
-        route({
-            [refreshUrl]: () => rotated(hs256(), { session_access_token: "svc-token-value" }),
-        });
-        const got = await refreshSession("ref-1", hsCfg());
-        expect(JSON.stringify(got)).not.toContain("svc-token-value");
-        expect(logged()).toEqual([{ operation: "refresh", branch: "session_token_ignored" }]);
     });
 });

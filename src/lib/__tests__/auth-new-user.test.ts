@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { nextAuthConfig } = vi.hoisted(() => ({ nextAuthConfig: { value: null as unknown } }));
 
@@ -24,6 +24,18 @@ vi.mock("next-auth/providers/gitlab", () => ({ default: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://localhost:8000" }));
 
 import "@/lib/auth";
+import { ISSUER, inSeconds, mint } from "@/test/eddsaAnswer";
+
+// The published key set is the test signer's key; the exchange answer carries a signed access token.
+vi.mock("@/lib/authKeySource", async () => {
+    const { keysResponse } = await import("@/test/eddsaAnswer");
+    const { keys } = (await keysResponse().json()) as { keys: unknown[] };
+    return {
+        resetKeySourceForTests: vi.fn(),
+        publishedKeysFor: vi.fn(async () => ({ ok: true, keys })),
+    };
+});
+const ACCESS = mint({ exp: inSeconds(1800) });
 
 type Token = Record<string, unknown>;
 type Jwt = (params: {
@@ -47,7 +59,7 @@ function socialResponse(isNewUser: boolean | undefined): Response {
     const body: Record<string, unknown> = {
         user: { id: "user-9", org_id: null, role: null, is_superuser: false },
         needs_onboarding: true,
-        access_token: "at",
+        access_token: ACCESS,
         refresh_token: "rt",
         expires_in: 3600,
     };
@@ -61,8 +73,12 @@ function socialResponse(isNewUser: boolean | undefined): Response {
 const socialAccount = { provider: "github", access_token: "provider-token" };
 
 describe("jwt callback: is_new_user", () => {
+    beforeEach(() => {
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
+    });
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.unstubAllEnvs();
     });
 
     it("sets the flag only when the social exchange says the user is new", async () => {
@@ -95,7 +111,7 @@ describe("jwt callback: is_new_user", () => {
                         JSON.stringify({
                             user: { id: "user-9" },
                             needs_onboarding: true,
-                            access_token: "at",
+                            access_token: ACCESS,
                             refresh_token: "rt",
                             expires_in: 3600,
                             is_new_user: value,
