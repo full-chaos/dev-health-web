@@ -30,7 +30,16 @@ export const RUN_MESSAGE = "authz_shadow_decide";
 export const MISMATCH_MESSAGE = "authz_shadow_mismatch";
 
 export function logRun(record: RunRecord, log: ShadowLogger = defaultLogger): void {
-    log.info({ ...record.counts, surfaces: record.surfaces.join(",") }, RUN_MESSAGE);
+    log.info(
+        {
+            match: record.counts.match,
+            mismatch: record.counts.mismatch,
+            unavailable: record.counts.unavailable,
+            no_action: record.counts.no_action,
+            surfaces: record.surfaces.join(","),
+        },
+        RUN_MESSAGE,
+    );
     for (const m of record.mismatches) {
         log.info(
             {
