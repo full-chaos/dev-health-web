@@ -805,6 +805,12 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
         await expect(statusPanel(surface)).toContainText(
             "Your organization has used this month's Ask Dev allowance.",
         );
+        // CHAOS-12564: the wait to the month's end (up to 31 days) shows, in days, near ACR's value.
+        const shown = /Try again in about (\d+) days?/u.exec(
+            (await statusPanel(surface).textContent()) ?? "",
+        );
+        expect(shown, `the allowance state shows no time: "${end.words}"`).not.toBeNull();
+        expect(Math.abs(Number(shown![1]) - Number(retryAfter) / 86_400)).toBeLessThanOrEqual(1);
         await screenshots(page, testInfo, "allowance");
     });
 
