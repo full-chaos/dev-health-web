@@ -805,23 +805,26 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
         await expect(statusPanel(surface)).toContainText(
             "Your organization has used this month's Ask Dev allowance.",
         );
-        // CHAOS-12564: the wait to the month's end (up to 31 days) shows. ask-dev words it in whole
-        // days, hours or minutes rounded up (seconds under a minute), so ACR's value lies within
-        // one unit below the count shown.
+        // CHAOS-12564: the wait to the month's end (up to 31 days) shows. ask-dev's rule: seconds
+        // under a minute, else the largest whole unit (day, hour, minute) the wait reaches, counted
+        // rounded up. The page must show that unit and that count for ACR's value.
         const shown = /Try again in (?:about )?(\d+) (day|hour|minute|second)s?\b/u.exec(
             (await statusPanel(surface).textContent()) ?? "",
         );
         expect(shown, `the allowance state shows no time: "${end.words}"`).not.toBeNull();
-        const unit = { day: 86_400, hour: 3_600, minute: 60, second: 1 }[
-            shown![2] as "day" | "hour" | "minute" | "second"
-        ];
         const wait = Number(retryAfter);
-        expect(wait, `"${shown![0]}" is shorter than ACR's ${String(wait)} s`).toBeLessThanOrEqual(
-            Number(shown![1]) * unit,
-        );
-        expect(wait, `"${shown![0]}" is longer than ACR's ${String(wait)} s`).toBeGreaterThan(
-            (Number(shown![1]) - 1) * unit,
-        );
+        const [unit, unitSeconds] =
+            wait >= 86_400
+                ? ["day", 86_400]
+                : wait >= 3_600
+                  ? ["hour", 3_600]
+                  : wait >= 60
+                    ? ["minute", 60]
+                    : ["second", 1];
+        expect(
+            [shown![2], Number(shown![1])],
+            `"${shown![0]}" for ACR's ${String(wait)} s`,
+        ).toEqual([unit, Math.ceil(wait / unitSeconds)]);
         await screenshots(page, testInfo, "allowance");
     });
 
