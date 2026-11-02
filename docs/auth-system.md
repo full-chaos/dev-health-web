@@ -731,11 +731,12 @@ Support for "Login as User" functionality:
 
 Auth-related environment variables (see `.env.example` for full list):
 
-| Variable      | Required      | Description                                                                                                                                                                                                                                                               |
-| ------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_SECRET` | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                         |
-| `AUTH_URL`    | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`. |
-| `BACKEND_URL` | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                 |
+| Variable           | Required      | Description                                                                                                                                                                                                                                                               |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`      | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                         |
+| `AUTH_URL`         | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`. |
+| `BACKEND_URL`      | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                 |
+| `AUTH_SSO_ENABLED` | No            | `true` or `1` turns on enterprise SSO sign-in (OIDC, SAML) through auth-service. Unset = off: no SSO call is made and the `sso` provider refuses every ticket.                                                                                                            |
 
 ### Troubleshooting: "request origin validation" error
 

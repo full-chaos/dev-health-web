@@ -29,7 +29,8 @@ import { deadlineFetch } from "@/lib/serverDeadline";
 // the access-token class rules and the key set. A log line holds an operation, a branch, a status
 // and an error name, never a token, an address or a password.
 
-export type WireOperation = "login" | "refresh" | "switch_org" | "change_password" | "social_login";
+export type WireOperation =
+    "login" | "refresh" | "switch_org" | "change_password" | "social_login" | "sso_login";
 
 export interface WireConfig {
     /** AUTH_ACCESS_TOKEN_CLASS as set; unset = hs256_compat. */
