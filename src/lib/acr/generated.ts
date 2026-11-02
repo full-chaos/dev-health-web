@@ -8291,11 +8291,18 @@ export type RenderPresentation = "bars" | "stacked_bars" | "line";
  * CHAOS-4415: the CLOSED vocabulary of deterministic selection rules. Exactly one rule produced unknown given shape; a shape with no rule would be the default-charting this contract forbids.
  */
 export type RenderShapeRule =
-    "cohort_attention_score" | "cohort_driver_contribution" | "dated_fact_trend";
+    | "cohort_attention_score"
+    | "cohort_driver_contribution"
+    | "dated_fact_trend"
+    | "investment_theme_share";
 /**
  * CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.
  */
 export type RenderAxisKind = "category" | "time";
+/**
+ * CHAOS-4610: the CLOSED vocabulary of units a shape may declare for its values, so a consumer formats a number without parsing value_label. ratio is a share from 0 to 1, and validation holds every value of the shape to that range. No unit claims nothing: the value is shown as served.
+ */
+export type RenderValueUnit = "ratio";
 export type SubjectHint = SubjectHint1 & {
     kind:
         | "organization"
@@ -9444,6 +9451,7 @@ export interface RenderShape {
     axis_kind: RenderAxisKind;
     axis_label: string;
     value_label: string;
+    value_unit?: RenderValueUnit;
     /**
      * @minItems 1
      * @maxItems 8
