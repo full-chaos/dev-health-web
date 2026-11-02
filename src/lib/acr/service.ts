@@ -523,7 +523,8 @@ function authorizeFailure(error: unknown): Extract<AskDevAuthorization, { kind: 
  *
  * In order: the session and a fresh impersonation read, so an impersonating session makes no ACR
  * call and gets no code (T13 c5); then this user's budget, which nobody else can spend; then ACR's
- * `GET /authorize`, on the server's own ACR origin as every server call is, which gives a handle;
+ * signed `POST /authorize/first-party` (CHAOS-12569), on the server's own ACR origin as every
+ * server call is, which ACR limits per user and which gives a handle;
  * then T4c's `openOAuthConsent`, which approves the first-party client with no click. A first-party
  * client that reaches review is a loud failure.
  *
@@ -541,8 +542,20 @@ export async function authorizeAskDevBrowser(input: {
         if (provenance.impersonating) return refused("impersonating");
         const budget = await checkRateLimit(session.subject, ASK_DEV_AUTHORIZE_LIMIT);
         if (budget.limited) return refused("user_rate_limited", budget.retryAfter);
-        const answer = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthAuthorize({
-            query: {
+        // CHAOS-12569: the signed first-party authorize, so ACR limits each user on their own
+        // budget. GET /authorize is limited per source, and every user's silent authorize leaves
+        // this server from one address. The assertion is org-wide, as the consent route's is.
+        const authorization = await resolveOpsCredentialIssuanceAuthorization({
+            accessToken: session.accessToken,
+            orgId: session.orgId,
+            provenance: issuanceProvenanceClaimsEnabled() ? provenance : undefined,
+            repositoryScopes: ["*"],
+            signal: input.signal,
+            subject: session.subject,
+        });
+        const answer = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthAuthorizeFirstParty({
+            authorization,
+            params: {
                 response_type: "code",
                 client_id: client.clientId,
                 redirect_uri: client.redirectUri,
