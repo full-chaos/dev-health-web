@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseBatch, parseDecision, WIRE_REASON_CODES } from "../decision";
@@ -171,8 +171,9 @@ suite("golden/decision pin", () => {
             vectors: { file: string }[];
             catalogs: { file: string }[];
         };
+        // git keeps no empty directory: an empty catalogs list has no directory on disk.
         const onDisk = (sub: string) =>
-            readdirSync(path.join(goldenDir, sub))
+            (existsSync(path.join(goldenDir, sub)) ? readdirSync(path.join(goldenDir, sub)) : [])
                 .map((f) => `${sub}/${f}`)
                 .sort();
         expect(m.vectors.map((r) => `vectors/${r.file}`).sort()).toEqual(onDisk("vectors"));

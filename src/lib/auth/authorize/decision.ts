@@ -6,10 +6,30 @@ import { parseStrictJson, StrictJsonError } from "../accesstoken/strictjson";
 // Anything that is not a valid, unexpired, unambiguous decision is a refusal.
 
 export const WIRE_REASON_CODES = [
+    "allowed_by_membership_default",
     "allowed_by_repository_grant",
+    "allowed_by_role",
+    "delegation_invalid",
     "grant_absent",
-    "repository_not_granted",
+    "grant_expired",
+    "grant_revoked",
+    "impersonation_denied",
+    "invalid_request",
+    "membership_inactive",
+    "no_membership",
+    "org_mismatch",
+    "organization_inactive",
     "platform_role_absent",
+    "principal_inactive",
+    "repository_not_granted",
+    "resource_mismatch",
+    "role_lacks_action",
+    "role_scope_mismatch",
+    "role_unknown",
+    "service_account_inactive",
+    "unknown_action",
+    "workload_action_denied",
+    "workload_audience_denied",
 ] as const;
 export type WireReasonCode = (typeof WIRE_REASON_CODES)[number];
 
@@ -52,7 +72,11 @@ export type BatchResult =
     { ok: true; decisions: readonly Decision[] } | { ok: false; reason: ParseFailure };
 
 const MAX_BATCH = 100;
-const ALLOW_REASON: WireReasonCode = "allowed_by_repository_grant";
+const ALLOW_REASONS: readonly WireReasonCode[] = [
+    "allowed_by_membership_default",
+    "allowed_by_repository_grant",
+    "allowed_by_role",
+];
 
 function isCalendarDay(year: number, month: number, day: number): boolean {
     const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -173,7 +197,8 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
     if (typeof doc.reason_code !== "string") refuse("bad_shape");
     if (!(WIRE_REASON_CODES as readonly string[]).includes(doc.reason_code as string))
         refuse("unknown_reason");
-    if ((doc.allowed === true) !== (doc.reason_code === ALLOW_REASON)) refuse("reason_mismatch");
+    if ((doc.allowed === true) !== ALLOW_REASONS.includes(doc.reason_code as WireReasonCode))
+        refuse("reason_mismatch");
     let obligations: Obligations | undefined;
     if ("obligations" in doc) {
         if (doc.allowed === false) refuse("bad_shape");
