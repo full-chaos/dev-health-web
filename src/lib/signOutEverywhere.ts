@@ -2,11 +2,15 @@ import { signOut } from "next-auth/react";
 
 import { acrBrowserSignOut, type AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
 import { forgetThreadHint } from "@/lib/ask-dev/conversationHint";
+import { cancelLiveRunForSignOut } from "@/lib/ask-dev/signOutCancel";
 import { logger } from "@/lib/logger";
 
 /**
  * Sign-out (CHAOS-12096; Ask Dev direct-browser design §2.4, item T4). The order is fixed:
  *
+ * 0. Cancel this tab's live Ask Dev runs at ACR while the tab still holds its ACR token
+ *    (CHAOS-12574): with the run lease on, dropping the stream does not end ACR's run. Bounded by
+ *    `SIGN_OUT_CANCEL_TIMEOUT_MS`; a cancel cut at that time, or one that fails, is logged.
  * 1. Revoke the Ops session, through this web server (`/api/auth/revoke-session`: the refresh
  *    token is in the sealed session, which the browser cannot read). Retried once. When it still
  *    fails, the next steps run anyway, the failure is logged as an error, and the sign-in page
@@ -27,10 +31,14 @@ export const SIGNED_OUT_PARTIAL_REDIRECT = "/auth/signin?signedOut=partial";
 
 const SESSION_REVOKE_ATTEMPTS = 2;
 const STEP_TIMEOUT_MS = 8_000;
+/** How long step 0 may hold the sign-out: one cancel round trip to ACR, with room. */
+export const SIGN_OUT_CANCEL_TIMEOUT_MS = 3_000;
 
 type LogFn = (fields: Record<string, unknown>, message: string) => void;
 
 export type SignOutDeps = {
+    /** Asks ACR to cancel this tab's live Ask Dev runs; it stops when `signal` aborts. */
+    readonly cancelLiveRun: (signal: AbortSignal) => Promise<void>;
     readonly fetch: typeof fetch;
     /** Forgets this tab's Ask Dev conversation (its restore hint). */
     readonly forgetConversation: () => void;
@@ -53,6 +61,7 @@ function errorName(error: unknown): string {
 function defaultDeps(): SignOutDeps {
     const log = logger.child({ module: "sign-out" });
     return {
+        cancelLiveRun: cancelLiveRunForSignOut,
         fetch: (input, init) => fetch(input, init),
         forgetConversation: forgetThreadHint,
         hook: acrBrowserSignOut,
@@ -64,6 +73,35 @@ function defaultDeps(): SignOutDeps {
         signOut: (options) =>
             options === undefined ? signOut() : signOut({ redirectTo: options.redirectTo }),
     };
+}
+
+/** Step 0 (CHAOS-12574): never throws, and never holds the sign-out past its timeout. */
+async function cancelLiveRun(deps: SignOutDeps): Promise<void> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), SIGN_OUT_CANCEL_TIMEOUT_MS);
+    });
+    try {
+        const ended = await Promise.race([
+            deps.cancelLiveRun(controller.signal).then(() => "done" as const),
+            timeout,
+        ]);
+        if (ended === "timeout") {
+            controller.abort();
+            deps.log.warn(
+                { step: "ask_dev_run_cancel_timeout", timeoutMs: SIGN_OUT_CANCEL_TIMEOUT_MS },
+                "sign-out: the live Ask Dev run cancel ran out of time; ACR may run it to its end",
+            );
+        }
+    } catch (error) {
+        deps.log.error(
+            { errorName: errorName(error), step: "ask_dev_run_cancel" },
+            "sign-out: cancelling the live Ask Dev run failed; ACR may run it to its end",
+        );
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 /** Step 1: true when the web server answered 204 (Ops revoked the session). */
@@ -162,6 +200,7 @@ function forgetConversation(deps: SignOutDeps): void {
 export async function signOutEverywhere(
     deps: SignOutDeps = defaultDeps(),
 ): Promise<SignOutOutcome> {
+    await cancelLiveRun(deps);
     const sessionRevoked = await revokeOpsSession(deps);
     const familyRevoked = await revokeAcrFamily(deps);
     await clearAcrTokens(deps);

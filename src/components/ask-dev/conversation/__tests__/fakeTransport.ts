@@ -250,7 +250,10 @@ export class FakeTransport implements AskDevTransport {
         })();
     };
 
-    readonly cancel = async (call: { readonly submissionId: string }): Promise<CancelAnswer> => {
+    readonly cancel = async (call: {
+        readonly submissionId: string;
+        readonly signal: AbortSignal;
+    }): Promise<CancelAnswer> => {
         this.cancelCalls.push(call.submissionId);
         if (this.cancelGate !== undefined) await this.cancelGate;
         const next =

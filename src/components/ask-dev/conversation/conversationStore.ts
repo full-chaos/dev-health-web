@@ -1021,6 +1021,47 @@ export class ConversationStore {
     }
 
     /**
+     * Sign-out (CHAOS-12574): asks ACR to cancel every run this tab holds (the submitted run and
+     * any observed one), while the tab still holds its ACR token. With the run lease on, the
+     * disconnect that `clear` makes does not cancel a run; without it, ACR answers `not_leased` and
+     * the disconnect is the cancel. A submitted run is asked even before its `accepted` arrived:
+     * ACR may have admitted it already (codex r1 on #1747), and for a run it never admitted it
+     * answers 404 and changes nothing. Best effort: the turns are left to the `clear` that follows.
+     */
+    async cancelForSignOut(signal: AbortSignal): Promise<void> {
+        const runs = [this.active, ...this.observed.values()].filter(
+            (run): run is ActiveRun => run !== null,
+        );
+        await Promise.all(
+            runs.map(async (run) => {
+                try {
+                    const answer = await this.transport.cancel({
+                        submissionId: run.submissionId,
+                        signal,
+                    });
+                    logger.info(
+                        { submission_id: run.submissionId, answer: answer.kind },
+                        "ask-dev sign-out cancel answered",
+                    );
+                } catch (error) {
+                    if (error instanceof TransportRefusal && error.status === 404) {
+                        // ACR holds no open run under this key: it never admitted it, or it ended.
+                        logger.info(
+                            { submission_id: run.submissionId, answer: "not_found" },
+                            "ask-dev sign-out cancel answered",
+                        );
+                        return;
+                    }
+                    logger.warn(
+                        { submission_id: run.submissionId, status: failureStatus(error) },
+                        "ask-dev sign-out cancel not sent",
+                    );
+                }
+            }),
+        );
+    }
+
+    /**
      * Starts a new, empty conversation (a local selection): the old one stays on ACR and in the
      * history. Its run, if any, is dropped from this tab; ACR keeps a leased run going.
      */

@@ -551,6 +551,93 @@ describe("cancel (plan §2.7.4)", () => {
     });
 });
 
+// CHAOS-12574: with the run lease on, a disconnect does not cancel ACR's run, so sign-out asks
+// ACR's cancel endpoint for every run this tab holds, while the tab still holds its token.
+describe("cancel for sign-out (CHAOS-12574)", () => {
+    it("an admitted run: asks ACR to cancel it, once", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.cancelAnswers.push({ kind: "running" });
+        transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
+
+        await store.cancelForSignOut(new AbortController().signal);
+
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
+        gate.resolve();
+    });
+
+    // codex r1 on #1747: ACR may have admitted a run whose `accepted` this tab has not read yet.
+    it("a run whose accepted the tab has not read: still asks, and ACR's 404 is no failure", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(404, acrError("not_found", 404, false)),
+        });
+        transport.scripts.push([{ wait: gate.promise }, accepted(), resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(transport.calls).toHaveLength(1));
+
+        await store.cancelForSignOut(new AbortController().signal);
+
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
+        expect(log.info).toHaveBeenCalledWith(
+            expect.objectContaining({ answer: "not_found" }),
+            "ask-dev sign-out cancel answered",
+        );
+        expect(log.warn).not.toHaveBeenCalledWith(
+            expect.anything(),
+            "ask-dev sign-out cancel not sent",
+        );
+        gate.resolve();
+    });
+
+    it("no run: sends nothing", async () => {
+        const store = makeStore();
+        transport.scripts.push([resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+
+        await store.cancelForSignOut(new AbortController().signal);
+
+        expect(transport.cancelCalls).toEqual([]);
+    });
+
+    it("a cancel that fails still resolves, and is logged with no content", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.cancelAnswers.push({ fail: new TypeError("network down") });
+        transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
+
+        await expect(store.cancelForSignOut(new AbortController().signal)).resolves.toBeUndefined();
+
+        expect(transport.cancelCalls).toHaveLength(1);
+        expect(log.warn).toHaveBeenCalledWith(
+            expect.objectContaining({ submission_id: transport.calls[0]!.submissionId }),
+            "ask-dev sign-out cancel not sent",
+        );
+        gate.resolve();
+    });
+
+    it("passes the sign-out's signal, so a bounded sign-out can end the call", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        const cancel = vi.spyOn(transport, "cancel");
+        transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
+        const signOut = new AbortController();
+
+        await store.cancelForSignOut(signOut.signal);
+
+        expect(cancel.mock.calls.map(([call]) => call.signal)).toEqual([signOut.signal]);
+        gate.resolve();
+    });
+});
+
 describe("terminals", () => {
     it("records the stage ACR started, then the answer", async () => {
         const store = makeStore();

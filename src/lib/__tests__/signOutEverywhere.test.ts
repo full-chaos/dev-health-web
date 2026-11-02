@@ -1,3 +1,5 @@
+// CHAOS-12574: first, cancel this tab's live Ask Dev run while its ACR token is still held
+// (bounded, best effort).
 // CHAOS-12096 (design T4, §2.4): sign-out order is (1) revoke the Ops session through this web
 // server, (2) revoke the ACR token family with its refresh token, (3) clear the ACR token state in
 // every tab and forget this tab's Ask Dev conversation (CHAOS-12575), (4) NextAuth signOut(). (1) is
@@ -7,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
 import {
+    SIGN_OUT_CANCEL_TIMEOUT_MS,
     SESSION_REVOKE_PATH,
     SIGNED_OUT_PARTIAL_REDIRECT,
     signOutEverywhere,
@@ -22,6 +25,7 @@ type Harness = {
     readonly steps: string[];
     readonly fetchMock: ReturnType<typeof vi.fn>;
     readonly logLines: unknown[];
+    readonly cancelSignals: AbortSignal[];
 };
 
 function harness(input: {
@@ -30,9 +34,11 @@ function harness(input: {
     readonly family?: boolean;
     readonly clearThrows?: boolean;
     readonly forgetThrows?: boolean;
+    readonly cancel?: "ok" | "throw" | "hang";
 }): Harness {
     const steps: string[] = [];
     const logLines: unknown[] = [];
+    const cancelSignals: AbortSignal[] = [];
     let opsCall = 0;
     const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
         const target = String(url);
@@ -70,6 +76,12 @@ function harness(input: {
         deps: {
             fetch: fetchMock as unknown as typeof fetch,
             hook,
+            cancelLiveRun: async (signal) => {
+                steps.push("cancel");
+                cancelSignals.push(signal);
+                if (input.cancel === "throw") throw new Error("ACR unreachable");
+                if (input.cancel === "hang") await new Promise(() => undefined);
+            },
             forgetConversation: () => {
                 steps.push("forget");
                 if (input.forgetThrows) throw new Error("storage blocked");
@@ -79,6 +91,7 @@ function harness(input: {
                 steps.push(`signOut:${options?.redirectTo ?? "default"}`);
             },
         },
+        cancelSignals,
         fetchMock,
         logLines,
         steps,
@@ -86,12 +99,19 @@ function harness(input: {
 }
 
 describe("signOutEverywhere", () => {
-    it("Given every step succeeds, then it runs (1) Ops, (2) ACR family, (3) clear tabs and forget the conversation, (4) signOut in that order", async () => {
+    it("Given every step succeeds, then it runs (0) cancel the live run, (1) Ops, (2) ACR family, (3) clear tabs and forget the conversation, (4) signOut in that order", async () => {
         const h = harness({});
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "acr:200", "clear", "forget", "signOut:default"]);
+        expect(h.steps).toEqual([
+            "cancel",
+            "ops:204",
+            "acr:200",
+            "clear",
+            "forget",
+            "signOut:default",
+        ]);
         expect(outcome).toEqual({ familyRevoked: true, sessionRevoked: true });
     });
 
@@ -101,6 +121,7 @@ describe("signOutEverywhere", () => {
         const outcome = await signOutEverywhere(h.deps);
 
         expect(h.steps).toEqual([
+            "cancel",
             "ops:503",
             "ops:204",
             "acr:200",
@@ -122,7 +143,7 @@ describe("signOutEverywhere", () => {
 
             const outcome = await signOutEverywhere(h.deps);
 
-            expect(h.steps.slice(2)).toEqual([
+            expect(h.steps.slice(3)).toEqual([
                 "acr:200",
                 "clear",
                 "forget",
@@ -141,7 +162,7 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "clear", "forget", "signOut:default"]);
+        expect(h.steps).toEqual(["cancel", "ops:204", "clear", "forget", "signOut:default"]);
         expect(outcome.familyRevoked).toBeNull();
     });
 
@@ -196,6 +217,48 @@ describe("signOutEverywhere", () => {
 
         expect(h.steps.slice(-2)).toEqual(["forget", "signOut:default"]);
         expect(JSON.stringify(h.logLines)).toContain("ask_dev_conversation_forget");
+    });
+
+    it("Given the live-run cancel throws, then every later step still runs, and the failure is logged", async () => {
+        const h = harness({ cancel: "throw" });
+
+        await signOutEverywhere(h.deps);
+
+        expect(h.steps).toEqual([
+            "cancel",
+            "ops:204",
+            "acr:200",
+            "clear",
+            "forget",
+            "signOut:default",
+        ]);
+        expect(JSON.stringify(h.logLines)).toContain("ask_dev_run_cancel");
+    });
+
+    it("Given the live-run cancel hangs, then it is cut at its timeout, says so, and sign-out goes on", async () => {
+        vi.useFakeTimers();
+        try {
+            const h = harness({ cancel: "hang" });
+
+            const done = signOutEverywhere(h.deps);
+            await vi.advanceTimersByTimeAsync(SIGN_OUT_CANCEL_TIMEOUT_MS);
+            await done;
+
+            expect(h.steps.at(-1)).toBe("signOut:default");
+            expect(h.cancelSignals[0]?.aborted).toBe(true);
+            expect(JSON.stringify(h.logLines)).toContain("ask_dev_run_cancel_timeout");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("Given the live-run cancel ends in time, then its signal is not aborted", async () => {
+        const h = harness({});
+
+        await signOutEverywhere(h.deps);
+
+        expect(h.cancelSignals).toHaveLength(1);
+        expect(h.cancelSignals[0]?.aborted).toBe(false);
     });
 
     it("Given every failure path, then no log line carries the refresh token", async () => {
