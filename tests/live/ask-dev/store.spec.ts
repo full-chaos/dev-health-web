@@ -176,8 +176,13 @@ async function endState(surface: Locator, timeout: number) {
 function statusReadTimes(page: Page): { readonly path: string; readonly at: number }[] {
     const reads: { path: string; at: number }[] = [];
     page.on("request", (request) => {
-        const path = new URL(request.url()).pathname;
-        if (request.method() === "GET" && /\/submissions\/sub_[0-9a-f]{32}$/u.test(path)) {
+        const url = new URL(request.url());
+        const path = url.pathname;
+        if (
+            url.origin === ACR &&
+            request.method() === "GET" &&
+            /\/submissions\/sub_[0-9a-f]{32}$/u.test(path)
+        ) {
             reads.push({ path, at: Date.now() });
         }
     });
@@ -204,8 +209,11 @@ async function withProxy(
     try {
         await body(proxy);
     } finally {
-        await report(testInfo, "proxy", { fault: proxy.mode, exchanges: proxy.record() });
-        await proxy.close();
+        try {
+            await report(testInfo, "proxy", { fault: proxy.mode, exchanges: proxy.record() });
+        } finally {
+            await proxy.close();
+        }
     }
 }
 
