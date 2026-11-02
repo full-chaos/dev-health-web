@@ -21,8 +21,8 @@ importers:
   .:
     dependencies:
       '@full-chaos/ask-dev':
-        specifier: github:full-chaos/ask-dev#f9a7a56c0ff762ee78ec54b4ab1a26872b5c3589
-        version: https://codeload.github.com/full-chaos/ask-dev/tar.gz/f9a7a56c0ff762ee78ec54b4ab1a26872b5c3589(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)
+        specifier: github:full-chaos/ask-dev#f95eca63c77fc1042082cf7cb9baa77cdde38ebf
+        version: https://codeload.github.com/full-chaos/ask-dev/tar.gz/f95eca63c77fc1042082cf7cb9baa77cdde38ebf(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)
       '@sentry/nextjs':
         specifier: ^11.7.0
         version: 11.7.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(webpack@5.105.4(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.30))
@@ -606,8 +606,8 @@ packages:
   '@fastify/busboy@3.2.3':
     resolution: {integrity: sha512-fmo/IKgkenPzz3qTKG+sIUXdF/Kv83AkvvOXJHPTHJeKJbat8SsL1ihUaFaDotqoEl4UZ1Lf8Eb/3vK6eaWX2A==}
 
-  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/f9a7a56c0ff762ee78ec54b4ab1a26872b5c3589':
-    resolution: {gitHosted: true, integrity: sha512-eQRN42sLBpFB27MlhHU5BjQZgnJMlrXjCH0urXYBfG1GFcNzkBbXqnEyxWq6LzeyT0h2Oel+xZZ//IPQnOlTEg==, tarball: https://codeload.github.com/full-chaos/ask-dev/tar.gz/f9a7a56c0ff762ee78ec54b4ab1a26872b5c3589}
+  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/f95eca63c77fc1042082cf7cb9baa77cdde38ebf':
+    resolution: {gitHosted: true, integrity: sha512-yKgLgqtF2ANn2SRYfuiZuQfWFzZaTgPhQLc3QoKJjnS2x/ibE9PWEMMwezTgZeHHLDmJDV9y1CtxR7hpmunzxw==, tarball: https://codeload.github.com/full-chaos/ask-dev/tar.gz/f95eca63c77fc1042082cf7cb9baa77cdde38ebf}
     version: 0.0.0
     engines: {node: '>=22'}
 
@@ -6010,7 +6010,7 @@ snapshots:
 
   '@fastify/busboy@3.2.3': {}
 
-  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/f9a7a56c0ff762ee78ec54b4ab1a26872b5c3589(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)':
+  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/f95eca63c77fc1042082cf7cb9baa77cdde38ebf(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)':
     dependencies:
       '@openuidev/react-lang': 0.2.11(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
       ajv: 8.20.0
