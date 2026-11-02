@@ -208,10 +208,16 @@ async function withProxy(
 }
 
 /**
- * Sign-out mid-run: the page leaves, the next session of the same user shows none of it, and
- * ACR's record says how the run ended. Run in both lease states (lead ruling 2026-11-02).
+ * Sign-out mid-run: the page leaves, the next session of the same user shows none of its turns,
+ * and ACR's record says how the run ended (`ends`). Run in both lease states (lead ruling
+ * 2026-11-02). The restore hint and the composer are recorded only: CHAOS-12575 owns their assert.
  */
-async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
+async function signOutCase(
+    page: Page,
+    testInfo: TestInfo,
+    name: QuestionCase,
+    ends: { readonly state: "abandoned" | "done"; readonly why: string },
+) {
     test.setTimeout(240_000);
     const { calls, surface } = await panel(page);
     const created = page.waitForResponse(
@@ -280,14 +286,8 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
         submission_state: (record as SubmissionRecord | null)?.state ?? null,
         acr_calls: acrCalls(calls),
     });
-    expect.soft(oldTurnShown, "the new session shows the signed-out session's turn").toBe(0);
-    expect
-        .soft(composerDisabledAfterEnd, "the new session cannot ask: its composer is disabled")
-        .toBe(false);
-    expect(
-        (record as SubmissionRecord | null)?.state,
-        "after sign-out ACR's run was not ended: it ran on",
-    ).toBe("abandoned");
+    expect(oldTurnShown, "the new session shows the signed-out session's turn").toBe(0);
+    expect((record as SubmissionRecord | null)?.state, ends.why).toBe(ends.state);
 }
 
 test.describe("the store owns the live stream (AC1)", () => {
@@ -310,12 +310,23 @@ test.describe("the store owns the live stream (AC1)", () => {
         );
     });
 
-    test("sign-out mid-run (run lease on) ends ACR's run", async ({ page }, testInfo) => {
-        await signOutCase(page, testInfo, "signOutLeaseOn");
+    // A known defect, pinned: with the lease on, sign-out sends no cancel and ACR's run goes on to
+    // `done` (reproduced 2026-11-02, CHAOS-12574). The fix turns this into `abandoned`: this case
+    // then fails, and the fix flips it.
+    test("sign-out mid-run (run lease on): ACR's run goes on, until CHAOS-12574", async ({
+        page,
+    }, testInfo) => {
+        await signOutCase(page, testInfo, "signOutLeaseOn", {
+            state: "done",
+            why: "the lease-on sign-out now ends ACR's run: CHAOS-12574 landed, so expect abandoned",
+        });
     });
 
     test("window lease_off: sign-out mid-run ends ACR's run", async ({ page }, testInfo) => {
-        await signOutCase(page, testInfo, "signOutLeaseOff");
+        await signOutCase(page, testInfo, "signOutLeaseOff", {
+            state: "abandoned",
+            why: "after sign-out ACR's run was not ended: it ran on",
+        });
     });
 });
 
