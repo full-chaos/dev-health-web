@@ -290,8 +290,8 @@ run_access_token_corpus() {
     echo "WEB_OPS_CONTRACT_ROOT must name the pinned ops contract checkout." >&2
     return 1
   fi
-  echo "==> vitest access-token corpus (${WEB_OPS_CONTRACT_ROOT})"
-  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken
+  echo "==> vitest access-token and authorization corpus (${WEB_OPS_CONTRACT_ROOT})"
+  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize
 }
 
 run_e2e() {
