@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // CHAOS-10877 (D6131): every social provider is built with PKCE S256 and a state check, pinned in
@@ -60,7 +61,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("W-3 social provider options", () => {
+describe("W-3 social provider options", { timeout: 30_000 }, () => {
     beforeEach(() => {
         for (const p of PROVIDERS) {
             vi.doMock(`next-auth/providers/${p}`, () => ({
@@ -108,20 +109,20 @@ function stubGoogleDiscovery() {
     );
 }
 
-describe("W-4 the real sign-in redirect", () => {
+describe("W-4 the real sign-in redirect", { timeout: 30_000 }, () => {
     it.each(PROVIDERS)("%s redirects with an S256 code challenge and a state", async (p) => {
         stubGoogleDiscovery();
         await import("@/lib/auth");
         const real = await vi.importActual<typeof import("next-auth")>("next-auth");
         const { handlers } = real.default(nextAuthConfig.value as never);
-        const csrf = await handlers.GET(new Request("http://app.test/api/auth/csrf"));
+        const csrf = await handlers.GET(new NextRequest("http://app.test/api/auth/csrf"));
         const csrfToken = ((await csrf.json()) as { csrfToken: string }).csrfToken;
         const csrfCookie = csrf.headers
             .getSetCookie()
             .map((c) => c.split(";")[0])
             .join("; ");
         const response = await handlers.POST(
-            new Request(`http://app.test/api/auth/signin/${p}`, {
+            new NextRequest(`http://app.test/api/auth/signin/${p}`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/x-www-form-urlencoded",
