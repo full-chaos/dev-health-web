@@ -190,6 +190,25 @@ export const panelChrome = (panel: Locator): Promise<string> =>
 /** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
 export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";
 
+/**
+ * The surface a case asks from: the panel, authorized, with an empty composer. Shared by the
+ * routed and the terminal cases: a spec file cannot import another.
+ */
+export async function panel(page: Page): Promise<{ calls: AcrCall[]; surface: Locator }> {
+    const calls = watchAcr(page);
+    await authorize(page);
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    const surface = page.getByTestId("ask-dev-panel");
+    await expect(surface.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+    return { calls, surface };
+}
+
+export async function ask(surface: Locator, question: string): Promise<void> {
+    const input = surface.getByRole("textbox", { name: "Ask a question" });
+    await input.fill(question);
+    await input.press("Enter");
+}
+
 export const references = (surface: ReturnType<Page["getByTestId"]>) =>
     surface.locator("button.evidence-ref--open:visible");
 

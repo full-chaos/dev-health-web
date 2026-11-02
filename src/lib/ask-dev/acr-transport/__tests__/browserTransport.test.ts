@@ -544,6 +544,33 @@ describe("investigate: refusals", () => {
         expect(refusal.error.error.code).toBe("submission_in_progress");
     });
 
+    // The lead's ruling: ACR writes `Retry-After` as whole seconds only. Any other form, an
+    // HTTP-date among them, is no value: there is no date parser.
+    it.each([
+        ["whole seconds", "7", 7],
+        ["whole seconds with spaces", " 7 ", 7],
+        ["an HTTP-date", "Wed, 21 Oct 2026 07:28:00 GMT", undefined],
+        ["a fraction", "1.5", undefined],
+        ["a negative value", "-3", undefined],
+        ["an empty value", "", undefined],
+        ["seven digits", "1234567", undefined],
+        ["a unit", "7s", undefined],
+        ["no header", undefined, undefined],
+    ] as const)("a 429 with Retry-After as %s (%j) gives %s", async (_, header, seconds) => {
+        fetchMock.mockResolvedValue(
+            jsonResponse(
+                errorEnvelope("concurrency_limited", 429),
+                429,
+                header === undefined ? {} : { "Retry-After": header },
+            ),
+        );
+        const refusal = await collect(transport().investigate(call())).catch((error) => error);
+        expect(refusal).toBeInstanceOf(TransportRefusal);
+        expect(refusal.status).toBe(429);
+        expect(refusal.error.error.code).toBe("concurrency_limited");
+        expect(refusal.retryAfterSeconds).toBe(seconds);
+    });
+
     it("a refusal with no error body is a dropped call (the store recovers it)", async () => {
         fetchMock.mockResolvedValue(new Response("upstream down", { status: 503 }));
         const error = await collect(transport().investigate(call())).catch((e) => e);
