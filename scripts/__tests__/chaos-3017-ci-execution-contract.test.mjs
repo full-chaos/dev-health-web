@@ -70,7 +70,7 @@ const DEDICATED_E2E = [
     ["e2e-onboarding", "e2e-onboarding"],
 ];
 const E2E_HARNESS_CASES = [
-    ...["1/3", "2/3", "3/3"].map((shard) => ({
+    ...["1/5", "2/5", "3/5", "4/5", "5/5"].map((shard) => ({
         args: ["e2e-default", shard],
         expectedCommand: `test:e2e --shard ${shard}`,
         failScript: "test:e2e",
@@ -202,10 +202,10 @@ describe("CHAOS-3017 executable CI boundaries", () => {
         expect(scripts["test:e2e:context-fabric"]).toBe("node scripts/context-fabric-qa.mjs");
 
         const defaultJob = job(workflow, "e2e-default");
-        const defaultCommand = "bash ci/run_tests.sh e2e-default ${{ matrix.shard }}/3";
+        const defaultCommand = "bash ci/run_tests.sh e2e-default ${{ matrix.shard }}/5";
         expect(defaultJob).not.toContain("continue-on-error:");
         expect(runStep(defaultJob, defaultCommand)).toBe(`            - run: ${defaultCommand}`);
-        expect(matrixShardLabels(defaultJob)).toEqual(["1/3", "2/3", "3/3"]);
+        expect(matrixShardLabels(defaultJob)).toEqual(["1/5", "2/5", "3/5", "4/5", "5/5"]);
 
         for (const [jobId, tier] of DEDICATED_E2E) {
             const workflowCommand = `bash ci/run_tests.sh ${tier}`;

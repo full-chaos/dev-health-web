@@ -19,6 +19,11 @@ import {
 } from "./chaos-3017-ci-contract-helpers.mjs";
 
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
+// One `--list` per shard plus one for the whole suite, run one after another. Measured at 1 to
+// 3.5 s each on a loaded machine and in a review sandbox (CHAOS-12583), so the limit grows with the
+// matrix instead of staying fixed for three shards.
+const DEFAULT_SHARD_LIST_TIMEOUT_MS =
+    (matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default")).length + 1) * 8_000;
 const STATIC_WORKFLOW = path.join(ROOT, ".github/workflows/build-static.yml");
 const BUILD_WORKFLOW = path.join(ROOT, ".github/workflows/build.yml");
 const DOCKER_WORKFLOW = path.join(ROOT, ".github/workflows/build-docker.yml");
@@ -73,16 +78,16 @@ describe("CHAOS-3017 CI contracts", () => {
         },
     );
 
-    it("fans default E2E into three independent shards and dedicated suites", () => {
+    it("fans default E2E into five independent shards and dedicated suites", () => {
         const workflow = contents(TESTS_WORKFLOW);
         const defaultE2e = job(workflow, "e2e-default");
 
         expect(defaultE2e).toMatch(/fail-fast: false/);
-        expect(matrixShardLabels(defaultE2e)).toEqual(["1/3", "2/3", "3/3"]);
+        expect(matrixShardLabels(defaultE2e)).toEqual(["1/5", "2/5", "3/5", "4/5", "5/5"]);
         expect(defaultE2e).not.toMatch(/^\s+(?:exclude|include):/mu);
         expect(defaultE2e).toMatch(/^        if: needs\.changes\.outputs\.e2e == 'true'$/mu);
         expect(defaultE2e).toMatch(
-            /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
+            /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/5$/mu,
         );
         // Route-stress suites and Context Fabric share the onboarding runner
         // (GitHub concurrency limits); all suites must still run, in one job.
@@ -111,48 +116,63 @@ describe("CHAOS-3017 CI contracts", () => {
         );
     });
 
-    it("keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies", async () => {
-        const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
-        // Each Playwright process uses the report and result paths from the shared
-        // config. Listing them concurrently makes those processes race while the
-        // broader Vitest suite is also active, producing incomplete inventories.
-        const full = await listDefaultPlaywrightTests();
-        expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
-        expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
-        const shards = [];
-        for (const shard of shardLabels) {
-            shards.push(await listDefaultPlaywrightTests(shard));
-        }
+    it(
+        "keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies",
+        async () => {
+            const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
+            // Each Playwright process uses the report and result paths from the shared
+            // config. Listing them concurrently makes those processes race while the
+            // broader Vitest suite is also active, producing incomplete inventories.
+            const full = await listDefaultPlaywrightTests();
+            expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
+            expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
+            const shards = [];
+            for (const shard of shardLabels) {
+                shards.push(await listDefaultPlaywrightTests(shard));
+            }
 
-        expect(full.length).toBeGreaterThan(0);
-        expect(new Set(full).size).toBe(full.length);
-        for (const shard of shards) {
-            expect(shard.length).toBeGreaterThan(0);
-            expect(new Set(shard).size).toBe(shard.length);
-        }
+            expect(full.length).toBeGreaterThan(0);
+            expect(new Set(full).size).toBe(full.length);
+            for (const shard of shards) {
+                expect(shard.length).toBeGreaterThan(0);
+                expect(new Set(shard).size).toBe(shard.length);
+            }
 
-        // Dependency projects run whole in each shard: the sign-in, and the
-        // CHAOS-8538 logo canary that gates the `authenticated` project.
-        const setupProjects = ["auth-setup", "shell-logo-canary"];
-        const setup = full.filter((entry) =>
-            setupProjects.some((project) => entry.startsWith(`[${project}] › `)),
-        );
-        const setupSet = new Set(setup);
-        for (const project of setupProjects) {
-            expect(
-                setup.filter((entry) => entry.startsWith(`[${project}] › `)).length,
-            ).toBeGreaterThan(0);
-        }
-        for (const shard of shards) {
-            expect(shard.filter((entry) => setupSet.has(entry))).toEqual(setup);
-        }
+            // Dependency projects run whole in each shard: the sign-in, and the
+            // CHAOS-8538 logo canary that gates the `authenticated` project.
+            const setupProjects = ["auth-setup", "shell-logo-canary"];
+            const setup = full.filter((entry) =>
+                setupProjects.some((project) => entry.startsWith(`[${project}] › `)),
+            );
+            const setupSet = new Set(setup);
+            for (const project of setupProjects) {
+                expect(
+                    setup.filter((entry) => entry.startsWith(`[${project}] › `)).length,
+                ).toBeGreaterThan(0);
+            }
+            for (const shard of shards) {
+                expect(shard.filter((entry) => setupSet.has(entry))).toEqual(setup);
+            }
 
-        const payloads = shards.map((shard) => shard.filter((entry) => !setupSet.has(entry)));
-        expect(intersection(payloads[0], payloads[1])).toEqual([]);
-        expect(intersection(payloads[0], payloads[2])).toEqual([]);
-        expect(intersection(payloads[1], payloads[2])).toEqual([]);
-        expect(new Set(shards.flat())).toEqual(new Set(full));
-    }, 20_000);
+            const payloads = shards.map((shard) => shard.filter((entry) => !setupSet.has(entry)));
+            // Every pair of shards, whatever the matrix holds (CHAOS-12583: a fixed three-pair check
+            // missed a test doubled into a fourth or fifth shard).
+            for (let first = 0; first < payloads.length; first += 1) {
+                for (let second = first + 1; second < payloads.length; second += 1) {
+                    expect(
+                        intersection(payloads[first], payloads[second]),
+                        `shards ${first + 1} and ${second + 1}`,
+                    ).toEqual([]);
+                }
+            }
+            // And within one shard, each test once.
+            for (const payload of payloads) {
+                expect(new Set(payload).size).toBe(payload.length);
+            }
+            expect(new Set(shards.flat())).toEqual(new Set(full));
+        },
+        DEFAULT_SHARD_LIST_TIMEOUT_MS,
+    );
 
     it("isolates E2E artifacts by suite and shard", () => {
         const workflow = contents(TESTS_WORKFLOW);
