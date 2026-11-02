@@ -548,6 +548,19 @@ describe("impersonation refusal by state", () => {
         expect(observed.acrClaims).toHaveLength(0);
     });
 
+    it("Given an EdDSA Ops token whose act names the impersonator, when previewing, then the consent is refused", async () => {
+        authenticate({}, { act: { sub: "prn_AAAAAAAAAAAAAAAAAAAAAA" }, sid: SERVER_SID });
+        const observed = installOps({ impersonating: false });
+        installAcr(observed);
+
+        await expect(
+            previewOAuthConsent({ handle: HANDLE, signal: signal() }),
+        ).rejects.toMatchObject({
+            code: acrRuntimeErrorCodes.notEntitled,
+        });
+        expect(observed.acrClaims).toHaveLength(0);
+    });
+
     it("Given the Ops status read fails, when approving, then the consent fails closed and ACR is never called", async () => {
         const observed = installOps({ statusCode: 503 });
         installAcr(observed);
