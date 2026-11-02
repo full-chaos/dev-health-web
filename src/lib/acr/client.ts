@@ -133,15 +133,20 @@ export type OAuthConsentPreview = {
 
 const oauthConsentDecisionResponseSchema = z.object({ redirect_url: z.string().min(1) }).strict();
 
-/** ACR's answer to `GET /authorize`: never read past its status and these two headers. */
+/** ACR's answer to an authorize: never read past its status and these two headers. */
 export type OAuthAuthorizeAnswer = {
     readonly status: number;
     readonly location: string | null;
     readonly retryAfterSeconds?: number | undefined;
 };
 
-/** ACR's OAuth authorization endpoint. It takes no web assertion: a request names its client. */
-const OAUTH_AUTHORIZE_PATH = "/authorize";
+/**
+ * ACR's signed first-party authorize (CHAOS-12568, CHAOS-12569): the same authorize as
+ * `GET /authorize`, for the first-party browser client only, limited per user rather than per
+ * source. Every user's silent authorize leaves this server from one address, so `GET /authorize`
+ * would put them all in one budget.
+ */
+const OAUTH_AUTHORIZE_FIRST_PARTY_PATH = "/authorize/first-party";
 
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
@@ -433,31 +438,48 @@ export class AcrRuntimeClient {
     }
 
     /**
-     * ACR's `GET /authorize`, server to server (CHAOS-12474), on this server's ACR origin like every
-     * call here, which need not be the public issuer. `redirect: "manual"`: a 302 is a handle for
-     * this server to read, and a 303 is a refusal to read. Neither is ever followed, and no cookie
-     * goes. A wire failure is an {@link AcrRuntimeError}.
+     * ACR's `POST /authorize/first-party` (CHAOS-12568, CHAOS-12569), server to server
+     * (CHAOS-12474), on this server's ACR origin like every call here, which need not be the public
+     * issuer. The parameters go in an `application/x-www-form-urlencoded` body with this server's
+     * web assertion over exactly that body: ACR limits it per user, not per source, so one user's
+     * tabs never spend another user's budget. No query string, no `Authorization` and no cookie.
+     * `redirect: "manual"`: a 302 is a handle for this server to read, and a 303 is a refusal to
+     * read. Neither is ever followed. A wire failure is an {@link AcrRuntimeError}.
      */
-    async oauthAuthorize(input: {
-        readonly query: Readonly<Record<string, string>>;
+    async oauthAuthorizeFirstParty(input: {
+        readonly authorization: OpsAuthorization;
+        readonly params: Readonly<Record<string, string>>;
         readonly signal: AbortSignal;
     }): Promise<OAuthAuthorizeAnswer> {
-        const url = clientUrl(this.config, OAUTH_AUTHORIZE_PATH);
-        for (const [name, value] of Object.entries(input.query)) {
-            url.searchParams.set(name, value);
-        }
+        const body = new URLSearchParams(Object.entries(input.params)).toString();
         const timeoutSignal = AbortSignal.timeout(this.config.timeoutMs);
         let response: Response;
         try {
-            response = await fetch(url, {
+            response = await fetch(clientUrl(this.config, OAUTH_AUTHORIZE_FIRST_PARTY_PATH), {
+                body,
                 cache: "no-store",
                 credentials: "omit",
                 headers: {
                     "Cache-Control": "no-store",
+                    "Content-Type": "application/x-www-form-urlencoded",
                     "X-ACR-Client-Version": "0.1.0",
+                    "X-ACR-Web-Assertion": signWebAssertion({
+                        body,
+                        config: this.config,
+                        method: "POST",
+                        orgId: input.authorization.orgId,
+                        path: OAUTH_AUTHORIZE_FIRST_PARTY_PATH,
+                        permissions: ["credential:issue"],
+                        privateKey: this.config.privateKey,
+                        ...(input.authorization.provenance !== undefined
+                            ? { provenance: input.authorization.provenance }
+                            : {}),
+                        repositoryScopes: input.authorization.repositoryScopes,
+                        subject: input.authorization.subject,
+                    }),
                     "X-Request-ID": randomUUID(),
                 },
-                method: "GET",
+                method: "POST",
                 redirect: "manual",
                 signal: AbortSignal.any([input.signal, timeoutSignal]),
             });

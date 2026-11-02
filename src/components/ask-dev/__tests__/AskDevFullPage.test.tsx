@@ -73,11 +73,10 @@ import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import {
     AskDevConversationProvider,
     partitionTag,
-    UNSAVED_CONVERSATION_KEY,
-    UNSAVED_THREAD_KEY,
     useAskDevNotSaved,
 } from "../conversation/AskDevConversationContext";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
+import { UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY } from "@/lib/ask-dev/conversationHint";
 import type { AskDevTransport, ThreadView } from "../conversation/transport";
 import {
     accepted,

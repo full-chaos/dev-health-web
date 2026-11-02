@@ -1,10 +1,11 @@
 // CHAOS-12474 (ruling on the design amendment): `POST /api/ask-dev/authorize` runs ACR's
-// `/authorize` from the signed-in session. No mock stands between the route and the wire: the real
+// authorize from the signed-in session; since CHAOS-12569 that is the signed
+// `POST /authorize/first-party`, which ACR limits per user. No mock stands between the route and the wire: the real
 // service, client and Ops reads run with the real `fetch` against a stub of ACR and Ops on a
 // loopback port, so "no ACR call", "a redirect is not followed" and "over plain http" are observed
 // on the wire. The stub answers on `ACR_API_ORIGIN`; the public issuer is another name, so a call
 // that went to the issuer would not reach it.
-import { generateKeyPairSync } from "node:crypto";
+import { createHash, generateKeyPairSync, type KeyObject, verify } from "node:crypto";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -87,6 +88,12 @@ let server: Server;
 let origin: string;
 let hits: Hit[];
 let keyDirectory: string;
+/** The web assertion key's public half: the stub checks every signed call as ACR's wrapper does. */
+let signingPublicKey: KeyObject;
+/** The key the stub checks with: the signing key's, unless a test plants another. */
+let publicKey: KeyObject;
+/** ACR's authorize counts this minute, by ACR's own keys (see `limited`). */
+let acrAuthorizeCounts: Map<string, number>;
 /** What the stub answers for ACR's `/authorize`, its preview, its approve and Ops' status. */
 let authorizeAnswer: () => Answer;
 let previewAnswer: () => Answer;
@@ -105,9 +112,58 @@ function answer(response: ServerResponse, { status, headers, body }: Answer): vo
     response.end(body === undefined ? "" : JSON.stringify(body));
 }
 
+const FIRST_PARTY = "/authorize/first-party";
+/** ACR's `deviceCreationLimit`: the authorizes one key may make in a minute (CHAOS-12156). */
+const ACR_AUTHORIZE_LIMIT = 10;
+
+/**
+ * The claims of a signed call, checked as ACR's assertion wrapper checks them: the signature, and
+ * the digest of the exact body. `null` for a call with no valid assertion.
+ */
+function assertionOf(hit: Hit): Record<string, unknown> | null {
+    const value = hit.headers["x-acr-web-assertion"];
+    if (typeof value !== "string") return null;
+    const [header, payload, signature] = value.split(".");
+    if (!header || !payload || !signature) return null;
+    if (
+        !verify(
+            null,
+            Buffer.from(`${header}.${payload}`),
+            publicKey,
+            Buffer.from(signature, "base64url"),
+        )
+    ) {
+        return null;
+    }
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<
+        string,
+        unknown
+    >;
+    const digest = createHash("sha256").update(hit.body, "utf8").digest("base64url");
+    return claims.body_sha256 === digest ? claims : null;
+}
+
+/**
+ * ACR's two authorize limits, by ACR's keys: `GET /authorize` per source (every call of this file
+ * comes from one loopback address, as every user's call comes from web's), and the first-party
+ * authorize per assertion user (CHAOS-12568). The 11th in a key is a 429.
+ */
+function limited(key: string): Answer | undefined {
+    const count = (acrAuthorizeCounts.get(key) ?? 0) + 1;
+    acrAuthorizeCounts.set(key, count);
+    return count > ACR_AUTHORIZE_LIMIT
+        ? { status: 429, headers: { "Retry-After": "60" }, body: { error: "slow_down" } }
+        : undefined;
+}
+
 function route(hit: Hit): Answer {
     const { pathname } = hit.url;
-    if (pathname === "/authorize") return authorizeAnswer();
+    if (pathname === "/authorize") return limited("source") ?? authorizeAnswer();
+    if (pathname === FIRST_PARTY) {
+        const claims = assertionOf(hit);
+        if (claims === null) return { status: 401, body: { error: "invalid_token" } };
+        return limited(`user:${String(claims.sub)}`) ?? authorizeAnswer();
+    }
     if (pathname === "/authorize/consent") {
         const { action } = JSON.parse(hit.body) as { action: string };
         return action === "preview" ? previewAnswer() : approveAnswer();
@@ -142,7 +198,7 @@ function post(body: unknown = { code_challenge: CHALLENGE, state: STATE }, from 
 }
 
 const hitsOf = (pathname: string) => hits.filter((hit) => hit.url.pathname === pathname);
-const authorizeHits = () => hitsOf("/authorize");
+const authorizeHits = () => hitsOf(FIRST_PARTY);
 const consentActions = () =>
     hitsOf("/authorize/consent").map(
         (hit) => (JSON.parse(hit.body) as { action: string; handle: string }).action,
@@ -168,6 +224,7 @@ beforeAll(async () => {
     keyDirectory = mkdtempSync(join(tmpdir(), "ask-dev-authorize-"));
     const keyFile = join(keyDirectory, "web-assertion.key");
     const pair = generateKeyPairSync("ed25519");
+    signingPublicKey = pair.publicKey;
     writeFileSync(keyFile, pair.privateKey.export({ format: "pem", type: "pkcs8" }));
     chmodSync(keyFile, 0o600);
     vi.stubEnv("ACR_WEB_ASSERTION_KEY_FILE", keyFile);
@@ -181,6 +238,8 @@ afterAll(async () => {
 
 beforeEach(() => {
     hits = [];
+    acrAuthorizeCounts = new Map();
+    publicKey = signingPublicKey;
     redis.counts.clear();
     redis.up = true;
     vi.stubEnv("ACR_API_ORIGIN", origin);
@@ -218,7 +277,7 @@ afterEach(() => {
 });
 
 describe("POST /api/ask-dev/authorize", () => {
-    it("runs /authorize from the session and answers the code, state and iss", async () => {
+    it("runs the authorize from the session and answers the code, state and iss", async () => {
         const response = await POST(post());
         expect(response.status).toBe(200);
         expect(response.headers.get("cache-control")).toBe("no-store");
@@ -229,8 +288,10 @@ describe("POST /api/ask-dev/authorize", () => {
     it("sends ACR what the existing browser path sends, from its own config, over http", async () => {
         await POST(post());
         const [hit] = authorizeHits();
-        expect(hit?.method).toBe("GET");
-        expect(Object.fromEntries(hit?.url.searchParams ?? [])).toEqual({
+        expect(hit?.method).toBe("POST");
+        expect(hit?.headers["content-type"]).toBe("application/x-www-form-urlencoded");
+        expect(hit?.url.search).toBe("");
+        expect(Object.fromEntries(new URLSearchParams(hit?.body ?? ""))).toEqual({
             response_type: "code",
             client_id: "https://localhost/acr/dev-browser-client",
             redirect_uri: `${WEB}${ACR_OAUTH_CALLBACK_PATH}`,
@@ -242,12 +303,26 @@ describe("POST /api/ask-dev/authorize", () => {
         });
     });
 
-    it("sends no cookie and no web credential to /authorize", async () => {
+    it("uses the signed first-party authorize only, never GET /authorize (CHAOS-12569)", async () => {
+        await POST(post());
+        expect(authorizeHits()).toHaveLength(1);
+        expect(hitsOf("/authorize")).toEqual([]);
+    });
+
+    it("signs the authorize for the session's user, org-wide, over its exact body, with no cookie or bearer", async () => {
         await POST(post());
         const [hit] = authorizeHits();
         expect(hit?.headers.cookie).toBeUndefined();
         expect(hit?.headers.authorization).toBeUndefined();
-        expect(hit?.headers["x-acr-web-assertion"]).toBeUndefined();
+        const claims = hit === undefined ? null : assertionOf(hit);
+        expect(claims).toMatchObject({
+            method: "POST",
+            org_id: "org-123",
+            path: FIRST_PARTY,
+            permissions: ["credential:issue"],
+            repository_scopes: ["*"],
+            sub: "user-123",
+        });
     });
 
     it("gives the handle from ACR's Location to the consent step, and no other", async () => {
@@ -387,7 +462,7 @@ describe("a session that fails the 60 s validation during the attempt", () => {
     });
 });
 
-describe("ACR's answer to /authorize", () => {
+describe("ACR's answer to the authorize", () => {
     it("never follows a refusal redirect: a 303 is a named failure", async () => {
         authorizeAnswer = () => ({
             status: 303,
@@ -547,6 +622,28 @@ describe("the consent step", () => {
         expect(response.status).toBe(502);
         expect(await response.json()).toEqual({ error: { code: "acr_refused" } });
         expect(consentActions()).toEqual(["preview"]);
+    });
+});
+
+describe("ACR's limit is each user's own (CHAOS-12569)", () => {
+    const USERS = ACR_AUTHORIZE_LIMIT + 1;
+
+    it("more users than ACR's limit, in one minute, each get a code", async () => {
+        for (let user = 0; user < USERS; user += 1) {
+            signIn({ id: `user-${String(user)}` });
+            const response = await POST(post());
+            expect(response.status, `user ${String(user)}`).toBe(200);
+            expect(await response.json()).toEqual({ code: CODE, state: STATE, iss: ISSUER });
+        }
+        const subjects = authorizeHits().map((hit) => assertionOf(hit)?.sub);
+        expect(new Set(subjects).size).toBe(USERS);
+    });
+
+    it("the stub checks the assertion: one it cannot verify gets no handle", async () => {
+        publicKey = generateKeyPairSync("ed25519").publicKey;
+        const response = await POST(post());
+        expect(response.status).not.toBe(200);
+        expect(consentActions()).toEqual([]);
     });
 });
 
