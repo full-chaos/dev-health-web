@@ -143,7 +143,7 @@ async function acrRead<T>(from: AcrCall, path: string): Promise<{ status: number
 type ThreadRecord = { turn_count: number; turns: { submission_id: string; result_id?: string }[] };
 type SubmissionRecord = { state: string; result_id?: string };
 
-/** conversationStore.ts `THREAD_HINT_KEY`: this tab's restore hint, in session storage. */
+/** `lib/ask-dev/conversationHint.ts` `THREAD_HINT_KEY`: this tab's restore hint. */
 const THREAD_HINT_KEY = "ask-dev:thread";
 
 const statusPath = (submission: string) => `${INVESTIGATIONS_PATH}/submissions/${submission}`;
@@ -220,7 +220,8 @@ async function withProxy(
 /**
  * Sign-out mid-run: the page leaves, the next session of the same user shows none of its turns,
  * and ACR's record says how the run ended (`ends`). Run in both lease states (lead ruling
- * 2026-11-02). The restore hint and the composer are recorded only: CHAOS-12575 owns their assert.
+ * 2026-11-02). Sign-out forgets the tab's restore hint, so the new session can ask at once
+ * (CHAOS-12575: left in place, it restored a conversation it could not read, composer disabled).
  */
 async function signOutCase(
     page: Page,
@@ -303,6 +304,10 @@ async function signOutCase(
         [oldTurnShown, oldTurnShownAfterEnd],
         "the new session shows the signed-out session's turn",
     ).toEqual([0, 0]);
+    expect(hintAfterSignOut, "sign-out left the tab's restore hint").toBe(false);
+    expect(composerDisabledAfterEnd, "the new session cannot ask: its composer is disabled").toBe(
+        false,
+    );
     expect((record as SubmissionRecord | null)?.state, ends.why).toBe(ends.state);
 }
 
