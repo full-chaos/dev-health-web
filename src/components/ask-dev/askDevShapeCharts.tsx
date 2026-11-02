@@ -3,10 +3,13 @@
 import type { RenderShape, ShapeSlot } from "@full-chaos/ask-dev/render";
 import dynamic from "next/dynamic";
 
+import { completionRangeView } from "@/components/capacity/completionRangeView";
 import { usePrefersReducedMotion } from "@/lib/a11y/usePrefersReducedMotion";
 import { buildTooltipHtml } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
 import type { QuadrantPoint, QuadrantResponse, SankeyLink, SankeyNode } from "@/lib/types";
+
+import { forecastSlotInput, type ForecastShapeDetail } from "./forecastSlotInput";
 
 /** On demand: an answer with no rich shape loads no chart. */
 const TreemapChart = dynamic(
@@ -23,6 +26,12 @@ const SankeyChart = dynamic(
 /** On demand, as the treemap: an answer with no quadrant loads no quadrant module. */
 const QuadrantChart = dynamic(
     async () => (await import("@/components/charts/QuadrantChart")).QuadrantChart,
+    { ssr: false },
+);
+
+/** On demand, as the treemap: the capacity page's own figure, chart and words (CHAOS-4613). */
+const CompletionRangeFigure = dynamic(
+    async () => (await import("@/components/capacity/CompletionRange")).CompletionRangeFigure,
     { ssr: false },
 );
 
@@ -232,7 +241,13 @@ function AskDevQuadrant({ data }: { readonly data: QuadrantResponse }) {
  * gets `null`, never an element that draws nothing, because ask-dev shows its value table only for
  * `null` (CHAOS-12538).
  */
-export const askDevShapeChart: ShapeSlot = (shape) => {
+export const askDevShapeChart: ShapeSlot = (shape, detail?: ForecastShapeDetail) => {
+    if (shape.kind === "forecast") {
+        // The capacity page's mapping, through the slot's own adapter: one copy of the rules.
+        if (detail?.kind !== "forecast") return null;
+        const view = completionRangeView(forecastSlotInput(detail));
+        return view.reported ? <CompletionRangeFigure interpolation="step" view={view} /> : null;
+    }
     if (shape.kind === "quadrant") {
         // A quadrant's two measures have two units, so it declares none (CHAOS-12623).
         if (shape.value_unit !== undefined) return null;
