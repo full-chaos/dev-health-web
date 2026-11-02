@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { usePrefersReducedMotion } from "@/lib/a11y/usePrefersReducedMotion";
 import { buildTooltipHtml } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
-import type { SankeyLink, SankeyNode } from "@/lib/types";
+import type { QuadrantPoint, QuadrantResponse, SankeyLink, SankeyNode } from "@/lib/types";
 
 /** On demand: an answer with no rich shape loads no chart. */
 const TreemapChart = dynamic(
@@ -20,7 +20,14 @@ const SankeyChart = dynamic(
     { ssr: false },
 );
 
+/** On demand, as the treemap: an answer with no quadrant loads no quadrant module. */
+const QuadrantChart = dynamic(
+    async () => (await import("@/components/charts/QuadrantChart")).QuadrantChart,
+    { ssr: false },
+);
+
 const TREEMAP_HEIGHT = 260;
+const QUADRANT_HEIGHT = 320;
 const SANKEY_HEIGHT = 360;
 
 /**
@@ -166,6 +173,59 @@ function AskDevSankey({
 }
 
 /**
+ * Where teams stand on two measures on one day, from a verified `landscape_position` shape
+ * (CHAOS-12625): series 0 is x and series 1 is y, a point is one team, labelled with its served
+ * word. The axes carry the served words, which hold the unit, so `unit` is empty. A point's id is
+ * its x claim's id. The values are the shape's own, unchanged. Null when the series cannot be read
+ * as one point per team: not two series, fewer than 2 points, a length or label mismatch, or a
+ * value that is not finite.
+ */
+function quadrantData(shape: RenderShape): QuadrantResponse | null {
+    const [x, y, ...more] = shape.series;
+    if (x === undefined || y === undefined || more.length > 0) return null;
+    if (x.points.length < 2 || x.points.length !== y.points.length) return null;
+    const points: QuadrantPoint[] = [];
+    for (const [index, xPoint] of x.points.entries()) {
+        const yPoint = y.points[index]!;
+        if (xPoint.label !== yPoint.label) return null;
+        if (!Number.isFinite(xPoint.value) || !Number.isFinite(yPoint.value)) return null;
+        points.push({
+            entity_id: xPoint.source.claim_id ?? xPoint.label,
+            entity_label: xPoint.label,
+            x: xPoint.value,
+            y: yPoint.value,
+            // QuadrantChart reads none of these: no window, no evidence link of its own.
+            window_start: "",
+            window_end: "",
+            evidence_link: "",
+        });
+    }
+    return {
+        axes: {
+            x: { metric: x.key, label: x.label, unit: "" },
+            y: { metric: y.key, label: y.label, unit: "" },
+        },
+        points,
+        annotations: [],
+    };
+}
+
+function AskDevQuadrant({ data }: { readonly data: QuadrantResponse }) {
+    const reduceMotion = usePrefersReducedMotion();
+    // Raw values only: no zones, no focus, no click action (the quadrant guardrail).
+    return (
+        <QuadrantChart
+            animation={!reduceMotion}
+            data={data}
+            height={QUADRANT_HEIGHT}
+            scopeType="team"
+            showClickHint={false}
+            verbatimEntityLabels
+        />
+    );
+}
+
+/**
  * ask-dev's `slots.shape`: maps a verified shape to the props of web's existing chart. It draws
  * nothing itself. Words come from the shape, and numbers from the shape: the formatters read each
  * tile's or link's own value, so the chart derives no percent from a total. A shape it cannot draw
@@ -173,6 +233,12 @@ function AskDevSankey({
  * `null` (CHAOS-12538).
  */
 export const askDevShapeChart: ShapeSlot = (shape) => {
+    if (shape.kind === "quadrant") {
+        // A quadrant's two measures have two units, so it declares none (CHAOS-12623).
+        if (shape.value_unit !== undefined) return null;
+        const data = quadrantData(shape);
+        return data === null ? null : <AskDevQuadrant data={data} />;
+    }
     if (shape.kind === "sankey") {
         // A sankey plots weighted effort, which has no unit (CHAOS-12578).
         if (shape.value_unit !== undefined) return null;
