@@ -568,16 +568,28 @@ describe("cancel for sign-out (CHAOS-12574)", () => {
         gate.resolve();
     });
 
-    it("a run ACR has not admitted: sends no cancel (dropping the stream is its cancel)", async () => {
+    // codex r1 on #1747: ACR may have admitted a run whose `accepted` this tab has not read yet.
+    it("a run whose accepted the tab has not read: still asks, and ACR's 404 is no failure", async () => {
         const store = makeStore();
         const gate = deferred();
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(404, acrError("not_found", 404, false)),
+        });
         transport.scripts.push([{ wait: gate.promise }, accepted(), resultEvent(PARTIAL)]);
         store.submit("Which projects are at risk?");
         await vi.waitFor(() => expect(transport.calls).toHaveLength(1));
 
         await store.cancelForSignOut(new AbortController().signal);
 
-        expect(transport.cancelCalls).toEqual([]);
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
+        expect(log.info).toHaveBeenCalledWith(
+            expect.objectContaining({ answer: "not_found" }),
+            "ask-dev sign-out cancel answered",
+        );
+        expect(log.warn).not.toHaveBeenCalledWith(
+            expect.anything(),
+            "ask-dev sign-out cancel not sent",
+        );
         gate.resolve();
     });
 
