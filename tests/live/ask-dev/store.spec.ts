@@ -8,6 +8,8 @@ import {
     type TestInfo,
 } from "@playwright/test";
 
+import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+
 import { startFaultProxy, type FaultMode, type FaultProxy } from "./fault-proxy";
 import { questionFor, type QuestionCase } from "./questions";
 import {
@@ -142,9 +144,6 @@ async function acrRead<T>(from: AcrCall, path: string): Promise<{ status: number
 
 type ThreadRecord = { turn_count: number; turns: { submission_id: string; result_id?: string }[] };
 type SubmissionRecord = { state: string; result_id?: string };
-
-/** `lib/ask-dev/conversationHint.ts` `THREAD_HINT_KEY`: this tab's restore hint. */
-const THREAD_HINT_KEY = "ask-dev:thread";
 
 const statusPath = (submission: string) => `${INVESTIGATIONS_PATH}/submissions/${submission}`;
 
