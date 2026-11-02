@@ -210,8 +210,8 @@ export async function startFaultProxy(target: string, mode: FaultMode): Promise<
             headers: { ...req.headers, host: acr.host },
             // A fresh connection: dropping it is what ends ACR's run.
             agent: false,
-            // Node names the TLS server from `Host` (never an IP); ACR's local CA is not trusted here.
-            ...(secure ? { rejectUnauthorized: false } : {}),
+            // Node names the TLS server from `Host` (never an IP) and checks ACR's certificate: a
+            // stack with its own CA runs the specs with NODE_EXTRA_CA_CERTS naming that CA.
         };
         const upstream = (secure ? https : http).request(options);
         upstreams.add(upstream);
