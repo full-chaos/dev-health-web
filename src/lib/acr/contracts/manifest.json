@@ -1,5 +1,5 @@
 {
-  "source_commit": "da2efe686952f2c9dadb340ef5783d3b21f6a2e7",
+  "source_commit": "7b0caff2273ea10eeb0a670ac965e8a4eac97916",
   "files": [
     {
       "path": "openapi/acr-v1.json",
@@ -59,11 +59,11 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "3e0b6835f7bee833cbe78f4399256cf9146d8108bded3c6ae021771650ced5a6"
+      "sha256": "8b9a578e9393850ce063c8a8e9f5eb2618c32d2a17770c2b19624fadc46f34ef"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "df7c070367934ab1d1dd466f823bb9ef879baac3b4d19dd1e13bd83136a0874e"
+      "sha256": "051611a28120904e84d2a32dca11cc1909d26e5a2d52d94b54b422389d1a9919"
     },
     {
       "path": "schemas/context_fabric_canonical_id_vectors.v1.schema.json",
