@@ -6,7 +6,15 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { CASES, PAGE_CASES, pageQuestionFor, questionFor, type QuestionCase } from "./questions";
+import {
+    CASES,
+    LATENCY_CASES,
+    PAGE_CASES,
+    latencyQuestionFor,
+    pageQuestionFor,
+    questionFor,
+    type QuestionCase,
+} from "./questions";
 
 type Entry = { question: string; interpretation: Record<string, unknown> };
 type Plan = { service: { questions: Entry[] } };
@@ -54,7 +62,34 @@ const pageEntries = PAGE_CASES.map((name) => ({
         },
     },
 }));
+// CHAOS-3598 (P2-4): the same scripted frame from both surfaces, so only the hint differs. The
+// oracle fixes the interpretation, so this shows what the server does with it, not how a model
+// routes the question.
+const latencyEntries = LATENCY_CASES.map((name) => ({
+    ...template,
+    question: latencyQuestionFor(name, nonce),
+    interpretation: {
+        shape: "single_subject",
+        requested_judgment: "status",
+        subject_terms: [TERM],
+        requested_subject_kind: "repository",
+        time_context: { axis: "current" },
+        fact_requirements: [{ kind: "reviews" }, { kind: "metrics" }],
+        clarification_needed: false,
+        window_class: "recent_activity_lookup",
+        window_confidence: "high",
+        question_frame: {
+            goals: ["explain_drivers"],
+            subject_expression: { kind: "named_subject", terms: [TERM] },
+            temporal: "current",
+        },
+    },
+}));
 writeFileSync(
     output,
-    JSON.stringify({ ...plan, service: { questions: [...entries, ...pageEntries] } }, null, 2),
+    JSON.stringify(
+        { ...plan, service: { questions: [...entries, ...pageEntries, ...latencyEntries] } },
+        null,
+        2,
+    ),
 );
