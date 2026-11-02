@@ -1,7 +1,8 @@
 // CHAOS-12096 (design T4, §2.4): sign-out order is (1) revoke the Ops session through this web
 // server, (2) revoke the ACR token family with its refresh token, (3) clear the ACR token state in
-// every tab, (4) NextAuth signOut(). (1) is retried once; when it still fails, (2)-(4) still run and
-// the sign-in page shows the partial notice. No token reaches a log line.
+// every tab and forget this tab's Ask Dev conversation (CHAOS-12575), (4) NextAuth signOut(). (1) is
+// retried once; when it still fails, (2)-(4) still run and the sign-in page shows the partial
+// notice. No token reaches a log line.
 import { describe, expect, it, vi } from "vitest";
 
 import type { AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
@@ -28,6 +29,7 @@ function harness(input: {
     readonly acrStatus?: number | "throw";
     readonly family?: boolean;
     readonly clearThrows?: boolean;
+    readonly forgetThrows?: boolean;
 }): Harness {
     const steps: string[] = [];
     const logLines: unknown[] = [];
@@ -68,6 +70,10 @@ function harness(input: {
         deps: {
             fetch: fetchMock as unknown as typeof fetch,
             hook,
+            forgetConversation: () => {
+                steps.push("forget");
+                if (input.forgetThrows) throw new Error("storage blocked");
+            },
             log: { error: capture("error"), info: capture("info"), warn: capture("warn") },
             signOut: async (options) => {
                 steps.push(`signOut:${options?.redirectTo ?? "default"}`);
@@ -80,12 +86,12 @@ function harness(input: {
 }
 
 describe("signOutEverywhere", () => {
-    it("Given every step succeeds, then it runs (1) Ops, (2) ACR family, (3) clear tabs, (4) signOut in that order", async () => {
+    it("Given every step succeeds, then it runs (1) Ops, (2) ACR family, (3) clear tabs and forget the conversation, (4) signOut in that order", async () => {
         const h = harness({});
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "acr:200", "clear", "signOut:default"]);
+        expect(h.steps).toEqual(["ops:204", "acr:200", "clear", "forget", "signOut:default"]);
         expect(outcome).toEqual({ familyRevoked: true, sessionRevoked: true });
     });
 
@@ -94,7 +100,14 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:503", "ops:204", "acr:200", "clear", "signOut:default"]);
+        expect(h.steps).toEqual([
+            "ops:503",
+            "ops:204",
+            "acr:200",
+            "clear",
+            "forget",
+            "signOut:default",
+        ]);
         expect(outcome.sessionRevoked).toBe(true);
     });
 
@@ -112,6 +125,7 @@ describe("signOutEverywhere", () => {
             expect(h.steps.slice(2)).toEqual([
                 "acr:200",
                 "clear",
+                "forget",
                 `signOut:${SIGNED_OUT_PARTIAL_REDIRECT}`,
             ]);
             expect(
@@ -127,7 +141,7 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "clear", "signOut:default"]);
+        expect(h.steps).toEqual(["ops:204", "clear", "forget", "signOut:default"]);
         expect(outcome.familyRevoked).toBeNull();
     });
 
@@ -160,17 +174,28 @@ describe("signOutEverywhere", () => {
 
             const outcome = await signOutEverywhere(h.deps);
 
-            expect(h.steps.slice(-2)).toEqual(["clear", "signOut:default"]);
+            expect(h.steps.slice(-3)).toEqual(["clear", "forget", "signOut:default"]);
             expect(outcome.familyRevoked).toBe(false);
         },
     );
 
-    it("Given clearing the tabs throws, then signOut still runs", async () => {
+    it("Given clearing the tabs throws, then the conversation is still forgotten and signOut still runs", async () => {
         const h = harness({ clearThrows: true });
 
         await signOutEverywhere(h.deps);
 
-        expect(h.steps.at(-1)).toBe("signOut:default");
+        expect(h.steps.slice(-3)).toEqual(["clear", "forget", "signOut:default"]);
+    });
+
+    // CHAOS-12575: the tab's restore hint outlived sign-out, so the same user's next session
+    // restored a conversation it could not read, with its composer disabled.
+    it("Given forgetting the conversation throws, then signOut still runs, and the failure is logged", async () => {
+        const h = harness({ forgetThrows: true });
+
+        await signOutEverywhere(h.deps);
+
+        expect(h.steps.slice(-2)).toEqual(["forget", "signOut:default"]);
+        expect(JSON.stringify(h.logLines)).toContain("ask_dev_conversation_forget");
     });
 
     it("Given every failure path, then no log line carries the refresh token", async () => {

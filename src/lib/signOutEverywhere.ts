@@ -1,6 +1,7 @@
 import { signOut } from "next-auth/react";
 
 import { acrBrowserSignOut, type AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
+import { forgetThreadHint } from "@/lib/ask-dev/conversationHint";
 import { logger } from "@/lib/logger";
 
 /**
@@ -12,7 +13,8 @@ import { logger } from "@/lib/logger";
  *    shows "Signed out on this device; other sessions may stay active".
  * 2. Revoke the ACR token family with its refresh token, at ACR's revocation endpoint (the browser
  *    calls ACR directly). Nothing is sent when the browser holds no family.
- * 3. Clear the ACR token state in every tab.
+ * 3. Clear the ACR token state in every tab, and forget this tab's Ask Dev conversation (its
+ *    restore hint, CHAOS-12575): the next session must not restore a conversation it cannot read.
  * 4. NextAuth `signOut()`: to the same place as before on success; to the sign-in page with the
  *    partial notice when step 1 failed.
  *
@@ -30,6 +32,8 @@ type LogFn = (fields: Record<string, unknown>, message: string) => void;
 
 export type SignOutDeps = {
     readonly fetch: typeof fetch;
+    /** Forgets this tab's Ask Dev conversation (its restore hint). */
+    readonly forgetConversation: () => void;
     readonly hook: AcrSignOutHook;
     readonly log: { readonly error: LogFn; readonly info: LogFn; readonly warn: LogFn };
     /** No options: NextAuth's own default destination (unchanged from before). */
@@ -50,6 +54,7 @@ function defaultDeps(): SignOutDeps {
     const log = logger.child({ module: "sign-out" });
     return {
         fetch: (input, init) => fetch(input, init),
+        forgetConversation: forgetThreadHint,
         hook: acrBrowserSignOut,
         log: {
             error: (fields, message) => log.error(fields, message),
@@ -142,12 +147,25 @@ async function clearAcrTokens(deps: SignOutDeps): Promise<void> {
     }
 }
 
+/** Step 3, this tab: its Ask Dev conversation (CHAOS-12575). */
+function forgetConversation(deps: SignOutDeps): void {
+    try {
+        deps.forgetConversation();
+    } catch (error) {
+        deps.log.error(
+            { errorName: errorName(error), step: "ask_dev_conversation_forget" },
+            "sign-out: forgetting this tab's Ask Dev restore hint failed",
+        );
+    }
+}
+
 export async function signOutEverywhere(
     deps: SignOutDeps = defaultDeps(),
 ): Promise<SignOutOutcome> {
     const sessionRevoked = await revokeOpsSession(deps);
     const familyRevoked = await revokeAcrFamily(deps);
     await clearAcrTokens(deps);
+    forgetConversation(deps);
     deps.log.info(
         { familyRevoked, sessionRevoked, step: "next_auth_sign_out" },
         "sign-out: signing out of this device",

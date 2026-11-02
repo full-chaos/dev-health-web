@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+
 // CHAOS-11956: Ask Dev conversation history and reload recovery. The test-mode transport
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
@@ -305,7 +307,10 @@ test.describe("desktop (1280px)", () => {
         const [sent] = await investigations(page);
         expect(sent?.thread_id).toBeTruthy();
         const threadId = String(sent!.thread_id);
-        const hint = await page.evaluate(() => window.sessionStorage.getItem("ask-dev:thread"));
+        const hint = await page.evaluate(
+            (key) => window.sessionStorage.getItem(key),
+            THREAD_HINT_KEY,
+        );
         expect(JSON.parse(hint ?? "{}")).toMatchObject({ thread_id: threadId });
 
         // ACR now serves the thread it admitted.

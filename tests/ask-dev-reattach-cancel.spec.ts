@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+
 // CHAOS-11957: Ask Dev reattach of a running investigation and explicit cancel. The test-mode transport
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
@@ -212,7 +214,7 @@ const reloadDuringRun = async (page: Page, later: (submission: string) => Script
     // The store keeps its thread hint once ACR accepted the run.
     await expect(statusOf(panel)).toBeVisible();
     await expect
-        .poll(() => page.evaluate(() => window.sessionStorage.getItem("ask-dev:thread")))
+        .poll(() => page.evaluate((key) => window.sessionStorage.getItem(key), THREAD_HINT_KEY))
         .not.toBeNull();
     const [sent] = await investigations(page);
     const threadId = String(sent!.thread_id);
@@ -254,8 +256,10 @@ test.describe("desktop (1280px)", () => {
         await expect
             .poll(async () =>
                 JSON.parse(
-                    (await page.evaluate(() => window.sessionStorage.getItem("ask-dev:thread"))) ??
-                        "{}",
+                    (await page.evaluate(
+                        (key) => window.sessionStorage.getItem(key),
+                        THREAD_HINT_KEY,
+                    )) ?? "{}",
                 ),
             )
             .toMatchObject({ thread_id: threadId });
