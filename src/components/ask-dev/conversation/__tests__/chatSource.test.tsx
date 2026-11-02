@@ -21,6 +21,7 @@ import {
 
 import type { PageEntityRef } from "@/lib/ask-dev/page-context";
 
+import { askDevShapeChart } from "../../askDevShapeCharts";
 import { createChatSource, readOnlyChatSource, type HostInputs } from "../chatSource";
 import {
     ConversationStore,
@@ -495,6 +496,13 @@ const STAGES_MATCH: Same<InvestigationStage, SeamStage> = true;
 const SCOPE_KINDS_MATCH: Same<PageEntityRef["kind"], ChatContextRef["kind"]> = true;
 const SOURCE_IS_THE_SEAM: ReturnType<typeof createChatSource> extends ChatSource ? true : false =
     true;
+
+describe("a rich shape reaches web's chart (CHAOS-12496)", () => {
+    it("the live source and the read-only one carry the same slot", () => {
+        expect(makeSource().source.slots?.shape).toBe(askDevShapeChart);
+        expect(readOnlyChatSource([]).slots?.shape).toBe(askDevShapeChart);
+    });
+});
 
 describe("the type pins are real", () => {
     it("holds", () => {
@@ -1411,7 +1419,7 @@ describe("the other actions", () => {
     // CHAOS-12474: a signed-in user meets no connect step, so the render gets nothing to draw one.
     it("offers no Connect slot", () => {
         const { source } = makeSource();
-        expect(source.slots).toBeUndefined();
+        expect(source.slots?.connect).toBeUndefined();
     });
 
     it("holds no credential: the seam is its members and nothing else", () => {
@@ -1430,10 +1438,12 @@ describe("the other actions", () => {
                 "reloadThread",
                 "reloadTurn",
                 "retry",
+                "slots",
                 "stop",
                 "subscribe",
             ].sort(),
         );
+        expect(Object.keys(source.slots ?? {})).toEqual(["shape"]);
     });
 });
 
