@@ -36,7 +36,9 @@ async function expectQuadrant(scope: Locator) {
     await expect(figure.getByTestId("rich-shape-not-shown")).toHaveCount(0);
     // The value table stays the chart's accessible form, out of sight.
     await expect(figure.locator(".sr-only table")).toHaveCount(1);
-    // The teams' served words, as given; the one-identity team gives no point.
+    // The value table, the chart's accessible form, holds the teams' served words; the one-identity
+    // team gives no point. This reads the table, not the canvas: the canvas labels are pinned by
+    // QuadrantChart.test.tsx, which reads the chart option's own label and tooltip formatters.
     for (const word of ["Identity", "Delivery", "Payments", "Checkout"]) {
         await expect(figure.locator(".sr-only table")).toContainText(word);
     }
