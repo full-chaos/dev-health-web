@@ -372,8 +372,15 @@ describe("QuadrantChart", () => {
             data?: Array<{ point?: { entity_label: string } }>;
             label?: { formatter?: (params: unknown) => string };
         };
-        // Two words that share a last segment, a provider-keyed word, and a hostile word.
-        const WORDS = ["acme/web", "other/web", "linear:CHK", '<img src=x onerror="alert(1)">'];
+        // Two words that share a last segment, a provider-keyed word, a hostile word, and a long
+        // path whose last segment is much shorter (the grid's room for a label is its length).
+        const WORDS = [
+            "acme/web",
+            "other/web",
+            "linear:CHK",
+            '<img src=x onerror="alert(1)">',
+            "platform-and-delivery-team/a-repository-with-a-long-name",
+        ];
         const served: QuadrantResponse = {
             ...sampleData,
             points: WORDS.map((word, index) => ({
@@ -407,6 +414,7 @@ describe("QuadrantChart", () => {
             expect(labels.slice(0, 3)).toEqual(WORDS.slice(0, 3).map(chartEntityLabel));
             expect(labels[0]).toBe(labels[1]);
             expect(labels[2]).toBe("Unresolved");
+            expect(option.grid).toEqual(quadrantGrid(labels));
         });
 
         it("draws each served word as given, in its label and its tooltip, escaped", () => {
@@ -418,6 +426,9 @@ describe("QuadrantChart", () => {
                 verbatimEntityLabels: true,
             });
             expect(labelsOf(option)).toEqual(WORDS);
+            // The plot keeps room for the longest word as drawn, not as shortened.
+            expect(option.grid).toEqual(quadrantGrid(WORDS));
+            expect(option.grid).not.toEqual(quadrantGrid(WORDS.map(chartEntityLabel)));
             expect(tooltipOf(option, 2)).toContain("linear:CHK");
             const hostile = tooltipOf(option, 3);
             expect(hostile).not.toContain("<img");
