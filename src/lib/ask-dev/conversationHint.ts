@@ -27,12 +27,19 @@ export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
  * Sign-out step 3: removes this tab's restore hint (CHAOS-12575) and its unsaved-conversation
  * marker (CHAOS-12605). Left in place, the same user's next session restored a conversation it had
  * no token to read ("This conversation could not be read", with the composer disabled), or said a
- * reload had started a new conversation when the user had signed out and in. Throws when the
- * storage cannot be used; sign-out logs it.
+ * reload had started a new conversation when the user had signed out and in. Each key is removed
+ * on its own, so one that fails keeps none of the others (codex r1 on #1751). Throws the first
+ * failure when the storage, or a key, cannot be used; sign-out logs it.
  */
 export function forgetTabConversation(): void {
     const storage = window.sessionStorage;
-    storage.removeItem(THREAD_HINT_KEY);
-    storage.removeItem(UNSAVED_CONVERSATION_KEY);
-    storage.removeItem(UNSAVED_THREAD_KEY);
+    const failures: unknown[] = [];
+    for (const key of [THREAD_HINT_KEY, UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY]) {
+        try {
+            storage.removeItem(key);
+        } catch (error) {
+            failures.push(error);
+        }
+    }
+    if (failures.length > 0) throw failures[0];
 }

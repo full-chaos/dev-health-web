@@ -43,4 +43,23 @@ describe("forgetTabConversation", () => {
 
         expect(() => forgetTabConversation()).toThrow("blocked");
     });
+
+    // codex r1 on #1751: one key that cannot be removed must not keep the others.
+    it.each([
+        ["the restore hint", THREAD_HINT_KEY],
+        ["the marker", UNSAVED_CONVERSATION_KEY],
+        ["the lost thread", UNSAVED_THREAD_KEY],
+    ])("removes every other key when removing %s throws, then throws", (_name, failing) => {
+        const keys = [THREAD_HINT_KEY, UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY];
+        const held = new Set(keys);
+        vi.spyOn(window, "sessionStorage", "get").mockReturnValue({
+            removeItem: (key: string) => {
+                if (key === failing) throw new DOMException("blocked", "SecurityError");
+                held.delete(key);
+            },
+        } as unknown as Storage);
+
+        expect(() => forgetTabConversation()).toThrow("blocked");
+        expect([...held]).toEqual([failing]);
+    });
 });
