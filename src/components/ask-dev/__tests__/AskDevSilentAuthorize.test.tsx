@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Session } from "next-auth";
@@ -151,6 +153,21 @@ const tokenCalls = () => countOf(`${ISSUER}/token`);
 const investigationCalls = () => calls.filter(({ url }) => url === `${API}/investigations`);
 const bearerOf = ({ init }: Call) => (init.headers as Record<string, string>).Authorization;
 
+/**
+ * SHA-256 on this thread. `crypto.subtle.digest` answers from Node's thread pool, the one step of a
+ * silent attempt that a timer can overtake: on a busy runner it lost to a 1 s wait, and the attempt
+ * lived on into the next test, where its request read as a second attempt. The bytes are the same,
+ * and `acr-auth.test.ts` pins the real call on RFC 7636's vector.
+ */
+const digestOnThisThread = (_algorithm: AlgorithmIdentifier, data: BufferSource) =>
+    Promise.resolve(
+        Uint8Array.from(
+            createHash("sha256")
+                .update(data as Uint8Array)
+                .digest(),
+        ).buffer,
+    );
+
 function hideTheRail(): void {
     const style = document.createElement("style");
     style.id = "panel-width";
@@ -222,6 +239,7 @@ beforeEach(() => {
     window.sessionStorage.clear();
     vi.stubGlobal("BroadcastChannel", undefined);
     vi.stubGlobal("fetch", vi.fn(acrFetch));
+    vi.spyOn(globalThis.crypto.subtle, "digest").mockImplementation(digestOnThisThread);
     acrBrowserClientOn();
     hideTheRail();
 });
@@ -231,6 +249,7 @@ afterEach(() => {
     resetRightDrawerForTest();
     setAcrAuthDependenciesForTest();
     acrBrowserClientOff();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
