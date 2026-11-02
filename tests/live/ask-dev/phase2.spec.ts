@@ -10,6 +10,7 @@ import {
     type Page,
 } from "@playwright/test";
 
+import { repositoryScopeFailures } from "./answer-scope";
 import { latencyQuestionFor, pageQuestionFor, questionFor, type LatencyCase } from "./questions";
 import {
     ACR,
@@ -21,6 +22,7 @@ import {
     signIn,
     watchAcr,
     watchPageLoad,
+    watchResults,
     type AcrCall,
 } from "./stack";
 
@@ -261,6 +263,8 @@ for (const [name, surface, replicate] of [
 ] as const satisfies readonly (readonly [LatencyCase, "page" | "dev", number])[]) {
     const where = surface === "page" ? "a repository page" : "/dev, with no hint";
     test(`P2-4: review latency from ${where}, replicate ${String(replicate)}`, async ({ page }) => {
+        // CHAOS-12637: what the answer is about is read from the result it drew.
+        const results = await watchResults(page);
         const { calls, surface: panel } =
             surface === "page"
                 ? await panelOn(page, ONE_REPOSITORY)
@@ -287,8 +291,24 @@ for (const [name, surface, replicate] of [
             await expect(answer.getByTestId("answer-panel")).not.toContainText(
                 /not ready|required work/iu,
             );
+            // (b) About the repository: the answer committed it, a claim is about it, and no claim
+            // is about the organization. The text above can name the repository in an answer about
+            // the whole organization (CHAOS-12637).
+            await expect.poll(() => results.length, { timeout: 30_000 }).toBe(1);
+            // The page's repository by id, from the chip's own hint in the request it sent: a
+            // label alone does not name one repository (two can share a handle).
+            const sentBody = JSON.parse(secretsOf(investigations(calls)[0]!).body ?? "{}") as {
+                requested_scope?: { subject_hints?: { id?: string; label?: string }[] };
+            };
+            const hint = sentBody.requested_scope?.subject_hints?.find(
+                (candidate) => candidate.label === REPOSITORY,
+            );
+            expect(hint?.id).toMatch(/^repository:/u);
+            expect(
+                repositoryScopeFailures(results[0], { label: REPOSITORY, canonicalId: hint!.id! }),
+            ).toEqual([]);
         } else {
-            // (b) A clarification or not-found, never an answer at organization scope.
+            // (c) A clarification or not-found, never an answer at organization scope.
             await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
         }
     });
