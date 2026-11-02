@@ -740,7 +740,17 @@ test.describe("ACR's own states (AC4)", () => {
         await expect(warning).toBeVisible();
         await expect(answer).not.toContainText("The repository appears to be in progress.");
         await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
-        await screenshots(page, testInfo, "degraded-answer", warning);
+        // Below `md` the panel is a modal sheet without the panel's test id: find the warning by
+        // the page, so both widths scroll to it.
+        await screenshots(
+            page,
+            testInfo,
+            "degraded-answer",
+            page
+                .getByRole("article", { name: "Answer" })
+                .getByText(/^answer text unavailable: /u)
+                .first(),
+        );
     });
 });
 
@@ -888,13 +898,15 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
                 authorization: `Bearer ${device}`,
                 "x-acr-client-version": "0.1.0",
             };
-            // The run lease keeps the run going after its stream closes: end it first.
-            cancel = (
-                await fetch(`${ACR}${INVESTIGATIONS_PATH}/submissions/${sideSubmission}/cancel`, {
-                    method: "POST",
-                    headers: self,
-                })
-            ).status;
+            // The run lease keeps the run going after its stream closes: end it first. A cancel that
+            // fails is recorded as -1 and never skips the revoke.
+            cancel = await fetch(
+                `${ACR}${INVESTIGATIONS_PATH}/submissions/${sideSubmission}/cancel`,
+                { method: "POST", headers: self },
+            ).then(
+                (response) => response.status,
+                () => -1,
+            );
             revoke = (
                 await fetch(`${ACR}/api/v1/auth/credentials/self/revoke`, {
                     method: "POST",
