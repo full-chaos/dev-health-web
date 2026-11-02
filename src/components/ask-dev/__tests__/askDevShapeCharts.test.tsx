@@ -143,9 +143,21 @@ describe("the adapter returns null when it cannot draw (CHAOS-12538)", () => {
 });
 
 describe("the chart loads on demand (CHAOS-12496)", () => {
-    it("loads no chart module for an answer with no rich shape", () => {
-        const before = chart.loads;
-        expect(askDevShapeChart(changed((shape) => void (shape.kind = "series")))).toBeNull();
-        expect(chart.loads).toBe(before);
+    it("loads the treemap module only when a treemap draws", async () => {
+        // A fresh module graph: the renders above already loaded the chart, so a count taken after
+        // them passed with a static import too (found in CHAOS-12581). vi.resetModules keeps a
+        // hoisted mock's module, so the count comes from a fresh doMock.
+        vi.resetModules();
+        let loads = 0;
+        vi.doMock("@/components/charts/TreemapChart", () => {
+            loads += 1;
+            return { TreemapChart: () => <div data-testid="treemap-fresh" /> };
+        });
+        const fresh = await import("../askDevShapeCharts");
+        expect(fresh.askDevShapeChart(changed((shape) => void (shape.kind = "series")))).toBeNull();
+        expect(loads).toBe(0);
+        render(fresh.askDevShapeChart(treemap) as ReactElement);
+        await screen.findByTestId("treemap-fresh");
+        expect(loads).toBe(1);
     });
 });
