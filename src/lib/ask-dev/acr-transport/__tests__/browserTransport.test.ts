@@ -16,7 +16,7 @@ import {
 } from "@/components/ask-dev/conversation/transport";
 
 import { createAcrBrowserTransport } from "../browserTransport";
-import { MAX_EVENT_BYTES, MAX_STREAM_BYTES } from "../limits";
+import { MAX_EVENT_BYTES, MAX_STREAM_BYTES } from "@full-chaos/ask-dev/acr-client";
 import {
     acceptedEvent,
     acrFrame,

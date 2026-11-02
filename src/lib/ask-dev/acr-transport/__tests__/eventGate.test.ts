@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { validateInvestigationEventEnvelope } from "@/lib/acr/streamEnvelopeValidators";
 
-import { InvestigationEventGate, type GateVerdict } from "../eventGate";
-import { SseParser, type SseEvent } from "../sseParser";
-import { MAX_EVENT_BYTES } from "../limits";
+import {
+    InvestigationEventGate as AcrEventGate,
+    MAX_EVENT_BYTES,
+    SseParser,
+    type GateVerdict as AcrGateVerdict,
+    type SseEvent,
+} from "@full-chaos/ask-dev/acr-client";
+import { asTranscriptResult } from "@/components/ask-dev/conversation/testModeAnswer";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import {
     acceptedEvent,
     acrFrame,
@@ -36,7 +42,7 @@ const frameOf = (event: EventObject): SseEvent => {
 };
 
 function gate(validate: (value: unknown) => boolean = validateInvestigationEventEnvelope) {
-    return new InvestigationEventGate(validate, { threadId: THREAD, submissionId: SUBMISSION });
+    return gateOf(validate, { threadId: THREAD, submissionId: SUBMISSION });
 }
 
 /** Feeds events in order and returns each verdict. */
@@ -51,6 +57,13 @@ const kinds = (verdicts: readonly GateVerdict[]) =>
 const CAPTURED = CAPTURED_EVENTS.map((event, index) =>
     index === 0 ? { ...event, thread_id: THREAD } : event,
 ) as EventObject[];
+
+type GateVerdict = AcrGateVerdict<TranscriptResult>;
+const isTranscriptResult = (value: unknown): value is TranscriptResult =>
+    asTranscriptResult(value) !== null;
+type GateArgs = ConstructorParameters<typeof AcrEventGate<TranscriptResult>>;
+const gateOf = (validate: GateArgs[0], request: GateArgs[2], resume?: GateArgs[3]) =>
+    new AcrEventGate<TranscriptResult>(validate, isTranscriptResult, request, resume);
 
 describe("the real capture passes, every event in order", () => {
     it("passes every captured event and ends on the result", () => {
@@ -286,7 +299,7 @@ describe("after the terminal", () => {
 // that need no earlier event hold at once; the stage rules hold from the first stage event on.
 describe("an attach after a cursor", () => {
     const resumed = (after = 5) =>
-        new InvestigationEventGate(
+        gateOf(
             validateInvestigationEventEnvelope,
             { submissionId: SUBMISSION },
             { resumeAfter: after },
@@ -393,7 +406,7 @@ describe("an attach after a cursor", () => {
             kinds(
                 feed(
                     [withoutSubmission],
-                    new InvestigationEventGate(validateInvestigationEventEnvelope, {
+                    gateOf(validateInvestigationEventEnvelope, {
                         submissionId: SUBMISSION,
                     }),
                 ),
@@ -402,7 +415,7 @@ describe("an attach after a cursor", () => {
     });
 
     it("with no cursor, the whole grammar holds from accepted, and no thread is asked for", () => {
-        const fromStart = new InvestigationEventGate(validateInvestigationEventEnvelope, {
+        const fromStart = gateOf(validateInvestigationEventEnvelope, {
             submissionId: SUBMISSION,
         });
         const verdicts = feed(CAPTURED, fromStart);
@@ -411,7 +424,7 @@ describe("an attach after a cursor", () => {
             kinds(
                 feed(
                     [{ ...accepted(), submission_id: "sub_other" }],
-                    new InvestigationEventGate(validateInvestigationEventEnvelope, {
+                    gateOf(validateInvestigationEventEnvelope, {
                         submissionId: SUBMISSION,
                     }),
                 ),
