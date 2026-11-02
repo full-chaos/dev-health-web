@@ -33,7 +33,7 @@ import {
     type ThreadView,
     type TransportFailureReason,
 } from "./transport";
-import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+import { tabConversationForgotten, THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
 
 /**
  * The Ask Dev conversation store (plan §2.5 D-20, §2.7.4, §2.7.5; CHAOS-11928). One per tab.
@@ -532,6 +532,8 @@ const sessionHintStorage: HintStorage = {
         }
     },
     write: (value) => {
+        // Sign-out forgot it: a late event must not write it back (codex r2 on #1751).
+        if (tabConversationForgotten()) return;
         try {
             window.sessionStorage.setItem(THREAD_HINT_KEY, value);
         } catch {

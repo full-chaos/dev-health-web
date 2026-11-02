@@ -3,7 +3,11 @@
 // conversation, so the same user's next session restores nothing it cannot read.
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+import {
+    THREAD_HINT_KEY,
+    UNSAVED_CONVERSATION_KEY,
+    UNSAVED_THREAD_KEY,
+} from "@/lib/ask-dev/conversationHint";
 import { registerSignOutCancel } from "@/lib/ask-dev/signOutCancel";
 
 const { signOut } = vi.hoisted(() => ({ signOut: vi.fn(async () => undefined) }));
@@ -32,6 +36,29 @@ describe("signOutEverywhere with its default steps", () => {
 
         expect(signOut).toHaveBeenCalledTimes(1);
         expect(hintAtSignOut).toBeNull();
+    });
+
+    // CHAOS-12605: left in place, the same user's next session said "Reloading the page started a
+    // new one", after a sign-out and a sign-in, not a reload.
+    it("forgets this tab's unsaved-conversation marker before it signs out", async () => {
+        window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, "tag_x");
+        window.sessionStorage.setItem(UNSAVED_THREAD_KEY, "thread_x");
+        const atSignOut: (string | null)[] = [];
+        signOut.mockImplementationOnce(async () => {
+            atSignOut.push(
+                window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY),
+                window.sessionStorage.getItem(UNSAVED_THREAD_KEY),
+            );
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 204 })),
+        );
+
+        await signOutEverywhere();
+
+        // Empty if sign-out never reached NextAuth.
+        expect(atSignOut).toEqual([null, null]);
     });
 
     // CHAOS-12574: the default first step reaches the registered store, before the token goes.
