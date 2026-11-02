@@ -4,18 +4,17 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { ACR_API_ORIGIN, BFF_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
 
 /**
- * CHAOS-11921 (plan INV-8): the Ask Dev route family reaches its Next handler in the PRODUCTION
- * build, with a fresh session, entitlement and scope read and a fresh assertion on every call.
- * Runs only in the production-build suite (`playwright.context-fabric.config.ts`): the rewrite
- * to Ops is a `proxy.ts` decision, and only a build that runs `proxy.ts` as shipped shows it.
+ * CHAOS-12108: the Ask Dev server route is gone, and the browser calls ACR directly. Only
+ * `/api/ask-dev/authorize` stays under this prefix. Runs only in the production-build suite
+ * (`playwright.context-fabric.config.ts`): the rewrite to Ops is a `proxy.ts` decision, and only a
+ * build that runs `proxy.ts` as shipped shows it.
  *
- * Reaching the handler is read two ways: the answer has the handler's own shape (a request id
- * that equals the `X-Request-ID` header), and the Ops mock never saw an `/api/ask-dev` request
- * (a rewritten call would have landed there with the user's bearer token).
+ * "Answers nothing" is read three ways: a 404, no ACR call, and the Ops mock never saw an
+ * `/api/ask-dev` request (a rewritten call would have landed there with the user's bearer token).
  */
 const ROUTE = "/api/ask-dev/investigations";
-// ACR's own request example, byte for byte: the route validates the body against the pinned
-// schema before it reads any entitlement, so a hand-written body would stop at a 400.
+const AUTHORIZE = "/api/ask-dev/authorize";
+// ACR's own request example, byte for byte: a valid body, so a 404 cannot be a body refusal.
 const BODY: unknown = JSON.parse(
     readFileSync(
         join(
@@ -49,31 +48,7 @@ async function acrInvestigationCount(request: APIRequestContext): Promise<number
     return body.count;
 }
 
-test("denies a run when ask_dev is off, from the handler, and calls ACR zero times", async ({
-    page,
-    request,
-}) => {
-    await setEntitlements(request, "ask-dev-off");
-    await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
-    const before = await acrInvestigationCount(request);
-
-    const response = await page.request.post(ROUTE, {
-        data: BODY,
-        headers: { origin: BFF_ORIGIN },
-    });
-
-    expect(response.status()).toBe(403);
-    const body = (await response.json()) as { error: { code: string }; request_id: string };
-    expect(body.error.code).toBe("not_entitled");
-    expect(body.request_id).toBe(response.headers()["x-request-id"]);
-    expect(await opsSawAskDevPaths(request)).toEqual([]);
-    expect(await acrInvestigationCount(request)).toBe(before);
-});
-
-test("streams a run from the handler when both entitlements are on, with a signed assertion to ACR", async ({
-    page,
-    request,
-}) => {
+test("the removed route answers nothing, with both entitlements on", async ({ page, request }) => {
     await setEntitlements(request, "ask-dev-enabled");
     await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
     const before = await acrInvestigationCount(request);
@@ -83,15 +58,33 @@ test("streams a run from the handler when both entitlements are on, with a signe
         headers: { origin: BFF_ORIGIN },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toContain("text/event-stream");
-    const text = await response.text();
-    expect(text.startsWith(": keepalive\n\n")).toBe(true);
-    expect(text).toContain("event: accepted");
-    expect(text).toContain("event: result");
+    expect(response.status()).toBe(404);
+    expect(response.headers()["content-type"] ?? "").not.toContain("text/event-stream");
     expect(await opsSawAskDevPaths(request)).toEqual([]);
-    // 0 new ACR calls would mean the stream never reached ACR (the measurement did not happen).
-    expect(await acrInvestigationCount(request)).toBe(before + 1);
+    expect(await acrInvestigationCount(request)).toBe(before);
+});
+
+test("authorize still answers, from its handler and not from Ops", async ({ page, request }) => {
+    await setEntitlements(request, "ask-dev-enabled");
+    await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
+
+    // An empty body reaches the handler and stops at its own check, before any ACR call.
+    const response = await page.request.post(AUTHORIZE, {
+        data: {},
+        headers: { origin: BFF_ORIGIN },
+    });
+
+    expect(response.status()).toBe(400);
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+        "invalid_request",
+    );
+    expect(await opsSawAskDevPaths(request)).toEqual([]);
+
+    const foreign = await page.request.post(AUTHORIZE, {
+        data: {},
+        headers: { origin: "https://elsewhere.example" },
+    });
+    expect(foreign.status()).toBe(403);
 });
 
 test("keeps /api/v1/dev blocked", async ({ page, request }) => {

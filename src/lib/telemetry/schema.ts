@@ -31,7 +31,6 @@ export const APP_ROUTES: readonly string[] = [
     "/api/agent-context/evidence/[evidenceRefId]",
     "/api/agent-context/repositories",
     "/api/ask-dev/authorize",
-    "/api/ask-dev/investigations",
     "/api/auth/[...nextauth]",
     "/api/auth/change-password",
     "/api/auth/organizations",
