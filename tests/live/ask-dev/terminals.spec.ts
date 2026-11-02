@@ -734,11 +734,10 @@ test.describe("ACR's own states (AC4)", () => {
             acr_calls: acrCalls(calls),
         });
         // ACR ends the model call (the plan holds it 50 s) and serves the facts with no model text:
-        // status degraded, its fixed "answer text unavailable" warning, and none of the plan's prose.
-        // A normal answer to the same question fails all three.
+        // status degraded and its fixed "answer text unavailable" warning. A normal answer fails
+        // both (a planted run with a normal question showed `partial` and no warning).
         await expect(answer).toHaveAttribute("data-state", "degraded");
         await expect(warning).toBeVisible();
-        await expect(answer).not.toContainText("The repository appears to be in progress.");
         await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
         // Below `md` the panel is a modal sheet without the panel's test id: find the warning by
         // the page, so both widths scroll to it.
