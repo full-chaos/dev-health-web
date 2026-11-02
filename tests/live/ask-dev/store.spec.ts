@@ -244,9 +244,14 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
     await expect(again).toBeVisible();
     await page.waitForTimeout(3_000);
     const oldTurnShown = await again.getByText(question(name)).count();
-    const composerDisabled = await again
-        .getByRole("textbox", { name: "Ask a question" })
-        .isDisabled();
+    const composer = again.getByRole("textbox", { name: "Ask a question" });
+    const composerDisabled = await composer.isDisabled();
+    // What the new session's panel shows (local evidence; no token is on the page).
+    const panelWords = (await again.innerText()).replace(/\s+/gu, " ").slice(0, 400);
+    await testInfo.attach("after-sign-in.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+    });
     const reader = againCalls.findLast((call) => call.hasBearer);
     expect(reader, "the new session made no ACR call with a bearer").toBeDefined();
     // The "Hold" plan entry runs 40 s; a run nothing ended is `done` within about a minute.
@@ -261,6 +266,8 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
             { timeout: 120_000, intervals: [3_000], message: "the submission never ended" },
         )
         .not.toBe("running");
+    await page.waitForTimeout(3_000);
+    const composerDisabledAfterEnd = await composer.isDisabled();
     await report(testInfo, "sign-out-evidence", {
         request_id: requestId,
         submission_id: submission,
@@ -268,10 +275,15 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
         hint_after_sign_out: hintAfterSignOut,
         old_turn_shown_after_sign_in: oldTurnShown,
         composer_disabled_after_sign_in: composerDisabled,
+        composer_disabled_after_the_run_ended: composerDisabledAfterEnd,
+        panel_words_after_sign_in: panelWords,
         submission_state: (record as SubmissionRecord | null)?.state ?? null,
         acr_calls: acrCalls(calls),
     });
     expect.soft(oldTurnShown, "the new session shows the signed-out session's turn").toBe(0);
+    expect
+        .soft(composerDisabledAfterEnd, "the new session cannot ask: its composer is disabled")
+        .toBe(false);
     expect(
         (record as SubmissionRecord | null)?.state,
         "after sign-out ACR's run was not ended: it ran on",
