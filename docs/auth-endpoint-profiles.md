@@ -386,7 +386,7 @@ that doesn't disclose it the way a held row would.
 
 No row is added or removed. The `[...nextauth]` row's sign-in anchor and the `revoke-session` row
 now reach auth-service through `src/lib/authServiceWire.ts` (login, logout) and read the access
-token by the class `AUTH_ACCESS_TOKEN_CLASS` names; see `auth-system.md`. Their anchors were
+token as `auth-system.md` describes. Their anchors were
 re-pinned in their own commit.
 
 The refresh in the `[...nextauth]` jwt callback also goes through `authServiceWire.ts`
