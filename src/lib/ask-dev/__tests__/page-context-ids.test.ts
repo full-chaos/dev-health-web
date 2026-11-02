@@ -29,9 +29,10 @@ const BUILT: Readonly<Record<string, (key: Vector["natural_key"]) => string | nu
     repository: (key) => SUBJECT_ID.repository(text(key.repo_id)),
     team: (key) => SUBJECT_ID.team(text(key.team_id)),
     pull_request: (key) => SUBJECT_ID.pullRequest(text(key.repo_id), key.number as number),
+    work_item: (key) => SUBJECT_ID.workItem(text(key.repo_id), text(key.work_item_id)),
 };
 /** The kinds ACR mints that no web page states today (no `SUBJECT_ID` builder). */
-const NOT_BUILT = ["work_item", "project"];
+const NOT_BUILT = ["project"];
 
 describe("the page-context id builder, against ACR's canonical-id vectors", () => {
     it("reads the vendored vectors, which are valid against their vendored schema", () => {
@@ -50,6 +51,7 @@ describe("the page-context id builder, against ACR's canonical-id vectors", () =
             "pullRequest",
             "repository",
             "team",
+            "workItem",
         ]);
         const kinds = new Set(VECTORS.map((vector) => vector.kind));
         expect([...kinds].sort()).toEqual([...Object.keys(BUILT), ...NOT_BUILT].sort());
@@ -63,14 +65,16 @@ describe("the page-context id builder, against ACR's canonical-id vectors", () =
 
     it("builds, byte for byte, the canonical id of every vector of a kind it states", () => {
         const checked = VECTORS.filter((vector) => vector.kind in BUILT);
-        expect(checked.length).toBeGreaterThanOrEqual(7);
+        expect(checked.length).toBeGreaterThanOrEqual(13);
         for (const vector of checked) {
-            // ACR omits only an over-long work_item or project id; none of these kinds is omitted.
-            expect(vector.omitted, JSON.stringify(vector)).toBeUndefined();
-            expect(BUILT[vector.kind]!(vector.natural_key), JSON.stringify(vector)).toBe(
-                vector.canonical_id,
-            );
+            // ACR omits an over-long work item id rather than cut it; web then builds none.
+            const want = vector.omitted === true ? null : vector.canonical_id;
+            expect(BUILT[vector.kind]!(vector.natural_key), JSON.stringify(vector)).toBe(want);
         }
+        // Both sides of the bound are among the vectors: one at 256 characters, one omitted.
+        const workItems = VECTORS.filter((vector) => vector.kind === "work_item");
+        expect(workItems.some((vector) => vector.canonical_id?.length === 256)).toBe(true);
+        expect(workItems.some((vector) => vector.omitted === true)).toBe(true);
     });
 });
 
@@ -82,6 +86,14 @@ describe("SUBJECT_ID", () => {
         expect(SUBJECT_ID.repository(null)).toBeNull();
         expect(SUBJECT_ID.team("")).toBeNull();
         expect(SUBJECT_ID.pullRequest("", 3)).toBeNull();
+        expect(SUBJECT_ID.workItem("repo-1", "  ")).toBeNull();
+        expect(SUBJECT_ID.workItem("", "linear:CHAOS-1")).toBeNull();
+    });
+
+    it("keeps a work item id as served: an identity is never trimmed", () => {
+        expect(SUBJECT_ID.workItem("repo-1", " linear:CHAOS-1")).toBe(
+            "work_item.v2:repo-1: linear%3ACHAOS-1",
+        );
     });
 
     it("builds a pull request id only from a positive whole number", () => {

@@ -15,6 +15,9 @@ const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = { stream: "ask-dev:test-mode-stream", calls: "ask-dev:test-mode-calls" } as const;
 const SOURCE = "ask_dev_page_context";
+/** The mock's issue flame entity for this id carries its one repository (CHAOS-12563). */
+const WORK_ITEM_ID = "gh:full-chaos/dev-health-web#4242";
+const WORK_ITEM_REPO = "cd620f84-2602-8dea-7809-8d1f11825cf4";
 
 const PARTIAL = (
     JSON.parse(readFileSync(join(CAPTURES, "kiac_project_status_partial.event.json"), "utf8")) as {
@@ -218,6 +221,57 @@ test.describe("each approved page states its context", () => {
                 },
             ],
         });
+    });
+});
+
+test.describe("work item detail", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test.beforeEach(async ({ request }) => {
+        await setScenario(request, "provisioned");
+    });
+
+    test("the served work item, by ACR's id, built from the repository ops serves", async ({
+        page,
+    }, testInfo) => {
+        // The mock serves this work item with its one repository (CHAOS-12563).
+        const panel = await expectChips(page, `/issues/${encodeURIComponent(WORK_ITEM_ID)}`, [
+            "Work item:Propose the work item as Ask Dev context",
+        ]);
+        await panel.screenshot({ path: testInfo.outputPath("context-work-item-desktop.png") });
+        expect(await askAndReadScope(page, panel)).toEqual({
+            subject_hints: [
+                {
+                    kind: "work_item",
+                    id: `work_item.v2:${WORK_ITEM_REPO}:gh%3Afull-chaos/dev-health-web#4242`,
+                    label: "Propose the work item as Ask Dev context",
+                    source: SOURCE,
+                },
+            ],
+        });
+    });
+
+    test("no chip when ops serves no repository for the work item", async ({ page }) => {
+        const panel = await openPanel(
+            page,
+            `/issues/${encodeURIComponent("gh:full-chaos/dev-health-web#7")}`,
+        );
+        await expect(panel.getByRole("textbox", { name: "Ask a question" })).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-context-chip")).toHaveCount(0);
+    });
+
+    test("the phone sheet shows the work item chip with no sideways scroll", async ({
+        page,
+    }, testInfo) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await seedStream(page);
+        await page.goto(`/issues/${encodeURIComponent(WORK_ITEM_ID)}`);
+        const sheet = await openAskDev(page, page.getByTestId("ask-dev-sheet"));
+        await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveText([
+            "Work item:Propose the work item as Ask Dev context",
+        ]);
+        await page.screenshot({ path: testInfo.outputPath("context-work-item-mobile.png") });
+        expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });
 
