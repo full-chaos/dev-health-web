@@ -28,6 +28,7 @@ export interface LoginResponseBody {
     expires_in: number;
     needs_onboarding: boolean;
     user: UserInfo;
+    session_access_token?: string;
 }
 
 export interface RegisterResponseBody {
@@ -61,6 +62,7 @@ export interface TokenRefreshResponseBody {
     token_type: string;
     expires_in: number;
     user?: UserInfo | null;
+    session_access_token?: string;
 }
 
 // ---------------------------------------------------------------------------

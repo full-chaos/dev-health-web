@@ -4,7 +4,7 @@ import * as mockTokens from "./mockTokens";
 
 // RED-7. The tokens the ops mock answers with are EdDSA tokens that verify against the key set the
 // mock serves, with the same reader the web server uses.
-const { MOCK_ISSUER, mockAccessToken, mockDiscovery, mockJwks, mockSessionToken } = mockTokens;
+const { MOCK_ISSUER, mockAccessToken, mockDiscovery, mockJwks, mockPair } = mockTokens;
 
 const fetchMock = vi.fn();
 const nowSeconds = () => Math.floor(Date.now() / 1000);
@@ -29,8 +29,9 @@ describe("ops mock access tokens", () => {
     it.each(["admin", "member", "refreshed"] as const)(
         "the %s token and its session token verify against the mock key set",
         async (who) => {
+            const pair = mockPair(who);
             const got = await readAnswerTokens(
-                { accessToken: mockAccessToken(who), sessionAccessToken: mockSessionToken(who) },
+                { accessToken: pair.access_token, sessionAccessToken: pair.session_access_token },
                 cfg(),
                 "login",
             );
