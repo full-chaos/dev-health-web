@@ -128,7 +128,8 @@ describe("the adapter returns null when it cannot draw a quadrant (CHAOS-12538)"
         [
             "one point",
             changed((shape) => {
-                for (const series of shape.series) series.points = series.points.slice(0, 1);
+                for (const series of shape.series)
+                    series.points = series.points.slice(0, 1) as never;
             }),
         ],
         ["a length mismatch", changed((shape) => void shape.series[1]!.points.pop())],

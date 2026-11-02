@@ -411,7 +411,9 @@ describe("QuadrantChart", () => {
                 scopeType: "team",
             });
             const labels = labelsOf(option);
-            expect(labels.slice(0, 3)).toEqual(WORDS.slice(0, 3).map(chartEntityLabel));
+            expect(labels.slice(0, 3)).toEqual(
+                WORDS.slice(0, 3).map((word) => chartEntityLabel(word)),
+            );
             expect(labels[0]).toBe(labels[1]);
             expect(labels[2]).toBe("Unresolved");
             expect(option.grid).toEqual(quadrantGrid(labels));
@@ -428,7 +430,9 @@ describe("QuadrantChart", () => {
             expect(labelsOf(option)).toEqual(WORDS);
             // The plot keeps room for the longest word as drawn, not as shortened.
             expect(option.grid).toEqual(quadrantGrid(WORDS));
-            expect(option.grid).not.toEqual(quadrantGrid(WORDS.map(chartEntityLabel)));
+            expect(option.grid).not.toEqual(
+                quadrantGrid(WORDS.map((word) => chartEntityLabel(word))),
+            );
             expect(tooltipOf(option, 2)).toContain("linear:CHK");
             const hostile = tooltipOf(option, 3);
             expect(hostile).not.toContain("<img");
