@@ -3295,6 +3295,36 @@ export const handlers = [
             return HttpResponse.json({ detail: "Not found" }, { status: 404 });
         }
 
+        // CHAOS-12240: an issue flame with the work item's one repository, which ops serves since
+        // CHAOS-12563, and one without it.
+        if (entityType === "issue" && entityId.startsWith("gh:full-chaos/dev-health-web#")) {
+            const withRepository = entityId.endsWith("#4242");
+            return HttpResponse.json({
+                entity: {
+                    work_item_id: entityId,
+                    title: withRepository
+                        ? "Propose the work item as Ask Dev context"
+                        : "A work item",
+                    provider: "github",
+                    type: "issue",
+                    status: "in_progress",
+                    repo_id: withRepository ? "cd620f84-2602-8dea-7809-8d1f11825cf4" : null,
+                },
+                timeline: { start: "2026-10-20T09:00:00Z", end: "2026-10-28T17:00:00Z" },
+                frames: [
+                    {
+                        id: `${entityId}:work`,
+                        parent_id: null,
+                        label: "Active work",
+                        start: "2026-10-20T09:00:00Z",
+                        end: "2026-10-28T17:00:00Z",
+                        state: "active",
+                        category: "planned",
+                    },
+                ],
+            });
+        }
+
         if (entityType !== "deployment") {
             return HttpResponse.json(cycleBreakdownFlameSample);
         }

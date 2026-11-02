@@ -18,6 +18,7 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
     - `repository:<repos.id>`
     - `team:<teams.id>`
     - `pull_request:<repo id>:<number>`
+    - `work_item.v2:<repo id>:<work_item_id>`, each segment with `%` as `%25` and `:` as `%3A`, and none over 256 characters. The issue page states it only when ops serves the work item's one repository (CHAOS-12240, CHAOS-12563).
 
     Never use a URL id, a GraphQL row id or a name. ACR commits a hint on the caller's identity only when the hint has its exact canonical id. Any other id falls back to a statistical match on the label.
 

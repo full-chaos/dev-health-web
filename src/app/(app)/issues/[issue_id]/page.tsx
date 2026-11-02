@@ -1,4 +1,7 @@
 import { servedEntityName } from "@/lib/labels/unresolved";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
+import type { PageEntityInput } from "@/lib/ask-dev/page-context";
+import { SUBJECT_ID } from "@/lib/ask-dev/page-context-ids";
 import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -13,6 +16,18 @@ import {
     getAIWorkflowDrilldownViaGraphQL,
     getWorkUnitInvestmentDistribution,
 } from "@/lib/graphql/workGraphFetchers";
+
+/**
+ * The work item this page shows, as Ask Dev page context (CHAOS-12240), by ACR's id. Ops serves the
+ * work item's repository only when exactly one repository holds it (CHAOS-12563), so with none the
+ * page proposes nothing. The label is the served title: a chip never shows an id.
+ */
+function workItemEntities(entity: Record<string, unknown>): PageEntityInput[] {
+    const text = (value: unknown) => (typeof value === "string" ? value : null);
+    const id = SUBJECT_ID.workItem(text(entity.repo_id), text(entity.work_item_id));
+    const title = text(entity.title)?.trim() ?? "";
+    return id === null || title === "" ? [] : [{ kind: "work_item", id, label: title }];
+}
 
 type IssueDetailPageProps = {
     params: Promise<{ issue_id: string }>;
@@ -64,6 +79,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                 </div>
             ) : (
                 <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+                    <AskDevPageEntities entities={workItemEntities(flame.entity)} />
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-(--font-display) text-xl">
