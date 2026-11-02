@@ -127,16 +127,32 @@ export function teeInvestigationStreams(options: {
                 url.pathname === options.path &&
                 typeof send === "function"
             ) {
-                void response
-                    .clone()
-                    .text()
-                    .then(
-                        (body) => (send as (message: { body: string }) => unknown)({ body }),
-                        (error: unknown) =>
-                            (send as (message: { error: string }) => unknown)({
-                                error: error instanceof Error ? error.message : String(error),
-                            }),
-                    );
+                const clone = response.clone();
+                void (async () => {
+                    const post = send as (message: { body?: string; error?: string }) => unknown;
+                    const reader = clone.body?.getReader();
+                    if (reader === undefined) {
+                        post({ error: "the response has no body" });
+                        return;
+                    }
+                    const decoder = new TextDecoder();
+                    let body = "";
+                    try {
+                        for (;;) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            body += decoder.decode(value, { stream: true });
+                        }
+                        post({ body });
+                    } catch (error: unknown) {
+                        // Ask Dev's client aborts its own fetch once it holds the terminal event,
+                        // which aborts this clone too: what arrived before the abort is kept.
+                        post({
+                            body,
+                            error: error instanceof Error ? error.message : String(error),
+                        });
+                    }
+                })();
             }
         } catch {
             // The page's own fetch is never broken by the test's tee.
@@ -158,18 +174,16 @@ export async function watchResults(
     await page.exposeBinding(
         RESULT_BINDING,
         (_source, message: { body?: string; error?: string }) => {
-            if (typeof message.body === "string") {
-                const result = terminalResultOf(message.body);
-                if (result !== undefined) results.push(result);
-                else
-                    console.warn(
-                        "watchResults: an investigation stream ended with no result event",
-                    );
+            // A body cut by the client's own abort still holds the frames that came before it.
+            const result =
+                typeof message.body === "string" ? terminalResultOf(message.body) : undefined;
+            if (result !== undefined) {
+                results.push(result);
                 return;
             }
             // Loud, not silent: the case then fails on "no terminal result", and this says why.
             console.warn(
-                `watchResults: an investigation stream gave no body: ${String(message.error)}`,
+                `watchResults: an investigation stream gave no result: ${message.error ?? "it ended with no result event"}`,
             );
         },
     );

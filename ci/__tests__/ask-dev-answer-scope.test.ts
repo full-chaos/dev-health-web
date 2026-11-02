@@ -290,6 +290,44 @@ describe("the live suite's result record (CHAOS-12637)", () => {
         }
     });
 
+    it("keeps the result when the app aborts its fetch once it holds the result (as Ask Dev's client does)", async () => {
+        let abortStream: (() => void) | undefined;
+        const resultFrame = capture
+            .split("\n\n")
+            .findIndex((frame) => /^event: result$/mu.test(frame));
+        const head = `${capture
+            .split("\n\n")
+            .slice(0, resultFrame + 1)
+            .join("\n\n")}\n\n`;
+        const { results, restore, scope } = await recorded(() => {
+            const bytes = new TextEncoder().encode(head);
+            return new Response(
+                new ReadableStream<Uint8Array>({
+                    start(controller) {
+                        controller.enqueue(bytes);
+                        // The server keeps the stream open; only the client's abort ends it.
+                        abortStream = () =>
+                            controller.error(
+                                new DOMException("signal is aborted without reason", "AbortError"),
+                            );
+                    },
+                }),
+            );
+        });
+        try {
+            const response = await scope.fetch(STREAM_URL, { method: "POST" });
+            const reader = response.body!.getReader();
+            const { value } = await reader.read();
+            expect(new TextDecoder().decode(value)).toContain("event: result");
+            // The app has its terminal event and aborts the request.
+            abortStream!();
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect(results[0]?.status).toBe("complete");
+        } finally {
+            restore();
+        }
+    });
+
     it("says so, and adds nothing, when the stream's body cannot be read", async () => {
         const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
         const { results, restore, scope } = await recorded(
@@ -307,7 +345,7 @@ describe("the live suite's result record (CHAOS-12637)", () => {
             await response.text().catch(() => undefined);
             await vi.waitFor(() =>
                 expect(warn).toHaveBeenCalledWith(
-                    "watchResults: an investigation stream gave no body: the stream broke",
+                    "watchResults: an investigation stream gave no result: the stream broke",
                 ),
             );
             expect(results).toEqual([]);
