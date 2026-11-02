@@ -30162,6 +30162,7 @@ const schema131 = {
         "cohort_driver_contribution",
         "dated_fact_trend",
         "investment_theme_share",
+        "comparison_side_by_side",
     ],
 };
 const schema132 = {
@@ -30212,7 +30213,12 @@ const schema136 = {
     properties: {
         kind: {
             type: "string",
-            enum: ["cohort_member_score", "cohort_driver_weight_contributed", "claimed_fact_row"],
+            enum: [
+                "cohort_member_score",
+                "cohort_driver_weight_contributed",
+                "claimed_fact_row",
+                "claimed_fact_value",
+            ],
         },
         subject_canonical_id: { type: "string", minLength: 1, maxLength: 256 },
         signal: { type: "string", minLength: 1, maxLength: 256 },
@@ -30433,7 +30439,8 @@ function validate105(
                     if (!(
                         data3 === "cohort_member_score" ||
                         data3 === "cohort_driver_weight_contributed" ||
-                        data3 === "claimed_fact_row"
+                        data3 === "claimed_fact_row" ||
+                        data3 === "claimed_fact_value"
                     )) {
                         const err11 = {
                             instancePath: instancePath + "/source/kind",
@@ -31295,7 +31302,8 @@ function validate103(
                 data3 === "cohort_attention_score" ||
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
-                data3 === "investment_theme_share"
+                data3 === "investment_theme_share" ||
+                data3 === "comparison_side_by_side"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -52301,7 +52309,8 @@ function validate173(
                 data3 === "cohort_attention_score" ||
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
-                data3 === "investment_theme_share"
+                data3 === "investment_theme_share" ||
+                data3 === "comparison_side_by_side"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -59535,6 +59544,7 @@ const schema194 = {
                 "cohort_driver_contribution",
                 "dated_fact_trend",
                 "investment_theme_share",
+                "comparison_side_by_side",
             ],
         },
         RenderValueUnit: {
@@ -59555,6 +59565,7 @@ const schema194 = {
                         "cohort_member_score",
                         "cohort_driver_weight_contributed",
                         "claimed_fact_row",
+                        "claimed_fact_value",
                     ],
                 },
                 subject_canonical_id: { type: "string", minLength: 1, maxLength: 256 },
@@ -76189,6 +76200,7 @@ const schema260 = {
         "cohort_driver_contribution",
         "dated_fact_trend",
         "investment_theme_share",
+        "comparison_side_by_side",
     ],
 };
 const schema261 = {
@@ -76239,7 +76251,12 @@ const schema265 = {
     properties: {
         kind: {
             type: "string",
-            enum: ["cohort_member_score", "cohort_driver_weight_contributed", "claimed_fact_row"],
+            enum: [
+                "cohort_member_score",
+                "cohort_driver_weight_contributed",
+                "claimed_fact_row",
+                "claimed_fact_value",
+            ],
         },
         subject_canonical_id: { type: "string", minLength: 1, maxLength: 256 },
         signal: { type: "string", minLength: 1, maxLength: 256 },
@@ -76460,7 +76477,8 @@ function validate235(
                     if (!(
                         data3 === "cohort_member_score" ||
                         data3 === "cohort_driver_weight_contributed" ||
-                        data3 === "claimed_fact_row"
+                        data3 === "claimed_fact_row" ||
+                        data3 === "claimed_fact_value"
                     )) {
                         const err11 = {
                             instancePath: instancePath + "/source/kind",
@@ -77322,7 +77340,8 @@ function validate233(
                 data3 === "cohort_attention_score" ||
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
-                data3 === "investment_theme_share"
+                data3 === "investment_theme_share" ||
+                data3 === "comparison_side_by_side"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -101281,7 +101300,8 @@ function validate302(
                 data3 === "cohort_attention_score" ||
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
-                data3 === "investment_theme_share"
+                data3 === "investment_theme_share" ||
+                data3 === "comparison_side_by_side"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -119966,7 +119986,8 @@ function validate366(
                 data3 === "cohort_attention_score" ||
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
-                data3 === "investment_theme_share"
+                data3 === "investment_theme_share" ||
+                data3 === "comparison_side_by_side"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",

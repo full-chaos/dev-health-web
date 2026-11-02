@@ -8294,7 +8294,8 @@ export type RenderShapeRule =
     | "cohort_attention_score"
     | "cohort_driver_contribution"
     | "dated_fact_trend"
-    | "investment_theme_share";
+    | "investment_theme_share"
+    | "comparison_side_by_side";
 /**
  * CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.
  */
@@ -9507,7 +9508,11 @@ export interface RenderPoint {
  * CHAOS-4415: where in THIS SAME document a plotted number came from. Validation resolves it and requires exact equality, so a chart number can never be authored, re-derived, rounded or aggregated.
  */
 export interface RenderPointSource {
-    kind: "cohort_member_score" | "cohort_driver_weight_contributed" | "claimed_fact_row";
+    kind:
+        | "cohort_member_score"
+        | "cohort_driver_weight_contributed"
+        | "claimed_fact_row"
+        | "claimed_fact_value";
     subject_canonical_id?: string;
     signal?: string;
     claim_id?: string;
