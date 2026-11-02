@@ -5415,6 +5415,8 @@ export type PlanNarrowingStage = "cardinality" | "synthesis_input" | "assembled_
  */
 export type BudgetOverrun = "fits" | "items" | "bytes";
 export type ClaimedFact = {
+    [k: string]: unknown | undefined;
+} & {
     claim_id: string;
     /**
      * Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots, cardinality. A client must tolerate values it does not know.
@@ -5589,7 +5591,7 @@ export type ClaimedFact = {
     /**
      * CHAOS-4347, additive: a renderable table for a fact whose evidence is genuinely a set of rows (e.g. a project's per-team metrics rollup) rather than one scalar. Optional; a claim carries `field`/`value` as its primary scalar either way.
      *
-     * @maxItems 64
+     * @maxItems 366
      */
     rows?: ClaimedFactRow[];
     table?: ClaimedFactTable;
@@ -9138,9 +9140,9 @@ export interface ClaimedFactTable {
      */
     field: string;
     /**
-     * What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names.
+     * What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names. `distribution` (CHAOS-12607) is one entity's outcomes over an ordered numeric axis: exactly one integer key column, strictly ascending, never cut, up to 366 rows.
      */
-    shape: "time_series" | "breakdown" | "ranking";
+    shape: "time_series" | "breakdown" | "ranking" | "distribution";
     /**
      * The COMPOSITE identity of a row, in declared order. Names ROW columns only -- row identity is relative to the fact's own subject, which is carried by `subject` and is never duplicated here. Exactly one column for `time_series`.
      *
@@ -9203,9 +9205,9 @@ export interface ClaimedFactTable1 {
      */
     field: string;
     /**
-     * What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names.
+     * What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names. `distribution` (CHAOS-12607) is one entity's outcomes over an ordered numeric axis: exactly one integer key column, strictly ascending, never cut, up to 366 rows.
      */
-    shape: "time_series" | "breakdown" | "ranking";
+    shape: "time_series" | "breakdown" | "ranking" | "distribution";
     /**
      * The COMPOSITE identity of a row, in declared order. Names ROW columns only -- row identity is relative to the fact's own subject, which is carried by `subject` and is never duplicated here. Exactly one column for `time_series`.
      *
