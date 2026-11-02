@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/test/utils";
-import type { CapacityForecast } from "@/lib/graphql/types";
+import type { CapacityDistributionBin, CapacityForecast } from "@/lib/graphql/types";
 
 // CHAOS-12622: a pin of everything the "Completion range" card draws, for a set of served
 // forecasts. It holds the whole chart option (each formatter is called on the days and shares it
@@ -32,7 +32,7 @@ vi.mock("@/components/charts/Chart", () => ({
 import { CompletionRange } from "./CompletionRange";
 
 type Distribution = NonNullable<CapacityForecast["completionDistribution"]>;
-type Bin = Distribution["days"][number];
+type Bin = CapacityDistributionBin;
 
 const forecast = (
     over: Partial<CapacityForecast> = {},
