@@ -8329,7 +8329,8 @@ export type RenderShapeRule =
     | "investment_theme_share"
     | "comparison_side_by_side"
     | "investment_subcategory_share"
-    | "investment_repository_flow";
+    | "investment_repository_flow"
+    | "landscape_position";
 /**
  * CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.
  */

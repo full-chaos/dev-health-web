@@ -31023,6 +31023,7 @@ const schema131 = {
         "comparison_side_by_side",
         "investment_subcategory_share",
         "investment_repository_flow",
+        "landscape_position",
     ],
 };
 const schema132 = {
@@ -32165,7 +32166,8 @@ function validate103(
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
                 data3 === "investment_subcategory_share" ||
-                data3 === "investment_repository_flow"
+                data3 === "investment_repository_flow" ||
+                data3 === "landscape_position"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -53964,7 +53966,8 @@ function validate173(
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
                 data3 === "investment_subcategory_share" ||
-                data3 === "investment_repository_flow"
+                data3 === "investment_repository_flow" ||
+                data3 === "landscape_position"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -61239,6 +61242,7 @@ const schema194 = {
                 "comparison_side_by_side",
                 "investment_subcategory_share",
                 "investment_repository_flow",
+                "landscape_position",
             ],
         },
         RenderValueUnit: {
@@ -78777,6 +78781,7 @@ const schema260 = {
         "comparison_side_by_side",
         "investment_subcategory_share",
         "investment_repository_flow",
+        "landscape_position",
     ],
 };
 const schema261 = {
@@ -79919,7 +79924,8 @@ function validate233(
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
                 data3 === "investment_subcategory_share" ||
-                data3 === "investment_repository_flow"
+                data3 === "investment_repository_flow" ||
+                data3 === "landscape_position"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -104671,7 +104677,8 @@ function validate302(
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
                 data3 === "investment_subcategory_share" ||
-                data3 === "investment_repository_flow"
+                data3 === "investment_repository_flow" ||
+                data3 === "landscape_position"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -124149,7 +124156,8 @@ function validate366(
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
                 data3 === "investment_subcategory_share" ||
-                data3 === "investment_repository_flow"
+                data3 === "investment_repository_flow" ||
+                data3 === "landscape_position"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
