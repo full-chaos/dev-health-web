@@ -172,14 +172,16 @@ async function endState(surface: Locator, timeout: number) {
     return { state, words };
 }
 
-/** When the page sent each request to `path` (epoch ms on the runner's clock). */
-function timesOf(page: Page, path: () => string | undefined): number[] {
-    const times: number[] = [];
+/** Every submission-status read the page sends, with when (epoch ms on the runner's clock). */
+function statusReadTimes(page: Page): { readonly path: string; readonly at: number }[] {
+    const reads: { path: string; at: number }[] = [];
     page.on("request", (request) => {
-        const want = path();
-        if (want !== undefined && new URL(request.url()).pathname === want) times.push(Date.now());
+        const path = new URL(request.url()).pathname;
+        if (request.method() === "GET" && /\/submissions\/sub_[0-9a-f]{32}$/u.test(path)) {
+            reads.push({ path, at: Date.now() });
+        }
     });
-    return times;
+    return reads;
 }
 
 /** Sends the panel's creates from the `from`-th on (1-based) to the proxy; ACR otherwise. */
@@ -274,19 +276,25 @@ async function signOutCase(
         .not.toBe("running");
     await page.waitForTimeout(3_000);
     const composerDisabledAfterEnd = await composer.isDisabled();
+    // Sampled again once the old run ended: a restore that came late would show its turn now.
+    const oldTurnShownAfterEnd = await again.getByText(question(name)).count();
     await report(testInfo, "sign-out-evidence", {
         request_id: requestId,
         submission_id: submission,
         signed_out_at: signedOutAt,
         hint_after_sign_out: hintAfterSignOut,
         old_turn_shown_after_sign_in: oldTurnShown,
+        old_turn_shown_after_the_run_ended: oldTurnShownAfterEnd,
         composer_disabled_after_sign_in: composerDisabled,
         composer_disabled_after_the_run_ended: composerDisabledAfterEnd,
         panel_words_after_sign_in: panelWords,
         submission_state: (record as SubmissionRecord | null)?.state ?? null,
         acr_calls: acrCalls(calls),
     });
-    expect(oldTurnShown, "the new session shows the signed-out session's turn").toBe(0);
+    expect(
+        [oldTurnShown, oldTurnShownAfterEnd],
+        "the new session shows the signed-out session's turn",
+    ).toEqual([0, 0]);
     expect((record as SubmissionRecord | null)?.state, ends.why).toBe(ends.state);
 }
 
@@ -338,15 +346,12 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
         await withProxy("end-after-accepted-keep-acr", testInfo, async (proxy) => {
             await divert(page, proxy);
             const { calls, surface } = await panel(page);
-            // Set once the create is seen; the poll watcher reads it.
-            const watched: { submission?: string } = {};
-            const polls = timesOf(page, () =>
-                watched.submission === undefined ? undefined : statusPath(watched.submission),
-            );
+            // Every status read is timed from the start: the first can come before the test has
+            // read the create's submission id.
+            const timed = statusReadTimes(page);
             await ask(surface, question("poll"));
             await expect.poll(() => investigations(calls).length).toBe(1);
             const submission = headerOf(investigations(calls)[0]!, "x-acr-submission-id");
-            watched.submission = submission;
             await expect(answers(surface)).toHaveCount(1, { timeout: 150_000 });
 
             const statusReads = calls.filter(
@@ -356,6 +361,9 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
                 /^\/api\/v1\/context-fabric\/investigations\/result_[0-9a-f]{32}$/u.test(call.path),
             );
             const end = await acrRead<SubmissionRecord>(statusReads[0]!, statusPath(submission));
+            const polls = timed
+                .filter((read) => read.path === statusPath(submission))
+                .map((read) => read.at);
             const gaps = polls.slice(1).map((at, index) => at - polls[index]!);
             await report(testInfo, "poll-evidence", {
                 polls: polls.length,
@@ -369,6 +377,7 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
             expect(statusReads.length, "the store did not poll the status").toBeGreaterThanOrEqual(
                 3,
             );
+            expect(polls.length, "a status read was not timed").toBe(statusReads.length);
             expect(
                 statusReads.every((call) => call.hasBearer),
                 "a status poll went without its bearer",
