@@ -11,6 +11,7 @@ import {
     type ConversationStoreOptions,
     type HintStorage,
     type StoreTurn,
+    threadAdmitted,
 } from "../conversationStore";
 import { partitionTag } from "../keys";
 import { TransportFailure, TransportRefusal } from "../transport";
@@ -830,6 +831,59 @@ describe("restored turns keep their thread (design §3.2)", () => {
         expect(fresh.request).not.toHaveProperty("conversation");
         const threads = new Set(snap(store).turns.map((turn: StoreTurn) => turn.threadId));
         expect(threads).toEqual(new Set([THREAD_A, fresh.threadId]));
+    });
+});
+
+describe("a thread ACR holds, and one this tab lost (CHAOS-12503)", () => {
+    it("a closed thread's turns do not admit the new thread beside them", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(1), "done", { resultId: resultId(1) })]);
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        expect(threadAdmitted(snap(store))).toBe(true);
+        const gate = deferred();
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(409, acrError("thread_closed", 409, false)) }],
+            [{ wait: gate.promise }, accepted(), resultEvent(PARTIAL)],
+        );
+        store.submit("Next?");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("new"));
+        store.submit("A new one?");
+        expect(snap(store).threadId).not.toBe(THREAD_A);
+        expect(threadAdmitted(snap(store))).toBe(false);
+        gate.resolve();
+        await vi.waitFor(() => expect(threadAdmitted(snap(store))).toBe(true));
+    });
+
+    it("only the first selection of a load can be the lost thread", async () => {
+        const store = makeStore();
+        seedThread(THREAD_A, [threadTurn(sub(1), "done", { resultId: resultId(1) })]);
+        store.selectThread(THREAD_A, "incoming", THREAD_A);
+        await loaded(store);
+        transport.threads.set(THREAD_A, null);
+        store.selectThread("thread_another_one", "incoming", THREAD_A);
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
+        store.selectThread(THREAD_A, "incoming", THREAD_A);
+        await vi.waitFor(() =>
+            expect(transport.threadCalls.filter((c) => c.threadId === THREAD_A)).toHaveLength(2),
+        );
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
+    });
+
+    it("a 404 for the lost thread is a fresh conversation the page can name", async () => {
+        const store = makeStore();
+        transport.threads.set(THREAD_A, null);
+        store.selectThread(THREAD_A, "incoming", THREAD_A);
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("new"));
+        expect(snap(store).threadId).toBeNull();
+        expect(snap(store).selectionSource).toBe("local");
+    });
+
+    it("a 404 for any other thread stays unavailable", async () => {
+        const store = makeStore();
+        transport.threads.set(THREAD_A, null);
+        store.selectThread(THREAD_A, "incoming", "thread_of_this_tab");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
     });
 });
 

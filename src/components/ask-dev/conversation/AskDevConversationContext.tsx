@@ -16,7 +16,12 @@ import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
-import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from "./conversationStore";
+import {
+    ConversationStore,
+    THREAD_HINT_KEY,
+    threadAdmitted,
+    type ConversationSnapshot,
+} from "./conversationStore";
 import { FeedbackStore } from "./feedbackStore";
 import { partitionTag } from "./keys";
 import { testModeTransport } from "./testModeTransport";
@@ -53,14 +58,32 @@ const SessionPartitionContext = createContext<string | null | undefined>(undefin
  */
 export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
 
+/**
+ * The browser-minted thread id of that conversation while ACR does not hold it (CHAOS-12503), and
+ * nothing else: the id the URL already shows. Admission removes it. A 404 for this id is this tab's
+ * own unsaved conversation. A 404 for any other id stays "not available".
+ */
+export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
+
 /** True when this tab lost a conversation of this (org, principal) to a reload. */
 const NotSavedContext = createContext(false);
+
+/** The thread of the conversation this tab lost to a reload, or `null` (CHAOS-12503). */
+const LostThreadContext = createContext<string | null>(null);
 
 export { partitionTag };
 
 function readMarker(): string | null {
     try {
         return window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function readLostThread(): string | null {
+    try {
+        return window.sessionStorage.getItem(UNSAVED_THREAD_KEY);
     } catch {
         return null;
     }
@@ -85,9 +108,11 @@ function urlNamesThread(): boolean {
     );
 }
 
-function writeMarker(tag: string): void {
+function writeMarker(tag: string, threadId: string | null): void {
     try {
         window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, tag);
+        if (threadId === null) window.sessionStorage.removeItem(UNSAVED_THREAD_KEY);
+        else window.sessionStorage.setItem(UNSAVED_THREAD_KEY, threadId);
     } catch {
         // No storage (a private window, blocked site data): a reload then shows no notice.
     }
@@ -168,6 +193,9 @@ export function AskDevConversationProvider({
     // The marker as this page load found it (the server and hydration render none). Read once: a
     // marker this tab writes later is for the next reload, not this one.
     const [markerAtLoad] = useState(() => (typeof window === "undefined" ? null : readMarker()));
+    const [threadAtLoad] = useState(() =>
+        typeof window === "undefined" ? null : readLostThread(),
+    );
     // A restore hint at load means the conversation was saved: no "not saved" notice then.
     const [hintAtLoad] = useState(() =>
         typeof window === "undefined" ? false : readHintPresent(),
@@ -187,24 +215,25 @@ export function AskDevConversationProvider({
     // already the new one while the store still holds the old one's turns (codex r1 on #1642).
     const owner = snapshot?.partition ?? null;
     const ownerTag = owner === null ? null : partitionTag(owner);
+    // Only a thread ACR does not hold: a saved one that later 404s stays "not available".
+    const unsavedThread = snapshot === null || threadAdmitted(snapshot) ? null : snapshot.threadId;
     useEffect(() => {
-        if (ownerTag !== null && turns > 0) writeMarker(ownerTag);
-    }, [ownerTag, turns]);
+        if (ownerTag !== null && turns > 0) writeMarker(ownerTag, unsavedThread);
+    }, [ownerTag, turns, unsavedThread]);
     // The notice is for the signed-in (org, principal): its marker, and no conversation now.
     const tag = typeof partition === "string" ? partitionTag(partition) : null;
-    const notSaved =
-        store !== null &&
-        tag !== null &&
-        turns === 0 &&
-        loadedMarker === tag &&
-        !hintAtLoad &&
-        snapshot?.thread.kind === "new";
+    const lostHere = store !== null && tag !== null && loadedMarker === tag && !hintAtLoad;
+    const notSaved = lostHere && turns === 0 && snapshot?.thread.kind === "new";
 
     return (
         <ConversationContext.Provider value={store}>
             <FeedbackContext.Provider value={feedback}>
                 <SessionPartitionContext.Provider value={partition}>
-                    <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+                    <NotSavedContext.Provider value={notSaved}>
+                        <LostThreadContext.Provider value={lostHere ? threadAtLoad : null}>
+                            {children}
+                        </LostThreadContext.Provider>
+                    </NotSavedContext.Provider>
                 </SessionPartitionContext.Provider>
             </FeedbackContext.Provider>
         </ConversationContext.Provider>
@@ -217,6 +246,15 @@ export function AskDevConversationProvider({
  */
 export function useAskDevNotSaved(): boolean {
     return useContext(NotSavedContext);
+}
+
+/**
+ * The thread this tab lost to a reload, for this (org, principal), with no saved conversation in
+ * its place. Expand and the first submit name a thread in `/dev?thread=` before ACR admits it, so a
+ * reload can name one ACR never held. `null` when the tab lost none.
+ */
+export function useAskDevLostThread(): string | null {
+    return useContext(LostThreadContext);
 }
 
 export type AskDevConversation = {
