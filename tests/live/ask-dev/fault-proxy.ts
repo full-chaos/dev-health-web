@@ -35,7 +35,12 @@ export type FaultMode =
     /** Forward through the end of the first `stage` frame, then end the response and drop ACR. */
     | "cut-after-first-stage"
     /** Answer the first request 401 at once, with no body, and send nothing to ACR. */
-    | "unauthorized-once";
+    | "unauthorized-once"
+    /**
+     * Forward through the end of the first `accepted` frame, then end the browser's response, and
+     * read ACR's stream to its end: ACR sees no drop, so its run goes on (CHAOS-12192).
+     */
+    | "end-after-accepted-keep-acr";
 
 /** One request through the proxy. Times are milliseconds from `receivedAt`. */
 export type ProxyExchange = {
@@ -55,6 +60,10 @@ export type ProxyExchange = {
     faulted: boolean;
     /** An error code on the way to ACR (`ECONNREFUSED`, for example). */
     upstreamError: string | null;
+    /** The `reserved_result_id` of ACR's `accepted` frame: an id, never content. */
+    reservedResultId: string | null;
+    /** The terminal ACR's stream ended with (`result` or `error`), as the proxy read it. */
+    acrTerminal: string | null;
     readonly at: {
         acrHeaders?: number;
         accepted?: number;
@@ -94,6 +103,19 @@ function frameOf(text: string): Frame {
         else if (line.startsWith("data:")) data = true;
     }
     return { text, event, data };
+}
+
+/** The `reserved_result_id` of an `accepted` frame's data, when it is a result id. */
+function reservedOf(text: string): string | null {
+    const line = text.split(/\r\n|\r|\n/u).find((part) => part.startsWith("data:"));
+    if (line === undefined) return null;
+    try {
+        const value = (JSON.parse(line.slice("data:".length)) as { reserved_result_id?: unknown })
+            .reserved_result_id;
+        return typeof value === "string" && /^result_[0-9a-f]{32}$/u.test(value) ? value : null;
+    } catch {
+        return null;
+    }
 }
 
 /** The frame with `seq` 2 changed to 9 in its one `data` line, or why it could not be. */
@@ -174,6 +196,8 @@ export async function startFaultProxy(target: string, mode: FaultMode): Promise<
             fault: "none",
             faulted: false,
             upstreamError: null,
+            reservedResultId: null,
+            acrTerminal: null,
             at: {},
         };
         exchanges.push(exchange);
@@ -235,6 +259,8 @@ export async function startFaultProxy(target: string, mode: FaultMode): Promise<
         res.on("error", () => undefined);
         res.on("close", () => {
             if (!endedByProxy && !res.writableEnded) exchange.at.browserGone = since();
+            // This mode ended the browser's response itself and keeps reading ACR.
+            if (mode === "end-after-accepted-keep-acr" && endedByProxy) return;
             drop();
         });
         if (mode === "hold-headers") {
@@ -295,6 +321,11 @@ export async function startFaultProxy(target: string, mode: FaultMode): Promise<
             /** After the fault, nothing more goes to the browser. */
             let silent = false;
             const forward = (frame: Frame): void => {
+                if (frame.event === "accepted")
+                    exchange.reservedResultId ??= reservedOf(frame.text);
+                if (frame.event === "result" || frame.event === "error") {
+                    exchange.acrTerminal ??= frame.event;
+                }
                 if (silent) return;
                 if (frame.data) frames += 1;
                 if (frame.event === "accepted") exchange.at.accepted ??= since();
@@ -328,6 +359,14 @@ export async function startFaultProxy(target: string, mode: FaultMode): Promise<
                             fault("ended the response after the first stage frame");
                             endBrowser();
                             drop();
+                        }
+                        return;
+                    case "end-after-accepted-keep-acr":
+                        res.write(frame.text);
+                        if (frame.event === "accepted") {
+                            silent = true;
+                            fault("ended the response after the accepted frame; ACR read on");
+                            endBrowser();
                         }
                         return;
                     case "cut-before-terminal":
