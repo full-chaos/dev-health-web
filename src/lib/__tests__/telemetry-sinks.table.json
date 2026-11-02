@@ -107,10 +107,6 @@
         "log": 2,
         "sentry": 0
     },
-    "src/app/api/ask-dev/investigations/route.ts": {
-        "log": 7,
-        "sentry": 0
-    },
     "src/app/api/auth/change-password/route.ts": {
         "log": 7,
         "sentry": 0
@@ -192,10 +188,6 @@
         "sentry": 0
     },
     "src/lib/areaSignals/improve.ts": {
-        "log": 2,
-        "sentry": 0
-    },
-    "src/lib/ask-dev/investigation.server.ts": {
         "log": 2,
         "sentry": 0
     },
