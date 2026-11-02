@@ -140,6 +140,35 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
         );
     });
 
+    it("loads the page's figure only when a forecast draws, and never the tiles", async () => {
+        // vi.resetModules keeps a hoisted mock's module, so the counts come from fresh doMocks.
+        vi.resetModules();
+        let figures = 0;
+        let tiles = 0;
+        vi.doMock("@/components/capacity/CompletionRange", () => {
+            figures += 1;
+            return { CompletionRangeFigure: () => <div data-testid="figure-fresh" /> };
+        });
+        vi.doMock("@/components/capacity/ForecastTiles", () => {
+            tiles += 1;
+            return {};
+        });
+        const fresh = (await import("../askDevShapeCharts")) as {
+            askDevShapeChart: (
+                shape: RenderShape,
+                detail?: ForecastShapeDetail,
+            ) => ReactElement | null;
+        };
+        expect(fresh.askDevShapeChart({ ...shape, kind: "series" })).toBeNull();
+        expect(figures).toBe(0);
+        render(fresh.askDevShapeChart(shape, detail) as ReactElement);
+        await screen.findByTestId("figure-fresh");
+        expect(figures).toBe(1);
+        expect(tiles).toBe(0);
+        vi.doUnmock("@/components/capacity/CompletionRange");
+        vi.doUnmock("@/components/capacity/ForecastTiles");
+    });
+
     it("gives no chart for a forecast with no detail, so ask-dev shows its table", () => {
         expect(slot(shape)).toBeNull();
         expect(slot(shape, { ...detail, rows: [] })).toBeNull();
