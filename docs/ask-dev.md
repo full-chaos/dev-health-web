@@ -24,7 +24,7 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
     `SUBJECT_ID` is tested against the canonical-id vectors that ACR generates from its own builders, vendored at the ACR pin (CHAOS-12280). A new kind needs a builder there and a check against those vectors. ACR logs at most one counts-only Info line per subject resolution, `context fabric resolution trace: page hint lookup` (exact hit, label fallback and unresolved, by kind; acr `graphrank/tracer.go`), which shows any drift live.
 
 - **One of each, bounded by the route map.** A page proposes each entity it shows, and only when there is exactly one of it. The approved routes, and the kinds each route takes, are in `PAGE_CONTEXT_ROUTES` (`src/lib/ask-dev/page-context.ts`). For example, complexity takes repositories only.
-    - The organization goes first. It is proposed only when the shell and the session name the same organization.
+    - The organization is proposed only when the page has no narrower entity (`proposePageContext`), and only when the shell and the session name the same organization. A page that shows one repository or one team is about that entity: with the organization beside it, a repository ACR cannot resolve falls to an organization-level answer and nothing says so (CHAOS-12215).
     - A team or a repository is the scope that the page settles on after its scope bar's lock (`loadScopePageEntities`). A filter repository name becomes its id only when the served id-to-name map gives exactly one id for it.
 - **Never sent:** filters, the time window, the role, a comparison, fingerprints, DOM text, or a person.
 - **Chips.** The proposal shows as chips above the composer, before submit. The user can remove each chip.

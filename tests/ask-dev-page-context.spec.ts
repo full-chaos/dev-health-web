@@ -107,7 +107,6 @@ test.describe("desktop (1280px)", () => {
         await expect(panel).toBeVisible();
         const context = panel.getByRole("group", { name: "Context from this page" });
         await expect(context.getByTestId("ask-dev-context-chip")).toHaveText([
-            "Organization:E2E Organization",
             "Repository:full-chaos/dev-health-web",
             "Team:Platform",
         ]);
@@ -118,7 +117,7 @@ test.describe("desktop (1280px)", () => {
         await context
             .getByRole("button", { name: "Remove Repository full-chaos/dev-health-web" })
             .click();
-        await expect(context.getByTestId("ask-dev-context-chip")).toHaveCount(2);
+        await expect(context.getByTestId("ask-dev-context-chip")).toHaveCount(1);
         await panel.screenshot({ path: testInfo.outputPath("context-chip-removed-desktop.png") });
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Where is the team's effort going?");
@@ -127,10 +126,7 @@ test.describe("desktop (1280px)", () => {
 
         const [sent] = await investigations(page);
         expect(sent!.request!.requested_scope).toEqual({
-            subject_hints: [
-                { ...ORG, source: "ask_dev_page_context" },
-                { ...TEAM, source: "ask_dev_page_context" },
-            ],
+            subject_hints: [{ ...TEAM, source: "ask_dev_page_context" }],
         });
     });
 
@@ -178,7 +174,7 @@ test.describe("mobile (390px)", () => {
         await page.goto("/investment");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByTestId("ask-dev-sheet");
-        await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveCount(3);
+        await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveCount(2);
         await sheet.getByTestId("ask-dev-context").scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("context-chips-mobile.png") });
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
