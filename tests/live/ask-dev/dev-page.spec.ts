@@ -97,6 +97,9 @@ async function screenshots(page: Page, testInfo: TestInfo, name: string) {
     await page.setViewportSize({ width: 1440, height: 900 });
 }
 
+/** The conversation transcript of a surface: the rail and History also show a question's text. */
+const conversation = (surface: Locator) => surface.getByRole("log", { name: "Conversation" });
+
 test("Expand and Minimize move the view, never the run; a reload restores the thread", async ({
     page,
 }, testInfo) => {
@@ -119,7 +122,8 @@ test("Expand and Minimize move the view, never the run; a reload restores the th
         await expect(page).toHaveURL(/\/dev\?thread=/u);
         const thread = new URL(page.url()).searchParams.get("thread");
         const full = page.getByTestId("ask-dev-page");
-        await expect(full.getByText(question("devExpand"))).toBeVisible();
+        // The transcript, not the rail: /dev also lists the question as the current thread.
+        await expect(conversation(full).getByText(question("devExpand"))).toBeVisible();
         // The same running turn: the stage that was active in the panel is active here.
         evidence.running_on_dev = await activeStage(full).count();
         await expect(answers(full)).toHaveCount(1, { timeout: 90_000 });
@@ -147,7 +151,7 @@ test("Expand and Minimize move the view, never the run; a reload restores the th
         // the same thread with a new submission.
         await page.getByTestId("ask-dev-minimize").click();
         await expect(page).toHaveURL((url) => url.pathname === from);
-        await expect(surface.getByText(question("devExpand"))).toBeVisible();
+        await expect(conversation(surface).getByText(question("devExpand"))).toBeVisible();
         await expect(answers(surface)).toHaveCount(1);
         await screenshots(page, testInfo, "panel-after-minimize");
         await ask(surface, question("devFollowUp"));
