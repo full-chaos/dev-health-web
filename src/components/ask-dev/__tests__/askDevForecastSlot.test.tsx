@@ -1,4 +1,7 @@
-import type { RenderShape } from "@full-chaos/ask-dev/render";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import type { ForecastShapeDetail, RenderShape } from "@full-chaos/ask-dev/render";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,15 +10,15 @@ import { CompletionRange } from "@/components/capacity/CompletionRange";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
 import { askDevShapeChart } from "../askDevShapeCharts";
-import { forecastSlotInput, type ForecastShapeDetail } from "../forecastSlotInput";
+import { forecastSlotInput } from "../forecastSlotInput";
 import pageForecast from "./fixtures/page-forecast-curve.json";
-import slotForecast from "./fixtures/slot-forecast-curve.json";
 
 // CHAOS-4613: the Ask Dev forecast slot draws one stored forecast as the capacity page does. Both
 // fixtures are the SAME stored capacity_forecasts row:
 // - page: through ops' real `scanForecastRow` (the GraphQL model the page reads);
-// - slot: through acr's real fact writer, claim attach, summary, selector and encoder, then
-//   ask-dev's real `shapeDetail` (what ask-dev hands the slot).
+// - slot: ask-dev's own fixtures at web's ask-dev pin, through acr's real fact writer, claim attach,
+//   summary, selector and encoder (acr 098de0ca), then ask-dev's real `shapeDetail` (what ask-dev
+//   hands the slot).
 
 const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
 vi.mock("@/components/charts/chartTheme", () => ({
@@ -38,14 +41,25 @@ vi.mock("@/components/charts/Chart", () => ({
     },
 }));
 
-// DRAFT: web's ask-dev pin types the slot with one argument until it exports the forecast detail.
-const slot = askDevShapeChart as (
-    shape: RenderShape,
-    detail?: ForecastShapeDetail,
-) => ReactElement | null;
+const slot = askDevShapeChart;
 
-const shape = slotForecast.shape as unknown as RenderShape;
-const detail = slotForecast.detail as unknown as ForecastShapeDetail;
+/** One of ask-dev's served-shape fixtures, read from web's ask-dev pin. */
+function askDevFixture(name: string): unknown {
+    return JSON.parse(
+        readFileSync(
+            join(
+                process.cwd(),
+                "node_modules/@full-chaos/ask-dev/src/test/fixtures/served-shapes",
+                name,
+            ),
+            "utf8",
+        ),
+    );
+}
+
+const shape = (askDevFixture("forecast-curve.json") as { render_shapes: RenderShape[] })
+    .render_shapes[0]!;
+const detail = askDevFixture("forecast-curve.detail.json") as ForecastShapeDetail;
 const page = pageForecast as unknown as CapacityForecast;
 
 type Formatter<T> = (value: T) => string;
@@ -153,12 +167,7 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
             tiles += 1;
             return {};
         });
-        const fresh = (await import("../askDevShapeCharts")) as {
-            askDevShapeChart: (
-                shape: RenderShape,
-                detail?: ForecastShapeDetail,
-            ) => ReactElement | null;
-        };
+        const fresh = await import("../askDevShapeCharts");
         expect(fresh.askDevShapeChart({ ...shape, kind: "series" })).toBeNull();
         expect(figures).toBe(0);
         render(fresh.askDevShapeChart(shape, detail) as ReactElement);

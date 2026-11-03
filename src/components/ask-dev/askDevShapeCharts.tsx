@@ -1,6 +1,6 @@
 "use client";
 
-import type { RenderShape, ShapeSlot } from "@full-chaos/ask-dev/render";
+import type { ForecastShapeDetail, RenderShape, ShapeSlot } from "@full-chaos/ask-dev/render";
 import dynamic from "next/dynamic";
 
 import { completionRangeView } from "@/components/capacity/completionRangeView";
@@ -9,7 +9,7 @@ import { buildTooltipHtml } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
 import type { QuadrantPoint, QuadrantResponse, SankeyLink, SankeyNode } from "@/lib/types";
 
-import { forecastSlotInput, type ForecastShapeDetail } from "./forecastSlotInput";
+import { forecastSlotInput } from "./forecastSlotInput";
 
 /** On demand: an answer with no rich shape loads no chart. */
 const TreemapChart = dynamic(
