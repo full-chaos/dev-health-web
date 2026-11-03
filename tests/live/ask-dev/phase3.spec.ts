@@ -627,36 +627,43 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     }
     test.skip(!SANKEY, "NOT RUN: the sankey flag is off on this stack (ASK_DEV_LIVE_SANKEY)");
     // CHAOS-12582: the team's repository flow, from the claimed repository_theme_breakdown table.
-    // Replicate 1 is drawn at desktop width, replicate 2 at phone width; each in the panel and on
-    // /dev, with a screenshot of each (the ticket's acceptance).
-    for (const [replicate, width, view] of [
-        [1, 1280, "desktop"],
-        [2, 390, "phone"],
-    ] as const) {
-        const { page, answer, result } = await answerFor(browser, baseURL, "sankey", replicate, {
-            width,
-            height: 844,
+    // The suite asks at desktop width (its sign-in opens History, which the phone layout hides), so
+    // the one answer is checked at desktop width and again at phone width, in the panel and on
+    // /dev, with a screenshot of each (the ticket's acceptance). A resize remounts the panel, so
+    // each width waits for the chart to draw again before it is checked.
+    const { page, answer, result } = await answerFor(browser, baseURL, "sankey", 1);
+    const [shape] = served(
+        result,
+        "investment_repository_flow",
+        "the team's repository_theme_breakdown",
+    );
+    const drawnIn = async (scope: Locator, view: string, where: string) => {
+        const figure = figureOf(scope, shape!);
+        await expect(
+            figure.locator("canvas").first(),
+            `the sankey is drawn (${where}, ${view})`,
+        ).toBeVisible({
+            timeout: 30_000,
         });
-        const [shape] = served(
-            result,
-            "investment_repository_flow",
-            "the team's repository_theme_breakdown",
-        );
-        const figure = figureOf(answer, shape!);
         await expectDrawnAsServed(figure, shape!);
-        await expect(figure.locator("canvas").first(), "the sankey is drawn").toBeVisible();
-        await expectLedger(answer, result);
         await figure.scrollIntoViewIfNeeded();
-        await page.screenshot({ path: testInfo.outputPath(`sankey-panel-${view}.png`) });
-        await page.getByRole("button", { name: "Open full page" }).click();
-        await expect(page.getByTestId("ask-dev-page")).toBeVisible({ timeout: 30_000 });
-        const onPage = figureOf(page.getByTestId("ask-dev-page"), shape!);
-        await expectDrawnAsServed(onPage, shape!);
-        await expect(onPage.locator("canvas").first(), "the sankey is drawn on /dev").toBeVisible();
-        await onPage.scrollIntoViewIfNeeded();
-        await page.screenshot({ path: testInfo.outputPath(`sankey-dev-${view}.png`) });
-        await page.context().close();
-    }
+        await page.screenshot({ path: testInfo.outputPath(`sankey-${where}-${view}.png`) });
+    };
+    await drawnIn(answer, "desktop", "panel");
+    await expectLedger(answer, result);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await drawnIn(
+        page.getByTestId("ask-dev-panel").getByRole("article", { name: "Answer" }),
+        "phone",
+        "panel",
+    );
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await page.getByRole("button", { name: "Open full page" }).click();
+    await expect(page.getByTestId("ask-dev-page")).toBeVisible({ timeout: 30_000 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "desktop", "dev");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "phone", "dev");
+    await page.context().close();
 });
 
 test("sunburst [behind a flag]: the investment subcategories render from the served shape", () => {
