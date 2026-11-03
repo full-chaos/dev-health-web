@@ -51,7 +51,7 @@ export interface PlatformSurface {
     file: string;
     symbol?: string;
     /** "unmapped": no catalog action; denied only while impersonating. */
-    action: PlatformAction | "unmapped" | OrgDeniedAction;
+    action: PlatformAction | "unmapped" | OrgDeniedAction | "settings.read";
     /** false: no go-api route maps the action yet (CHAOS-11847). */
     serverMapped: boolean;
     impersonation: "denied" | "allowed";
@@ -60,6 +60,7 @@ export interface PlatformSurface {
 const SA = "src/app/(app)/superadmin";
 const ORGS = "src/lib/admin/server/orgs.ts";
 const BILLING = "src/lib/admin/server/billing.ts";
+const SETTINGS = "src/lib/admin/server/settings.ts";
 const USERS = "src/lib/admin/server/users.ts";
 
 function row(
@@ -187,7 +188,14 @@ export const PLATFORM_SURFACES: readonly PlatformSurface[] = [
         `${SA}/product-telemetry/[orgId]/page.tsx`,
         "admin.telemetry",
     ),
-    row("page:/superadmin/settings", "page", `${SA}/settings/page.tsx`, "unmapped"),
+    // The settings page calls org-scoped go-api routes: org actions, no admin.settings action.
+    // settings.read is allowed to a delegated session in the catalog; this page is a superadmin
+    // surface and takes the same impersonation deny as the other superadmin pages.
+    row("page:/superadmin/settings", "page", `${SA}/settings/page.tsx`, "settings.write"),
+    row("fn:listSettingCategories", "fn", SETTINGS, "settings.read", {
+        symbol: "listSettingCategories",
+    }),
+    row("fn:listSettings", "fn", SETTINGS, "settings.read", { symbol: "listSettings" }),
     row("nav:platform", "nav", "src/lib/navigation/areas.ts", "admin.stats", {
         symbol: "platformAdminOnly",
     }),

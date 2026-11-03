@@ -23,12 +23,12 @@ describe("C1 platform action table against the pinned catalog", () => {
         expect([...PLATFORM_ACTIONS].sort()).toEqual(platform.map((a) => a.action).sort());
     });
 
-    it("every surface names a platform action, an impersonation-denied org action or the unmapped marker", () => {
+    it("every surface names a platform action, a catalog org action or the unmapped marker", () => {
         for (const row of PLATFORM_SURFACES) {
             expect(
                 row.action === "unmapped" ||
                     (PLATFORM_ACTIONS as readonly string[]).includes(row.action) ||
-                    (ORG_IMPERSONATION_DENIED_ACTIONS as readonly string[]).includes(row.action),
+                    actions.some((a) => a.scope === "organization" && a.action === row.action),
                 row.id,
             ).toBe(true);
         }
@@ -61,9 +61,28 @@ describe("C1 platform action table against the pinned catalog", () => {
         }
     });
 
+    it("maps /superadmin/settings to the org settings actions and adds no admin.settings action", () => {
+        const rows = PLATFORM_SURFACES.filter(
+            (r) =>
+                r.file.endsWith("/superadmin/settings/page.tsx") ||
+                r.symbol === "listSettings" ||
+                r.symbol === "listSettingCategories",
+        );
+        expect(rows.map((r) => r.action).sort()).toEqual([
+            "settings.read",
+            "settings.read",
+            "settings.write",
+        ]);
+        for (const r of rows) expect(r.impersonation, r.id).toBe("denied");
+        expect(actions.some((a) => a.action === "admin.settings")).toBe(false);
+        expect((PLATFORM_ACTIONS as readonly string[]).includes("admin.settings")).toBe(false);
+    });
+
     it("holds the surfaces that have no server mapping or no catalog action as flagged rows", () => {
         const byId = new Map(PLATFORM_SURFACES.map((r) => [r.id, r]));
-        expect(byId.get("page:/superadmin/settings")?.action).toBe("unmapped");
+        expect(byId.get("page:/superadmin/settings")?.action).toBe("settings.write");
+        expect(byId.get("fn:listSettingCategories")?.action).toBe("settings.read");
+        expect(byId.get("fn:listSettings")?.action).toBe("settings.read");
         for (const id of ["page:/superadmin/users", "fn:createServiceAccount"]) {
             expect(byId.get(id)?.action, id).toBe("admin.users");
             expect(byId.get(id)?.serverMapped, id).toBe(false);
