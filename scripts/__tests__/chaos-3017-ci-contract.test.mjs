@@ -126,6 +126,8 @@ describe("CHAOS-3017 CI contracts", () => {
             const full = await listDefaultPlaywrightTests();
             expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
             expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
+            // CHAOS-12841: pixels hold only in the mirrored image; the `visual` job runs this spec.
+            expect(full.some((entry) => entry.includes("ask-dev-visual.spec.ts"))).toBe(false);
             const shards = [];
             for (const shard of shardLabels) {
                 shards.push(await listDefaultPlaywrightTests(shard));

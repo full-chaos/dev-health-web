@@ -47,6 +47,8 @@ describe("workflow job time limits (CHAOS-8530)", () => {
             "unit",
             "e2e-default",
             "e2e-onboarding",
+            "visual-image",
+            "visual",
             "design-lint",
             "test",
         ],
