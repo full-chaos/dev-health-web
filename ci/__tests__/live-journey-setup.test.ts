@@ -170,17 +170,18 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             expect(fault).not.toContain(secret);
     });
 
-    // Each redaction clause on its own: one secret shape per body, so no other clause hides it.
+    // Codex r2 on #1813: a short secret or id printed under the earlier rule. A code prints only
+    // when it is letters joined by a space, `_` or `-`; a digit or any other symbol redacts it.
     for (const [label, detail, printed] of [
-        ["an email", "user creds-1@example.com exists", "[redacted]"],
-        ["the word password", "wrong password", "[redacted]"],
-        ["the word token", "invalid token", "[redacted]"],
+        ["a short mixed secret", "Abc123", "[redacted]"],
+        ["a short id", "org-123", "[redacted]"],
+        ["an email", "user creds@example.com exists", "[redacted]"],
         ["an id", "org 550e8400-e29b-41d4-a716-446655440000 missing", "[redacted]"],
-        // A hex id with no digit run and no mixed key: only the id clause catches it.
-        ["a letters-only hex id", "org deadbeef-cafe-face-bead-facadebeaded missing", "[redacted]"],
-        ["a long digit run", "account 1234567 locked", "[redacted]"],
-        ["a mixed opaque key", "key ab12cd34ef56gh78 rejected", "[redacted]"],
+        ["a digit run", "account 1234567 locked", "[redacted]"],
+        ["a mixed key", "key ab12cd34ef56gh78 rejected", "[redacted]"],
         ["a character outside the plain set", "bad <input>", "[redacted]"],
+        ["more than 80 characters", "a".repeat(81), "[redacted]"],
+        ["a code that names a token", "access_token_expired", "access_token_expired"],
         [
             "a long plain code",
             "organization_membership_required",
@@ -196,6 +197,48 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             expect(fault).toBe(`setup gave no token: register 400 code=${printed}`);
         });
     }
+
+    it("takes only a string superuser token: a numeric one is no token, and no lookup is sent", async () => {
+        const base = healthy();
+        const { request, calls } = fakeRequest((at, options) => {
+            const who = (options.data as { email?: string } | undefined)?.email;
+            return at === "POST /api/v1/auth/login" && who !== EMAIL
+                ? { status: 200, body: { access_token: 123 } }
+                : base(at, options);
+        });
+        const setup = await setupUser(request, user);
+        expect(setup.steps).toContain("superuser-login 200 token=absent");
+        expect(calls).not.toContain("GET /api/v1/admin/users");
+        expect(setupFault(setup)).toMatch(/user-lookup skipped .* login 200 token=absent/u);
+    });
+
+    it("names a step whose request throws, by the error's name only", async () => {
+        for (const [method, step] of [
+            ["POST", "register"],
+            ["GET", "user-lookup"],
+            ["PATCH", "verify"],
+        ] as const) {
+            const base = healthy();
+            const { request } = fakeRequest(base);
+            const thrower = async () => {
+                const error = new Error(`connect ECONNREFUSED for ${EMAIL} with ${TOKEN}`);
+                error.name = "ConnectionRefused";
+                throw error;
+            };
+            const fault = setupFault(
+                await setupUser(
+                    {
+                        ...(request as object),
+                        [method.toLowerCase()]: thrower,
+                    } as never,
+                    user,
+                ),
+            );
+            expect(fault).toMatch(new RegExp(`${step} threw ConnectionRefused$`, "u"));
+            expect(fault).not.toContain(EMAIL);
+            expect(fault).not.toContain(TOKEN);
+        }
+    });
 
     it("never prints a structured error: a validation error can carry the input", async () => {
         const { request } = fakeRequest(

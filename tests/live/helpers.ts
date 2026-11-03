@@ -179,20 +179,19 @@ export function envFault(reason: string): void {
 /** A journey's setup user: its token ("" when the setup gave none) and every step it took. */
 export type SetupUser = { readonly token: string; readonly steps: readonly string[] };
 
-/** A code or detail this helper prints: letters first, then letters, digits and plain punctuation. */
-const SAFE_CODE = /^[A-Za-z][A-Za-z0-9 _.:,'()-]{0,79}$/u;
 /**
- * What is never printed even inside a safe-looking code: a secret word, an id or a key. (An email
- * never gets this far: SAFE_CODE has no `@`.)
+ * A code or detail this helper prints: words of letters only, joined by a space, `_` or `-`
+ * (`access_token_expired`, `email not verified`), at most 80 characters. A digit or any other
+ * symbol makes it "[redacted]": every token, key and id the backend issues carries one, as do an
+ * email (`@`) and the journeys' password. Codex r2 on #1813: `Abc123` and `org-123` printed under
+ * the earlier rule.
  */
-const SECRET_SHAPED =
-    /password|passwd|token|secret|cookie|bearer|[0-9a-f]{8}-[0-9a-f]{4}|\d{6,}|(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{12,}/iu;
+const PRINTABLE_CODE = /^[A-Za-z]+(?:[ _-][A-Za-z]+)*$/u;
 
 /**
- * One response's error code, for a setup step: `error.code`, `code` or `detail`. It is printed only
- * when it is a short plain string (SAFE_CODE) with nothing secret-shaped in it; any other string is
- * "[redacted]", and an object or array (a validation error can carry the input) is "[structured]".
- * So no token, password, email or id reaches a log line.
+ * One response's error code, for a setup step: `error.code`, `code` or `detail`. A string is printed
+ * only when PRINTABLE_CODE allows it, else "[redacted]"; an object or array (a validation error can
+ * carry the input) is "[structured]". So no token, password, email or id reaches a log line.
  */
 async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string> {
     const text = await res.text().catch(() => "");
@@ -210,7 +209,35 @@ async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string
         (record.error as { code?: unknown } | undefined)?.code ?? record.code ?? record.detail;
     if (raw === undefined || raw === null) return "-";
     if (typeof raw !== "string") return "[structured]";
-    return SAFE_CODE.test(raw) && !SECRET_SHAPED.test(raw) ? raw : "[redacted]";
+    return raw.length <= 80 && PRINTABLE_CODE.test(raw) ? raw : "[redacted]";
+}
+
+/** A login answer's token: a non-empty string, or "" for anything else in `access_token`. */
+function tokenOf(body: unknown): string {
+    const value = (body as { access_token?: unknown } | null | undefined)?.access_token;
+    return typeof value === "string" ? value : "";
+}
+
+type SetupResponse = Awaited<ReturnType<APIRequestContext["post"]>>;
+
+/**
+ * Sends one setup request. A request that throws (a refused connection, a timeout) is a step too:
+ * it is recorded by its error's name only (its message can hold the URL, which holds the email),
+ * and gives undefined, so the setup stops there and still names the step.
+ */
+async function attempt(
+    steps: string[],
+    name: string,
+    send: () => Promise<SetupResponse>,
+): Promise<SetupResponse | undefined> {
+    try {
+        return await send();
+    } catch (error) {
+        const kind =
+            error instanceof Error && PRINTABLE_CODE.test(error.name) ? error.name : "Error";
+        steps.push(`${name} threw ${kind}`);
+        return undefined;
+    }
 }
 
 /**
@@ -229,24 +256,28 @@ export async function setupUser(
     },
 ): Promise<SetupUser> {
     const steps: string[] = [];
+    const none = (): SetupUser => ({ token: "", steps });
     const step = async (name: string, res: { status: () => number; text: () => Promise<string> }) =>
         steps.push(`${name} ${String(res.status())} code=${await errorCodeOf(res)}`);
 
-    const register = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-        data: { email: user.email, password: user.password, full_name: user.fullName },
-        headers: { Origin: liveBackendUrl },
-    });
+    const register = await attempt(steps, "register", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+            data: { email: user.email, password: user.password, full_name: user.fullName },
+            headers: { Origin: liveBackendUrl },
+        }),
+    );
+    if (register === undefined) return none();
     await step("register", register);
-    if (!register.ok()) return { token: "", steps };
+    if (!register.ok()) return none();
 
     // Verify the user's email so login returns tokens.
-    const suLogin = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
-        data: { email: superuserEmail, password: superuserPassword },
-    });
-    const suToken = suLogin.ok()
-        ? (((await suLogin.json().catch(() => ({}))) as { access_token?: string }).access_token ??
-          "")
-        : "";
+    const suLogin = await attempt(steps, "superuser-login", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+            data: { email: superuserEmail, password: superuserPassword },
+        }),
+    );
+    if (suLogin === undefined) return none();
+    const suToken = suLogin.ok() ? tokenOf(await suLogin.json().catch(() => ({}))) : "";
     steps.push(
         suLogin.ok()
             ? `superuser-login ${String(suLogin.status())} token=${suToken ? "present" : "absent"}`
@@ -254,10 +285,13 @@ export async function setupUser(
     );
     let userId = "";
     if (suToken) {
-        const lookup = await request.get(
-            `${liveBackendUrl}/api/v1/admin/users?q=${encodeURIComponent(user.email)}&limit=5`,
-            { headers: authHeaders(suToken) },
+        const lookup = await attempt(steps, "user-lookup", () =>
+            request.get(
+                `${liveBackendUrl}/api/v1/admin/users?q=${encodeURIComponent(user.email)}&limit=5`,
+                { headers: authHeaders(suToken) },
+            ),
         );
+        if (lookup === undefined) return none();
         if (lookup.ok()) {
             const body = (await lookup.json().catch(() => [])) as unknown;
             const rows = (
@@ -273,24 +307,30 @@ export async function setupUser(
         steps.push("user-lookup skipped (no superuser token)");
     }
     if (suToken && userId) {
-        const verify = await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-            headers: authHeaders(suToken),
-            data: { is_verified: true },
-        });
+        const verify = await attempt(steps, "verify", () =>
+            request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
+                headers: authHeaders(suToken),
+                data: { is_verified: true },
+            }),
+        );
+        if (verify === undefined) return none();
         await step("verify", verify);
     } else {
         steps.push("verify skipped");
     }
 
-    const login = async (name: string): Promise<string> => {
-        const res = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
-            data: { email: user.email, password: user.password },
-        });
+    /** One user login: its token, "" when it gave none, or undefined when the request threw. */
+    const login = async (name: string): Promise<string | undefined> => {
+        const res = await attempt(steps, name, () =>
+            request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+                data: { email: user.email, password: user.password },
+            }),
+        );
+        if (res === undefined) return undefined;
         const text = await res.text().catch(() => "");
         let token = "";
         try {
-            const value = (JSON.parse(text) as { access_token?: unknown }).access_token;
-            token = typeof value === "string" ? value : "";
+            token = tokenOf(JSON.parse(text));
         } catch {
             token = "";
         }
@@ -300,17 +340,23 @@ export async function setupUser(
         );
         return token;
     };
-    let token = await login("login");
-    if (!token || user.orgName === undefined) return { token, steps };
+    const first = await login("login");
+    if (first === undefined || first === "") return none();
+    if (user.orgName === undefined) return { token: first, steps };
 
     // Onboard first so admin endpoints are accessible, then log in again for the org's token.
-    const onboard = await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
-        headers: authHeaders(token),
-        data: { action: "create_org", org_name: user.orgName },
-    });
+    const orgName = user.orgName;
+    const onboard = await attempt(steps, "onboard", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
+            headers: authHeaders(first),
+            data: { action: "create_org", org_name: orgName },
+        }),
+    );
+    if (onboard === undefined) return none();
     await step("onboard", onboard);
-    token = (await login("relogin")) || token;
-    return { token, steps };
+    const again = await login("relogin");
+    if (again === undefined) return none();
+    return { token: again || first, steps };
 }
 
 /** Why a journey has no token: its setup steps, or "" when the setup gave a token. */
