@@ -176,6 +176,189 @@ export function envFault(reason: string): void {
     test.skip(true, reason);
 }
 
+/** A journey's setup user: its token ("" when the setup gave none) and every step it took. */
+export type SetupUser = { readonly token: string; readonly steps: readonly string[] };
+
+/**
+ * What a setup step records about a response body: its kind only, never its text. "error" is a
+ * JSON object with `error`, `code` or `detail`; "json" is any other JSON; then "non-json" or
+ * "empty". No backend string is printed: Codex r2 and r3 on #1813 each showed a secret-shaped
+ * string (`Abc123`, then a letters-only `SecretToken`) passing a shape filter, so none is used.
+ */
+async function bodyKindOf(res: { text: () => Promise<string> }): Promise<string> {
+    const text = await res.text().catch(() => "");
+    if (text === "") return "empty";
+    let body: unknown;
+    try {
+        body = JSON.parse(text);
+    } catch {
+        return "non-json";
+    }
+    if (typeof body !== "object" || body === null || Array.isArray(body)) return "json";
+    const record = body as Record<string, unknown>;
+    return ["error", "code", "detail"].some(
+        (key) => record[key] !== undefined && record[key] !== null,
+    )
+        ? "error"
+        : "json";
+}
+
+/** The error names a thrown setup request is recorded by; any other name is recorded as "Error". */
+const THROWN_NAMES = new Set(["TimeoutError", "AbortError", "TypeError", "Error"]);
+
+/** A login answer's token: a non-empty string, or "" for anything else in `access_token`. */
+function tokenOf(body: unknown): string {
+    const value = (body as { access_token?: unknown } | null | undefined)?.access_token;
+    return typeof value === "string" ? value : "";
+}
+
+type SetupResponse = Awaited<ReturnType<APIRequestContext["post"]>>;
+
+/**
+ * Sends one setup request. A request that throws (a refused connection, a timeout) is a step too:
+ * it is recorded by its error's name only (its message can hold the URL, which holds the email),
+ * and gives undefined, so the setup stops there and still names the step.
+ */
+async function attempt(
+    steps: string[],
+    name: string,
+    send: () => Promise<SetupResponse>,
+): Promise<SetupResponse | undefined> {
+    try {
+        return await send();
+    } catch (error) {
+        const kind = error instanceof Error && THROWN_NAMES.has(error.name) ? error.name : "Error";
+        steps.push(`${name} threw ${kind}`);
+        return undefined;
+    }
+}
+
+/**
+ * CHAOS-12865: registers, verifies and logs in a fresh journey user (and with `orgName` onboards it
+ * and logs in again), recording each step's name, HTTP status and body kind. A setup that gives
+ * no token is then named by `setupFault`, never "backend may be unavailable" (web #1804's CI
+ * live-e2e failed twice on that message, and the step that failed was never known).
+ */
+export async function setupUser(
+    request: APIRequestContext,
+    user: {
+        readonly email: string;
+        readonly password: string;
+        readonly fullName: string;
+        readonly orgName?: string;
+    },
+): Promise<SetupUser> {
+    const steps: string[] = [];
+    const none = (): SetupUser => ({ token: "", steps });
+    const step = async (name: string, res: { status: () => number; text: () => Promise<string> }) =>
+        steps.push(`${name} ${String(res.status())} body=${await bodyKindOf(res)}`);
+
+    const register = await attempt(steps, "register", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+            data: { email: user.email, password: user.password, full_name: user.fullName },
+            headers: { Origin: liveBackendUrl },
+        }),
+    );
+    if (register === undefined) return none();
+    await step("register", register);
+    if (!register.ok()) return none();
+
+    // Verify the user's email so login returns tokens.
+    const suLogin = await attempt(steps, "superuser-login", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+            data: { email: superuserEmail, password: superuserPassword },
+        }),
+    );
+    if (suLogin === undefined) return none();
+    const suToken = suLogin.ok() ? tokenOf(await suLogin.json().catch(() => ({}))) : "";
+    steps.push(
+        suLogin.ok()
+            ? `superuser-login ${String(suLogin.status())} token=${suToken ? "present" : "absent"}`
+            : `superuser-login ${String(suLogin.status())} body=${await bodyKindOf(suLogin)}`,
+    );
+    let userId = "";
+    if (suToken) {
+        const lookup = await attempt(steps, "user-lookup", () =>
+            request.get(
+                `${liveBackendUrl}/api/v1/admin/users?q=${encodeURIComponent(user.email)}&limit=5`,
+                { headers: authHeaders(suToken) },
+            ),
+        );
+        if (lookup === undefined) return none();
+        if (lookup.ok()) {
+            const body = (await lookup.json().catch(() => [])) as unknown;
+            const rows = (
+                Array.isArray(body) ? body : ((body as { items?: unknown[] }).items ?? [])
+            ) as Array<{ id?: string; email?: string }>;
+            userId =
+                rows.find((row) => row.email?.toLowerCase() === user.email.toLowerCase())?.id ?? "";
+            steps.push(`user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}`);
+        } else {
+            await step("user-lookup", lookup);
+        }
+    } else {
+        steps.push("user-lookup skipped (no superuser token)");
+    }
+    if (suToken && userId) {
+        const verify = await attempt(steps, "verify", () =>
+            request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
+                headers: authHeaders(suToken),
+                data: { is_verified: true },
+            }),
+        );
+        if (verify === undefined) return none();
+        await step("verify", verify);
+    } else {
+        steps.push("verify skipped");
+    }
+
+    /** One user login: its token, "" when it gave none, or undefined when the request threw. */
+    const login = async (name: string): Promise<string | undefined> => {
+        const res = await attempt(steps, name, () =>
+            request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+                data: { email: user.email, password: user.password },
+            }),
+        );
+        if (res === undefined) return undefined;
+        const text = await res.text().catch(() => "");
+        let token = "";
+        try {
+            token = tokenOf(JSON.parse(text));
+        } catch {
+            token = "";
+        }
+        const body = await bodyKindOf({ text: async () => text });
+        steps.push(
+            `${name} ${String(res.status())} token=${token ? "present" : "absent"} body=${body}`,
+        );
+        return token;
+    };
+    const first = await login("login");
+    if (first === undefined || first === "") return none();
+    if (user.orgName === undefined) return { token: first, steps };
+
+    // Onboard first so admin endpoints are accessible, then log in again for the org's token. A
+    // refused onboard does not stop the setup, as before: in the default pass register already
+    // created the org, so onboard can answer 400 by design (the onboarding journey's own case).
+    const orgName = user.orgName;
+    const onboard = await attempt(steps, "onboard", () =>
+        request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
+            headers: authHeaders(first),
+            data: { action: "create_org", org_name: orgName },
+        }),
+    );
+    if (onboard === undefined) return none();
+    await step("onboard", onboard);
+    const again = await login("relogin");
+    if (again === undefined) return none();
+    return { token: again || first, steps };
+}
+
+/** Why a journey has no token: its setup steps, or "" when the setup gave a token. */
+export function setupFault(setup: SetupUser): string {
+    return setup.token === "" ? `setup gave no token: ${setup.steps.join(" | ")}` : "";
+}
+
 /**
  * Register and verify a fresh user through the public API plus the admin API and
  * return its id, or "" when any step fails. With `superuser` the user is also

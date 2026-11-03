@@ -16,10 +16,13 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     ask,
+    expectAnswersFallback,
+    expectAnswersSynthesized,
     investigations,
     panel,
     secretsOf,
     signIn,
+    watchResults,
     type AcrCall,
 } from "./stack";
 
@@ -651,6 +654,7 @@ test.describe("ACR's own states (AC4)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(170_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
         let side: Side | undefined;
         let submission = "";
@@ -686,6 +690,8 @@ test.describe("ACR's own states (AC4)", () => {
             expect(replays.length, "the store did not replay the final answer").toBeGreaterThan(0);
             expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("answer");
             expect(creates, "the store sent a second create").toHaveLength(1);
+            // The page's create got 409, so its answer is the replayed final result.
+            await expectAnswersSynthesized(results, "409 in progress");
             await screenshots(page, testInfo, "in-progress-recovered");
         } finally {
             side?.stop();
@@ -723,6 +729,7 @@ test.describe("ACR's own states (AC4)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(170_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
         await ask(surface, question("late"));
         const answer = surface.getByRole("article", { name: "Answer" });
@@ -739,6 +746,8 @@ test.describe("ACR's own states (AC4)", () => {
         await expect(answer).toHaveAttribute("data-state", "degraded");
         await expect(warning).toBeVisible();
         await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
+        // The mechanism, not only the words: the result says it is acr's fallback.
+        await expectAnswersFallback(results, "model deadline");
         // Below `md` the panel is a modal sheet without the panel's test id: find the warning by
         // the page, so both widths scroll to it.
         await screenshots(
