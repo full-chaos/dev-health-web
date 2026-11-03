@@ -5,6 +5,7 @@ import {
     evidenceWindowText,
     expectedRows,
     headingMismatches,
+    landscapeGap,
     outcomeWordMismatches,
     servedShapes,
     tableMismatches,
@@ -441,5 +442,135 @@ describe("headingMismatches (Codex r1 P3 on #1803)", () => {
         ).toEqual([
             "value columns headed [full-chaos/dev-health-ops, full-chaos/dev-health-acr], served series [full-chaos/dev-health-acr, full-chaos/dev-health-ops]",
         ]);
+    });
+});
+
+describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own cause)", () => {
+    type Claim = Parameters<typeof landscapeGap>[0][number];
+    const side = (
+        team: string,
+        day: string,
+        options: { identities?: number; fact?: string; churn?: number; delivery?: number } = {},
+    ): Claim[] => {
+        const fact = options.fact ?? `fact_${team}`;
+        const churn = options.churn ?? 120;
+        const delivery = options.delivery ?? 7;
+        const table = {
+            field: "area_breakdown",
+            shape: "breakdown",
+            key: ["as_of_day"],
+            measures: ["churn_loc_30d", "delivery_units_30d"],
+        };
+        const rows = [
+            {
+                fields: {
+                    as_of_day: { string: day },
+                    identity_count: { integer: options.identities ?? 4 },
+                    churn_loc_30d: { integer: 120 },
+                    delivery_units_30d: { integer: 7 },
+                },
+            },
+        ];
+        const subject = { kind: "team", canonical_id: `team:${team}` };
+        return [
+            {
+                kind: "landscape",
+                subject,
+                field: "churn_loc_30d",
+                value: { integer: churn },
+                fact_id: fact,
+                table,
+                rows,
+            },
+            {
+                kind: "landscape",
+                subject,
+                field: "delivery_units_30d",
+                value: { integer: delivery },
+                fact_id: options.fact ?? fact,
+                table,
+                rows,
+            },
+        ];
+    };
+
+    it("holds when two placed teams speak for different days", () => {
+        expect(landscapeGap([...side("a", "2026-10-30"), ...side("b", "2026-11-01")])).toEqual({
+            placed: [
+                { subject: "team:a", day: "2026-10-30" },
+                { subject: "team:b", day: "2026-11-01" },
+            ],
+            differ: true,
+        });
+    });
+
+    it("does not hold when the placed teams share one day: a missing quadrant is then a real failure", () => {
+        expect(landscapeGap([...side("a", "2026-11-01"), ...side("b", "2026-11-01")]).differ).toBe(
+            false,
+        );
+    });
+
+    it("does not hold when a side is refused by another rule, even with different days", () => {
+        // The person floor: one identity gives no point, so acr skips for fewer than two points.
+        expect(
+            landscapeGap([
+                ...side("a", "2026-10-30", { identities: 1 }),
+                ...side("b", "2026-11-01"),
+            ]),
+        ).toEqual({
+            placed: [{ subject: "team:b", day: "2026-11-01" }],
+            differ: false,
+        });
+        // A measure claimed twice.
+        expect(
+            landscapeGap([
+                ...side("a", "2026-10-30"),
+                side("a", "2026-10-30")[0]!,
+                ...side("b", "2026-11-01"),
+            ]).differ,
+        ).toBe(false);
+        // The two measures from two facts.
+        const split = side("a", "2026-10-30");
+        split[1] = { ...split[1]!, fact_id: "fact_other" };
+        expect(landscapeGap([...split, ...side("b", "2026-11-01")]).differ).toBe(false);
+        // A claim that does not state its row's own cell.
+        expect(
+            landscapeGap([...side("a", "2026-10-30", { churn: 121 }), ...side("b", "2026-11-01")])
+                .differ,
+        ).toBe(false);
+    });
+
+    it("does not hold when a side is not a team: acr charts teams only", () => {
+        const repository = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            subject: { kind: "repository", canonical_id: "team:a" },
+        }));
+        expect(landscapeGap([...repository, ...side("b", "2026-11-01")])).toEqual({
+            placed: [],
+            differ: false,
+        });
+    });
+
+    it("reads no day from a derived claim, a row that is not the one area_breakdown row, or a day that is not a string", () => {
+        const derived = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            derived_from: [{ claim_id: "x" }],
+        }));
+        expect(landscapeGap([...derived, ...side("b", "2026-11-01")]).differ).toBe(false);
+        const twoRows = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            rows: [...claim.rows!, ...claim.rows!],
+        }));
+        expect(landscapeGap([...twoRows, ...side("b", "2026-11-01")]).differ).toBe(false);
+        const otherKey = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            table: { ...claim.table!, key: ["day"] },
+        }));
+        expect(landscapeGap([...otherKey, ...side("b", "2026-11-01")]).differ).toBe(false);
+        const numberDay = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            rows: [{ fields: { ...claim.rows![0]!.fields, as_of_day: { integer: 20261030 } } }],
+        }));
+        expect(landscapeGap([...numberDay, ...side("b", "2026-11-01")]).differ).toBe(false);
     });
 });

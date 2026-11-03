@@ -316,3 +316,103 @@ export function headingMismatches(shape: ServedShape, headings: readonly string[
         ? []
         : [`value columns headed [${headings.join(", ")}], served series [${served.join(", ")}]`];
 }
+
+type ScalarCell = {
+    string?: string;
+    integer?: number;
+    number?: number;
+    boolean?: boolean;
+    null?: boolean;
+};
+
+type LandscapeClaim = {
+    kind?: string;
+    subject?: { kind?: string; canonical_id?: string };
+    field?: string;
+    value?: ScalarCell;
+    fact_id?: string;
+    derived_from?: readonly unknown[];
+    table?: {
+        field?: string;
+        shape?: string;
+        key?: readonly string[];
+        measures?: readonly string[];
+    };
+    rows?: ReadonlyArray<{ fields: Readonly<Record<string, ScalarCell>> }>;
+};
+
+const LANDSCAPE_X = "churn_loc_30d";
+const LANDSCAPE_Y = "delivery_units_30d";
+const LANDSCAPE_DAY = "as_of_day";
+const LANDSCAPE_IDENTITIES = "identity_count";
+const LANDSCAPE_MIN_IDENTITIES = 2;
+
+/**
+ * CHAOS-12676: whether the served answer itself shows the quadrant gap's cause. acr refuses a
+ * quadrant whose teams' landscape rows speak for different days (`landscape_days_differ`), and it
+ * logs that reason without serving it, so the known gap is read from the claims instead: each
+ * team's point is placed by acr's own rules (`landscapeSideOf`, `landscapeRowOf`: one x and one y
+ * claim, not derived, from one fact and one `area_breakdown` row keyed by `as_of_day`, at least
+ * two identities, each claim stating its row's own cell), and the gap holds only when two or more
+ * placed teams carry different days. Codex r1 and r2 on #1803 found the same class: a KNOWN GAP
+ * that absorbs another failure. A missing quadrant without this cause is a real failure.
+ */
+export function landscapeGap(claims: readonly LandscapeClaim[]): {
+    placed: Array<{ subject: string; day: string }>;
+    differ: boolean;
+} {
+    const landscape = claims.filter((claim) => claim.kind === "landscape");
+    const subjects = [
+        ...new Set(
+            landscape.map((claim) => claim.subject?.canonical_id ?? "").filter((id) => id !== ""),
+        ),
+    ];
+    // acr charts teams only: any other side refuses the quadrant before a day is read.
+    if (landscape.some((claim) => claim.subject?.kind !== "team"))
+        return { placed: [], differ: false };
+    const placed: Array<{ subject: string; day: string }> = [];
+    for (const subject of subjects) {
+        const own = landscape.filter(
+            (claim) =>
+                claim.subject?.canonical_id === subject && (claim.derived_from?.length ?? 0) === 0,
+        );
+        const xs = own.filter((claim) => claim.field === LANDSCAPE_X);
+        const ys = own.filter((claim) => claim.field === LANDSCAPE_Y);
+        if (xs.length !== 1 || ys.length !== 1) continue;
+        const x = xs[0]!;
+        const y = ys[0]!;
+        // One fact, one row (acr `sameThemeBreakdown`).
+        if (
+            x.fact_id !== y.fact_id ||
+            JSON.stringify(x.table) !== JSON.stringify(y.table) ||
+            JSON.stringify(x.rows) !== JSON.stringify(y.rows)
+        ) {
+            continue;
+        }
+        const table = x.table;
+        if (
+            table?.field !== "area_breakdown" ||
+            x.rows?.length !== 1 ||
+            table.key?.length !== 1 ||
+            table.key[0] !== LANDSCAPE_DAY
+        ) {
+            continue;
+        }
+        const fields = x.rows[0]!.fields;
+        const day = fields[LANDSCAPE_DAY]?.string ?? "";
+        const identities = fields[LANDSCAPE_IDENTITIES]?.integer;
+        if (day === "" || identities === undefined || identities < LANDSCAPE_MIN_IDENTITIES)
+            continue;
+        const cellOf = (measure: string) =>
+            (table.measures ?? []).includes(measure) ? fields[measure]?.integer : undefined;
+        const xCell = cellOf(LANDSCAPE_X);
+        const yCell = cellOf(LANDSCAPE_Y);
+        if (xCell === undefined || yCell === undefined) continue;
+        if (x.value?.integer !== xCell || y.value?.integer !== yCell) continue;
+        placed.push({ subject, day });
+    }
+    return {
+        placed,
+        differ: placed.length >= 2 && placed.some((side) => side.day !== placed[0]!.day),
+    };
+}

@@ -16,6 +16,7 @@ import {
     elapsedTimeMismatches,
     evidenceWindowText,
     headingMismatches,
+    landscapeGap,
     outcomeWordMismatches,
     servedShapes,
     tableMismatches,
@@ -454,13 +455,25 @@ for (const replicate of REPLICATES) {
         test.info().annotations.push({
             type: "KNOWN GAP",
             description:
-                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, read from acr's render-shape selection log, which the answer does not carry). Never a pass.",
+                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, the days read from the served claims, as acr places each team). Never a pass.",
         });
         const quadrant = answer.getByTestId("landscape-quadrant");
         const quadrantServed = servedShapes(result).some(
             (shape) => shape.selected_by === "landscape_position",
         );
         if (!quadrantServed) {
+            // The gap is expected only on its own cause, read from the served claims (Codex r1 and
+            // r2 found the same class: a KNOWN GAP must never absorb another failure). Without it, a
+            // missing quadrant is an ordinary failure.
+            const gap = landscapeGap(
+                (result.claimed_facts as Parameters<typeof landscapeGap>[0] | undefined) ?? [],
+            );
+            const days = gap.placed.map((side) => `${side.subject}=${side.day}`).join(", ");
+            expect(
+                gap.differ,
+                `no quadrant is served, and the claims do not show CHAOS-12676's cause (placed: [${days}])`,
+            ).toBe(true);
+            test.info().annotations.push({ type: "CHAOS-12676 days", description: days });
             // Expected to fail while the gap holds, on THE assertion that fails today: the quadrant
             // is drawn.
             test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
