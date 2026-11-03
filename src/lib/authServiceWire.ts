@@ -20,6 +20,7 @@ import {
     type SessionUser,
 } from "@/lib/authServiceOutcome";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
+import { parseIpEntry } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { deadlineFetch } from "@/lib/serverDeadline";
@@ -37,6 +38,8 @@ export interface WireConfig {
     /** AUTH_ACCESS_TOKEN_ISSUER, the pinned issuer; needed under class eddsa. */
     readonly issuer: string | undefined;
     readonly backendUrl: string;
+    /** End-user address for the X-Forwarded-For header; sent only when parseIpEntry accepts it. */
+    readonly clientIp?: string;
     readonly nowSeconds?: () => number;
 }
 
@@ -45,6 +48,13 @@ const nowOf = (cfg: WireConfig): number => cfg.nowSeconds?.() ?? Math.floor(Date
 interface Sent {
     readonly result: CallResult;
     readonly errorName?: string;
+}
+
+function jsonHeaders(cfg: WireConfig): Record<string, string> {
+    const ip = parseIpEntry(cfg.clientIp);
+    return ip === null
+        ? { "Content-Type": "application/json" }
+        : { "Content-Type": "application/json", "X-Forwarded-For": ip };
 }
 
 async function send(url: string, init: RequestInit): Promise<Sent> {
@@ -240,7 +250,7 @@ export async function passwordLogin(
     if (!checked.ok) return { kind: "unavailable" };
     const sent = await send(`${cfg.backendUrl}/api/v1/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: jsonHeaders(cfg),
         body: JSON.stringify({
             email: credentials.email,
             password: credentials.password,
@@ -348,7 +358,7 @@ async function refreshOnce(
 ): Promise<RefreshResult> {
     const sent = await send(`${cfg.backendUrl}/api/v1/auth/refresh`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: jsonHeaders(cfg),
         body: JSON.stringify({ refresh_token: refreshToken }),
     });
     const outcome = classifyRefresh(sent.result);
