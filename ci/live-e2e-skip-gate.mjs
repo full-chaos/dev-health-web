@@ -30,7 +30,22 @@ const skipped = [];
 const notRun = [];
 const knownGaps = [];
 const unexplained = [];
+const expectedFailurePassed = [];
 const noteOf = (t, type) => (t.annotations ?? []).find((a) => a.type === type);
+// A NOT RUN or KNOWN GAP note can be inherited from a describe block or the file (Playwright copies
+// those onto every case), so the note alone excuses nothing. The case's OWN reason does: every
+// `skip` (or `fail`) annotation it carries must state the marker, and it must carry one.
+const ownReasonsSay = (t, type, marker) => {
+    const reasons = (t.annotations ?? []).filter((a) => a.type === type);
+    return (
+        reasons.length > 0 &&
+        reasons.every((a) => typeof a.description === "string" && a.description.startsWith(marker))
+    );
+};
+// A pass is an attempt that passed a case expected to pass; a flaky case counts only through one.
+const passedAttempt = (t) =>
+    t.expectedStatus === "passed" && (t.results ?? []).some((r) => r.status === "passed");
+let passedEvidence = 0;
 
 function walk(suite, trail) {
     const here = suite.title ? [...trail, suite.title] : trail;
@@ -40,13 +55,30 @@ function walk(suite, trail) {
             const name = [...here, spec.title].join(" > ");
             const notRunNote = noteOf(t, "NOT RUN");
             const gapNote = noteOf(t, "KNOWN GAP");
-            if (status === "skipped" && notRunNote !== undefined) {
+            // An expected failure (`test.fail`) that passed on ANY attempt: its gap no longer holds.
+            // With retries Playwright may call it flaky and exit 0, so the gate fails it itself.
+            if (
+                t.expectedStatus === "failed" &&
+                (t.results ?? []).some((r) => r.status === "passed")
+            ) {
+                counts.failed++;
+                expectedFailurePassed.push(name);
+                continue;
+            }
+            const skippedCase =
+                status === "skipped" || (status === "flaky" && t.expectedStatus === "skipped");
+            if (
+                skippedCase &&
+                t.expectedStatus === "skipped" &&
+                notRunNote !== undefined &&
+                ownReasonsSay(t, "skip", "NOT RUN")
+            ) {
                 counts.notRun++;
                 notRun.push(
                     `${name}${notRunNote.description ? ` -- ${notRunNote.description}` : ""}`,
                 );
             } else if (status === "expected" && t.expectedStatus === "failed") {
-                if (gapNote === undefined) {
+                if (gapNote === undefined || !ownReasonsSay(t, "fail", "KNOWN GAP")) {
                     counts.failed++;
                     unexplained.push(name);
                 } else {
@@ -55,7 +87,7 @@ function walk(suite, trail) {
                         `${name}${gapNote.description ? ` -- ${gapNote.description}` : ""}`,
                     );
                 }
-            } else if (status === "skipped") {
+            } else if (skippedCase) {
                 counts.skipped++;
                 const reason =
                     (t.annotations ?? []).find((a) => a.type === "skip")?.description ?? "";
@@ -65,6 +97,7 @@ function walk(suite, trail) {
             } else if (status === "expected") counts.passed++;
             else if (status === "flaky") counts.flaky++;
             else counts.failed++;
+            if (!skippedCase && passedAttempt(t)) passedEvidence++;
         }
     }
     for (const child of suite.suites ?? []) walk(child, here);
@@ -81,9 +114,16 @@ for (const s of skipped) out(`- SKIPPED: ${s}`);
 for (const s of notRun) out(`- NOT RUN: ${s}`);
 for (const s of knownGaps) out(`- KNOWN GAP: ${s}`);
 for (const s of unexplained) out(`- EXPECTED FAILURE WITH NO KNOWN GAP: ${s}`);
+for (const s of expectedFailurePassed) out(`- EXPECTED FAILURE THAT PASSED: ${s}`);
 
 if (total === 0) {
     console.error("::error::live-e2e ran zero tests; the measurement did not happen.");
+    process.exit(1);
+}
+if (expectedFailurePassed.length > 0) {
+    console.error(
+        `::error::live-e2e (${label}): ${expectedFailurePassed.length} expected failure(s) passed on an attempt; its KNOWN GAP no longer holds, so the case must be flipped.`,
+    );
     process.exit(1);
 }
 if (unexplained.length > 0) {
@@ -92,7 +132,7 @@ if (unexplained.length > 0) {
     );
     process.exit(1);
 }
-if (counts.passed + counts.flaky === 0) {
+if (passedEvidence === 0) {
     console.error(
         `::error::live-e2e (${label}): no case passed; NOT RUN and KNOWN GAP cases measure nothing.`,
     );
