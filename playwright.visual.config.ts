@@ -30,7 +30,14 @@ export default defineConfig({
     forbidOnly: isCI,
     expect: {
         // No tolerance (lead ruling on CHAOS-12841): the baseline and the run share one image.
-        toHaveScreenshot: { maxDiffPixels: 0, animations: "disabled", caret: "hide" },
+        // `threshold: 0` too: the default per-pixel colour distance (0.2) let a planted theme colour
+        // change (#a64807 -> #885a00 on the sunburst) pass with zero "different" pixels.
+        toHaveScreenshot: {
+            maxDiffPixels: 0,
+            threshold: 0,
+            animations: "disabled",
+            caret: "hide",
+        },
     },
     reporter: [
         ["list"],

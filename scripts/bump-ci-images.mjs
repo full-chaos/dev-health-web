@@ -65,10 +65,14 @@ export function mirrorRef(pins, name) {
     return `${pins.mirrorPrefix}/${i.dest}:${i.tag}@${i.digest}`;
 }
 
-/** Docker Hub style ref, as written in the Dockerfile ARG default. */
+/**
+ * Docker Hub style ref, as written in the Dockerfile ARG default. An image with its own registry
+ * keeps it, so the ref never resolves to Docker Hub by default (codex r1 on CHAOS-12841).
+ */
 export function upstreamRef(pins, name) {
     const i = pins.images[name];
-    return `${i.repo.replace(/^library\//, "")}:${i.tag}@${i.digest}`;
+    const ref = `${i.repo.replace(/^library\//, "")}:${i.tag}@${i.digest}`;
+    return i.sourceRegistry ? `${i.sourceRegistry}/${ref}` : ref;
 }
 
 const NODE_ARG_RE = /^(ARG NODE_IMAGE=)(\S+)$/m;

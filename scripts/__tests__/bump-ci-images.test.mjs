@@ -47,6 +47,7 @@ describe("refs", () => {
         expect(sourceRef(pins, "playwright")).toBe(`mcr.example/playwright:v1-noble@${D4}`);
         expect(mirrorRef(pins, "playwright")).toBe(`ghcr.io/o/p/playwright:v1-noble@${D4}`);
         expect(sourceRef(pins, "buildkit")).toBe(`mirror.example/moby/buildkit:x@${D2}`);
+        expect(upstreamRef(pins, "playwright")).toBe(`mcr.example/playwright:v1-noble@${D4}`);
     });
     it("rejects a bad digest or a missing field", () => {
         expect(() => parsePins(PINS.replace(D1, "sha256:zz"))).toThrow(/digest/);
