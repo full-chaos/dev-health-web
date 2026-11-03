@@ -78,6 +78,12 @@ test.beforeAll(async ({ browser, baseURL }) => {
     await context.close();
 });
 
+// Each case makes one silent authorization, in its own tab: web allows one user 6 a minute
+// (routed.spec.ts does the same). Without this wait, a case fails in `authorize` before it asks.
+test.afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+});
+
 test.afterAll(async () => {
     await oracle?.dispose();
 });
@@ -397,12 +403,27 @@ for (const replicate of REPLICATES) {
 }
 
 test("sankey: the repository flow renders from the served shape", () => {
+    if (!SANKEY) {
+        // Listed as NOT RUN by ci/live-e2e-skip-gate.mjs, never as a pass or a plain skip.
+        test.info().annotations.push({
+            type: "NOT RUN",
+            description:
+                "the sankey flag is off on this stack (ASK_DEV_LIVE_SANKEY); on with web-sankey's roll (#1974)",
+        });
+    }
     test.skip(!SANKEY, "NOT RUN: the sankey flag is off on this stack (ASK_DEV_LIVE_SANKEY)");
     // Turned on with web-sankey's roll (#1974): the case is written then, against a served flow.
     expect(SANKEY, "NOT RUN: the sankey case has no question yet").toBe(false);
 });
 
 test("sunburst: the investment subcategories render from the served shape", () => {
+    if (!SUNBURST) {
+        test.info().annotations.push({
+            type: "NOT RUN",
+            description:
+                "the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST); on with acr #2002 and web's ask-dev pin (#1797)",
+        });
+    }
     test.skip(!SUNBURST, "NOT RUN: the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST)");
     // Turned on with acr #2002 and web's ask-dev pin bump (#1797): the case is written then.
     expect(SUNBURST, "NOT RUN: the sunburst case has no question yet").toBe(false);
