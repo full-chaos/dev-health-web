@@ -20,6 +20,7 @@ import { TransportFailure, TransportRefusal } from "../transport";
 import {
     accepted,
     acrError,
+    boundedFixture,
     captureResult,
     deferred,
     errorEvent,
@@ -179,6 +180,24 @@ describe("order", () => {
         await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
         expect(assistants(source).at(-1)!.chosenSubject).toBe(subject);
         expect(assistants(source).at(-2)!.chosenSubject).toBeUndefined();
+    });
+
+    it("a bounded answer does not end the batch: the next item goes out (CHAOS-12643)", async () => {
+        const made = makeSource();
+        const { source, store } = made;
+        await clarified(made);
+        transport.scripts.push(
+            [accepted(), resultEvent(boundedFixture("bounded-answer"))],
+            [accepted(), resultEvent(PARTIAL)],
+        );
+        source.askBatch([subjectItem("subject-a"), subjectItem("subject-b")], QUESTION);
+        await vi.waitFor(() => expect(investigations()).toBe(3));
+        await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
+        expect(
+            assistants(source)
+                .slice(-2)
+                .map((turn) => turn.outcome.kind),
+        ).toEqual(["bounded", "answered"]);
     });
 
     it("an empty batch does nothing", async () => {
