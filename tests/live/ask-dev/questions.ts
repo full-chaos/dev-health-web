@@ -71,3 +71,44 @@ export type LatencyCase = (typeof LATENCY_CASES)[number];
 
 export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
     `Case ${name} ${nonce}: ${LATENCY_BASE}`;
+
+/**
+ * CHAOS-11946 (I-50, Phase 3): one question per rich view, asked twice (2 replicates per case).
+ * `make-plan.ts` scripts each one's frame and claims, so the view the answer serves depends on the
+ * data alone:
+ *
+ * - `forecast`: one team's open work. The claimed workload fact draws the completion curve, its
+ *   dated trend and its claimed-fact table. `claim_first_only` claims the team's own scope: a
+ *   claim over several scopes withholds the curve by design (CHAOS-4613, CHAOS-12809).
+ * - `treemap`: one repository's investment. Its theme breakdown draws the treemap.
+ * - `comparison`: two repositories on pull request delivery. Both sides' window measures draw the
+ *   side-by-side table (only `metrics` and `pull_requests` fields compare, CHAOS-12513).
+ * - `landscape`: two teams on churn and delivery units. Their landscape claims draw the quadrant,
+ *   but only when both teams hold the same newest day (CHAOS-4611 ruling 3, CHAOS-12676).
+ * - `cohort`: the teams that are struggling, ranked with their drivers.
+ * - `window`: one team's open work over a stated date range. A non-current axis composes no
+ *   effective window, so the answer must say its window was not reported (AC-7).
+ */
+const RICH_BASES = {
+    forecast: "when will the Fullchaos team finish its open work over the last 30 days?",
+    treemap:
+        "where is engineering effort going in full-chaos/dev-health-acr over the last 30 days?",
+    comparison:
+        "compare full-chaos/dev-health-acr and full-chaos/dev-health-ops on pull request delivery over the last 30 days",
+    landscape:
+        "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
+    cohort: "which teams are struggling and why over the last 30 days?",
+    window: "how was the Fullchaos team's open work between 2026-10-01 and 2026-10-15?",
+} as const;
+
+export type RichCase = keyof typeof RICH_BASES;
+
+export const RICH_CASES = Object.keys(RICH_BASES) as RichCase[];
+
+/** The design's 2 replicates per case (E8 design §13.7). */
+export const REPLICATES = [1, 2] as const;
+
+export type Replicate = (typeof REPLICATES)[number];
+
+export const richQuestionFor = (name: RichCase, replicate: Replicate, nonce: string): string =>
+    `Case ${name}${String(replicate)} ${nonce}: ${RICH_BASES[name]}`;

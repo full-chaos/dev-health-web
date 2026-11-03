@@ -1,0 +1,32 @@
+name: PR title
+
+on:
+    pull_request:
+        types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+    cancel-in-progress: true
+
+jobs:
+    pr-title:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Test the PR title check
+              run: bash .github/scripts/test-pr-title.sh
+
+            - name: Check the PR title
+              env:
+                  EVENT: ${{ github.event_name }}
+                  AUTHOR: ${{ github.event.pull_request.user.login }}
+                  TITLE: ${{ github.event.pull_request.title }}
+              run: bash .github/scripts/check-pr-title.sh

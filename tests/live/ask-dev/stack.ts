@@ -8,7 +8,11 @@ import { type ScopedResult, terminalResultOf } from "./answer-scope";
  * CHAOS-11933: what the Ask Dev live suite needs from the deployed stack.
  *
  * A measurement that did not happen must FAIL (plan §4, Phase 1): with no ACR, no stream or no data
- * this suite goes red. It has no `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report.
+ * this suite goes red. It has no plain `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report:
+ * a skip fails the run unless the case's own title contains `[behind a flag]` and every skip reason
+ * starts with `NOT RUN` (a view behind a flag that is off, CHAOS-11946), and an expected failure fails
+ * it unless its own title contains `[KNOWN GAP` and every `test.fail` reason starts with `KNOWN GAP`.
+ * Neither is ever counted as a pass.
  *
  * - `ASK_DEV_LIVE_WEB`: web's origin, default `http://localhost:3000`.
  * - `ASK_DEV_LIVE_ACR`: ACR's issuer origin, default `https://acr.localhost:8443`.
@@ -382,3 +386,54 @@ export const closeEvidence = (page: Page) =>
         .getByRole("dialog", { name: "Evidence & Context" })
         .getByRole("button", { name: "Close" })
         .click();
+
+/** A coverage detail as served; only the fields the fallback check reads. */
+export type CoverageDetail = { source?: string; code?: string; raw?: string };
+
+/** The codes acr's synthesis step files when it serves a facts-only fallback (CHAOS-11946). */
+const SYNTHESIS_FALLBACK_CODES = new Set(["synthesis_model_failed", "synthesis_not_run"]);
+
+/**
+ * The served result's coverage details that say the answer is acr's facts-only fallback: the model
+ * call failed or was not run (acr `synthesis_model_failure.go`). Pure, for any served result.
+ */
+export function synthesisFallbackDetails(result: unknown): CoverageDetail[] {
+    // A full result carries `coverage.details`; a projected one (an answer over the request's byte
+    // bound, context_fabric_answer_projection.v1) has no `coverage` and carries top-level
+    // `coverage_details` with the same shape (Codex P2 on #1804).
+    const served = result as
+        { coverage?: { details?: unknown }; coverage_details?: unknown } | null | undefined;
+    return [served?.coverage?.details, served?.coverage_details].flatMap((details) =>
+        Array.isArray(details)
+            ? (details as CoverageDetail[]).filter((detail) =>
+                  SYNTHESIS_FALLBACK_CODES.has(String(detail?.code)),
+              )
+            : [],
+    );
+}
+
+const describeDetails = (details: CoverageDetail[]): string =>
+    details.map((detail) => detail.raw ?? detail.code).join(", ");
+
+/**
+ * A case that expects an answer asserts the MECHANISM (AGENTS rule 4): the answer was synthesized.
+ * A view drawn on acr's fallback is not a pass (CHAOS-11946 cohort finding, CHAOS-12844). Throws,
+ * so it fails a Playwright case and can be tested without Playwright.
+ */
+export function expectSynthesized(result: unknown, label: string): void {
+    const details = synthesisFallbackDetails(result);
+    if (details.length > 0) {
+        throw new Error(
+            `${label}: the answer is acr's fallback, not a synthesized answer (${describeDetails(details)})`,
+        );
+    }
+}
+
+/** A case that expects acr's fallback by design (a synthesis out of time) asserts it got one. */
+export function expectFallback(result: unknown, label: string): void {
+    if (synthesisFallbackDetails(result).length === 0) {
+        throw new Error(
+            `${label}: the answer was expected to be acr's fallback, and it carries no synthesis failure`,
+        );
+    }
+}

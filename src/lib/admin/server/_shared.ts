@@ -24,13 +24,21 @@ export async function getToken(): Promise<string> {
     return ctx.token;
 }
 
-export async function requireSuperuserToken(): Promise<string> {
+/**
+ * A session that impersonates keeps is_superuser, so it is refused here: a platform action must
+ * not run as the impersonated user. Only the end and the status read of an impersonation pass
+ * `allowImpersonating`.
+ */
+export async function requireSuperuserToken(opts?: { allowImpersonating?: true }): Promise<string> {
     const session = await auth();
     if (!session?.access_token) {
         throw new AdminApiError(401, "Unauthorized", "No access token");
     }
     if (!session.user?.is_superuser) {
         throw new AdminApiError(403, "Forbidden", "Superuser access required");
+    }
+    if (session.user.is_impersonating === true && opts?.allowImpersonating !== true) {
+        throw new AdminApiError(403, "Forbidden", "Not available while impersonating");
     }
     return session.access_token;
 }
