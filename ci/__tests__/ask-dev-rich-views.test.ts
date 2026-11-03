@@ -10,7 +10,7 @@ import {
     tableMismatches,
     unitWordMismatches,
     type ServedShape,
-} from "../rich-views";
+} from "../../tests/live/ask-dev/rich-views";
 
 /**
  * CHAOS-11946: the Phase 3 live suite compares what a chart DRAWS (its value table) with what ACR
