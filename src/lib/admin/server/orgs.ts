@@ -305,10 +305,13 @@ export async function getAuditLog(
 /** Removes a member; the server decides whether the owner rules allow it. */
 export async function removeOrgMember(orgId: string, userId: string): Promise<ActionResult<void>> {
     return withErrorHandling(() =>
-        withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
-            return adminApi.orgs.members.remove(orgId, userId, token);
-        }),
+        withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken();
+                return adminApi.orgs.members.remove(orgId, userId, token);
+            },
+            { closed: true },
+        ),
     );
 }
 
@@ -317,10 +320,13 @@ export async function transferOrgOwnership(
     newOwnerUserId: string,
 ): Promise<ActionResult<void>> {
     return withErrorHandling(() =>
-        withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
-            return adminApi.orgs.members.transferOwnership(orgId, newOwnerUserId, token);
-        }),
+        withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken();
+                return adminApi.orgs.members.transferOwnership(orgId, newOwnerUserId, token);
+            },
+            { closed: true },
+        ),
     );
 }
 
@@ -343,12 +349,16 @@ export async function inviteOrgMember(
     email: string,
     role: string,
 ): Promise<ActionResult<CreatedOrgInvite>> {
-    return withErrorHandling(() =>
-        withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
-            return adminApi.orgs.invites.create(orgId, inviteBody(email, role), token);
-        }),
-    );
+    return withErrorHandling(() => {
+        const body = inviteBody(email, role);
+        return withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken();
+                return adminApi.orgs.invites.create(orgId, body, token);
+            },
+            { closed: true },
+        );
+    });
 }
 
 /** Invites into the signed-in organization; the org comes from the session, never from the caller. */
@@ -356,13 +366,17 @@ export async function inviteCurrentOrgMember(
     email: string,
     role: string,
 ): Promise<ActionResult<CreatedOrgInvite>> {
-    return withErrorHandling(() =>
-        withOrgMemberRefusals(async () => {
-            const { token, orgId } = await getSessionContext();
-            if (!orgId) {
-                throw new AdminApiError(400, "Bad Request", "No organization ID in session");
-            }
-            return adminApi.orgs.invites.create(orgId, inviteBody(email, role), token, orgId);
-        }),
-    );
+    return withErrorHandling(() => {
+        const body = inviteBody(email, role);
+        return withOrgMemberRefusals(
+            async () => {
+                const { token, orgId } = await getSessionContext();
+                if (!orgId) {
+                    throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+                }
+                return adminApi.orgs.invites.create(orgId, body, token, orgId);
+            },
+            { closed: true },
+        );
+    });
 }
