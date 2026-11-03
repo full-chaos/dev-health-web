@@ -51,7 +51,9 @@ export interface PlatformSurface {
     file: string;
     symbol?: string;
     /** "unmapped": no catalog action; denied only while impersonating. */
-    action: PlatformAction | "unmapped" | OrgDeniedAction | "settings.read";
+    action: PlatformAction | "unmapped" | OrgDeniedAction | "settings.read" | "org.read";
+    /** Required when action is "unmapped". */
+    reason?: string;
     /** false: no go-api route maps the action yet (CHAOS-11847). */
     serverMapped: boolean;
     impersonation: "denied" | "allowed";
@@ -61,6 +63,7 @@ const SA = "src/app/(app)/superadmin";
 const ORGS = "src/lib/admin/server/orgs.ts";
 const BILLING = "src/lib/admin/server/billing.ts";
 const SETTINGS = "src/lib/admin/server/settings.ts";
+const AUDIT = `${SA}/billing/audit/actions.ts`;
 const USERS = "src/lib/admin/server/users.ts";
 
 function row(
@@ -68,7 +71,12 @@ function row(
     kind: SurfaceKind,
     file: string,
     action: PlatformSurface["action"],
-    opts: { symbol?: string; serverMapped?: boolean; impersonation?: "denied" | "allowed" } = {},
+    opts: {
+        symbol?: string;
+        serverMapped?: boolean;
+        impersonation?: "denied" | "allowed";
+        reason?: string;
+    } = {},
 ): PlatformSurface {
     return {
         id,
@@ -76,6 +84,7 @@ function row(
         file,
         action,
         symbol: opts.symbol,
+        reason: opts.reason,
         serverMapped: opts.serverMapped ?? true,
         impersonation: opts.impersonation ?? "denied",
     };
@@ -188,6 +197,44 @@ export const PLATFORM_SURFACES: readonly PlatformSurface[] = [
         `${SA}/product-telemetry/[orgId]/page.tsx`,
         "admin.telemetry",
     ),
+    row(
+        "page:/superadmin/service-accounts/new",
+        "page",
+        `${SA}/service-accounts/new/page.tsx`,
+        "admin.users",
+        {
+            serverMapped: false,
+        },
+    ),
+    row(
+        "page:/superadmin/context-fabric/validation",
+        "page",
+        `${SA}/context-fabric/validation/page.tsx`,
+        "unmapped",
+        {
+            reason: "ACR capability surface with its own authorization; no platform catalog action",
+        },
+    ),
+    row("fn:getCurrentOrg", "fn", ORGS, "org.read", { symbol: "getCurrentOrg" }),
+    row("fn:getUser", "fn", USERS, "admin.users", { symbol: "getUser", serverMapped: false }),
+    row("fn:updateUser", "fn", USERS, "admin.users", { symbol: "updateUser", serverMapped: false }),
+    row("fn:deleteUser", "fn", USERS, "admin.users", { symbol: "deleteUser", serverMapped: false }),
+    row("fn:setUserPassword", "fn", USERS, "admin.users", {
+        symbol: "setUserPassword",
+        serverMapped: false,
+    }),
+    row("fn:getOrgEntitlements", "fn", BILLING, "admin.flags", { symbol: "getOrgEntitlements" }),
+    row("fn:listFeatureOverrides", "fn", BILLING, "admin.flags", {
+        symbol: "listFeatureOverrides",
+    }),
+    row("fn:getAuditLog", "fn", AUDIT, "admin.audit", { symbol: "getAuditLog" }),
+    row("fn:getAuditEntry", "fn", AUDIT, "admin.audit", { symbol: "getAuditEntry" }),
+    row("fn:resolveAuditMismatch", "fn", AUDIT, "admin.billing", {
+        symbol: "resolveAuditMismatch",
+    }),
+    row("fn:triggerReconciliation", "fn", AUDIT, "admin.billing", {
+        symbol: "triggerReconciliation",
+    }),
     // The settings page calls org-scoped go-api routes: org actions, no admin.settings action.
     // settings.read is allowed to a delegated session in the catalog; this page is a superadmin
     // surface and takes the same impersonation deny as the other superadmin pages.
