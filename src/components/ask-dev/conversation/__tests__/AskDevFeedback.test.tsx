@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
@@ -157,6 +157,18 @@ const choice = (scope: HTMLElement, question: "correct" | "useful", value: "Yes"
         { name: value },
     );
 
+function stubMatchMedia(): void {
+    vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockImplementation((query: string) => ({
+            matches: true,
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        })),
+    );
+}
+
 preloadAskDevRender();
 
 beforeEach(() => {
@@ -167,15 +179,7 @@ beforeEach(() => {
     log.warn.mockReset();
     log.error.mockReset();
     telemetry.track.mockReset();
-    vi.stubGlobal(
-        "matchMedia",
-        vi.fn().mockImplementation((query: string) => ({
-            matches: true,
-            media: query,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-        })),
-    );
+    stubMatchMedia();
 });
 
 afterEach(() => {
@@ -183,6 +187,17 @@ afterEach(() => {
 });
 
 describe("feedback on an answer (CHAOS-11958)", () => {
+    beforeAll(async () => {
+        stubMatchMedia();
+        await answered(new FakeTransport());
+        cleanup();
+        window.sessionStorage.clear();
+        vi.unstubAllGlobals();
+        // The first panel open and the first typed question load the panel, the composer and the
+        // answer view cold: about 0.8 s more than a warm pass at load 80, and a starved host pushed
+        // the first test past the 5 s test default. 120 s is a ceiling for real work, not a speed target.
+    }, 120_000);
+
     it("shows Correct? and Useful? under an answer; a press sets the flag, a second press clears it", async () => {
         const transport = new FakeTransport();
         await answered(transport);
