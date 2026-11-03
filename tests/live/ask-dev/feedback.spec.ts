@@ -180,11 +180,24 @@ async function storedAt(api: APIRequestContext, like: AcrCall, resultId: string)
     return { correct: body.correct, useful: body.useful };
 }
 
+/** A call this page made with a bearer that ACR took (200): a live, working authorization. */
 const withBearer = (calls: readonly AcrCall[]): AcrCall => {
-    const call = calls.findLast((item) => item.hasBearer);
-    expect(call, "the page made no ACR call with a bearer").toBeDefined();
+    const call = calls.findLast((item) => item.hasBearer && item.status === 200);
+    expect(call, "the page made no ACR call that ACR took with a bearer").toBeDefined();
     return call!;
 };
+
+/**
+ * The signed-in user's active organization and role, from web's own session. Only those two fields
+ * leave the page: the session also holds tokens.
+ */
+const orgOf = (page: Page): Promise<{ org: string | null; role: string | null }> =>
+    page.evaluate(async () => {
+        const session = (await (await fetch("/api/auth/session")).json()) as {
+            user?: { org_id?: string; role?: string };
+        } | null;
+        return { org: session?.user?.org_id ?? null, role: session?.user?.role ?? null };
+    });
 
 async function answered(surface: Locator, count: number): Promise<void> {
     await expect(surface.getByRole("article", { name: "Answer" })).toHaveCount(count, {
@@ -346,7 +359,7 @@ test("AC-3 (INV-1): another principal of the organization can neither read nor s
     page,
     browser,
     baseURL,
-}) => {
+}, testInfo) => {
     test.setTimeout(300_000);
     expect(
         OTHER_EMAIL,
@@ -375,6 +388,22 @@ test("AC-3 (INV-1): another principal of the organization can neither read nor s
         expect(secretsOf(theirs).bearer, "the two principals hold one bearer").not.toBe(
             secretsOf(owner).bearer,
         );
+        // The precondition, measured (codex r1 P3): the other principal is in the owner's
+        // organization. Another org would give 404 for a reason that is not the guard.
+        const ownerOrg = await orgOf(page);
+        const otherOrg = await orgOf(other);
+        await testInfo.attach("principals", {
+            body: JSON.stringify({
+                owner_role: ownerOrg.role,
+                other_role: otherOrg.role,
+                same_org: ownerOrg.org === otherOrg.org,
+            }),
+            contentType: "application/json",
+        });
+        expect(ownerOrg.org, "the owner's session names no organization").not.toBeNull();
+        expect(otherOrg.org, "the second principal is not in the owner's organization").toBe(
+            ownerOrg.org,
+        );
 
         const read = await acrAs(api, theirs, "GET", resultId!);
         expect(read.status(), "another principal read the owner's feedback").toBe(404);
@@ -395,28 +424,46 @@ test("no free text in telemetry: feedback use sends no feedback event and no que
     page,
 }, testInfo) => {
     test.setTimeout(240_000);
-    const sent: string[] = [];
+    // Every request the page sends, on any path and origin but ACR's (codex r1 P3): telemetry sent
+    // to another path is read too. `inUse` marks the ones sent during the feedback use.
+    const sent: { telemetry: boolean; window: boolean; body: string }[] = [];
+    let inUse = false;
     page.on("request", (request: Request) => {
-        if (new URL(request.url()).pathname === TELEMETRY_PATH) sent.push(request.postData() ?? "");
+        const url = new URL(request.url());
+        if (url.origin === ACR) return;
+        sent.push({
+            telemetry: url.pathname === TELEMETRY_PATH,
+            window: inUse,
+            body: request.postData() ?? "",
+        });
     });
     const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     await ask(surface, question("fbTelemetry"));
     await answered(surface, 1);
     await expectAnswersSynthesized(results, "fbTelemetry");
-    const before = sent.length;
+    inUse = true;
     const group = feedbackGroups(surface).first();
     await choose(page, calls, group, "correct", "yes");
     await choose(page, calls, group, "useful", "no");
     await choose(page, calls, group, "useful", "no");
     // Leaving the page flushes the queue (pagehide), so every event of the feedback use is sent.
     await page.goto("/dashboard", { waitUntil: "load" });
+    const telemetry = () => sent.filter((item) => item.window && item.telemetry);
+    const eventsOf = (body: string): unknown[] => {
+        const parsed = JSON.parse(body) as { events?: unknown };
+        expect(Array.isArray(parsed.events), "a telemetry body is not the sink's JSON").toBe(true);
+        return parsed.events as unknown[];
+    };
+    // Discriminating: telemetry with events was really sent during the use, so the checks read it.
     await expect
-        .poll(() => sent.length, {
-            message: "no product telemetry was sent at all: the capture measured nothing",
+        .poll(() => telemetry().reduce((count, item) => count + eventsOf(item.body).length, 0), {
+            message:
+                "no product telemetry event was sent during the feedback use: nothing measured",
             timeout: 30_000,
         })
-        .toBeGreaterThan(before);
+        .toBeGreaterThan(0);
+    inUse = false;
 
     const answer = results[0] as { deterministic_answer?: string; direct_judgment?: string };
     const texts = [
@@ -426,18 +473,24 @@ test("no free text in telemetry: feedback use sends no feedback event and no que
         answer.direct_judgment,
     ].filter((text): text is string => typeof text === "string" && text.length >= 6);
     expect(texts.length, "no question or answer text to look for").toBeGreaterThanOrEqual(2);
-    // Discriminating: each body is the sink's JSON with its events, so a text search reads them.
-    for (const body of sent) {
-        const parsed = JSON.parse(body) as { events?: unknown };
-        expect(Array.isArray(parsed.events), "a telemetry body is not the sink's JSON").toBe(true);
-    }
-    const all = sent.join("\n");
+    const events = telemetry().flatMap((item) => eventsOf(item.body));
     await testInfo.attach("telemetry", {
-        body: JSON.stringify({ requests: sent.length, after_feedback: sent.length - before }),
+        body: JSON.stringify({
+            requests: telemetry().length,
+            events: events.length,
+            names: events.map((event) => (event as { name?: unknown }).name ?? null),
+        }),
         contentType: "application/json",
     });
+    const all = JSON.stringify(events);
     expect(/feedback/iu.test(all), "a telemetry event names feedback").toBe(false);
+    // Any request of the window, telemetry or not, on any path: no question or answer text.
+    const bodies = sent
+        .filter((item) => item.window)
+        .map((item) => item.body)
+        .join("\n");
     for (const text of texts) {
         expect(all.includes(text), "telemetry carried question or answer text").toBe(false);
+        expect(bodies.includes(text), "a request of the feedback use carried its text").toBe(false);
     }
 });
