@@ -13,10 +13,12 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     ask,
+    expectAnswersSynthesized,
     investigations,
     panel,
     secretsOf,
     signIn,
+    watchResults,
     type AcrCall,
 } from "./stack";
 
@@ -111,6 +113,7 @@ test("Expand and Minimize move the view, never the run; a reload restores the th
             requestIds.push(response.headers()["x-request-id"] ?? null);
         }
     });
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     const from = new URL(page.url()).pathname;
     const evidence: Record<string, unknown> = { from };
@@ -185,6 +188,8 @@ test("Expand and Minimize move the view, never the run; a reload restores the th
             [evidence.not_saved_on_dev, evidence.not_saved_in_panel],
             "a restored thread said it was not saved",
         ).toEqual([0, 0]);
+        // Both turns' answers, and any the restored thread read again: every one synthesized.
+        await expectAnswersSynthesized(results, "dev page", 2);
     } finally {
         evidence.request_ids = requestIds;
         evidence.acr_calls = acrCalls(calls);

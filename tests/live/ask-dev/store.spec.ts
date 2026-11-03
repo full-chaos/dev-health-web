@@ -21,11 +21,13 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     ask,
+    expectAnswersSynthesized,
     investigations,
     panel,
     secretsOf,
     signIn,
     watchAcr,
+    watchResults,
     authorize,
     type AcrCall,
 } from "./stack";
@@ -338,6 +340,7 @@ test.describe("the store owns the live stream (AC1)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(150_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
         await ask(surface, question("close"));
         await running(surface);
@@ -351,6 +354,7 @@ test.describe("the store owns the live stream (AC1)", () => {
         expect(investigations(calls), "closing or reopening sent the question again").toHaveLength(
             1,
         );
+        await expectAnswersSynthesized(results, "close and reopen");
     });
 
     // CHAOS-12574: with the lease on, dropping the stream does not end ACR's run, so sign-out sends
@@ -376,6 +380,7 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
     }, testInfo) => {
         test.setTimeout(240_000);
         await withProxy("end-after-accepted-keep-acr", testInfo, async (proxy) => {
+            const results = await watchResults(page);
             await divert(page, proxy);
             const { calls, surface } = await panel(page);
             // Every status read is timed from the start: the first can come before the test has
@@ -425,6 +430,8 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
             expect(replays.map((call) => call.path)).toEqual([
                 `${INVESTIGATIONS_PATH}/${end.body!.result_id!}`,
             ]);
+            // The dropped stream gave no result; the replayed one is the answer.
+            await expectAnswersSynthesized(results, "lease_off poll and replay");
         });
     });
 
@@ -433,6 +440,7 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
     }, testInfo) => {
         test.setTimeout(240_000);
         await withProxy("end-after-accepted-keep-acr", testInfo, async (proxy) => {
+            const results = await watchResults(page);
             const { calls, surface } = await panel(page);
             await ask(surface, question("reuseDrop"));
             await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
@@ -482,6 +490,8 @@ test.describe("recovery through the submission status, run lease off (AC2)", () 
             expect(replays, "the store replayed another id").toEqual([
                 `${INVESTIGATIONS_PATH}/${stored!}`,
             ]);
+            // The first answer's stream, and the reused answer's replay.
+            await expectAnswersSynthesized(results, "lease_off reused drop", 2);
         });
     });
 
@@ -520,6 +530,7 @@ test.describe("the thread header on the wire (AC3)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(240_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
         await ask(surface, question("thread1"));
         await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
@@ -554,5 +565,6 @@ test.describe("the thread header on the wire (AC3)", () => {
         expect([first.status, second.status]).toEqual([200, 200]);
         expect(first.body.turns.map((turn) => turn.submission_id)).toEqual(submissions.slice(0, 2));
         expect(second.body.turns.map((turn) => turn.submission_id)).toEqual([submissions[2]]);
+        await expectAnswersSynthesized(results, "thread header", 3);
     });
 });

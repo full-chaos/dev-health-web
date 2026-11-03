@@ -99,11 +99,15 @@ async function answerFor(
     baseURL: string | undefined,
     name: RichCase,
     replicate: Replicate,
+    // "reduce" asks for reduced motion, so the charts draw with no entry animation and the
+    // first drawn frame is the final one (CHAOS-12582's screenshots).
+    reducedMotion?: "reduce",
 ): Promise<Answer> {
     const context = await browser.newContext({
         baseURL: baseURL!,
         storageState: session,
         ignoreHTTPSErrors: true,
+        ...(reducedMotion === undefined ? {} : { reducedMotion }),
     });
     const page = await context.newPage();
     const results = await watchResults(page);
@@ -608,18 +612,94 @@ for (const replicate of REPLICATES) {
     });
 }
 
-test("sankey [behind a flag]: the repository flow renders from the served shape", () => {
+// The NOT RUN gate refuses a pass whose title still says "[behind a flag]" (ci/live-e2e-skip-gate.mjs),
+// so the title says it only while the flag is off.
+test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders from the served shape`, async ({
+    browser,
+    baseURL,
+}, testInfo) => {
     if (!SANKEY) {
         // Listed as NOT RUN by ci/live-e2e-skip-gate.mjs, never as a pass or a plain skip.
-        test.info().annotations.push({
+        testInfo.annotations.push({
             type: "NOT RUN",
             description:
                 "the sankey flag is off on this stack (ASK_DEV_LIVE_SANKEY); on with web-sankey's roll (#1974)",
         });
     }
     test.skip(!SANKEY, "NOT RUN: the sankey flag is off on this stack (ASK_DEV_LIVE_SANKEY)");
-    // Turned on with web-sankey's roll (#1974): the case is written then, against a served flow.
-    expect(SANKEY, "NOT RUN: the sankey case has no question yet").toBe(false);
+    // CHAOS-12582: the team's repository flow, from the claimed repository_theme_breakdown table.
+    // The suite asks at desktop width (its sign-in opens History, which the phone layout hides), so
+    // the one answer is checked at desktop width and again at phone width, in the panel and on
+    // /dev, with a screenshot of each (the ticket's acceptance). A resize remounts the panel, so
+    // each width waits for the chart to draw and settle again before it is checked.
+    const { page, answer, result } = await answerFor(browser, baseURL, "sankey", 1, "reduce");
+    const [shape] = served(
+        result,
+        "investment_repository_flow",
+        "the team's repository_theme_breakdown",
+    );
+    const drawnIn = async (scope: Locator, view: string, where: string) => {
+        const figure = figureOf(scope, shape!);
+        await expect(
+            figure.locator("canvas").first(),
+            `the sankey is drawn (${where}, ${view})`,
+        ).toBeVisible({
+            timeout: 30_000,
+        });
+        await expectDrawnAsServed(figure, shape!);
+        await figure.scrollIntoViewIfNeeded();
+        // The entry animation reveals the sankey from the left, so the case asks with reduced
+        // motion: with animation on, two equal frames were seen while the chart was still a
+        // narrow strip. A resize redraws the chart a moment after the box changes, so wait until
+        // the canvas fits its figure and two frames half a second apart are the same picture; a
+        // chart that never settles fails here.
+        const frame = () =>
+            figure.evaluate((node) => {
+                const canvas = node.querySelector("canvas");
+                if (!canvas) return "no canvas";
+                const fits = canvas.clientWidth <= Math.ceil(node.getBoundingClientRect().width);
+                return fits
+                    ? canvas.toDataURL()
+                    : `canvas ${canvas.clientWidth} px wider than figure`;
+            });
+        let last = await frame();
+        await expect
+            .poll(
+                async () => {
+                    const next = await frame();
+                    const settled = next === last && next.startsWith("data:");
+                    last = next;
+                    return settled;
+                },
+                {
+                    message: `the sankey settles at the figure's width (${where}, ${view})`,
+                    intervals: [500],
+                    timeout: 15_000,
+                },
+            )
+            .toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`sankey-${where}-${view}.png`) });
+    };
+    await drawnIn(answer, "desktop", "panel");
+    await expectLedger(answer, result);
+    await page.setViewportSize({ width: 390, height: 844 });
+    // At phone width the panel is a dialog; the side panel stays in the page, hidden, so the
+    // dialog is the one to read.
+    await drawnIn(
+        page
+            .getByRole("dialog")
+            .filter({ has: page.getByRole("heading", { name: "Ask Dev" }) })
+            .getByRole("article", { name: "Answer" }),
+        "phone",
+        "panel",
+    );
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await page.getByRole("button", { name: "Open full page" }).click();
+    await expect(page.getByTestId("ask-dev-page")).toBeVisible({ timeout: 30_000 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "desktop", "dev");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "phone", "dev");
+    await page.context().close();
 });
 
 test("sunburst [behind a flag]: the investment subcategories render from the served shape", () => {
