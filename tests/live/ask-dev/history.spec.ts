@@ -379,6 +379,9 @@ test("AC-12: a delete in the panel takes the thread off /dev's History, and a de
         await ask(full, question("histDelDev"));
         await expect(answers(full)).toHaveCount(1, { timeout: 90_000 });
         const devThread = threadOf(investigations(calls)[1]!);
+        // History reads again only when the conversation changes, and its read right after the
+        // create can come before ACR stores the thread (run 4): a reload of the thread reads it now.
+        await page.goto(`/dev?thread=${devThread}`, { waitUntil: "commit" });
         await expect(historyRow(full, devThread)).toHaveCount(1, { timeout: 30_000 });
         await deleteFromHistory(full, devThread);
         await expect(historyRow(full, devThread)).toHaveCount(0, { timeout: 30_000 });
@@ -462,9 +465,13 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
             evidence.late_list_outcome,
             "the held list did not reach the page: nothing late arrived",
         ).toBe("delivered");
-        expect(threadLists(calls).filter((call) => call.status === 200).length).toBeGreaterThan(
-            listsBefore,
-        );
+        // The page's response event records the status a moment after the hand-over (run 3).
+        await expect
+            .poll(() => threadLists(calls).filter((call) => call.status === 200).length, {
+                message: "the page recorded no answer to the held list",
+                timeout: 10_000,
+            })
+            .toBeGreaterThan(listsBefore);
         await page.waitForTimeout(3_000);
         evidence.late_list_brought_back = await historyRow(surface, listThread).count();
         expect(
@@ -480,10 +487,12 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
         await ask(full, question("histLateRead"));
         await expect(answers(full)).toHaveCount(1, { timeout: 90_000 });
         const readThread = threadOf(investigations(calls)[1]!);
-        await expect(historyRow(full, readThread)).toHaveCount(1, { timeout: 30_000 });
-        // A new conversation, so opening the row reads the thread (the rail's own button).
+        // A new conversation, so opening the row reads the thread (the rail's own button). It also
+        // makes History read again: its read right after the create can come before ACR stores the
+        // thread (run 4).
         await full.locator("button.rail__new").click();
         await expect(answers(full)).toHaveCount(0, { timeout: 15_000 });
+        await expect(historyRow(full, readThread)).toHaveCount(1, { timeout: 30_000 });
         let releaseRead: () => void = () => undefined;
         const readReleased = new Promise<void>((resolve) => {
             releaseRead = resolve;
