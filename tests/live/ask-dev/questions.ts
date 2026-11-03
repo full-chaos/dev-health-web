@@ -52,6 +52,13 @@ export const CASES = {
     termOrgLimit: "Hold: what is the status of full-chaos/dev-health-web?",
     termRunEndedStalled: "Hold: what is the status of full-chaos/dev-health-web?",
     termRunEndedEos: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12234 (`feedback.spec.ts`): answer feedback, one case per test. `fbReuse` is asked twice
+    // in two conversations on purpose: ACR serves the second turn the first turn's result.
+    fbPanel: "What is the status of full-chaos/dev-health-web?",
+    fbDev: "What is the status of full-chaos/dev-health-web?",
+    fbReuse: "Again: what is the status of full-chaos/dev-health-web?",
+    fbGuard: "What is the status of full-chaos/dev-health-web?",
+    fbTelemetry: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
