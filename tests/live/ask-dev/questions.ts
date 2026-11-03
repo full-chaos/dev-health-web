@@ -61,6 +61,15 @@ export const CASES = {
     // AC-3's positive control: the second principal's own question, so its own feedback is 200.
     fbPeer: "What is the status of full-chaos/dev-health-web?",
     fbTelemetry: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12232 (`history.spec.ts`): history and reload recovery through the browser transport.
+    histTurn1: "What is the status of full-chaos/dev-health-web?",
+    histTurn2: "What is the status of full-chaos/dev-health-web?",
+    histTurn3: "What is the status of full-chaos/dev-health-web?",
+    histHold: "Hold: what is the status of full-chaos/dev-health-web?",
+    histDelPanel: "What is the status of full-chaos/dev-health-web?",
+    histDelDev: "What is the status of full-chaos/dev-health-web?",
+    histLateList: "What is the status of full-chaos/dev-health-web?",
+    histLateRead: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
