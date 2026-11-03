@@ -161,3 +161,5 @@ An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_de
 - A cohort member's `data_completeness` is never shown either. The ranking column and the unranked summary show the member's served driver rows, "3 of 5 drivers" (`memberDriversText`), never a number mapped from the state. A member that serves no driver rows shows nothing.
 - The status pill and the correction note read `vocabulary_labels` (CHAOS-12417): no table over `status`. ACR composes the words, so "Full answer" shows only when the status and the completeness are both complete. With no map, or no status key, an answered status reads the neutral "Answer", the note is left out, and `no_match` and `clarification_required` have no pill. The labels flag is off by default, so this is the path until it is on. A withheld ranking arrives with no map too.
 - The requirement outcomes table, the plan family and `rollup_basis` are in closed folds. With no outcomes there is no table and no sentence: that would only restate the state.
+
+<!-- CHAOS-12871 demo: a docs-only change. Throwaway; never merged. -->
