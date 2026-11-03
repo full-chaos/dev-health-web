@@ -23,11 +23,12 @@ describe("C1 platform action table against the pinned catalog", () => {
         expect([...PLATFORM_ACTIONS].sort()).toEqual(platform.map((a) => a.action).sort());
     });
 
-    it("every surface names a platform action or the explicit unmapped marker", () => {
+    it("every surface names a platform action, an impersonation-denied org action or the unmapped marker", () => {
         for (const row of PLATFORM_SURFACES) {
             expect(
                 row.action === "unmapped" ||
-                    (PLATFORM_ACTIONS as readonly string[]).includes(row.action),
+                    (PLATFORM_ACTIONS as readonly string[]).includes(row.action) ||
+                    (ORG_IMPERSONATION_DENIED_ACTIONS as readonly string[]).includes(row.action),
                 row.id,
             ).toBe(true);
         }
