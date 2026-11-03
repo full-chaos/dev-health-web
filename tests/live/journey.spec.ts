@@ -215,20 +215,62 @@ test.describe("credentials journey", () => {
     let credentialId = "";
 
     test.beforeAll(async ({ request }) => {
+        // PROBE (CHAOS-12844, draft PR, never merged): every setup step's status and error code, so a
+        // missing token names its step. No token, password or email is printed.
+        const steps: string[] = [];
+        const codeOf = async (res: { text: () => Promise<string> }): Promise<string> => {
+            const text = await res.text().catch(() => "");
+            try {
+                const body = JSON.parse(text) as Record<string, unknown>;
+                const error = body.error as { code?: unknown } | undefined;
+                const keys = Object.keys(body).sort().join(",");
+                return `code=${String(error?.code ?? body.code ?? body.detail ?? "-").slice(0, 80)} keys=[${keys}]`;
+            } catch {
+                return `non-json len=${String(text.length)}`;
+            }
+        };
         const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
             data: { email, password, full_name: "Creds User" },
             headers: { Origin: liveBackendUrl },
         });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
+        steps.push(`register ${String(regRes.status())} ${await codeOf(regRes)}`);
+        const suRes = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+            data: {
+                email: process.env.TEST_SUPERUSER_EMAIL ?? "admin@devhealth.example",
+                password: process.env.TEST_SUPERUSER_PASSWORD ?? "",
+            },
+        });
+        steps.push(`superuser-login ${String(suRes.status())} ${await codeOf(suRes)}`);
         const suToken = await getSuperuserToken(request);
+        steps.push(`superuser-token ${suToken ? "present" : "absent"}`);
         const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
+        steps.push(`user-lookup ${userId ? "found" : "not-found"}`);
+        if (suToken && userId) {
+            const verifyRes = await request.patch(
+                `${liveBackendUrl}/api/v1/admin/users/${userId}`,
+                {
+                    headers: authHeaders(suToken),
+                    data: { is_verified: true },
+                },
+            );
+            steps.push(`verify ${String(verifyRes.status())} ${await codeOf(verifyRes)}`);
+        }
+        const loginRes = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+            data: { email, password },
+        });
+        const loginText = await loginRes.text().catch(() => "");
+        let loginData: { access_token?: string } = {};
+        try {
+            loginData = JSON.parse(loginText) as { access_token?: string };
+        } catch {
+            loginData = {};
+        }
+        steps.push(
+            `login ${String(loginRes.status())} token=${loginData.access_token ? "present" : "absent"} ${await codeOf({ text: async () => loginText })}`,
+        );
+        console.log(`[probe credentials journey] ${steps.join(" | ")}`);
         token = loginData.access_token ?? "";
-        if (!token) return;
+        if (!token) throw new Error(`PROBE: credentials setup gave no token: ${steps.join(" | ")}`);
 
         // Onboard first so admin endpoints are accessible
         await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
