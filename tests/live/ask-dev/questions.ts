@@ -58,6 +58,8 @@ export const CASES = {
     fbDev: "What is the status of full-chaos/dev-health-web?",
     fbReuse: "Again: what is the status of full-chaos/dev-health-web?",
     fbGuard: "What is the status of full-chaos/dev-health-web?",
+    // AC-3's positive control: the second principal's own question, so its own feedback is 200.
+    fbPeer: "What is the status of full-chaos/dev-health-web?",
     fbTelemetry: "What is the status of full-chaos/dev-health-web?",
 } as const;
 

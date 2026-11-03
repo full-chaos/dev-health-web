@@ -388,7 +388,7 @@ test("AC-3 (INV-1): another principal of the organization can neither read nor s
     browser,
     baseURL,
 }, testInfo) => {
-    test.setTimeout(300_000);
+    test.setTimeout(420_000);
     expect(
         OTHER_EMAIL,
         "ASK_DEV_LIVE_OTHER_EMAIL is not set: AC-3 needs a second principal",
@@ -416,9 +416,41 @@ test("AC-3 (INV-1): another principal of the organization can neither read nor s
     try {
         const other = await context.newPage();
         const otherCalls = watchAcr(other);
+        const otherResults = await watchResults(other);
         await signInOther(other);
         await authorize(other);
+
+        // The positive control (lead ruling): the second principal reads and sets feedback on its
+        // OWN result. Without it, a 404 on the owner's result could mean it can read nothing at all.
+        await other.getByRole("button", { name: "Open Ask Dev" }).click();
+        const otherSurface = other.getByTestId("ask-dev-panel");
+        await expect(otherSurface.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+        await ask(otherSurface, question("fbPeer"));
+        await answered(otherSurface, 1);
+        await expectAnswersSynthesized(otherResults, "fbPeer");
+        const otherGroup = feedbackGroups(otherSurface).first();
+        await expectShown(
+            otherGroup,
+            { correct: "unset", useful: "unset" },
+            "the peer's own answer",
+        );
+        await choose(other, otherCalls, otherGroup, "correct", "yes");
+        const [ownResult] = feedbackIds(otherCalls, "POST");
+        expect(ownResult, "the peer's own result is the owner's").not.toBe(resultId);
         const theirs = withBearer(otherCalls);
+        expect(
+            await storedAt(api, theirs, ownResult!),
+            "the peer cannot read its own feedback",
+        ).toEqual({
+            correct: "yes",
+            useful: "unset",
+        });
+        const ownSet = await acrAs(api, theirs, "POST", ownResult!, {
+            correct: "yes",
+            useful: "yes",
+        });
+        expect(ownSet.status(), "the peer cannot set its own feedback").toBe(200);
+
         expect(secretsOf(theirs).bearer, "the two principals hold one bearer").not.toBe(
             secretsOf(owner).bearer,
         );
