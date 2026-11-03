@@ -4,6 +4,12 @@ import type { ForecastShapeDetail, RenderShape, ShapeSlot } from "@full-chaos/as
 import dynamic from "next/dynamic";
 
 import { completionRangeView } from "@/components/capacity/completionRangeView";
+import type { SunburstNode } from "@/components/charts/SunburstChart";
+import {
+    investmentThemeColor,
+    useChartColors,
+    useChartTokens,
+} from "@/components/charts/chartTheme";
 import { usePrefersReducedMotion } from "@/lib/a11y/usePrefersReducedMotion";
 import { buildTooltipHtml } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
@@ -23,6 +29,12 @@ const SankeyChart = dynamic(
     { ssr: false },
 );
 
+/** On demand, as the treemap: an answer with no sunburst loads no sunburst module. */
+const SunburstChart = dynamic(
+    async () => (await import("@/components/charts/SunburstChart")).SunburstChart,
+    { ssr: false },
+);
+
 /** On demand, as the treemap: an answer with no quadrant loads no quadrant module. */
 const QuadrantChart = dynamic(
     async () => (await import("@/components/charts/QuadrantChart")).QuadrantChart,
@@ -38,6 +50,10 @@ const CompletionRangeFigure = dynamic(
 const TREEMAP_HEIGHT = 260;
 const QUADRANT_HEIGHT = 320;
 const SANKEY_HEIGHT = 360;
+const SUNBURST_HEIGHT = 360;
+
+/** acr's `ContextFabricRenderSunburstThemeSeriesKey`: the series of the inner ring. */
+const SUNBURST_THEME_SERIES_KEY = "themes";
 
 /**
  * The theme column's labels sit inside the chart, left of their nodes: in the panel at phone
@@ -182,6 +198,107 @@ function AskDevSankey({
 }
 
 /**
+ * The two rings of a verified `investment_subcategory_share` shape (CHAOS-12813). The series keyed
+ * `themes` is the inner ring, one point per theme with its served share; every other series is one
+ * theme's ring, labelled with the theme's served word, one point per subcategory with its served
+ * share and word. ask-dev's verifier holds an inner point's word and its ring's word to the same
+ * theme, so a ring is found by that word. Names are the served words as given, and values the
+ * shape's own. A measured 0 has no angle, so it stays in ask-dev's value table. Null when the rings
+ * cannot be read that way: no inner ring, a ring with no inner point or one twice, a value that is
+ * not finite, or fewer than 2 subcategories above 0.
+ */
+function sunburstData(shape: RenderShape): SunburstNode | null {
+    const [inner, ...rings] = shape.series;
+    if (inner?.key !== SUNBURST_THEME_SERIES_KEY || rings.length === 0) return null;
+    const ringByWord = new Map(rings.map((ring) => [ring.label, ring] as const));
+    if (ringByWord.size !== rings.length || inner.points.length !== rings.length) return null;
+    const themes: SunburstNode[] = [];
+    const used = new Set<string>();
+    let subcategories = 0;
+    for (const point of inner.points) {
+        const ring = ringByWord.get(point.label);
+        if (ring === undefined || used.has(point.label) || !Number.isFinite(point.value)) {
+            return null;
+        }
+        used.add(point.label);
+        const children: SunburstNode[] = [];
+        for (const leaf of ring.points) {
+            if (!Number.isFinite(leaf.value)) return null;
+            if (leaf.value > 0) children.push({ name: leaf.label, value: leaf.value });
+        }
+        subcategories += children.length;
+        if (point.value > 0) {
+            themes.push({ name: point.label, value: point.value, themeKey: ring.key, children });
+        }
+    }
+    if (subcategories < 2) return null;
+    return {
+        name: shape.title,
+        value: themes.reduce((sum, theme) => sum + theme.value, 0),
+        children: themes,
+    };
+}
+
+/** What ECharts passes a sunburst tooltip: the segment, and the names on its path. */
+type SunburstItem = {
+    readonly data?: { readonly name?: string; readonly value?: number };
+    readonly treePathInfo?: ReadonlyArray<{ readonly name?: string }>;
+};
+
+function AskDevSunburst({
+    shape,
+    data,
+}: {
+    readonly shape: RenderShape;
+    readonly data: SunburstNode;
+}) {
+    const reduceMotion = usePrefersReducedMotion();
+    const tokens = useChartTokens();
+    const chartColors = useChartColors();
+    // Each theme and its subcategories in the theme's fixed color, as the investment page draws
+    // them (by the theme's token, never by rank); the outer ring is told apart by its opacity.
+    const colored: SunburstNode = {
+        ...data,
+        children: (data.children ?? []).map((theme, index) => {
+            const color = investmentThemeColor(
+                typeof theme.themeKey === "string" ? theme.themeKey : "",
+                tokens,
+                chartColors[index % chartColors.length] ?? tokens.themeOperational,
+            );
+            return {
+                ...theme,
+                itemStyle: { color },
+                children: (theme.children ?? []).map((leaf) => ({
+                    ...leaf,
+                    itemStyle: { color, opacity: 0.75 },
+                })),
+            };
+        }),
+    };
+    return (
+        <SunburstChart
+            animation={!reduceMotion}
+            data={colored}
+            useInputColors
+            height={SUNBURST_HEIGHT}
+            tooltipFormatterAction={(params) => {
+                const item = (params ?? {}) as SunburstItem;
+                const name = item.data?.name ?? "";
+                // The theme above a subcategory, by its served word; the root is the chart's title.
+                const path = (item.treePathInfo ?? []).slice(1).map((step) => step.name ?? "");
+                const parent = path.length > 1 ? path[path.length - 2] : undefined;
+                return buildTooltipHtml({
+                    title: name,
+                    ...(parent === undefined ? {} : { subtitle: parent }),
+                    value: shareText(item.data?.value),
+                    unit: shape.value_label,
+                });
+            }}
+        />
+    );
+}
+
+/**
  * Where teams stand on two measures on one day, from a verified `landscape_position` shape
  * (CHAOS-12625): series 0 is x and series 1 is y, a point is one team, labelled with its served
  * word. The axes carry the served words, which hold the unit, so `unit` is empty. A point's id is
@@ -259,6 +376,12 @@ export const askDevShapeChart: ShapeSlot = (shape, detail?: ForecastShapeDetail)
         if (shape.value_unit !== undefined) return null;
         const graph = flowGraph(shape);
         return graph === null ? null : <AskDevSankey graph={graph} shape={shape} />;
+    }
+    if (shape.kind === "sunburst") {
+        // A sunburst plots shares of one whole (CHAOS-12588).
+        if (shape.value_unit !== "ratio") return null;
+        const data = sunburstData(shape);
+        return data === null ? null : <AskDevSunburst data={data} shape={shape} />;
     }
     if (shape.kind !== "treemap" || shape.value_unit !== "ratio") return null;
     const points = shape.series[0]?.points ?? [];
