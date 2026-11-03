@@ -58,6 +58,16 @@ describe("ACR's budget rule", () => {
         expect(budgetIsConsistent({ ...nothingCut(), truncated: true })).toBe(false);
         expect(budgetIsConsistent(nothingCut())).toBe(true);
     });
+
+    it("refuses a missing budget, and one without a boolean truncated, without throwing", () => {
+        expect(budgetIsConsistent(undefined)).toBe(false);
+        expect(budgetIsConsistent(null)).toBe(false);
+        const noTruncated: Partial<ProjectionBudget> = { ...nothingCut() };
+        delete noTruncated.truncated;
+        expect(budgetIsConsistent(noTruncated as ProjectionBudget)).toBe(false);
+        const textTruncated = { ...nothingCut(), truncated: "false" };
+        expect(budgetIsConsistent(textTruncated as unknown as ProjectionBudget)).toBe(false);
+    });
 });
 
 describe("isAnswerProjection", () => {

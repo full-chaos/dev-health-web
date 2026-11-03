@@ -84,6 +84,19 @@ describe("ACR's bounded answer (CHAOS-12643)", () => {
         expect(transport.calls).toHaveLength(1);
     });
 
+    it("refuses a bounded answer with no budget as unreadable, not a thrown turn", async () => {
+        const { projection_budget: _dropped, ...noBudget } = boundedAnswer();
+        const store = makeStore();
+        transport.scripts.push([
+            accepted(),
+            resultEvent(noBudget as ReturnType<typeof boundedAnswer>),
+        ]);
+        store.submit("Which teams are struggling right now, and why?");
+        await settled(store);
+        expect(last(store).outcome.kind).toBe("unreadable");
+        expect(transport.calls).toHaveLength(1);
+    });
+
     it("leaves a whole result an answer", async () => {
         const store = makeStore();
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);

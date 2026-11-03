@@ -36,9 +36,13 @@ export function isAnswerProjection(value: unknown): value is AnswerProjection {
  * classifier reads it (`src/lib/projection-budget.ts`): `truncated` is true if and only if a count
  * (an omission or `values_clamped`) is above zero or `full_result_omitted` is set. The JSON Schema
  * cannot state a rule across fields, so a budget that breaks it is refused here: it cannot be told
- * apart from a complete answer.
+ * apart from a complete answer. A missing budget, or one without a boolean `truncated`, is refused
+ * the same way: test mode admits a scripted projection without the stream's schema check.
  */
-export function budgetIsConsistent(budget: ProjectionBudget): boolean {
+export function budgetIsConsistent(budget: ProjectionBudget | null | undefined): boolean {
+    if (typeof budget !== "object" || budget === null || typeof budget.truncated !== "boolean") {
+        return false;
+    }
     const cut =
         budget.full_result_omitted ||
         (budget.values_clamped ?? 0) > 0 ||
