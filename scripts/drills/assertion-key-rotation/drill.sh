@@ -148,7 +148,8 @@ cells() {
 }
 
 teardown() {
-    kubectl delete ns "$DRILL_NS" --wait=true --ignore-not-found >/dev/null
+    # Explicit rc check: teardown runs on the left of || in the EXIT trap, where set -e is off.
+    kubectl delete ns "$DRILL_NS" --wait=true --ignore-not-found >/dev/null || return $?
     echo "ns=$DRILL_NS deleted"
 }
 
