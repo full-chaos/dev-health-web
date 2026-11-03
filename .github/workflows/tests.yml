@@ -865,8 +865,8 @@ jobs:
         # CHAOS-12841 (E8 AC-6): the Ask Dev rich views against their committed baselines
         # (tests/__visual__/). Pixels hold only in the image that made them, so this job runs the
         # visual spec, and only it, inside the mirrored Playwright image, never on the bare runner.
-        # The baselines are made in the same image (linux/amd64). It is NOT in the `test` aggregate:
-        # it becomes required only after its first green run on main.
+        # The baselines are made in the same image (linux/amd64). Required through the `test`
+        # aggregate (CHAOS-12871), after its first green run on main (9200a7ce).
         name: Visual baselines (Ask Dev rich views)
         needs: [changes, visual-image]
         if: needs.changes.outputs.e2e == 'true'
@@ -958,8 +958,7 @@ jobs:
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
                   key: pnpm-store-container-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
-            - name: Visual baselines
-              run: pnpm exec playwright test -c playwright.visual.config.ts
+            - run: bash ci/run_tests.sh e2e-visual
             - name: Upload the visual report and diffs
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -1050,7 +1049,10 @@ jobs:
 
     test:
         name: test
-        needs: [changes, format, quality, build, unit, e2e-default, e2e-onboarding]
+        # CHAOS-12871: `visual` (the Ask Dev rich-view baselines) is required here like the other
+        # path-filtered e2e jobs, so no ruleset change is needed. It needs `visual-image`: a failed
+        # image step leaves `visual` skipped, which fails the e2e check below.
+        needs: [changes, format, quality, build, unit, e2e-default, e2e-onboarding, visual]
         if: always()
         runs-on: ubuntu-latest
         timeout-minutes: 5
@@ -1072,12 +1074,12 @@ jobs:
             - name: Check E2E test stages
               if: needs.changes.result == 'success' && needs.changes.outputs.e2e == 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' || "${{ needs.visual.result }}" != 'success' ]]; then
                     exit 1
                   fi
             - name: Check E2E test stages were skipped
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true' && needs.changes.outputs.e2e != 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' || "${{ needs.visual.result }}" != 'skipped' ]]; then
                     exit 1
                   fi
