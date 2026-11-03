@@ -16,10 +16,13 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     ask,
+    expectAnswersFallback,
+    expectAnswersSynthesized,
     investigations,
     panel,
     secretsOf,
     signIn,
+    watchResults,
     type AcrCall,
 } from "./stack";
 
@@ -221,7 +224,7 @@ test("window lease_off: stalled: no byte for 30 s after accepted ends the turn a
     test.setTimeout(150_000);
     await faultCase(page, testInfo, "hold-after-accepted", async (proxy, _, surface, shown) => {
         // Hold: ACR's run is still in its 40 s interpretation when the browser gives up.
-        await ask(surface, question("stop"));
+        await ask(surface, question("termStalled"));
         await expect
             .poll(() => proxy.exchanges[0]?.at.accepted, {
                 message: "ACR's accepted never reached the proxy",
@@ -258,7 +261,7 @@ test("admission_timeout: no response headers in 15 s ends the turn on the admiss
 }, testInfo) => {
     await faultCase(page, testInfo, "hold-headers", async (proxy, _, surface, shown) => {
         const asked = Date.now();
-        await ask(surface, question("ceiling"));
+        await ask(surface, question("termAdmission"));
         const end = await endState(surface, 30_000);
         shown.end = end;
         shown.elapsedMs = { since_ask: end.seenAt - asked };
@@ -290,7 +293,7 @@ test("invalid_upstream: a broken seq ends the turn as failed, with its reference
         "corrupt-second-frame",
         async (proxy, calls, surface, shown) => {
             const asked = Date.now();
-            await ask(surface, question("stages"));
+            await ask(surface, question("termBrokenSeq"));
             const end = await endState(surface, 60_000);
             shown.end = end;
             shown.elapsedMs = { since_ask: end.seenAt - asked };
@@ -332,7 +335,7 @@ test("window lease_off: an end of stream with no terminal reads the status, then
         "cut-after-first-stage",
         async (proxy, calls, surface, shown) => {
             const asked = Date.now();
-            await ask(surface, question("stop"));
+            await ask(surface, question("termEndOfStream"));
             const end = await endState(surface, 90_000);
             shown.end = end;
             shown.elapsedMs = { since_ask: end.seenAt - asked };
@@ -371,7 +374,7 @@ test("budget_exhausted: a resend after a 401 with too little budget left sends n
         "unauthorized-once",
         async (proxy, calls, surface, shown) => {
             const asked = Date.now();
-            await ask(surface, question("reload"));
+            await ask(surface, question("termBudget"));
             const end = await endState(surface, 30_000);
             shown.end = end;
             shown.elapsedMs = { since_ask: end.seenAt - asked };
@@ -573,12 +576,12 @@ test.describe("ACR's own states (AC4)", () => {
             // Another question under the same key. ACR's request digest leaves `request_id` out
             // (run 3: a changed request_id was the same request), so the question changes.
             side = await sideCreate(request, {
-                body: JSON.stringify({ ...body, question: question("stages") }),
+                body: JSON.stringify({ ...body, question: question("termMismatchOther") }),
             });
             expect(await side.accepted, "the first run under this key was not accepted").toBe(true);
         });
         try {
-            await ask(surface, question("stop"));
+            await ask(surface, question("termMismatch"));
             const end = await endState(surface, 60_000);
             await report(testInfo, "mismatch-evidence", {
                 state: end.state,
@@ -629,7 +632,7 @@ test.describe("ACR's own states (AC4)", () => {
                 )
                 .toBe("abandoned");
         });
-        await ask(surface, question("stop"));
+        await ask(surface, question("termAbandoned"));
         const end = await endState(surface, 60_000);
         await report(testInfo, "abandoned-evidence", {
             state: end.state,
@@ -651,6 +654,7 @@ test.describe("ACR's own states (AC4)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(170_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
         let side: Side | undefined;
         let submission = "";
@@ -660,7 +664,7 @@ test.describe("ACR's own states (AC4)", () => {
             expect(await side.accepted, "the first run under this key was not accepted").toBe(true);
         });
         try {
-            await ask(surface, question("stop"));
+            await ask(surface, question("termInProgress"));
             const end = await endState(surface, 140_000);
             const statusPath = `${INVESTIGATIONS_PATH}/submissions/${submission}`;
             const polls = calls.filter((call) => call.method === "GET" && call.path === statusPath);
@@ -686,6 +690,8 @@ test.describe("ACR's own states (AC4)", () => {
             expect(replays.length, "the store did not replay the final answer").toBeGreaterThan(0);
             expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("answer");
             expect(creates, "the store sent a second create").toHaveLength(1);
+            // The page's create got 409, so its answer is the replayed final result.
+            await expectAnswersSynthesized(results, "409 in progress");
             await screenshots(page, testInfo, "in-progress-recovered");
         } finally {
             side?.stop();
@@ -704,7 +710,7 @@ test.describe("ACR's own states (AC4)", () => {
             async () => undefined,
             (from) => ({ ...from, "x-acr-wait-budget-seconds": "25" }),
         );
-        await ask(surface, question("long"));
+        await ask(surface, question("termDeadline"));
         const end = await endState(surface, 90_000);
         await report(testInfo, "request-deadline-evidence", {
             state: end.state,
@@ -723,8 +729,9 @@ test.describe("ACR's own states (AC4)", () => {
         page,
     }, testInfo) => {
         test.setTimeout(170_000);
+        const results = await watchResults(page);
         const { calls, surface } = await panel(page);
-        await ask(surface, question("late"));
+        await ask(surface, question("termModelDeadline"));
         const answer = surface.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible({ timeout: 140_000 });
         const warning = answer.getByText(/^answer text unavailable: /u).first();
@@ -739,6 +746,8 @@ test.describe("ACR's own states (AC4)", () => {
         await expect(answer).toHaveAttribute("data-state", "degraded");
         await expect(warning).toBeVisible();
         await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
+        // The mechanism, not only the words: the result says it is acr's fallback.
+        await expectAnswersFallback(results, "model deadline");
         // Below `md` the panel is a modal sheet without the panel's test id: find the warning by
         // the page, so both widths scroll to it.
         await screenshots(
@@ -764,7 +773,7 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
         page,
     }, testInfo) => {
         const { calls, surface } = await panel(page);
-        await ask(surface, question("stages"));
+        await ask(surface, question("termStreamOff"));
         const end = await endState(surface, 30_000);
         await report(testInfo, "stream-off-evidence", {
             state: end.state,
@@ -790,7 +799,7 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
                 response.request().method() === "POST" &&
                 new URL(response.url()).pathname === INVESTIGATIONS_PATH,
         );
-        await ask(surface, question("stages"));
+        await ask(surface, question("termAllowance"));
         const retryAfter = (await created).headers()["retry-after"] ?? null;
         const end = await endState(surface, 30_000);
         await report(testInfo, "allowance-evidence", {
@@ -895,7 +904,7 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
                 });
                 expect(await side.accepted, "the run holding the slot was not accepted").toBe(true);
             });
-            await ask(surface, question("stop"));
+            await ask(surface, question("termOrgLimit"));
             const end = await endState(surface, 30_000);
             await report(testInfo, "org-limit-evidence", {
                 state: end.state,
@@ -981,7 +990,7 @@ test.describe("the transport's terminals when the run has ended (AC2, run lease 
             testInfo,
             "hold-after-accepted",
             async (proxy, calls, surface, shown) => {
-                await ask(surface, question("stop"));
+                await ask(surface, question("termRunEndedStalled"));
                 await expect
                     .poll(() => proxy.exchanges[0]?.at.accepted, { timeout: 20_000 })
                     .toBeDefined();
@@ -1018,7 +1027,7 @@ test.describe("the transport's terminals when the run has ended (AC2, run lease 
             testInfo,
             "cut-after-first-stage",
             async (proxy, calls, surface, shown) => {
-                await ask(surface, question("stop"));
+                await ask(surface, question("termRunEndedEos"));
                 await expect
                     .poll(() => proxy.exchanges[0]?.faulted, { timeout: 30_000 })
                     .toBe(true);

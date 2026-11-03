@@ -748,7 +748,9 @@ export async function requireRole(
 ): Promise<Session> {
     const session = await requireSession(callbackUrl);
     const roleList = Array.isArray(roles) ? roles : [roles];
-    if (!session.user.is_superuser && !roleList.includes(session.user.role || "")) {
+    const superuserBypass =
+        session.user.is_superuser === true && session.user.is_impersonating !== true;
+    if (!superuserBypass && !roleList.includes(session.user.role || "")) {
         redirect("/dashboard");
     }
     return session;
@@ -756,7 +758,7 @@ export async function requireRole(
 
 export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
-    if (session.user.is_superuser !== true) {
+    if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }
     return session;

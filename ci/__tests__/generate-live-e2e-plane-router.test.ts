@@ -12,7 +12,8 @@ import { afterEach, describe, expect, it } from "vitest";
 // The tests run the real script, as the workflow does, on copies of the two
 // real ops files. The fixtures are byte copies from dev-health-ops main at
 // a5f74ace51 (git blobs 2f5fc818f1 and 8a4d48c222); the contract is the same
-// blob at the head of #3761. `planes.json.txt` has the `.txt` ending only so
+// blob at the head of #3761, minus the six rules of the retired legacy ingest
+// paths (ops #5234, whose contract no longer lists them). `planes.json.txt` has the `.txt` ending only so
 // that the formatter does not rewrite the copy.
 
 const WEB_ROOT = resolve(__dirname, "../..");
@@ -118,6 +119,15 @@ afterEach(() => {
 });
 
 describe("generate-live-e2e-plane-router", () => {
+    it("holds no rule for the six retired legacy ingest paths", () => {
+        const contract = JSON.parse(readFileSync(join(FIXTURES, "planes.json.txt"), "utf8"));
+        const retired = contract.rules
+            .map((rule: { path: string }) => rule.path)
+            .filter((path: string) => path.startsWith("/api/v1/ingest/"));
+
+        expect(retired).toEqual([]);
+    });
+
     it("makes the router from the ingress contract when the ledger is gone (ops #3761)", () => {
         const ops = opsTree({ contract: true });
 

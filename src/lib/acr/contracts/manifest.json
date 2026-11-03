@@ -1,5 +1,5 @@
 {
-  "source_commit": "26237a42c2c199701c96972b7953ba3754787e57",
+  "source_commit": "8e1208dc76181a0b0904df9b1fa70bf87b31e41a",
   "files": [
     {
       "path": "openapi/acr-v1.json",
@@ -11,7 +11,7 @@
     },
     {
       "path": "schemas/context_packet.v1.schema.json",
-      "sha256": "6cafe6313373844ad2fb72b45a32382d98fac66e8786807e6e7ab601b5171d07"
+      "sha256": "265fbdea639a937cf3094f560cea9c0d23843311f51cb2a55ca3f0ac340c4860"
     },
     {
       "path": "schemas/context_packet_item.v1.schema.json",
@@ -19,7 +19,7 @@
     },
     {
       "path": "schemas/context_packet_request.v1.schema.json",
-      "sha256": "716aa3746f1e2d4c6fab2e90bad830476c7511a057753690d5848b6ea84cd729"
+      "sha256": "18fc1d66d092c36300017f1ef3ed3e0f43af13334316c611ddb5d70174a2906a"
     },
     {
       "path": "schemas/error.v1.schema.json",
@@ -51,19 +51,19 @@
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
-      "sha256": "6e41f2131f655c50fc0ae1dbe7701e93757a8b16bb9fc1d6006778761da7ccd8"
+      "sha256": "2571eb5060c581b9b994e9595cf2e4753bcfdf59f55327e97f657946d58e672a"
     },
     {
       "path": "schemas/agent_episode_create.v1.schema.json",
-      "sha256": "461f5d9cfcbbe742df1820cbd40779b0d6d41f9a3b6ddbad34ec18c56ae84c29"
+      "sha256": "b25aefbef770c630165d2df6c48395c388e3f0a208868866bdc9be1353d9f94f"
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "c2cec66fe15619901844d0201debaa5d44c80ed651a42698bd75cbdd2551c57a"
+      "sha256": "fcf162b339d0afe1c42a9f9cc28b74759e4855c9b2b04334a8a6f96537c83995"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "3921f3c864110be4aa3a3e4a067a440117b9c7dcd59e6b4f9a3f0eed577b859e"
+      "sha256": "e142e060f2182a82db2ab24b6a5ac0a82c757d5a045aadcac2aeb20ada75ac4c"
     },
     {
       "path": "schemas/context_fabric_canonical_id_vectors.v1.schema.json",
@@ -147,11 +147,11 @@
     },
     {
       "path": "schemas/device_approval_preview_response.v1.schema.json",
-      "sha256": "7c699d0848fe88ff17502afa46c683d2baec4112bedea4c4151ed850ab4fa72e"
+      "sha256": "8a8ce0f3bbcf4bf1e7a5918211903926fabfe4bed3d4d85652a80dfad743255d"
     },
     {
       "path": "schemas/device_approval_request.v1.schema.json",
-      "sha256": "5fa6e8bc6e109970c3729fb819544eaac360cfee44442ac2a3b7342a169a0a10"
+      "sha256": "c2a15c8aa5c4440fd450cb015b6305bb342a5fb45b2e47c0be62ca25af66f2cf"
     },
     {
       "path": "schemas/device_approval_response.v1.schema.json",
@@ -159,7 +159,7 @@
     },
     {
       "path": "schemas/device_authorization_request.v1.schema.json",
-      "sha256": "a10d783d281fdf9edc88d68335272743000e364c725aefef3c1ac537b2676b42"
+      "sha256": "5cc601d597962f55ec463539fb2707ad457c59bd11baf05c431cc25484eddec3"
     },
     {
       "path": "schemas/device_authorization_response.v1.schema.json",

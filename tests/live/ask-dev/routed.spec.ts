@@ -15,11 +15,14 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     ask,
+    expectAnswersFallback,
+    expectAnswersSynthesized,
     investigations,
     panel,
     references,
     secretsOf,
     signIn,
+    watchResults,
 } from "./stack";
 
 /**
@@ -96,6 +99,7 @@ async function oracleCalls(): Promise<Calls> {
 const stages = (surface: Locator) => surface.locator("li.chat__stage");
 
 test("P1-1: a real question shows its stages, then a whole answer", async ({ page }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     const before = await oracleCalls();
     const sent = Date.now();
@@ -140,9 +144,11 @@ test("P1-1: a real question shows its stages, then a whole answer", async ({ pag
         before.started,
     );
     expect(after.by_question[question("stages")], "the oracle saw another question").toBeDefined();
+    await expectAnswersSynthesized(results, "P1-1");
 });
 
 test("P1-6: a double submit is one question", async ({ page }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     const input = surface.getByRole("textbox", { name: "Ask a question" });
     await input.fill(question("doubleSubmit"));
@@ -153,6 +159,7 @@ test("P1-6: a double submit is one question", async ({ page }) => {
         timeout: 60_000,
     });
     expect(investigations(calls)).toHaveLength(1);
+    await expectAnswersSynthesized(results, "P1-6");
 });
 
 test("P1-2: Stop mid-stream ends the run within 10 s, and saves nothing", async ({ page }) => {
@@ -173,6 +180,7 @@ test("P1-2: Stop mid-stream ends the run within 10 s, and saves nothing", async 
 });
 
 test("reload mid-stream: the run goes on, and its answer comes back", async ({ page }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     await ask(surface, question("reload"));
     await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
@@ -184,16 +192,20 @@ test("reload mid-stream: the run goes on, and its answer comes back", async ({ p
         timeout: 90_000,
     });
     expect(investigations(calls)).toHaveLength(1);
+    // The answer after the reload is the recovered one (attach or replay), read the same way.
+    await expectAnswersSynthesized(results, "reload");
 });
 
 test("P1-3: a lost response and a same-key retry give one result and one execution", async ({
     page,
 }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     await ask(surface, question("retry"));
     await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
         timeout: 60_000,
     });
+    await expectAnswersSynthesized(results, "P1-3");
     const before = await oracleCalls();
     const created = investigations(calls)[0]!;
     expect(created.status).toBe(200);
@@ -240,6 +252,7 @@ test("P1-3: a lost response and a same-key retry give one result and one executi
 test("P1-5: a reused answer whose terminal is lost is recovered by status and replay", async ({
     page,
 }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     await ask(surface, question("reuse"));
     await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
@@ -277,10 +290,13 @@ test("P1-5: a reused answer whose terminal is lost is recovered by status and re
     expect((await oracleCalls()).by_question[question("reuse")], "a model ran again").toEqual(
         asked,
     );
+    // The first answer, and the reused one the page recovered: both synthesized.
+    await expectAnswersSynthesized(results, "P1-5", 2);
 });
 
 test("P1-11: a run over 60 s reaches its answer, through the ingress", async ({ page }) => {
     test.setTimeout(150_000);
+    const results = await watchResults(page);
     const { surface } = await panel(page);
     const sent = Date.now();
     await ask(surface, question("long"));
@@ -288,12 +304,14 @@ test("P1-11: a run over 60 s reaches its answer, through the ingress", async ({ 
         timeout: 110_000,
     });
     expect(Date.now() - sent).toBeGreaterThan(60_000);
+    await expectAnswersSynthesized(results, "P1-11");
 });
 
 test("a synthesis that runs out of time gives a degraded answer, not an error", async ({
     page,
 }) => {
     test.setTimeout(170_000);
+    const results = await watchResults(page);
     const { surface } = await panel(page);
     await ask(surface, question("late"));
     await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
@@ -304,6 +322,8 @@ test("a synthesis that runs out of time gives a degraded answer, not an error", 
     expect(late?.interpret?.answered).toBe(1);
     expect(late?.synthesize?.answered, "the oracle answered the synthesis").toBe(0);
     expect(late?.synthesize?.cancelled).toBeGreaterThan(0);
+    // By design this answer IS acr's fallback: it says so in its coverage.
+    await expectAnswersFallback(results, "late synthesis");
 });
 
 test("P1-10: a principal's third concurrent run is refused, naming the principal limit", async ({
