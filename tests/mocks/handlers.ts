@@ -4681,6 +4681,63 @@ export const handlers = [
         );
     }),
 
+    http.get("*/api/v1/admin/orgs/:orgId/members", ({ params }) =>
+        HttpResponse.json([
+            {
+                id: "e2e-m-owner",
+                org_id: String(params.orgId),
+                user_id: "e2e-owner",
+                user_name: "Grace Hopper",
+                user_email: "grace@example.com",
+                role: "owner",
+                invited_by_id: null,
+                joined_at: "2025-01-01T00:00:00Z",
+                created_at: "2025-01-01T00:00:00Z",
+                updated_at: "2025-01-01T00:00:00Z",
+            },
+            {
+                id: "e2e-m-member",
+                org_id: String(params.orgId),
+                user_id: "e2e-member",
+                user_name: "Ada Lovelace",
+                user_email: "ada@example.com",
+                role: "member",
+                invited_by_id: null,
+                joined_at: "2025-01-02T00:00:00Z",
+                created_at: "2025-01-02T00:00:00Z",
+                updated_at: "2025-01-02T00:00:00Z",
+            },
+        ]),
+    ),
+
+    http.get("*/api/v1/admin/orgs/:orgId", ({ params }) =>
+        HttpResponse.json({
+            id: String(params.orgId),
+            slug: "e2e-org",
+            name: "E2E Org",
+            description: null,
+            tier: "community",
+            settings: {},
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
+        }),
+    ),
+
+    http.delete("*/api/v1/admin/orgs/:orgId/members/:userId", ({ params }) =>
+        params.userId === "e2e-owner"
+            ? HttpResponse.json(
+                  { detail: { error: "last_owner", message: "internal words" } },
+                  { status: 409 },
+              )
+            : new HttpResponse(null, { status: 204 }),
+    ),
+
+    http.post(
+        "*/api/v1/admin/orgs/:orgId/transfer-ownership",
+        () => new HttpResponse(null, { status: 204 }),
+    ),
+
     http.get("*/api/v1/admin/settings/categories", () =>
         HttpResponse.json(["general", "security"]),
     ),
