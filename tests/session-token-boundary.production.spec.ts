@@ -1,5 +1,6 @@
 import { expect, test, type Response } from "@playwright/test";
 import { MOCK_ACCESS_TOKEN, MOCK_REFRESHED_ACCESS_TOKEN } from "./mocks/mockTokens";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-12088: page JS never receives the Ops token. Measured against the PRODUCTION build
@@ -27,7 +28,7 @@ function hitsIn(text: string): string[] {
 }
 
 test("no Ops token reaches page JS while /dashboard loads with data", async ({ page, baseURL }) => {
-    const origin = new URL(baseURL ?? "http://127.0.0.1:3012").origin;
+    const origin = new URL(baseURL ?? e2eOrigin(e2ePorts.contextFabricBffPort)).origin;
     const scans: Promise<Scan | null>[] = [];
     const unread: string[] = [];
     page.on("response", (response: Response) => {

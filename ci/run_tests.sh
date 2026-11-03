@@ -30,6 +30,15 @@ export NODE_ENV=test
 export NEXT_TELEMETRY_DISABLED=1
 export FORCE_COLOR=0
 
+# CHAOS-12807: E2E_PORTS=auto picks a free port for every e2e server (range 20000-29999, proven by
+# a bind) so a second gate on the same host does not wait. Ports already in the env are kept when
+# E2E_PORTS is unset; with neither, each suite keeps its usual port (3001/8001/3003/8002/3004/8004/
+# 3005/8005/3012/8012/8013).
+if [[ "${E2E_PORTS:-}" == "auto" ]]; then
+  picked_ports="$(node ci/pick-e2e-ports.mjs)"
+  eval "${picked_ports}"
+fi
+
 PLAYWRIGHT_RESULTS_ROOT="${PLAYWRIGHT_RESULTS_DIR:-test-results/playwright}"
 PLAYWRIGHT_REPORT_ROOT="${PLAYWRIGHT_REPORT_DIR:-${PLAYWRIGHT_RESULTS_ROOT}-html}"
 
@@ -124,6 +133,7 @@ print_e2e_diagnostics() {
   echo "NODE_ENV=${NODE_ENV}"
   echo "PLAYWRIGHT_REPORT_ROOT=${report_root}"
   echo "PLAYWRIGHT_RESULTS_ROOT=${results_root}"
+  node ci/pick-e2e-ports.mjs --show
   echo "node $(node --version)"
   echo "pnpm $(pnpm --version)"
   echo "playwright $(npx playwright --version)"

@@ -79,3 +79,18 @@ describe("pick-e2e-ports.mjs command line", () => {
         expect(new Set(ports).size).toBe(names.length);
     });
 });
+
+describe("pick-e2e-ports.mjs --show", () => {
+    it("prints the resolved port of every env var, defaults when unset", () => {
+        const env = { ...process.env };
+        for (const name of Object.values(E2E_PORT_ENV)) delete env[name];
+        env.PLAYWRIGHT_WEB_PORT = "20999";
+        const result = spawnSync(process.execPath, [SCRIPT, "--show"], { encoding: "utf8", env });
+        expect(result.status).toBe(0);
+        const lines = result.stdout.trim().split("\n");
+        expect(lines).toHaveLength(Object.values(E2E_PORT_ENV).length);
+        expect(lines).toContain("PLAYWRIGHT_WEB_PORT=20999");
+        expect(lines).toContain("PLAYWRIGHT_MOCK_PORT=8001");
+        expect(lines).toContain("CONTEXT_FABRIC_BFF_PORT=3012");
+    });
+});

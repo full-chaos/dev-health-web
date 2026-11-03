@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11934: the Ask Dev full page `/dev`. Expand (panel → page) and Minimize (page → panel) move
 // the view, never the run: the panel's test-mode transport (`conversation/testModeTransport.ts`)
 // plays a scripted ACR stream from session storage and records every call there, so the suite counts
 // the investigation calls. No request leaves the browser for ACR.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",

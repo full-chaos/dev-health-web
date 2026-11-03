@@ -1,14 +1,15 @@
 import { defineConfig } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "./ci/e2e-ports.mjs";
 import { nextDevNodeOptions } from "./ci/next-dev-env";
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/navigation";
 const htmlReportDirectory =
     process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/navigation";
-const mockServerPort = Number(process.env.PLAYWRIGHT_NAVIGATION_MOCK_PORT ?? "8005");
-const webServerPort = Number(process.env.PLAYWRIGHT_NAVIGATION_WEB_PORT ?? "3005");
-const baseURL = `http://127.0.0.1:${webServerPort}`;
-const mockServerURL = `http://127.0.0.1:${mockServerPort}`;
+const mockServerPort = e2ePorts.navigationMockPort;
+const webServerPort = e2ePorts.navigationWebPort;
+const baseURL = e2eOrigin(webServerPort);
+const mockServerURL = e2eOrigin(mockServerPort);
 const authFile = "test-results/.auth/state.json";
 
 export default defineConfig({

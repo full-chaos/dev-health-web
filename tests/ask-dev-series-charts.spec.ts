@@ -10,11 +10,12 @@ import {
     withShapes,
     WORKLOAD,
 } from "./fixtures/ask-dev/seriesFixtures";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11942: the Ask Dev trend charts in the real panel, drawn as SVG by the ask-dev render,
 // from the scrubbed K1 capture (`kiac_project_status_partial`: two `dated_fact_trend` lines with
 // uneven dates). The panel's test-mode answer source reads the answer from session storage.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const KEY = "ask-dev:test-mode-answer";
 const DRAWN_TIMEOUT_MS = 5000;
 

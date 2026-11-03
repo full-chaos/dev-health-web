@@ -8,6 +8,7 @@ import {
     type BrowserContext,
     type Page,
 } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-12306 (c5), offline, with the browser ACR client turned on the way production turns it on
@@ -19,7 +20,7 @@ import {
  *   own session read (`/api/auth/session`), which is where the client learns it.
  */
 
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const SHOTS = process.env.ASK_DEV_ACR_SHOTS ?? "";
 const FAMILY_KEY = "ask-dev:acr-family";
 const ACR_PATHS = ["/.well-known/oauth-authorization-server", "/authorize", "/token", "/revoke"];

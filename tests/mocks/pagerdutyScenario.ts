@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { MockCredential, MockSyncConfig } from "./types";
+import { e2eOrigin, e2ePorts } from "../../ci/e2e-ports.mjs";
 
 const PAGERDUTY_SCENARIOS = [
     "not-connected",
@@ -219,8 +220,7 @@ export const pagerDutyHandlers = [
     http.post("*/api/v1/admin/integrations/pagerduty/authorize", () => {
         incrementCall("authorize");
         return HttpResponse.json({
-            authorize_url:
-                "http://127.0.0.1:3001/org/admin/integrations/pagerduty/callback?state=mock-state&code=mock-code",
+            authorize_url: `${e2eOrigin(e2ePorts.webPort)}/org/admin/integrations/pagerduty/callback?state=mock-state&code=mock-code`,
         });
     }),
     http.post("*/api/v1/admin/integrations/pagerduty/callback", async ({ request }) => {

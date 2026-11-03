@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11927 (plan 2.5): the Ask Dev panel is a non-modal right region from `md` up and a modal
 // full-height sheet below it; one right drawer at a time; Escape closes it and focus returns to
 // the launcher that is visible. Axe runs in the real browser (layout, contrast).
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 test.describe.configure({ mode: "serial" });
 

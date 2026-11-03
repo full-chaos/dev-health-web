@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-12173: saved BYO settings whose key the configured encryption key cannot decrypt (go-api's 409
 // llm_settings_undecryptable, CHAOS-12172). The card says so and offers Replace and Remove; a transient
 // read failure still offers Retry only.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const MESSAGE = "The saved key can no longer be read. Replace or remove it.";
 
 test.describe.configure({ mode: "serial" });

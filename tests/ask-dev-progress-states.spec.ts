@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11929 (I-S07): every panel state of plan §2.7.8 in the real Ask Dev panel, driven through
 // the conversation store by the test-mode transport (`conversation/testModeTransport.ts`), which
@@ -7,7 +8,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // CHAOS-12384: the turn is drawn by ask-dev's render. A running turn is its `chat-progress` view
 // (a status line, the "Investigation steps" list, the elapsed time, Stop); a turn that ended
 // without an answer is its `chat-status` panel (the words, then the retry-after and reference lines).
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
     status: "ask-dev:test-mode-status",

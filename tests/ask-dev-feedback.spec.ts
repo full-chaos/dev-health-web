@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11958: feedback on an Ask Dev answer ("Correct?" and "Useful?"). The test-mode transport
 // (`conversation/testModeTransport.ts`) plays ACR's thread, result and feedback calls from session
 // storage, stores each set as ACR does, and records every call there; no request leaves the browser
 // for ACR. The live proofs are CHAOS-12234.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",

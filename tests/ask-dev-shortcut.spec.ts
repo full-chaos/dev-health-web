@@ -1,9 +1,10 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11935 (plan I-19): Cmd/Ctrl+J opens and closes the Ask Dev panel, never from a field, with
 // the browser default (downloads, address bar) suppressed; the Cmd/Ctrl+K palette lists an Ask Dev
 // entry on the same gate as the launcher.
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const PANEL = "ask-dev-panel";
 
 test.describe.configure({ mode: "serial" });

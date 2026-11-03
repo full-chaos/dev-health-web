@@ -11,6 +11,7 @@ import {
 import { ACR_CORS, ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
 import { INVESTIGATIONS_PATH, investigationStreamFor } from "./mocks/acr-investigation-stream";
 import { accessTokensIn, type Observed, tokenBoundaryViolations } from "./mocks/acr-token-boundary";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
@@ -100,7 +101,7 @@ const clientChunkForbiddenPattern =
     /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9_-]|acrrt_[A-Za-z0-9_-]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 
 test.beforeEach(async ({ request }) => {
-    const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
+    const response = await request.post(`${e2eOrigin(e2ePorts.mockPort)}/__test/entitlements`, {
         data: { scenario: "provisioned" },
     });
     expect(response.ok()).toBe(true);
@@ -425,7 +426,7 @@ async function runBoundaryScenario(
 ) {
     const { directAcrRequests, networkRecords, stop, actionCounts } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -508,7 +509,7 @@ test("scans the full body of a server action response for secret material", asyn
 }) => {
     const { networkRecords, stop, actionCounts } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
         { mutateActionBody: (body) => `${body}\nfcacr_PLANTED0123456789` },
     );
 
@@ -527,7 +528,7 @@ test("scans a server action response for a refresh token too (CHAOS-12304)", asy
 }) => {
     const { networkRecords, stop } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
         {
             // Starts with `-`: base64url allows it, and the guard pattern must too (r3).
             mutateActionBody: (body) => `${body}\nacrrt_-PLANTED0123456789`,
@@ -552,7 +553,7 @@ test("a server action response the page cancels mid-stream is still scanned and 
 }) => {
     const { networkRecords, stop, actionCounts } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -575,7 +576,7 @@ test("a non-action response still in flight when the guard stops is scanned", as
     });
     const { networkRecords, stop } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -706,7 +707,7 @@ test("the body of an intermediate server action redirect is scanned and the next
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             {
                 upstream: hopUpstream(hop.origin),
             },
@@ -734,7 +735,7 @@ test("a 307 server action redirect keeps the method and the body", async ({ base
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -757,7 +758,7 @@ test("a server action redirect chain over the hop cap fails the guard", async ({
     try {
         const { stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -779,7 +780,7 @@ test("a request that starts while the guard stops is still scanned", async ({ ba
     });
     const { networkRecords, stop } = await watchNetwork(
         page,
-        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
         {
             onDrained: async () => {
                 const started = page.waitForRequest("**/__late-after-drain");
@@ -806,7 +807,7 @@ test("the Location of a redirect hop is recorded with its query string", async (
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -829,7 +830,7 @@ test("a cross-origin redirect hop is recorded and carries no Authorization", asy
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -859,7 +860,7 @@ test("a same-origin 307 hop keeps Authorization and records it", async ({ baseUR
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -885,7 +886,7 @@ test("a hop gets the jar cookies of its own origin, path and scheme, and they ar
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -925,7 +926,7 @@ test("a 300 response with a Location is not followed and its body is scanned", a
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -943,10 +944,14 @@ test("a record task that never ends fails the guard by name at the deadline", as
     baseURL,
     page,
 }) => {
-    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin, {
-        drainTimeoutMs: 1_500,
-        recordTask: () => new Promise<void>(() => undefined),
-    });
+    const { stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
+        {
+            drainTimeoutMs: 1_500,
+            recordTask: () => new Promise<void>(() => undefined),
+        },
+    );
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
     const started = Date.now();
     await expect(stop()).rejects.toThrow(/record tasks still running/u);
@@ -957,7 +962,10 @@ test("a request still pending at the stop deadline fails the guard", async ({ ba
     test.setTimeout(45_000);
     // The handler returns without answering: the request stays pending, and unrouteAll does not wait for it.
     await page.route("**/__hang", () => undefined);
-    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin);
+    const { stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
+    );
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
     const started = page.waitForRequest("**/__hang");
     await page.evaluate(() => {
@@ -983,7 +991,7 @@ test("a cross-origin hop gets no cookie under same-origin credentials, even with
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1009,7 +1017,7 @@ test("a hop back to the first origin after a cross-origin hop gets no cookie", a
     try {
         const { stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1032,7 +1040,7 @@ test("credentials include sends the cookie that is scoped to a cross-origin hop 
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { credentials: "include", upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1058,7 +1066,7 @@ test("credentials omit sends no cookie on any hop", async ({ baseURL, page }) =>
     try {
         const { stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { credentials: "omit", upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1079,7 +1087,7 @@ test("a POST turned into a GET carries none of the five body headers and no Cont
     try {
         const { networkRecords, stop } = await watchNetwork(
             page,
-            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1116,10 +1124,14 @@ test("a request seen without a recorded response fails the guard by name", async
     await page.route("**/__no-response-event", (route) =>
         route.fulfill({ body: "ok", contentType: "text/plain" }),
     );
-    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin, {
-        drainTimeoutMs: 1_500,
-        ignoreResponseEvents: (url) => url.endsWith("/__no-response-event"),
-    });
+    const { stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin,
+        {
+            drainTimeoutMs: 1_500,
+            ignoreResponseEvents: (url) => url.endsWith("/__no-response-event"),
+        },
+    );
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
     await page.evaluate(async () => {
         await fetch("/__no-response-event");
@@ -1232,7 +1244,7 @@ type Plant = (tokens: { readonly access: string; readonly refresh: string }) => 
  * token (T14) and one revocation with the refresh token (c4).
  */
 async function browserTokenScenario(page: Page, baseURL: string | undefined, plant?: Plant) {
-    const web = new URL(baseURL ?? "http://127.0.0.1:3001").origin;
+    const web = new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin;
     // Another loopback origin, already in the app's CSP. The routes answer it, not a server.
     const issuer = ACR_E2E_ISSUER;
     const client = await installCrossOriginAcr(page.context(), web, issuer);
@@ -1376,7 +1388,7 @@ test.describe("ACR browser tokens on the c2 flow (CHAOS-12304)", () => {
         baseURL,
         page,
     }) => {
-        const web = new URL(baseURL ?? "http://127.0.0.1:3001").origin;
+        const web = new URL(baseURL ?? e2eOrigin(e2ePorts.webPort)).origin;
         const streamed: { headers: Record<string, string>; url: string }[] = [];
         // After the cross-origin ACR's routes, so this one answers the stream (the last route wins).
         const askInPanel: Plant = async () => {

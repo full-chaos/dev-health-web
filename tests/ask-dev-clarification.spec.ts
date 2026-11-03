@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-3440: clarification, non-answer and refusal turns in the real Ask Dev panel, from real ACR
 // output (`tests/fixtures/ask-dev/captures/`): results captured on the kiac stack,
@@ -11,7 +12,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // carries, each bound to the parent result, and the question it sends. The offers are the render's
 // popup above the composer (a dialog, one question per page); a turn that is no longer the latest
 // keeps only a closed "How this was resolved" note, with no control.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",

@@ -4,12 +4,11 @@ import path from "node:path";
 import { scrubTelemetryText } from "@/lib/sentry/scrubber-value";
 
 import { recordCapabilityRequestFaults } from "./helpers/capability-request-faults";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 export const EVIDENCE_ROOT = path.resolve(".qa-evidence/pagerduty-final-postremediation");
 export const PAGERDUTY_SYNC_CONFIG_EDIT_PATH = "/org/admin/sync/sync-config-pagerduty-1/edit";
-const MOCK_ORIGIN =
-    process.env.PAGERDUTY_QA_MOCK_ORIGIN ??
-    `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK_ORIGIN = process.env.PAGERDUTY_QA_MOCK_ORIGIN ?? e2eOrigin(e2ePorts.mockPort);
 export const NEXT_DEV_OVERLAY_CAPTURE_STYLE = "nextjs-portal { display: none !important; }";
 
 export type QaScenario = {

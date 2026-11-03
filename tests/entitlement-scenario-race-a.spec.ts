@@ -1,11 +1,12 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-12170 race canary (a of 2). The mock's entitlement scenario is process-global: a spec that
 // sets it must never overlap another spec that sets it. This file and its pair set OPPOSITE
 // scenarios at staggered times and hold them across a reload; run in parallel they read each
 // other's scenario and fail, run in the serial entitlement-scenario project they pass. Each
 // entitlement-flipping spec belongs to that project (playwright.config.ts).
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 async function setScenario(request: APIRequestContext, scenario: string): Promise<void> {
     const response = await request.post(`${MOCK}/__test/entitlements`, { data: { scenario } });

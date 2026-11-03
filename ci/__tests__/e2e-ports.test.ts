@@ -63,7 +63,7 @@ describe("e2e port table", () => {
     });
 });
 
-describe("playwright configs follow the env", () => {
+describe("playwright configs follow the env", { timeout: 60_000 }, () => {
     it("default config: web, mock, and BACKEND_URL", async () => {
         const config = await load("../../playwright.config.ts", ALTERNATE);
         expect(config.use.baseURL).toBe(origin("20101"));

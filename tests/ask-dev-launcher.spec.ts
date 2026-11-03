@@ -1,10 +1,11 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11926 (plan 2.5): exactly one Ask Dev launcher is visible per breakpoint; it is hidden on
 // the excluded routes and when an entitlement is off; opening it sends no request.
 // The shell reads the organization's entitlements on every page load, and the mock backend serves
 // the scenario that is set here. One worker keeps another spec from replacing it.
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const LAUNCHER = { name: "Open Ask Dev" } as const;
 
 test.describe.configure({ mode: "serial" });

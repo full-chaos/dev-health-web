@@ -5,6 +5,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 import { OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
 import { ACR_CORS, ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
 import { INVESTIGATIONS_PATH, investigationStreamFor } from "./mocks/acr-investigation-stream";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-11939 (plan I-44, exit P2-6): the Ask Dev surfaces under the production CSP. Runs only in
@@ -121,7 +122,7 @@ async function watchViolations(page: Page): Promise<() => Promise<string[]>> {
 
 /** The browser client on, and the mocked ACR answering the stream. The first question authorizes. */
 async function connect(page: Page, baseURL: string | undefined): Promise<void> {
-    const web = new URL(baseURL ?? "http://127.0.0.1:3012").origin;
+    const web = new URL(baseURL ?? e2eOrigin(e2ePorts.contextFabricBffPort)).origin;
     await installCrossOriginAcr(page.context(), web, ACR_E2E_ISSUER);
     await page.context().route(
         (url) => url.origin === ACR_E2E_ISSUER && url.pathname === INVESTIGATIONS_PATH,

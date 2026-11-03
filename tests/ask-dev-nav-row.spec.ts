@@ -1,9 +1,10 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-12210, chris's ruling (2026-10-31): "For now put Ask Dev after AI". The left-nav row "Ask
 // Dev" sits right after AI and opens the full page /dev; it is listed only where Ask Dev is on
 // (scenario `provisioned`: `ask_dev` and `agent_context_runtime`).
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 test.describe.configure({ mode: "serial" });
 

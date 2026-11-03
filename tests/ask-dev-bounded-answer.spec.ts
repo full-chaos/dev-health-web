@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-12643: ACR's bounded answer (`context_fabric_answer_projection.v1`) in web's real Ask Dev
@@ -8,7 +9,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
  * The stream is the test-mode transport's script (session storage); the projections are ACR's
  * real projector output (`tests/fixtures/ask-dev/bounded-answers/`). Nothing is fetched from ACR.
  */
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const BOUNDED = join(process.cwd(), "tests/fixtures/ask-dev/bounded-answers");
 const STREAM_KEY = "ask-dev:test-mode-stream";
 const QUESTION = "Which teams are struggling right now, and why?";

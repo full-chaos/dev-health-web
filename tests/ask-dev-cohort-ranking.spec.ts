@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11944: the cohort ranking in the real Ask Dev panel, from real, scrubbed ACR answers: the
 // public ask-dev seed (a discovered team cohort, 3 ranked, 1 scored), a kiac answer ranking 4
 // repositories, and a kiac answer whose cohort is 25 pull requests (G1: Ranking not shown). The
 // panel's test-mode source reads them from session storage; nothing is fetched.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const ORACLE = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const ANSWERS = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";

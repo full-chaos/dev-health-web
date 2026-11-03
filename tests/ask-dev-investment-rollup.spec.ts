@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-12178: the owning-team roll-up label on investment claims about a project, in the real Ask
 // Dev panel, from two real scrubbed kiac answers taken after the R1 pin bump (acr #1800). The
 // panel's test-mode answer source reads the answer from session storage.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const KEY = "ask-dev:test-mode-answer";
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const capture = (file: string) =>

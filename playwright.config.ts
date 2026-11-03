@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "./ci/e2e-ports.mjs";
 import { nextDevNodeOptions } from "./ci/next-dev-env";
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
@@ -10,10 +11,10 @@ const htmlOutputFolder =
 const junitOutputFile = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${resultsDirectory}/junit.xml`;
 
 const authFile = "test-results/.auth/state.json";
-const mockServerPort = Number(process.env.PLAYWRIGHT_MOCK_PORT ?? "8001");
-const webServerPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? "3001");
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webServerPort}`;
-const mockServerUrl = `http://127.0.0.1:${mockServerPort}`;
+const mockServerPort = e2ePorts.mockPort;
+const webServerPort = e2ePorts.webPort;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? e2eOrigin(webServerPort);
+const mockServerUrl = e2eOrigin(mockServerPort);
 
 // CHAOS-8538. On 2026-10-03 two CI jobs ran 35 minutes of 30 s timeouts: the
 // dev server did not answer the app-shell logo request, so the `load` event
