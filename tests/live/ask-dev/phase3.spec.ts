@@ -726,7 +726,10 @@ test(`sunburst${SUNBURST ? "" : " [behind a flag]"}: the investment subcategorie
         "investment_subcategory_share",
         "the repository's subcategory_breakdown",
     );
-    // The sunburst's inner ring is the theme split: when it is drawn, the treemap is not.
+    // The sunburst's inner ring is the theme split: when it is drawn, the treemap is not. acr's one
+    // selection pass skips the treemap with `subcategory_breakdown_drawn` once the sunburst is
+    // appended (acr 7a9e8036, internal/contextfabric/render_shapes.go:441-466; pinned by
+    // chaos12554_sunburst_selection_test.go:219). The contract validator does not forbid both.
     expect(
         servedShapes(result)
             .filter((candidate) => candidate.selected_by === "investment_theme_share")
