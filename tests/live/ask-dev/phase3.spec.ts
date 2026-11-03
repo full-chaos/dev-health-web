@@ -608,7 +608,9 @@ for (const replicate of REPLICATES) {
     });
 }
 
-test("sankey [behind a flag]: the repository flow renders from the served shape", async ({
+// The NOT RUN gate refuses a pass whose title still says "[behind a flag]" (ci/live-e2e-skip-gate.mjs),
+// so the title says it only while the flag is off.
+test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders from the served shape`, async ({
     browser,
     baseURL,
 }, testInfo) => {
