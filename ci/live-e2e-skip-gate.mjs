@@ -33,8 +33,12 @@ const unexplained = [];
 const expectedFailurePassed = [];
 const noteOf = (t, type) => (t.annotations ?? []).find((a) => a.type === type);
 // A NOT RUN or KNOWN GAP note can be inherited from a describe block or the file (Playwright copies
-// those onto every case), so the note alone excuses nothing. The case's OWN reason does: every
-// `skip` (or `fail`) annotation it carries must state the marker, and it must carry one.
+// those onto every case, `fail` and `skip` included), so annotations alone excuse nothing. The
+// case's OWN title, which is never inherited, must carry the marker ("[behind a flag]" for a
+// NOT RUN case, "[KNOWN GAP" for a known gap), and every `skip` (or `fail`) reason it carries must
+// state it too.
+const NOT_RUN_TITLE = "[behind a flag]";
+const KNOWN_GAP_TITLE = "[KNOWN GAP";
 const ownReasonsSay = (t, type, marker) => {
     const reasons = (t.annotations ?? []).filter((a) => a.type === type);
     return (
@@ -53,8 +57,9 @@ function walk(suite, trail) {
         for (const t of spec.tests ?? []) {
             const status = t.status; // expected | unexpected | flaky | skipped
             const name = [...here, spec.title].join(" > ");
-            const notRunNote = noteOf(t, "NOT RUN");
-            const gapNote = noteOf(t, "KNOWN GAP");
+            const notRunNote = noteOf(t, "NOT RUN") ?? noteOf(t, "skip");
+            const gapNote = noteOf(t, "KNOWN GAP") ?? noteOf(t, "fail");
+            const ownTitle = spec.title;
             // An expected failure (`test.fail`) that passed on ANY attempt: its gap no longer holds.
             // With retries Playwright may call it flaky and exit 0, so the gate fails it itself.
             if (
@@ -70,7 +75,7 @@ function walk(suite, trail) {
             if (
                 skippedCase &&
                 t.expectedStatus === "skipped" &&
-                notRunNote !== undefined &&
+                ownTitle.includes(NOT_RUN_TITLE) &&
                 ownReasonsSay(t, "skip", "NOT RUN")
             ) {
                 counts.notRun++;
@@ -78,7 +83,7 @@ function walk(suite, trail) {
                     `${name}${notRunNote.description ? ` -- ${notRunNote.description}` : ""}`,
                 );
             } else if (status === "expected" && t.expectedStatus === "failed") {
-                if (gapNote === undefined || !ownReasonsSay(t, "fail", "KNOWN GAP")) {
+                if (!ownTitle.includes(KNOWN_GAP_TITLE) || !ownReasonsSay(t, "fail", "KNOWN GAP")) {
                     counts.failed++;
                     unexplained.push(name);
                 } else {

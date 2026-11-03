@@ -73,7 +73,7 @@ function gate(cases: Case[]): { code: number | null; out: string } {
 
 const pass: Case = { title: "forecast 1", status: "expected" };
 const notRun: Case = {
-    title: "sankey",
+    title: "sankey [behind a flag]",
     status: "skipped",
     expectedStatus: "skipped",
     annotations: [
@@ -105,7 +105,7 @@ describe("live-e2e-skip-gate", () => {
             "passed 1 / failed 0 / skipped 0 / flaky 0 / not run 1 / known gap 0",
         );
         expect(run.out).toContain(
-            "- NOT RUN: phase3.spec.ts > sankey -- the sankey flag is off on this stack",
+            "- NOT RUN: phase3.spec.ts > sankey [behind a flag] -- the sankey flag is off on this stack",
         );
     });
 
@@ -162,7 +162,7 @@ describe("live-e2e-skip-gate", () => {
         const run = gate([
             pass,
             {
-                title: "quadrant 1",
+                title: "quadrant 1 [KNOWN GAP CHAOS-12676]",
                 status: "expected",
                 expectedStatus: "failed",
                 annotations: [{ type: "fail" }],
@@ -179,7 +179,7 @@ describe("live-e2e-skip-gate", () => {
         const run = gate([
             pass,
             {
-                title: "flagged view > measures the backend response",
+                title: "flagged view > measures the backend response [behind a flag]",
                 status: "skipped",
                 expectedStatus: "failed",
                 annotations: [
@@ -191,12 +191,12 @@ describe("live-e2e-skip-gate", () => {
         ]);
         expect(run.code).not.toBe(0);
         expect(run.out).toContain(
-            "- SKIPPED: phase3.spec.ts > flagged view > measures the backend response",
+            "- SKIPPED: phase3.spec.ts > flagged view > measures the backend response [behind a flag]",
         );
         const ownReason = gate([
             pass,
             {
-                title: "flagged view",
+                title: "flagged view [behind a flag]",
                 status: "skipped",
                 expectedStatus: "skipped",
                 annotations: [
@@ -206,14 +206,14 @@ describe("live-e2e-skip-gate", () => {
             },
         ]);
         expect(ownReason.code).not.toBe(0);
-        expect(ownReason.out).toContain("- SKIPPED: phase3.spec.ts > flagged view");
+        expect(ownReason.out).toContain("- SKIPPED: phase3.spec.ts > flagged view [behind a flag]");
     });
 
     it("needs EVERY skip reason of the case to say NOT RUN: an inherited NOT RUN skip excuses no other", () => {
         const run = gate([
             pass,
             {
-                title: "two reasons",
+                title: "two reasons [behind a flag]",
                 status: "skipped",
                 expectedStatus: "skipped",
                 annotations: [
@@ -224,14 +224,14 @@ describe("live-e2e-skip-gate", () => {
             },
         ]);
         expect(run.code).not.toBe(0);
-        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > two reasons");
+        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > two reasons [behind a flag]");
     });
 
     it("takes NOT RUN only from a case expected to skip, never from a skipped test.fail case", () => {
         const run = gate([
             pass,
             {
-                title: "fail then skip",
+                title: "fail then skip [behind a flag]",
                 status: "skipped",
                 expectedStatus: "failed",
                 annotations: [
@@ -242,14 +242,14 @@ describe("live-e2e-skip-gate", () => {
             },
         ]);
         expect(run.code).not.toBe(0);
-        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > fail then skip");
+        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > fail then skip [behind a flag]");
     });
 
     it("does not excuse an expected failure whose own reason is not KNOWN GAP, even with an inherited note", () => {
         const run = gate([
             pass,
             {
-                title: "quadrant 1",
+                title: "quadrant 1 [KNOWN GAP CHAOS-12676]",
                 status: "expected",
                 expectedStatus: "failed",
                 annotations: [
@@ -284,6 +284,52 @@ describe("live-e2e-skip-gate", () => {
         const run = gate([{ title: "retried", status: "flaky" }]);
         expect(run.code).toBe(0);
         expect(run.out).toContain("passed 0 / failed 0 / skipped 0 / flaky 1");
+    });
+
+    // Codex r3 on #1801 (P2, executed): annotations are inherited, so neither a NOT RUN nor a
+    // KNOWN GAP may rest on annotations alone. The case's OWN title must carry the marker, and a
+    // title is never inherited from a describe block.
+    it("does not take a KNOWN GAP from inherited annotations: the case's own title must say it", () => {
+        const run = gate([
+            pass,
+            {
+                title: "unrelated failing case inside annotated describe",
+                status: "expected",
+                expectedStatus: "failed",
+                annotations: [
+                    { type: "KNOWN GAP", description: "inherited group label" },
+                    { type: "fail", description: "KNOWN GAP: inherited group label" },
+                ],
+            },
+        ]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain(
+            "- EXPECTED FAILURE WITH NO KNOWN GAP: phase3.spec.ts > unrelated failing case inside annotated describe",
+        );
+    });
+
+    it("does not take a NOT RUN from inherited annotations: the case's own title must say it", () => {
+        const run = gate([pass, { ...notRun, title: "sankey" }]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > sankey");
+    });
+
+    it("accepts a runtime test.fail reason alone, with the marker in the case's own title", () => {
+        const run = gate([
+            pass,
+            {
+                title: "quadrant 2 [KNOWN GAP CHAOS-12676]",
+                status: "expected",
+                expectedStatus: "failed",
+                annotations: [
+                    { type: "fail", description: "KNOWN GAP CHAOS-12676: no quadrant served" },
+                ],
+            },
+        ]);
+        expect(run.code).toBe(0);
+        expect(run.out).toContain(
+            "- KNOWN GAP: phase3.spec.ts > quadrant 2 [KNOWN GAP CHAOS-12676] -- KNOWN GAP CHAOS-12676: no quadrant served",
+        );
     });
 
     it("fails a run where only NOT RUN and KNOWN GAP cases ran: nothing was measured", () => {
