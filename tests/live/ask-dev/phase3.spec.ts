@@ -529,6 +529,22 @@ for (const replicate of REPLICATES) {
             description: `outcomes drawn [${drawnOutcomes.map((row) => `${String(row.drawnValue)}=${row.drawnWord}`).join(", ")}]`,
         });
 
+        // AC-1 and AC-10: no bare score. A row that shows a score shows the drivers behind it;
+        // a row with no drivers shows its score withheld.
+        const bareScores = await ranking.getByTestId("ranking-row").evaluateAll((rows) =>
+            rows
+                .map((row, index) => {
+                    const score = (row.querySelectorAll("td")[2]?.textContent ?? "").trim();
+                    const drivers = row.querySelectorAll("ul.ranking__drivers li").length;
+                    const shown = score !== "" && score !== "—" && score !== "withheld";
+                    return shown && drivers === 0
+                        ? `row ${String(index + 1)}: score ${score} with no drivers`
+                        : "";
+                })
+                .filter((line) => line !== ""),
+        );
+        expect(bareScores, "a score shown with no driver behind it").toEqual([]);
+
         // AC-1: the attention bars and the driver contribution stack, in rank order.
         for (const rule of ["cohort_attention_score", "cohort_driver_contribution"]) {
             for (const shape of served(result, rule, "a ranked team cohort")) {
