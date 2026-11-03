@@ -398,13 +398,18 @@ const SYNTHESIS_FALLBACK_CODES = new Set(["synthesis_model_failed", "synthesis_n
  * call failed or was not run (acr `synthesis_model_failure.go`). Pure, for any served result.
  */
 export function synthesisFallbackDetails(result: unknown): CoverageDetail[] {
-    const details = (result as { coverage?: { details?: unknown } } | null | undefined)?.coverage
-        ?.details;
-    return Array.isArray(details)
-        ? (details as CoverageDetail[]).filter((detail) =>
-              SYNTHESIS_FALLBACK_CODES.has(String(detail?.code)),
-          )
-        : [];
+    // A full result carries `coverage.details`; a projected one (an answer over the request's byte
+    // bound, context_fabric_answer_projection.v1) has no `coverage` and carries top-level
+    // `coverage_details` with the same shape (Codex P2 on #1804).
+    const served = result as
+        { coverage?: { details?: unknown }; coverage_details?: unknown } | null | undefined;
+    return [served?.coverage?.details, served?.coverage_details].flatMap((details) =>
+        Array.isArray(details)
+            ? (details as CoverageDetail[]).filter((detail) =>
+                  SYNTHESIS_FALLBACK_CODES.has(String(detail?.code)),
+              )
+            : [],
+    );
 }
 
 const describeDetails = (details: CoverageDetail[]): string =>
