@@ -116,7 +116,7 @@ function pageDrawing() {
 }
 
 describe("the Ask Dev forecast slot draws a stored forecast as the capacity page does (CHAOS-4613)", () => {
-    it("the fixtures are one stored row: the same bins, runs and percentiles", () => {
+    it("the fixtures are one stored row: the same bins, runs, percentiles and item target", () => {
         expect(page.completionDistribution?.days?.map((bin) => [bin.value, bin.count])).toEqual(
             detail.rows.map((row) => [row.day, row.runs]),
         );
@@ -125,6 +125,41 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
             detail.summary.forecast_p85_days,
             detail.summary.forecast_p95_days,
         ]);
+        // CHAOS-12714: a stored item target, served by acr as target_items (CHAOS-12708).
+        expect(page.targetItems).toBe(40);
+        expect(detail.summary.target_items).toBe(40);
+    });
+
+    it("names the stored item target as the page does: all 40 items (CHAOS-12714)", async () => {
+        const fromPage = pageDrawing();
+        expect(fromPage.markup).toContain("all 40 items");
+        cleanup();
+        const fromSlot = await slotDrawing();
+        expect(fromSlot.markup).toContain("all 40 items");
+        // With no target stored, acr serves no field: the slot says "all items", never "all 0 items".
+        cleanup();
+        const { target_items: _none, ...summary } = detail.summary;
+        const untargeted = await slotDrawing({ ...detail, summary });
+        expect(untargeted.markup).toContain("all items");
+        expect(untargeted.markup).not.toContain("all 0 items");
+    });
+
+    it("keeps a stored target of 0 as the page does: 0 is a value, not absence (CHAOS-12714)", async () => {
+        // acr serves a stored 0 as 0 (CHAOS-12708); the page keeps it, so the slot must too.
+        cleanup();
+        const { container } = render(<CompletionRange forecast={{ ...page, targetItems: 0 }} />);
+        const fromPage = { markup: container.innerHTML, chart: drawn(lastOption()) };
+        cleanup();
+        const fromSlot = await slotDrawing({
+            ...detail,
+            summary: { ...detail.summary, target_items: 0 },
+        });
+        expect(
+            forecastSlotInput({ ...detail, summary: { ...detail.summary, target_items: 0 } })
+                .targetItems,
+        ).toBe(0);
+        expect(fromSlot.markup).toBe(fromPage.markup);
+        expect(fromSlot.chart).toEqual(fromPage.chart);
     });
 
     it("draws the same chart and the same words from the slot as from the page", async () => {
@@ -143,8 +178,10 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
         expect(fromSlot.markup).not.toBe(fromPage.markup);
     });
 
-    it("reads only served fields: no item count, since acr serves none", () => {
-        expect(forecastSlotInput(detail).targetItems).toBeUndefined();
+    it("reads only served fields: the item target is the summary's own", () => {
+        expect(forecastSlotInput(detail).targetItems).toBe(detail.summary.target_items);
+        const { target_items: _none, ...summary } = detail.summary;
+        expect(forecastSlotInput({ ...detail, summary }).targetItems).toBeUndefined();
         expect(forecastSlotInput(detail).bins).toEqual(
             detail.rows.map((row) => ({
                 day: row.day,
