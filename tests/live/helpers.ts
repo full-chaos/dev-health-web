@@ -176,6 +176,138 @@ export function envFault(reason: string): void {
     test.skip(true, reason);
 }
 
+/** A journey's setup user: its token ("" when the setup gave none) and every step it took. */
+export type SetupUser = { readonly token: string; readonly steps: readonly string[] };
+
+/**
+ * One response's error code, for a setup step: `error.code`, `code` or `detail`. Never a token,
+ * password or email: a code that holds `@`, a dotted token or a long opaque string is redacted.
+ */
+async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string> {
+    const text = await res.text().catch(() => "");
+    let body: unknown;
+    try {
+        body = JSON.parse(text);
+    } catch {
+        return text === "" ? "-" : "non-json";
+    }
+    const record = (typeof body === "object" && body !== null ? body : {}) as Record<
+        string,
+        unknown
+    >;
+    const raw =
+        (record.error as { code?: unknown } | undefined)?.code ?? record.code ?? record.detail;
+    if (raw === undefined || raw === null) return "-";
+    const code = String(typeof raw === "string" ? raw : JSON.stringify(raw)).slice(0, 80);
+    return /@|[\w-]+\.[\w-]+\.[\w-]+|[A-Za-z0-9_-]{24,}|password/iu.test(code)
+        ? "[redacted]"
+        : code;
+}
+
+/**
+ * CHAOS-12865: registers, verifies and logs in a fresh journey user (and with `orgName` onboards it
+ * and logs in again), recording each step's name, HTTP status and error code. A setup that gives
+ * no token is then named by `setupFault`, never "backend may be unavailable" (web #1804's CI
+ * live-e2e failed twice on that message, and the step that failed was never known).
+ */
+export async function setupUser(
+    request: APIRequestContext,
+    user: {
+        readonly email: string;
+        readonly password: string;
+        readonly fullName: string;
+        readonly orgName?: string;
+    },
+): Promise<SetupUser> {
+    const steps: string[] = [];
+    const step = async (name: string, res: { status: () => number; text: () => Promise<string> }) =>
+        steps.push(`${name} ${String(res.status())} code=${await errorCodeOf(res)}`);
+
+    const register = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+        data: { email: user.email, password: user.password, full_name: user.fullName },
+        headers: { Origin: liveBackendUrl },
+    });
+    await step("register", register);
+    if (!register.ok()) return { token: "", steps };
+
+    // Verify the user's email so login returns tokens.
+    const suLogin = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+        data: { email: superuserEmail, password: superuserPassword },
+    });
+    const suToken = suLogin.ok()
+        ? (((await suLogin.json().catch(() => ({}))) as { access_token?: string }).access_token ??
+          "")
+        : "";
+    steps.push(
+        suLogin.ok()
+            ? `superuser-login ${String(suLogin.status())} token=${suToken ? "present" : "absent"}`
+            : `superuser-login ${String(suLogin.status())} code=${await errorCodeOf(suLogin)}`,
+    );
+    let userId = "";
+    if (suToken) {
+        const lookup = await request.get(
+            `${liveBackendUrl}/api/v1/admin/users?q=${encodeURIComponent(user.email)}&limit=5`,
+            { headers: authHeaders(suToken) },
+        );
+        if (lookup.ok()) {
+            const body = (await lookup.json().catch(() => [])) as unknown;
+            const rows = (
+                Array.isArray(body) ? body : ((body as { items?: unknown[] }).items ?? [])
+            ) as Array<{ id?: string; email?: string }>;
+            userId =
+                rows.find((row) => row.email?.toLowerCase() === user.email.toLowerCase())?.id ?? "";
+            steps.push(`user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}`);
+        } else {
+            await step("user-lookup", lookup);
+        }
+    } else {
+        steps.push("user-lookup skipped (no superuser token)");
+    }
+    if (suToken && userId) {
+        const verify = await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
+            headers: authHeaders(suToken),
+            data: { is_verified: true },
+        });
+        await step("verify", verify);
+    } else {
+        steps.push("verify skipped");
+    }
+
+    const login = async (name: string): Promise<string> => {
+        const res = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+            data: { email: user.email, password: user.password },
+        });
+        const text = await res.text().catch(() => "");
+        let token = "";
+        try {
+            token = (JSON.parse(text) as { access_token?: string }).access_token ?? "";
+        } catch {
+            token = "";
+        }
+        const code = await errorCodeOf({ text: async () => text });
+        steps.push(
+            `${name} ${String(res.status())} token=${token ? "present" : "absent"} code=${code}`,
+        );
+        return token;
+    };
+    let token = await login("login");
+    if (!token || user.orgName === undefined) return { token, steps };
+
+    // Onboard first so admin endpoints are accessible, then log in again for the org's token.
+    const onboard = await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
+        headers: authHeaders(token),
+        data: { action: "create_org", org_name: user.orgName },
+    });
+    await step("onboard", onboard);
+    token = (await login("relogin")) || token;
+    return { token, steps };
+}
+
+/** Why a journey has no token: its setup steps, or "" when the setup gave a token. */
+export function setupFault(setup: SetupUser): string {
+    return setup.token === "" ? `setup gave no token: ${setup.steps.join(" | ")}` : "";
+}
+
 /**
  * Register and verify a fresh user through the public API plus the admin API and
  * return its id, or "" when any step fails. With `superuser` the user is also

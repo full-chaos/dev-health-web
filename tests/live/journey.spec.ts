@@ -18,9 +18,12 @@ import {
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
+    setupFault,
+    setupUser,
     testEmail,
     userIdByEmail,
     verifyUser,
+    type SetupUser,
 } from "./helpers";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -141,26 +144,17 @@ test.describe("onboarding journey @guided", () => {
     const email = testEmail("onboard");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Onboard User" },
-            headers: { Origin: liveBackendUrl },
-        });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, { email, password, fullName: "Onboard User" });
+        token = setup.token;
     });
 
     test("POST /onboard with org_name → success, returns org_id", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -178,7 +172,7 @@ test.describe("onboarding journey @guided", () => {
 
     test("re-login after onboarding → needs_onboarding false", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -190,7 +184,7 @@ test.describe("onboarding journey @guided", () => {
 
     test("second POST /onboard → 400 (already onboarded)", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -212,40 +206,23 @@ test.describe("credentials journey", () => {
     const email = testEmail("creds");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
     let credentialId = "";
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Creds User" },
-            headers: { Origin: liveBackendUrl },
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, {
+            email,
+            password,
+            fullName: "Creds User",
+            orgName: "Creds Org",
         });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
-        if (!token) return;
-
-        // Onboard first so admin endpoints are accessible
-        await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
-            headers: authHeaders(token),
-            data: { action: "create_org", org_name: "Creds Org" },
-        });
-
-        // Re-login to get updated token after onboarding
-        const reloginData = (await loginUser(request, email, password)) as {
-            access_token?: string;
-        };
-        token = reloginData.access_token ?? token;
+        token = setup.token;
     });
 
     test("POST /credentials → created credential", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -349,40 +326,23 @@ test.describe("sync journey", () => {
     const email = testEmail("sync");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
     let syncConfigId = "";
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Sync User" },
-            headers: { Origin: liveBackendUrl },
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, {
+            email,
+            password,
+            fullName: "Sync User",
+            orgName: "Sync Org",
         });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
-        if (!token) return;
-
-        // Onboard first so admin endpoints are accessible
-        await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
-            headers: authHeaders(token),
-            data: { action: "create_org", org_name: "Sync Org" },
-        });
-
-        // Re-login to get updated token after onboarding
-        const reloginData = (await loginUser(request, email, password)) as {
-            access_token?: string;
-        };
-        token = reloginData.access_token ?? token;
+        token = setup.token;
     });
 
     test("POST /sync-configs → created; POST trigger → 202", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
