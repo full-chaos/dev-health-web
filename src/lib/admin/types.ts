@@ -759,6 +759,25 @@ export interface MembershipUpdateRole {
     role: string;
 }
 
+export interface OrgInviteCreate {
+    email: string;
+    role: string;
+}
+
+/** The invite row go-api answers on create; the token is never served. */
+export interface OrgInvite {
+    id: string;
+    org_id: string;
+    email: string;
+    role: string;
+    invited_by_id: string | null;
+    status: string;
+    expires_at: string;
+    accepted_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface OwnershipTransfer {
     new_owner_user_id: string;
 }
