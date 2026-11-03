@@ -169,4 +169,83 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
         for (const secret of [EMAIL, TOKEN, SU_TOKEN, PASSWORD])
             expect(fault).not.toContain(secret);
     });
+
+    // Each redaction clause on its own: one secret shape per body, so no other clause hides it.
+    for (const [label, detail, printed] of [
+        ["an email", "user creds-1@example.com exists", "[redacted]"],
+        ["the word password", "wrong password", "[redacted]"],
+        ["the word token", "invalid token", "[redacted]"],
+        ["an id", "org 550e8400-e29b-41d4-a716-446655440000 missing", "[redacted]"],
+        // A hex id with no digit run and no mixed key: only the id clause catches it.
+        ["a letters-only hex id", "org deadbeef-cafe-face-bead-facadebeaded missing", "[redacted]"],
+        ["a long digit run", "account 1234567 locked", "[redacted]"],
+        ["a mixed opaque key", "key ab12cd34ef56gh78 rejected", "[redacted]"],
+        ["a character outside the plain set", "bad <input>", "[redacted]"],
+        [
+            "a long plain code",
+            "organization_membership_required",
+            "organization_membership_required",
+        ],
+        ["a plain message", "email not verified", "email not verified"],
+    ] as const) {
+        it(`a register error with ${label} prints ${printed === "[redacted]" ? "[redacted]" : "the code"}`, async () => {
+            const { request } = fakeRequest(
+                healthy({ "POST /api/v1/auth/register": { status: 400, body: { detail } } }),
+            );
+            const fault = setupFault(await setupUser(request, user));
+            expect(fault).toBe(`setup gave no token: register 400 code=${printed}`);
+        });
+    }
+
+    it("never prints a structured error: a validation error can carry the input", async () => {
+        const { request } = fakeRequest(
+            healthy({
+                "POST /api/v1/auth/register": {
+                    status: 422,
+                    body: { detail: [{ loc: ["body", "password"], input: PASSWORD }] },
+                },
+            }),
+        );
+        const fault = setupFault(await setupUser(request, user));
+        expect(fault).toBe("setup gave no token: register 422 code=[structured]");
+    });
+
+    it("takes only a string access_token: a false or numeric one is no token, and is named", async () => {
+        for (const value of [false, 0]) {
+            const base = healthy();
+            const { request } = fakeRequest((at, options) => {
+                const who = (options.data as { email?: string } | undefined)?.email;
+                return at === "POST /api/v1/auth/login" && who === EMAIL
+                    ? { status: 200, body: { access_token: value } }
+                    : base(at, options);
+            });
+            const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
+            expect(setup.token).toBe("");
+            expect(setupFault(setup)).toMatch(/login 200 token=absent/u);
+        }
+    });
+
+    it("stops after a login that gives no token: no onboard, no relogin", async () => {
+        const { request, calls } = fakeRequest(
+            healthy({ "PATCH /api/v1/admin/users/user-1": { status: 403, body: {} } }),
+        );
+        await setupUser(request, { ...user, orgName: "Creds Org" });
+        expect(calls.at(-1)).toBe("POST /api/v1/auth/login");
+        expect(calls).not.toContain("POST /api/v1/auth/onboard");
+    });
+
+    it("keeps the first token when the relogin gives none, and records the relogin", async () => {
+        let logins = 0;
+        const base = healthy();
+        const { request } = fakeRequest((at, options) => {
+            const who = (options.data as { email?: string } | undefined)?.email;
+            if (at === "POST /api/v1/auth/login" && who === EMAIL && ++logins === 2) {
+                return { status: 200, body: {} };
+            }
+            return base(at, options);
+        });
+        const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
+        expect(setup.token).toBe(TOKEN);
+        expect(setup.steps.at(-1)).toMatch(/^relogin 200 token=absent/u);
+    });
 });

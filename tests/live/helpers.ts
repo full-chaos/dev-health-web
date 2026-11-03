@@ -179,9 +179,20 @@ export function envFault(reason: string): void {
 /** A journey's setup user: its token ("" when the setup gave none) and every step it took. */
 export type SetupUser = { readonly token: string; readonly steps: readonly string[] };
 
+/** A code or detail this helper prints: letters first, then letters, digits and plain punctuation. */
+const SAFE_CODE = /^[A-Za-z][A-Za-z0-9 _.:,'()-]{0,79}$/u;
 /**
- * One response's error code, for a setup step: `error.code`, `code` or `detail`. Never a token,
- * password or email: a code that holds `@`, a dotted token or a long opaque string is redacted.
+ * What is never printed even inside a safe-looking code: a secret word, an id or a key. (An email
+ * never gets this far: SAFE_CODE has no `@`.)
+ */
+const SECRET_SHAPED =
+    /password|passwd|token|secret|cookie|bearer|[0-9a-f]{8}-[0-9a-f]{4}|\d{6,}|(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{12,}/iu;
+
+/**
+ * One response's error code, for a setup step: `error.code`, `code` or `detail`. It is printed only
+ * when it is a short plain string (SAFE_CODE) with nothing secret-shaped in it; any other string is
+ * "[redacted]", and an object or array (a validation error can carry the input) is "[structured]".
+ * So no token, password, email or id reaches a log line.
  */
 async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string> {
     const text = await res.text().catch(() => "");
@@ -198,10 +209,8 @@ async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string
     const raw =
         (record.error as { code?: unknown } | undefined)?.code ?? record.code ?? record.detail;
     if (raw === undefined || raw === null) return "-";
-    const code = String(typeof raw === "string" ? raw : JSON.stringify(raw)).slice(0, 80);
-    return /@|[\w-]+\.[\w-]+\.[\w-]+|[A-Za-z0-9_-]{24,}|password/iu.test(code)
-        ? "[redacted]"
-        : code;
+    if (typeof raw !== "string") return "[structured]";
+    return SAFE_CODE.test(raw) && !SECRET_SHAPED.test(raw) ? raw : "[redacted]";
 }
 
 /**
@@ -280,7 +289,8 @@ export async function setupUser(
         const text = await res.text().catch(() => "");
         let token = "";
         try {
-            token = (JSON.parse(text) as { access_token?: string }).access_token ?? "";
+            const value = (JSON.parse(text) as { access_token?: unknown }).access_token;
+            token = typeof value === "string" ? value : "";
         } catch {
             token = "";
         }

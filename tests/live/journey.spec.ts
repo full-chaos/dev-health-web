@@ -261,7 +261,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials/test → success false (fake token expected)", async ({ request }) => {
         if (!token || !credentialId) {
-            envFault("No token or credential — skipping test check");
+            envFault(setupFault(setup) || "No credential: the create case gave none");
             return;
         }
 
@@ -296,7 +296,7 @@ test.describe("credentials journey", () => {
 
     test("GET /credentials → array includes the created credential", async ({ request }) => {
         if (!token || !credentialId) {
-            envFault("No token or credential — skipping list check");
+            envFault(setupFault(setup) || "No credential: the create case gave none");
             return;
         }
 
@@ -384,7 +384,7 @@ test.describe("sync journey", () => {
 
     test("GET /sync-configs/:id/jobs → returns array", async ({ request }) => {
         if (!token || !syncConfigId) {
-            envFault("No token or sync config — skipping jobs check");
+            envFault(setupFault(setup) || "No sync config: the create case gave none");
             return;
         }
 
