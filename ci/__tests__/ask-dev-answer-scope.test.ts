@@ -477,6 +477,29 @@ describe("the live suite's result record (CHAOS-12637)", () => {
         }
     });
 
+    it("keeps a replay of a v2 result (acr's encoder, captured on askdev-1)", async () => {
+        const event = JSON.parse(
+            readFileSync(
+                join(
+                    process.cwd(),
+                    "tests/fixtures/ask-dev/captures/acr_encoder_anchor_v2_clarification.event.json",
+                ),
+                "utf8",
+            ),
+        ) as { result: { schema_version: string } };
+        expect(event.result.schema_version).toBe("context_fabric_investigation_result.v2");
+        const { results, restore, scope } = await recorded(() =>
+            streamed(JSON.stringify(event.result)),
+        );
+        try {
+            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect(results[0]?.status).toBe("clarification_required");
+        } finally {
+            restore();
+        }
+    });
+
     it("tees no near miss of a recovery read: a longer path is another route", async () => {
         for (const [url, body] of [
             [`${STREAM_URL}/submissions/sub_1/events/more`, capture],

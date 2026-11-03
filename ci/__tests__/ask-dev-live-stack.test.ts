@@ -253,6 +253,14 @@ describe("synthesis fallback marker", () => {
         ).rejects.toThrow(
             "P1-5, result 2: the answer is acr's fallback, not a synthesized answer (synthesis_not_run:synthesis_rejected)",
         );
+        // Every result is checked, not the first two: the thread-header case draws three.
+        await expect(
+            expectAnswersSynthesized(
+                [served([]), served([]), served(["synthesis_model_failed"])],
+                "thread header",
+                3,
+            ),
+        ).rejects.toThrow("thread header, result 3: the answer is acr's fallback");
         // A fallback after the count is still a fallback the page drew.
         await expect(
             expectAnswersSynthesized([served([]), served(["synthesis_model_failed"])], "P1-1"),
