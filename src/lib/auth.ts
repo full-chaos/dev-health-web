@@ -5,10 +5,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import GitLab from "next-auth/providers/gitlab";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
@@ -24,6 +26,15 @@ import {
 } from "@/lib/authServiceWire";
 
 const authLogger = logger.child({ module: "auth" });
+
+// No request reaches the jwt callback: read the incoming headers; outside a request scope send none.
+async function refreshClientIp(): Promise<string | undefined> {
+    try {
+        return getClientIpFromEnv({ headers: await headers() });
+    } catch {
+        return undefined;
+    }
+}
 
 /**
  * Custom error thrown when login fails because the user's email
@@ -101,7 +112,7 @@ const nextAuth = NextAuth({
                 password: { label: "Password", type: "password" },
                 org_id: { label: "Organization ID", type: "text" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, request) {
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
@@ -118,6 +129,7 @@ const nextAuth = NextAuth({
                         tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                         issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                         backendUrl: getBackendUrl(),
+                        clientIp: request ? getClientIpFromEnv(request) : undefined,
                     },
                 );
                 switch (login.kind) {
@@ -362,6 +374,7 @@ const nextAuth = NextAuth({
                     tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                     issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                     backendUrl: getBackendUrl(),
+                    clientIp: await refreshClientIp(),
                 });
                 if (refreshed.kind === "rotated") {
                     // Single-use rotation: only the credential this answer carries is kept.

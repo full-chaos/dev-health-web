@@ -49,7 +49,13 @@ const token = (exp: number) =>
     `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(
         JSON.stringify({ sid: "ses_AAAAAAAAAAAAAAAAAAAAAQ", exp }),
     )}.${b64u("sig")}`;
-const user = { id: "u1", email: "a@example.test", org_id: "o1", role: "admin", is_superuser: false };
+const user = {
+    id: "u1",
+    email: "a@example.test",
+    org_id: "o1",
+    role: "admin",
+    is_superuser: false,
+};
 const answer = () =>
     new Response(
         JSON.stringify({
@@ -83,8 +89,8 @@ const withXff = (value: string) =>
         headers: { "x-forwarded-for": value },
     });
 const sentXff = (): string[] =>
-    fetchMock.mock.calls.map(([, init]) =>
-        new Headers((init as RequestInit).headers).get("x-forwarded-for") ?? "",
+    fetchMock.mock.calls.map(
+        ([, init]) => new Headers((init as RequestInit).headers).get("x-forwarded-for") ?? "",
     );
 const expiredToken = () => ({
     access_token: "old",
@@ -140,7 +146,9 @@ describe("login forwards the end-user address", () => {
 describe("refresh forwards the end-user address", () => {
     it("sends the right-most hop as X-Forwarded-For when TRUST_PROXY is on", async () => {
         vi.stubEnv("TRUST_PROXY", "true");
-        headersMock.mockResolvedValue(new Headers({ "x-forwarded-for": "203.0.113.9, 198.51.100.7" }));
+        headersMock.mockResolvedValue(
+            new Headers({ "x-forwarded-for": "203.0.113.9, 198.51.100.7" }),
+        );
         await jwt()({ token: expiredToken() });
         expect(sentXff()).toEqual(["198.51.100.7"]);
     });
