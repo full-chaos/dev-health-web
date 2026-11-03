@@ -18251,6 +18251,7 @@ const schema90 = {
         simulation_count: { type: "integer", minimum: 0 },
         horizon_days: { type: "integer", minimum: 0 },
         unfinished_runs: { type: "integer", minimum: 0 },
+        target_items: { type: "integer", minimum: 0 },
         forecast_p50_days: { type: "integer", minimum: 0 },
         forecast_p85_days: { type: "integer", minimum: 0 },
         forecast_p95_days: { type: "integer", minimum: 0 },
@@ -22647,8 +22648,8 @@ function validate67(
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data74 = data67.forecast_p50_days;
+                if (data67.target_items !== undefined) {
+                    let data74 = data67.target_items;
                     if (!(
                         typeof data74 == "number" &&
                         !(data74 % 1) &&
@@ -22656,9 +22657,9 @@ function validate67(
                         isFinite(data74)
                     )) {
                         const err204 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -22673,10 +22674,9 @@ function validate67(
                     if (typeof data74 == "number" && isFinite(data74)) {
                         if (data74 < 0 || isNaN(data74)) {
                             const err205 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -22690,8 +22690,8 @@ function validate67(
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data75 = data67.forecast_p85_days;
+                if (data67.forecast_p50_days !== undefined) {
+                    let data75 = data67.forecast_p50_days;
                     if (!(
                         typeof data75 == "number" &&
                         !(data75 % 1) &&
@@ -22699,9 +22699,9 @@ function validate67(
                         isFinite(data75)
                     )) {
                         const err206 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -22717,9 +22717,9 @@ function validate67(
                         if (data75 < 0 || isNaN(data75)) {
                             const err207 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                    instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -22733,8 +22733,8 @@ function validate67(
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data76 = data67.forecast_p95_days;
+                if (data67.forecast_p85_days !== undefined) {
+                    let data76 = data67.forecast_p85_days;
                     if (!(
                         typeof data76 == "number" &&
                         !(data76 % 1) &&
@@ -22742,9 +22742,9 @@ function validate67(
                         isFinite(data76)
                     )) {
                         const err208 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -22760,9 +22760,9 @@ function validate67(
                         if (data76 < 0 || isNaN(data76)) {
                             const err209 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                    instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -22776,11 +22776,54 @@ function validate67(
                         }
                     }
                 }
+                if (data67.forecast_p95_days !== undefined) {
+                    let data77 = data67.forecast_p95_days;
+                    if (!(
+                        typeof data77 == "number" &&
+                        !(data77 % 1) &&
+                        !isNaN(data77) &&
+                        isFinite(data77)
+                    )) {
+                        const err210 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err210];
+                        } else {
+                            vErrors.push(err210);
+                        }
+                        errors++;
+                    }
+                    if (typeof data77 == "number" && isFinite(data77)) {
+                        if (data77 < 0 || isNaN(data77)) {
+                            const err211 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err211];
+                            } else {
+                                vErrors.push(err211);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data67.forecast_p50_date !== undefined) {
-                    let data77 = data67.forecast_p50_date;
-                    if (typeof data77 === "string") {
-                        if (func2(data77) > 128) {
-                            const err210 = {
+                    let data78 = data67.forecast_p50_date;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err212 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -22790,14 +22833,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err210];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err210);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data77)) {
-                            const err211 = {
+                        if (!pattern14.test(data78)) {
+                            const err213 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -22808,14 +22851,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
                     } else {
-                        const err212 = {
+                        const err214 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -22824,18 +22867,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p85_date !== undefined) {
-                    let data78 = data67.forecast_p85_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err213 = {
+                    let data79 = data67.forecast_p85_date;
+                    if (typeof data79 === "string") {
+                        if (func2(data79) > 128) {
+                            const err215 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -22845,14 +22888,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err215];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err215);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err214 = {
+                        if (!pattern14.test(data79)) {
+                            const err216 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -22863,14 +22906,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err214];
+                                vErrors = [err216];
                             } else {
-                                vErrors.push(err214);
+                                vErrors.push(err216);
                             }
                             errors++;
                         }
                     } else {
-                        const err215 = {
+                        const err217 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -22879,18 +22922,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p95_date !== undefined) {
-                    let data79 = data67.forecast_p95_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err216 = {
+                    let data80 = data67.forecast_p95_date;
+                    if (typeof data80 === "string") {
+                        if (func2(data80) > 128) {
+                            const err218 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -22900,14 +22943,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err218];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err218);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err217 = {
+                        if (!pattern14.test(data80)) {
+                            const err219 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -22918,14 +22961,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err217];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err217);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     } else {
-                        const err218 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -22934,15 +22977,15 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err218];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err218);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err219 = {
+                const err221 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -22950,15 +22993,15 @@ function validate67(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err219];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err219);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
     } else {
-        const err220 = {
+        const err222 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -22966,9 +23009,9 @@ function validate67(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err220];
+            vErrors = [err222];
         } else {
-            vErrors.push(err220);
+            vErrors.push(err222);
         }
         errors++;
     }
@@ -49995,8 +50038,8 @@ function validate144(
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data74 = data67.forecast_p50_days;
+                if (data67.target_items !== undefined) {
+                    let data74 = data67.target_items;
                     if (!(
                         typeof data74 == "number" &&
                         !(data74 % 1) &&
@@ -50004,9 +50047,9 @@ function validate144(
                         isFinite(data74)
                     )) {
                         const err204 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -50021,10 +50064,9 @@ function validate144(
                     if (typeof data74 == "number" && isFinite(data74)) {
                         if (data74 < 0 || isNaN(data74)) {
                             const err205 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -50038,8 +50080,8 @@ function validate144(
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data75 = data67.forecast_p85_days;
+                if (data67.forecast_p50_days !== undefined) {
+                    let data75 = data67.forecast_p50_days;
                     if (!(
                         typeof data75 == "number" &&
                         !(data75 % 1) &&
@@ -50047,9 +50089,9 @@ function validate144(
                         isFinite(data75)
                     )) {
                         const err206 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -50065,9 +50107,9 @@ function validate144(
                         if (data75 < 0 || isNaN(data75)) {
                             const err207 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                    instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -50081,8 +50123,8 @@ function validate144(
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data76 = data67.forecast_p95_days;
+                if (data67.forecast_p85_days !== undefined) {
+                    let data76 = data67.forecast_p85_days;
                     if (!(
                         typeof data76 == "number" &&
                         !(data76 % 1) &&
@@ -50090,9 +50132,9 @@ function validate144(
                         isFinite(data76)
                     )) {
                         const err208 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -50108,9 +50150,9 @@ function validate144(
                         if (data76 < 0 || isNaN(data76)) {
                             const err209 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                    instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -50124,11 +50166,54 @@ function validate144(
                         }
                     }
                 }
+                if (data67.forecast_p95_days !== undefined) {
+                    let data77 = data67.forecast_p95_days;
+                    if (!(
+                        typeof data77 == "number" &&
+                        !(data77 % 1) &&
+                        !isNaN(data77) &&
+                        isFinite(data77)
+                    )) {
+                        const err210 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err210];
+                        } else {
+                            vErrors.push(err210);
+                        }
+                        errors++;
+                    }
+                    if (typeof data77 == "number" && isFinite(data77)) {
+                        if (data77 < 0 || isNaN(data77)) {
+                            const err211 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err211];
+                            } else {
+                                vErrors.push(err211);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data67.forecast_p50_date !== undefined) {
-                    let data77 = data67.forecast_p50_date;
-                    if (typeof data77 === "string") {
-                        if (func2(data77) > 128) {
-                            const err210 = {
+                    let data78 = data67.forecast_p50_date;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err212 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -50138,14 +50223,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err210];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err210);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data77)) {
-                            const err211 = {
+                        if (!pattern14.test(data78)) {
+                            const err213 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -50156,14 +50241,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
                     } else {
-                        const err212 = {
+                        const err214 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -50172,18 +50257,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p85_date !== undefined) {
-                    let data78 = data67.forecast_p85_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err213 = {
+                    let data79 = data67.forecast_p85_date;
+                    if (typeof data79 === "string") {
+                        if (func2(data79) > 128) {
+                            const err215 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -50193,14 +50278,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err215];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err215);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err214 = {
+                        if (!pattern14.test(data79)) {
+                            const err216 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -50211,14 +50296,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err214];
+                                vErrors = [err216];
                             } else {
-                                vErrors.push(err214);
+                                vErrors.push(err216);
                             }
                             errors++;
                         }
                     } else {
-                        const err215 = {
+                        const err217 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -50227,18 +50312,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p95_date !== undefined) {
-                    let data79 = data67.forecast_p95_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err216 = {
+                    let data80 = data67.forecast_p95_date;
+                    if (typeof data80 === "string") {
+                        if (func2(data80) > 128) {
+                            const err218 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -50248,14 +50333,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err218];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err218);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err217 = {
+                        if (!pattern14.test(data80)) {
+                            const err219 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -50266,14 +50351,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err217];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err217);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     } else {
-                        const err218 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -50282,15 +50367,15 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err218];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err218);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err219 = {
+                const err221 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -50298,15 +50383,15 @@ function validate144(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err219];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err219);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
     } else {
-        const err220 = {
+        const err222 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -50314,9 +50399,9 @@ function validate144(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err220];
+            vErrors = [err222];
         } else {
-            vErrors.push(err220);
+            vErrors.push(err222);
         }
         errors++;
     }
@@ -63790,6 +63875,7 @@ const schema196 = {
                 simulation_count: { type: "integer", minimum: 0 },
                 horizon_days: { type: "integer", minimum: 0 },
                 unfinished_runs: { type: "integer", minimum: 0 },
+                target_items: { type: "integer", minimum: 0 },
                 forecast_p50_days: { type: "integer", minimum: 0 },
                 forecast_p85_days: { type: "integer", minimum: 0 },
                 forecast_p95_days: { type: "integer", minimum: 0 },
@@ -69135,6 +69221,7 @@ const schema216 = {
         simulation_count: { type: "integer", minimum: 0 },
         horizon_days: { type: "integer", minimum: 0 },
         unfinished_runs: { type: "integer", minimum: 0 },
+        target_items: { type: "integer", minimum: 0 },
         forecast_p50_days: { type: "integer", minimum: 0 },
         forecast_p85_days: { type: "integer", minimum: 0 },
         forecast_p95_days: { type: "integer", minimum: 0 },
@@ -72387,8 +72474,8 @@ function validate195(
                         }
                     }
                 }
-                if (data58.forecast_p50_days !== undefined) {
-                    let data65 = data58.forecast_p50_days;
+                if (data58.target_items !== undefined) {
+                    let data65 = data58.target_items;
                     if (!(
                         typeof data65 == "number" &&
                         !(data65 % 1) &&
@@ -72396,9 +72483,9 @@ function validate195(
                         isFinite(data65)
                     )) {
                         const err171 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -72413,10 +72500,9 @@ function validate195(
                     if (typeof data65 == "number" && isFinite(data65)) {
                         if (data65 < 0 || isNaN(data65)) {
                             const err172 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -72430,8 +72516,8 @@ function validate195(
                         }
                     }
                 }
-                if (data58.forecast_p85_days !== undefined) {
-                    let data66 = data58.forecast_p85_days;
+                if (data58.forecast_p50_days !== undefined) {
+                    let data66 = data58.forecast_p50_days;
                     if (!(
                         typeof data66 == "number" &&
                         !(data66 % 1) &&
@@ -72439,9 +72525,9 @@ function validate195(
                         isFinite(data66)
                     )) {
                         const err173 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -72457,9 +72543,9 @@ function validate195(
                         if (data66 < 0 || isNaN(data66)) {
                             const err174 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                    instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -72473,8 +72559,8 @@ function validate195(
                         }
                     }
                 }
-                if (data58.forecast_p95_days !== undefined) {
-                    let data67 = data58.forecast_p95_days;
+                if (data58.forecast_p85_days !== undefined) {
+                    let data67 = data58.forecast_p85_days;
                     if (!(
                         typeof data67 == "number" &&
                         !(data67 % 1) &&
@@ -72482,9 +72568,9 @@ function validate195(
                         isFinite(data67)
                     )) {
                         const err175 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -72500,9 +72586,9 @@ function validate195(
                         if (data67 < 0 || isNaN(data67)) {
                             const err176 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                    instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -72516,11 +72602,54 @@ function validate195(
                         }
                     }
                 }
+                if (data58.forecast_p95_days !== undefined) {
+                    let data68 = data58.forecast_p95_days;
+                    if (!(
+                        typeof data68 == "number" &&
+                        !(data68 % 1) &&
+                        !isNaN(data68) &&
+                        isFinite(data68)
+                    )) {
+                        const err177 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err177];
+                        } else {
+                            vErrors.push(err177);
+                        }
+                        errors++;
+                    }
+                    if (typeof data68 == "number" && isFinite(data68)) {
+                        if (data68 < 0 || isNaN(data68)) {
+                            const err178 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err178];
+                            } else {
+                                vErrors.push(err178);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data58.forecast_p50_date !== undefined) {
-                    let data68 = data58.forecast_p50_date;
-                    if (typeof data68 === "string") {
-                        if (func2(data68) > 128) {
-                            const err177 = {
+                    let data69 = data58.forecast_p50_date;
+                    if (typeof data69 === "string") {
+                        if (func2(data69) > 128) {
+                            const err179 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -72530,14 +72659,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err177];
+                                vErrors = [err179];
                             } else {
-                                vErrors.push(err177);
+                                vErrors.push(err179);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data68)) {
-                            const err178 = {
+                        if (!pattern14.test(data69)) {
+                            const err180 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -72548,14 +72677,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err178];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err178);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
                     } else {
-                        const err179 = {
+                        const err181 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_date/type",
@@ -72564,18 +72693,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err179];
+                            vErrors = [err181];
                         } else {
-                            vErrors.push(err179);
+                            vErrors.push(err181);
                         }
                         errors++;
                     }
                 }
                 if (data58.forecast_p85_date !== undefined) {
-                    let data69 = data58.forecast_p85_date;
-                    if (typeof data69 === "string") {
-                        if (func2(data69) > 128) {
-                            const err180 = {
+                    let data70 = data58.forecast_p85_date;
+                    if (typeof data70 === "string") {
+                        if (func2(data70) > 128) {
+                            const err182 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -72585,14 +72714,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err180];
+                                vErrors = [err182];
                             } else {
-                                vErrors.push(err180);
+                                vErrors.push(err182);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data69)) {
-                            const err181 = {
+                        if (!pattern14.test(data70)) {
+                            const err183 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -72603,14 +72732,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err181];
+                                vErrors = [err183];
                             } else {
-                                vErrors.push(err181);
+                                vErrors.push(err183);
                             }
                             errors++;
                         }
                     } else {
-                        const err182 = {
+                        const err184 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_date/type",
@@ -72619,18 +72748,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err182];
+                            vErrors = [err184];
                         } else {
-                            vErrors.push(err182);
+                            vErrors.push(err184);
                         }
                         errors++;
                     }
                 }
                 if (data58.forecast_p95_date !== undefined) {
-                    let data70 = data58.forecast_p95_date;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err183 = {
+                    let data71 = data58.forecast_p95_date;
+                    if (typeof data71 === "string") {
+                        if (func2(data71) > 128) {
+                            const err185 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -72640,14 +72769,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err183];
+                                vErrors = [err185];
                             } else {
-                                vErrors.push(err183);
+                                vErrors.push(err185);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data70)) {
-                            const err184 = {
+                        if (!pattern14.test(data71)) {
+                            const err186 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -72658,14 +72787,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err184];
+                                vErrors = [err186];
                             } else {
-                                vErrors.push(err184);
+                                vErrors.push(err186);
                             }
                             errors++;
                         }
                     } else {
-                        const err185 = {
+                        const err187 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_date/type",
@@ -72674,15 +72803,15 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err185];
+                            vErrors = [err187];
                         } else {
-                            vErrors.push(err185);
+                            vErrors.push(err187);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err186 = {
+                const err188 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ProjectedCompletionForecast/type",
                     keyword: "type",
@@ -72690,15 +72819,15 @@ function validate195(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err186];
+                    vErrors = [err188];
                 } else {
-                    vErrors.push(err186);
+                    vErrors.push(err188);
                 }
                 errors++;
             }
         }
     } else {
-        const err187 = {
+        const err189 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -72706,9 +72835,9 @@ function validate195(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err187];
+            vErrors = [err189];
         } else {
-            vErrors.push(err187);
+            vErrors.push(err189);
         }
         errors++;
     }
@@ -103429,8 +103558,8 @@ function validate274(
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data74 = data67.forecast_p50_days;
+                if (data67.target_items !== undefined) {
+                    let data74 = data67.target_items;
                     if (!(
                         typeof data74 == "number" &&
                         !(data74 % 1) &&
@@ -103438,9 +103567,9 @@ function validate274(
                         isFinite(data74)
                     )) {
                         const err204 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -103455,10 +103584,9 @@ function validate274(
                     if (typeof data74 == "number" && isFinite(data74)) {
                         if (data74 < 0 || isNaN(data74)) {
                             const err205 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -103472,8 +103600,8 @@ function validate274(
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data75 = data67.forecast_p85_days;
+                if (data67.forecast_p50_days !== undefined) {
+                    let data75 = data67.forecast_p50_days;
                     if (!(
                         typeof data75 == "number" &&
                         !(data75 % 1) &&
@@ -103481,9 +103609,9 @@ function validate274(
                         isFinite(data75)
                     )) {
                         const err206 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -103499,9 +103627,9 @@ function validate274(
                         if (data75 < 0 || isNaN(data75)) {
                             const err207 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                    instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -103515,8 +103643,8 @@ function validate274(
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data76 = data67.forecast_p95_days;
+                if (data67.forecast_p85_days !== undefined) {
+                    let data76 = data67.forecast_p85_days;
                     if (!(
                         typeof data76 == "number" &&
                         !(data76 % 1) &&
@@ -103524,9 +103652,9 @@ function validate274(
                         isFinite(data76)
                     )) {
                         const err208 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -103542,9 +103670,9 @@ function validate274(
                         if (data76 < 0 || isNaN(data76)) {
                             const err209 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                    instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -103558,11 +103686,54 @@ function validate274(
                         }
                     }
                 }
+                if (data67.forecast_p95_days !== undefined) {
+                    let data77 = data67.forecast_p95_days;
+                    if (!(
+                        typeof data77 == "number" &&
+                        !(data77 % 1) &&
+                        !isNaN(data77) &&
+                        isFinite(data77)
+                    )) {
+                        const err210 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err210];
+                        } else {
+                            vErrors.push(err210);
+                        }
+                        errors++;
+                    }
+                    if (typeof data77 == "number" && isFinite(data77)) {
+                        if (data77 < 0 || isNaN(data77)) {
+                            const err211 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err211];
+                            } else {
+                                vErrors.push(err211);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data67.forecast_p50_date !== undefined) {
-                    let data77 = data67.forecast_p50_date;
-                    if (typeof data77 === "string") {
-                        if (func2(data77) > 128) {
-                            const err210 = {
+                    let data78 = data67.forecast_p50_date;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err212 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -103572,14 +103743,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err210];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err210);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data77)) {
-                            const err211 = {
+                        if (!pattern14.test(data78)) {
+                            const err213 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -103590,14 +103761,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
                     } else {
-                        const err212 = {
+                        const err214 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -103606,18 +103777,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p85_date !== undefined) {
-                    let data78 = data67.forecast_p85_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err213 = {
+                    let data79 = data67.forecast_p85_date;
+                    if (typeof data79 === "string") {
+                        if (func2(data79) > 128) {
+                            const err215 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -103627,14 +103798,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err215];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err215);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err214 = {
+                        if (!pattern14.test(data79)) {
+                            const err216 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -103645,14 +103816,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err214];
+                                vErrors = [err216];
                             } else {
-                                vErrors.push(err214);
+                                vErrors.push(err216);
                             }
                             errors++;
                         }
                     } else {
-                        const err215 = {
+                        const err217 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -103661,18 +103832,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p95_date !== undefined) {
-                    let data79 = data67.forecast_p95_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err216 = {
+                    let data80 = data67.forecast_p95_date;
+                    if (typeof data80 === "string") {
+                        if (func2(data80) > 128) {
+                            const err218 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -103682,14 +103853,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err218];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err218);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err217 = {
+                        if (!pattern14.test(data80)) {
+                            const err219 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -103700,14 +103871,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err217];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err217);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     } else {
-                        const err218 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -103716,15 +103887,15 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err218];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err218);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err219 = {
+                const err221 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -103732,15 +103903,15 @@ function validate274(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err219];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err219);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
     } else {
-        const err220 = {
+        const err222 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -103748,9 +103919,9 @@ function validate274(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err220];
+            vErrors = [err222];
         } else {
-            vErrors.push(err220);
+            vErrors.push(err222);
         }
         errors++;
     }
@@ -123781,8 +123952,8 @@ function validate338(
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data74 = data67.forecast_p50_days;
+                if (data67.target_items !== undefined) {
+                    let data74 = data67.target_items;
                     if (!(
                         typeof data74 == "number" &&
                         !(data74 % 1) &&
@@ -123790,9 +123961,9 @@ function validate338(
                         isFinite(data74)
                     )) {
                         const err204 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -123807,10 +123978,9 @@ function validate338(
                     if (typeof data74 == "number" && isFinite(data74)) {
                         if (data74 < 0 || isNaN(data74)) {
                             const err205 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -123824,8 +123994,8 @@ function validate338(
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data75 = data67.forecast_p85_days;
+                if (data67.forecast_p50_days !== undefined) {
+                    let data75 = data67.forecast_p50_days;
                     if (!(
                         typeof data75 == "number" &&
                         !(data75 % 1) &&
@@ -123833,9 +124003,9 @@ function validate338(
                         isFinite(data75)
                     )) {
                         const err206 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -123851,9 +124021,9 @@ function validate338(
                         if (data75 < 0 || isNaN(data75)) {
                             const err207 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                    instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -123867,8 +124037,8 @@ function validate338(
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data76 = data67.forecast_p95_days;
+                if (data67.forecast_p85_days !== undefined) {
+                    let data76 = data67.forecast_p85_days;
                     if (!(
                         typeof data76 == "number" &&
                         !(data76 % 1) &&
@@ -123876,9 +124046,9 @@ function validate338(
                         isFinite(data76)
                     )) {
                         const err208 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -123894,9 +124064,9 @@ function validate338(
                         if (data76 < 0 || isNaN(data76)) {
                             const err209 = {
                                 instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                    instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -123910,11 +124080,54 @@ function validate338(
                         }
                     }
                 }
+                if (data67.forecast_p95_days !== undefined) {
+                    let data77 = data67.forecast_p95_days;
+                    if (!(
+                        typeof data77 == "number" &&
+                        !(data77 % 1) &&
+                        !isNaN(data77) &&
+                        isFinite(data77)
+                    )) {
+                        const err210 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err210];
+                        } else {
+                            vErrors.push(err210);
+                        }
+                        errors++;
+                    }
+                    if (typeof data77 == "number" && isFinite(data77)) {
+                        if (data77 < 0 || isNaN(data77)) {
+                            const err211 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err211];
+                            } else {
+                                vErrors.push(err211);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data67.forecast_p50_date !== undefined) {
-                    let data77 = data67.forecast_p50_date;
-                    if (typeof data77 === "string") {
-                        if (func2(data77) > 128) {
-                            const err210 = {
+                    let data78 = data67.forecast_p50_date;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err212 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -123924,14 +124137,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err210];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err210);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data77)) {
-                            const err211 = {
+                        if (!pattern14.test(data78)) {
+                            const err213 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -123942,14 +124155,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
                     } else {
-                        const err212 = {
+                        const err214 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -123958,18 +124171,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p85_date !== undefined) {
-                    let data78 = data67.forecast_p85_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err213 = {
+                    let data79 = data67.forecast_p85_date;
+                    if (typeof data79 === "string") {
+                        if (func2(data79) > 128) {
+                            const err215 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -123979,14 +124192,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err215];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err215);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err214 = {
+                        if (!pattern14.test(data79)) {
+                            const err216 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -123997,14 +124210,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err214];
+                                vErrors = [err216];
                             } else {
-                                vErrors.push(err214);
+                                vErrors.push(err216);
                             }
                             errors++;
                         }
                     } else {
-                        const err215 = {
+                        const err217 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -124013,18 +124226,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
                 if (data67.forecast_p95_date !== undefined) {
-                    let data79 = data67.forecast_p95_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err216 = {
+                    let data80 = data67.forecast_p95_date;
+                    if (typeof data80 === "string") {
+                        if (func2(data80) > 128) {
+                            const err218 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -124034,14 +124247,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err218];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err218);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err217 = {
+                        if (!pattern14.test(data80)) {
+                            const err219 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -124052,14 +124265,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err217];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err217);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     } else {
-                        const err218 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -124068,15 +124281,15 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err218];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err218);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err219 = {
+                const err221 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -124084,15 +124297,15 @@ function validate338(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err219];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err219);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
     } else {
-        const err220 = {
+        const err222 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -124100,9 +124313,9 @@ function validate338(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err220];
+            vErrors = [err222];
         } else {
-            vErrors.push(err220);
+            vErrors.push(err222);
         }
         errors++;
     }

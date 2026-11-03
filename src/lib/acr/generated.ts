@@ -9340,6 +9340,7 @@ export interface ClaimedCompletionForecast {
     simulation_count?: number;
     horizon_days?: number;
     unfinished_runs?: number;
+    target_items?: number;
     forecast_p50_days?: number;
     forecast_p85_days?: number;
     forecast_p95_days?: number;
