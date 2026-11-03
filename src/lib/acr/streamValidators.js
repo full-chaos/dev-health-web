@@ -18195,6 +18195,31 @@ const schema87 = {
             type: "string",
             enum: ["day"],
         },
+        column_vocabularies: {
+            description:
+                "CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.",
+            type: "object",
+            maxProperties: 40,
+            additionalProperties: {
+                description:
+                    "`investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.",
+                type: "string",
+                enum: ["investment_theme", "subcategory"],
+            },
+        },
+        word_columns: {
+            description:
+                "CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.",
+            type: "object",
+            maxProperties: 40,
+            additionalProperties: {
+                type: "string",
+                minLength: 1,
+                maxLength: 128,
+                description:
+                    "Another name in `observations`: the column that carries the id's served word.",
+            },
+        },
     },
     required: ["field", "shape", "key"],
 };
@@ -20505,16 +20530,7 @@ function validate67(
                     errors++;
                 }
                 for (const key4 in data30) {
-                    if (!(
-                        key4 === "field" ||
-                        key4 === "shape" ||
-                        key4 === "key" ||
-                        key4 === "measures" ||
-                        key4 === "observations" ||
-                        key4 === "order_by" ||
-                        key4 === "measure_units" ||
-                        key4 === "cadence"
-                    )) {
+                    if (!func1.call(schema87.properties, key4)) {
                         const err89 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -21202,8 +21218,185 @@ function validate67(
                         errors++;
                     }
                 }
+                if (data30.column_vocabularies !== undefined) {
+                    let data45 = data30.column_vocabularies;
+                    if (data45 && typeof data45 == "object" && !Array.isArray(data45)) {
+                        if (Object.keys(data45).length > 40) {
+                            const err127 = {
+                                instancePath: instancePath + "/table/column_vocabularies",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err127];
+                            } else {
+                                vErrors.push(err127);
+                            }
+                            errors++;
+                        }
+                        for (const key6 in data45) {
+                            let data46 = data45[key6];
+                            if (typeof data46 !== "string") {
+                                const err128 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err128];
+                                } else {
+                                    vErrors.push(err128);
+                                }
+                                errors++;
+                            }
+                            if (!(data46 === "investment_theme" || data46 === "subcategory")) {
+                                const err129 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err129];
+                                } else {
+                                    vErrors.push(err129);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err130 = {
+                            instancePath: instancePath + "/table/column_vocabularies",
+                            schemaPath:
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err130];
+                        } else {
+                            vErrors.push(err130);
+                        }
+                        errors++;
+                    }
+                }
+                if (data30.word_columns !== undefined) {
+                    let data47 = data30.word_columns;
+                    if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
+                        if (Object.keys(data47).length > 40) {
+                            const err131 = {
+                                instancePath: instancePath + "/table/word_columns",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err131];
+                            } else {
+                                vErrors.push(err131);
+                            }
+                            errors++;
+                        }
+                        for (const key7 in data47) {
+                            let data48 = data47[key7];
+                            if (typeof data48 === "string") {
+                                if (func2(data48) > 128) {
+                                    const err132 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err132];
+                                    } else {
+                                        vErrors.push(err132);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data48) < 1) {
+                                    const err133 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err133];
+                                    } else {
+                                        vErrors.push(err133);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err134 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/word_columns/" +
+                                        key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err134];
+                                } else {
+                                    vErrors.push(err134);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err135 = {
+                            instancePath: instancePath + "/table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err135];
+                        } else {
+                            vErrors.push(err135);
+                        }
+                        errors++;
+                    }
+                }
             } else {
-                const err127 = {
+                const err136 = {
                     instancePath: instancePath + "/table",
                     schemaPath: "#/$defs/ClaimedFactTable/type",
                     keyword: "type",
@@ -21211,18 +21404,18 @@ function validate67(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err127];
+                    vErrors = [err136];
                 } else {
-                    vErrors.push(err127);
+                    vErrors.push(err136);
                 }
                 errors++;
             }
         }
         if (data.time_series_rows !== undefined) {
-            let data45 = data.time_series_rows;
-            if (Array.isArray(data45)) {
-                if (data45.length > 64) {
-                    const err128 = {
+            let data49 = data.time_series_rows;
+            if (Array.isArray(data49)) {
+                if (data49.length > 64) {
+                    const err137 = {
                         instancePath: instancePath + "/time_series_rows",
                         schemaPath: "#/properties/time_series_rows/maxItems",
                         keyword: "maxItems",
@@ -21230,18 +21423,18 @@ function validate67(
                         message: "must NOT have more than 64 items",
                     };
                     if (vErrors === null) {
-                        vErrors = [err128];
+                        vErrors = [err137];
                     } else {
-                        vErrors.push(err128);
+                        vErrors.push(err137);
                     }
                     errors++;
                 }
-                const len6 = data45.length;
+                const len6 = data49.length;
                 for (let i6 = 0; i6 < len6; i6++) {
                     if (
-                        !validate68(data45[i6], {
+                        !validate68(data49[i6], {
                             instancePath: instancePath + "/time_series_rows/" + i6,
-                            parentData: data45,
+                            parentData: data49,
                             parentDataProperty: i6,
                             rootData,
                             dynamicAnchors,
@@ -21255,7 +21448,7 @@ function validate67(
                     }
                 }
             } else {
-                const err129 = {
+                const err138 = {
                     instancePath: instancePath + "/time_series_rows",
                     schemaPath: "#/properties/time_series_rows/type",
                     keyword: "type",
@@ -21263,18 +21456,18 @@ function validate67(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err129];
+                    vErrors = [err138];
                 } else {
-                    vErrors.push(err129);
+                    vErrors.push(err138);
                 }
                 errors++;
             }
         }
         if (data.time_series_table !== undefined) {
-            let data47 = data.time_series_table;
-            if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
-                if (data47.field === undefined) {
-                    const err130 = {
+            let data51 = data.time_series_table;
+            if (data51 && typeof data51 == "object" && !Array.isArray(data51)) {
+                if (data51.field === undefined) {
+                    const err139 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -21282,14 +21475,14 @@ function validate67(
                         message: "must have required property '" + "field" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err130];
+                        vErrors = [err139];
                     } else {
-                        vErrors.push(err130);
+                        vErrors.push(err139);
                     }
                     errors++;
                 }
-                if (data47.shape === undefined) {
-                    const err131 = {
+                if (data51.shape === undefined) {
+                    const err140 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -21297,14 +21490,14 @@ function validate67(
                         message: "must have required property '" + "shape" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err131];
+                        vErrors = [err140];
                     } else {
-                        vErrors.push(err131);
+                        vErrors.push(err140);
                     }
                     errors++;
                 }
-                if (data47.key === undefined) {
-                    const err132 = {
+                if (data51.key === undefined) {
+                    const err141 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -21312,43 +21505,34 @@ function validate67(
                         message: "must have required property '" + "key" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err132];
+                        vErrors = [err141];
                     } else {
-                        vErrors.push(err132);
+                        vErrors.push(err141);
                     }
                     errors++;
                 }
-                for (const key6 in data47) {
-                    if (!(
-                        key6 === "field" ||
-                        key6 === "shape" ||
-                        key6 === "key" ||
-                        key6 === "measures" ||
-                        key6 === "observations" ||
-                        key6 === "order_by" ||
-                        key6 === "measure_units" ||
-                        key6 === "cadence"
-                    )) {
-                        const err133 = {
+                for (const key8 in data51) {
+                    if (!func1.call(schema87.properties, key8)) {
+                        const err142 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key8 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err133];
+                            vErrors = [err142];
                         } else {
-                            vErrors.push(err133);
+                            vErrors.push(err142);
                         }
                         errors++;
                     }
                 }
-                if (data47.field !== undefined) {
-                    let data48 = data47.field;
-                    if (typeof data48 === "string") {
-                        if (func2(data48) > 128) {
-                            const err134 = {
+                if (data51.field !== undefined) {
+                    let data52 = data51.field;
+                    if (typeof data52 === "string") {
+                        if (func2(data52) > 128) {
+                            const err143 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/maxLength",
                                 keyword: "maxLength",
@@ -21356,14 +21540,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err134];
+                                vErrors = [err143];
                             } else {
-                                vErrors.push(err134);
+                                vErrors.push(err143);
                             }
                             errors++;
                         }
-                        if (func2(data48) < 1) {
-                            const err135 = {
+                        if (func2(data52) < 1) {
+                            const err144 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/minLength",
                                 keyword: "minLength",
@@ -21371,14 +21555,14 @@ function validate67(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err135];
+                                vErrors = [err144];
                             } else {
-                                vErrors.push(err135);
+                                vErrors.push(err144);
                             }
                             errors++;
                         }
                     } else {
-                        const err136 = {
+                        const err145 = {
                             instancePath: instancePath + "/time_series_table/field",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/field/type",
                             keyword: "type",
@@ -21386,17 +21570,17 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err136];
+                            vErrors = [err145];
                         } else {
-                            vErrors.push(err136);
+                            vErrors.push(err145);
                         }
                         errors++;
                     }
                 }
-                if (data47.shape !== undefined) {
-                    let data49 = data47.shape;
-                    if (typeof data49 !== "string") {
-                        const err137 = {
+                if (data51.shape !== undefined) {
+                    let data53 = data51.shape;
+                    if (typeof data53 !== "string") {
+                        const err146 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/type",
                             keyword: "type",
@@ -21404,19 +21588,19 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err137];
+                            vErrors = [err146];
                         } else {
-                            vErrors.push(err137);
+                            vErrors.push(err146);
                         }
                         errors++;
                     }
                     if (!(
-                        data49 === "time_series" ||
-                        data49 === "breakdown" ||
-                        data49 === "ranking" ||
-                        data49 === "distribution"
+                        data53 === "time_series" ||
+                        data53 === "breakdown" ||
+                        data53 === "ranking" ||
+                        data53 === "distribution"
                     )) {
-                        const err138 = {
+                        const err147 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
@@ -21424,18 +21608,18 @@ function validate67(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err138];
+                            vErrors = [err147];
                         } else {
-                            vErrors.push(err138);
+                            vErrors.push(err147);
                         }
                         errors++;
                     }
                 }
-                if (data47.key !== undefined) {
-                    let data50 = data47.key;
-                    if (Array.isArray(data50)) {
-                        if (data50.length > 8) {
-                            const err139 = {
+                if (data51.key !== undefined) {
+                    let data54 = data51.key;
+                    if (Array.isArray(data54)) {
+                        if (data54.length > 8) {
+                            const err148 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/maxItems",
                                 keyword: "maxItems",
@@ -21443,14 +21627,14 @@ function validate67(
                                 message: "must NOT have more than 8 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err139];
+                                vErrors = [err148];
                             } else {
-                                vErrors.push(err139);
+                                vErrors.push(err148);
                             }
                             errors++;
                         }
-                        if (data50.length < 1) {
-                            const err140 = {
+                        if (data54.length < 1) {
+                            const err149 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/minItems",
                                 keyword: "minItems",
@@ -21458,18 +21642,18 @@ function validate67(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err140];
+                                vErrors = [err149];
                             } else {
-                                vErrors.push(err140);
+                                vErrors.push(err149);
                             }
                             errors++;
                         }
-                        const len7 = data50.length;
+                        const len7 = data54.length;
                         for (let i7 = 0; i7 < len7; i7++) {
-                            let data51 = data50[i7];
-                            if (typeof data51 === "string") {
-                                if (func2(data51) > 128) {
-                                    const err141 = {
+                            let data55 = data54[i7];
+                            if (typeof data55 === "string") {
+                                if (func2(data55) > 128) {
+                                    const err150 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/maxLength",
@@ -21478,14 +21662,14 @@ function validate67(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err141];
+                                        vErrors = [err150];
                                     } else {
-                                        vErrors.push(err141);
+                                        vErrors.push(err150);
                                     }
                                     errors++;
                                 }
-                                if (func2(data51) < 1) {
-                                    const err142 = {
+                                if (func2(data55) < 1) {
+                                    const err151 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/minLength",
@@ -21494,14 +21678,14 @@ function validate67(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err142];
+                                        vErrors = [err151];
                                     } else {
-                                        vErrors.push(err142);
+                                        vErrors.push(err151);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err143 = {
+                                const err152 = {
                                     instancePath: instancePath + "/time_series_table/key/" + i7,
                                     schemaPath:
                                         "#/$defs/ClaimedFactTable/properties/key/items/type",
@@ -21510,15 +21694,15 @@ function validate67(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err143];
+                                    vErrors = [err152];
                                 } else {
-                                    vErrors.push(err143);
+                                    vErrors.push(err152);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err144 = {
+                        const err153 = {
                             instancePath: instancePath + "/time_series_table/key",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/key/type",
                             keyword: "type",
@@ -21526,18 +21710,18 @@ function validate67(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err144];
+                            vErrors = [err153];
                         } else {
-                            vErrors.push(err144);
+                            vErrors.push(err153);
                         }
                         errors++;
                     }
                 }
-                if (data47.measures !== undefined) {
-                    let data52 = data47.measures;
-                    if (Array.isArray(data52)) {
-                        if (data52.length > 32) {
-                            const err145 = {
+                if (data51.measures !== undefined) {
+                    let data56 = data51.measures;
+                    if (Array.isArray(data56)) {
+                        if (data56.length > 32) {
+                            const err154 = {
                                 instancePath: instancePath + "/time_series_table/measures",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/measures/maxItems",
                                 keyword: "maxItems",
@@ -21545,18 +21729,18 @@ function validate67(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err145];
+                                vErrors = [err154];
                             } else {
-                                vErrors.push(err145);
+                                vErrors.push(err154);
                             }
                             errors++;
                         }
-                        const len8 = data52.length;
+                        const len8 = data56.length;
                         for (let i8 = 0; i8 < len8; i8++) {
-                            let data53 = data52[i8];
-                            if (typeof data53 === "string") {
-                                if (func2(data53) > 128) {
-                                    const err146 = {
+                            let data57 = data56[i8];
+                            if (typeof data57 === "string") {
+                                if (func2(data57) > 128) {
+                                    const err155 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -21566,14 +21750,14 @@ function validate67(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err146];
+                                        vErrors = [err155];
                                     } else {
-                                        vErrors.push(err146);
+                                        vErrors.push(err155);
                                     }
                                     errors++;
                                 }
-                                if (func2(data53) < 1) {
-                                    const err147 = {
+                                if (func2(data57) < 1) {
+                                    const err156 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -21583,14 +21767,14 @@ function validate67(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err147];
+                                        vErrors = [err156];
                                     } else {
-                                        vErrors.push(err147);
+                                        vErrors.push(err156);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err148 = {
+                                const err157 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measures/" + i8,
                                     schemaPath:
@@ -21600,15 +21784,15 @@ function validate67(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err148];
+                                    vErrors = [err157];
                                 } else {
-                                    vErrors.push(err148);
+                                    vErrors.push(err157);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err149 = {
+                        const err158 = {
                             instancePath: instancePath + "/time_series_table/measures",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measures/type",
                             keyword: "type",
@@ -21616,18 +21800,18 @@ function validate67(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err149];
+                            vErrors = [err158];
                         } else {
-                            vErrors.push(err149);
+                            vErrors.push(err158);
                         }
                         errors++;
                     }
                 }
-                if (data47.observations !== undefined) {
-                    let data54 = data47.observations;
-                    if (Array.isArray(data54)) {
-                        if (data54.length > 32) {
-                            const err150 = {
+                if (data51.observations !== undefined) {
+                    let data58 = data51.observations;
+                    if (Array.isArray(data58)) {
+                        if (data58.length > 32) {
+                            const err159 = {
                                 instancePath: instancePath + "/time_series_table/observations",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/observations/maxItems",
@@ -21636,18 +21820,18 @@ function validate67(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err150];
+                                vErrors = [err159];
                             } else {
-                                vErrors.push(err150);
+                                vErrors.push(err159);
                             }
                             errors++;
                         }
-                        const len9 = data54.length;
+                        const len9 = data58.length;
                         for (let i9 = 0; i9 < len9; i9++) {
-                            let data55 = data54[i9];
-                            if (typeof data55 === "string") {
-                                if (func2(data55) > 128) {
-                                    const err151 = {
+                            let data59 = data58[i9];
+                            if (typeof data59 === "string") {
+                                if (func2(data59) > 128) {
+                                    const err160 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -21657,14 +21841,14 @@ function validate67(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err151];
+                                        vErrors = [err160];
                                     } else {
-                                        vErrors.push(err151);
+                                        vErrors.push(err160);
                                     }
                                     errors++;
                                 }
-                                if (func2(data55) < 1) {
-                                    const err152 = {
+                                if (func2(data59) < 1) {
+                                    const err161 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -21674,14 +21858,14 @@ function validate67(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err152];
+                                        vErrors = [err161];
                                     } else {
-                                        vErrors.push(err152);
+                                        vErrors.push(err161);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err153 = {
+                                const err162 = {
                                     instancePath:
                                         instancePath + "/time_series_table/observations/" + i9,
                                     schemaPath:
@@ -21691,15 +21875,15 @@ function validate67(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err153];
+                                    vErrors = [err162];
                                 } else {
-                                    vErrors.push(err153);
+                                    vErrors.push(err162);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err154 = {
+                        const err163 = {
                             instancePath: instancePath + "/time_series_table/observations",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/observations/type",
                             keyword: "type",
@@ -21707,18 +21891,18 @@ function validate67(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err154];
+                            vErrors = [err163];
                         } else {
-                            vErrors.push(err154);
+                            vErrors.push(err163);
                         }
                         errors++;
                     }
                 }
-                if (data47.order_by !== undefined) {
-                    let data56 = data47.order_by;
-                    if (typeof data56 === "string") {
-                        if (func2(data56) > 128) {
-                            const err155 = {
+                if (data51.order_by !== undefined) {
+                    let data60 = data51.order_by;
+                    if (typeof data60 === "string") {
+                        if (func2(data60) > 128) {
+                            const err164 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/maxLength",
@@ -21727,14 +21911,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err155];
+                                vErrors = [err164];
                             } else {
-                                vErrors.push(err155);
+                                vErrors.push(err164);
                             }
                             errors++;
                         }
-                        if (func2(data56) < 1) {
-                            const err156 = {
+                        if (func2(data60) < 1) {
+                            const err165 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/minLength",
@@ -21743,14 +21927,14 @@ function validate67(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err156];
+                                vErrors = [err165];
                             } else {
-                                vErrors.push(err156);
+                                vErrors.push(err165);
                             }
                             errors++;
                         }
                     } else {
-                        const err157 = {
+                        const err166 = {
                             instancePath: instancePath + "/time_series_table/order_by",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/order_by/type",
                             keyword: "type",
@@ -21758,18 +21942,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err157];
+                            vErrors = [err166];
                         } else {
-                            vErrors.push(err157);
+                            vErrors.push(err166);
                         }
                         errors++;
                     }
                 }
-                if (data47.measure_units !== undefined) {
-                    let data57 = data47.measure_units;
-                    if (Array.isArray(data57)) {
-                        if (data57.length > 32) {
-                            const err158 = {
+                if (data51.measure_units !== undefined) {
+                    let data61 = data51.measure_units;
+                    if (Array.isArray(data61)) {
+                        if (data61.length > 32) {
+                            const err167 = {
                                 instancePath: instancePath + "/time_series_table/measure_units",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/measure_units/maxItems",
@@ -21778,18 +21962,18 @@ function validate67(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err158];
+                                vErrors = [err167];
                             } else {
-                                vErrors.push(err158);
+                                vErrors.push(err167);
                             }
                             errors++;
                         }
-                        const len10 = data57.length;
+                        const len10 = data61.length;
                         for (let i10 = 0; i10 < len10; i10++) {
-                            let data58 = data57[i10];
-                            if (data58 && typeof data58 == "object" && !Array.isArray(data58)) {
-                                if (data58.measure === undefined) {
-                                    const err159 = {
+                            let data62 = data61[i10];
+                            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
+                                if (data62.measure === undefined) {
+                                    const err168 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -21801,14 +21985,14 @@ function validate67(
                                         message: "must have required property '" + "measure" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err159];
+                                        vErrors = [err168];
                                     } else {
-                                        vErrors.push(err159);
+                                        vErrors.push(err168);
                                     }
                                     errors++;
                                 }
-                                if (data58.unit === undefined) {
-                                    const err160 = {
+                                if (data62.unit === undefined) {
+                                    const err169 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -21820,15 +22004,15 @@ function validate67(
                                         message: "must have required property '" + "unit" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err160];
+                                        vErrors = [err169];
                                     } else {
-                                        vErrors.push(err160);
+                                        vErrors.push(err169);
                                     }
                                     errors++;
                                 }
-                                for (const key7 in data58) {
-                                    if (!(key7 === "measure" || key7 === "unit")) {
-                                        const err161 = {
+                                for (const key9 in data62) {
+                                    if (!(key9 === "measure" || key9 === "unit")) {
+                                        const err170 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -21836,22 +22020,22 @@ function validate67(
                                             schemaPath:
                                                 "#/$defs/ClaimedFactTable/properties/measure_units/items/additionalProperties",
                                             keyword: "additionalProperties",
-                                            params: { additionalProperty: key7 },
+                                            params: { additionalProperty: key9 },
                                             message: "must NOT have additional properties",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err161];
+                                            vErrors = [err170];
                                         } else {
-                                            vErrors.push(err161);
+                                            vErrors.push(err170);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.measure !== undefined) {
-                                    let data59 = data58.measure;
-                                    if (typeof data59 === "string") {
-                                        if (func2(data59) > 128) {
-                                            const err162 = {
+                                if (data62.measure !== undefined) {
+                                    let data63 = data62.measure;
+                                    if (typeof data63 === "string") {
+                                        if (func2(data63) > 128) {
+                                            const err171 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -21864,14 +22048,14 @@ function validate67(
                                                 message: "must NOT have more than 128 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err162];
+                                                vErrors = [err171];
                                             } else {
-                                                vErrors.push(err162);
+                                                vErrors.push(err171);
                                             }
                                             errors++;
                                         }
-                                        if (func2(data59) < 1) {
-                                            const err163 = {
+                                        if (func2(data63) < 1) {
+                                            const err172 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -21884,14 +22068,14 @@ function validate67(
                                                 message: "must NOT have fewer than 1 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err163];
+                                                vErrors = [err172];
                                             } else {
-                                                vErrors.push(err163);
+                                                vErrors.push(err172);
                                             }
                                             errors++;
                                         }
                                     } else {
-                                        const err164 = {
+                                        const err173 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -21904,17 +22088,17 @@ function validate67(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err164];
+                                            vErrors = [err173];
                                         } else {
-                                            vErrors.push(err164);
+                                            vErrors.push(err173);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.unit !== undefined) {
-                                    let data60 = data58.unit;
-                                    if (typeof data60 !== "string") {
-                                        const err165 = {
+                                if (data62.unit !== undefined) {
+                                    let data64 = data62.unit;
+                                    if (typeof data64 !== "string") {
+                                        const err174 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -21927,20 +22111,20 @@ function validate67(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err165];
+                                            vErrors = [err174];
                                         } else {
-                                            vErrors.push(err165);
+                                            vErrors.push(err174);
                                         }
                                         errors++;
                                     }
                                     if (!(
-                                        data60 === "count" ||
-                                        data60 === "ratio" ||
-                                        data60 === "hours" ||
-                                        data60 === "days" ||
-                                        data60 === "points"
+                                        data64 === "count" ||
+                                        data64 === "ratio" ||
+                                        data64 === "hours" ||
+                                        data64 === "days" ||
+                                        data64 === "points"
                                     )) {
-                                        const err166 = {
+                                        const err175 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -21957,15 +22141,15 @@ function validate67(
                                             message: "must be equal to one of the allowed values",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err166];
+                                            vErrors = [err175];
                                         } else {
-                                            vErrors.push(err166);
+                                            vErrors.push(err175);
                                         }
                                         errors++;
                                     }
                                 }
                             } else {
-                                const err167 = {
+                                const err176 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measure_units/" + i10,
                                     schemaPath:
@@ -21975,173 +22159,20 @@ function validate67(
                                     message: "must be object",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err167];
+                                    vErrors = [err176];
                                 } else {
-                                    vErrors.push(err167);
+                                    vErrors.push(err176);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err168 = {
+                        const err177 = {
                             instancePath: instancePath + "/time_series_table/measure_units",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measure_units/type",
                             keyword: "type",
                             params: { type: "array" },
                             message: "must be array",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err168];
-                        } else {
-                            vErrors.push(err168);
-                        }
-                        errors++;
-                    }
-                }
-                if (data47.cadence !== undefined) {
-                    let data61 = data47.cadence;
-                    if (typeof data61 !== "string") {
-                        const err169 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err169];
-                        } else {
-                            vErrors.push(err169);
-                        }
-                        errors++;
-                    }
-                    if (!(data61 === "day")) {
-                        const err170 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
-                            message: "must be equal to one of the allowed values",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err170];
-                        } else {
-                            vErrors.push(err170);
-                        }
-                        errors++;
-                    }
-                }
-            } else {
-                const err171 = {
-                    instancePath: instancePath + "/time_series_table",
-                    schemaPath: "#/$defs/ClaimedFactTable/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err171];
-                } else {
-                    vErrors.push(err171);
-                }
-                errors++;
-            }
-        }
-        if (data.investment_mix !== undefined) {
-            let data62 = data.investment_mix;
-            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
-                if (data62.investment_mix_source === undefined) {
-                    const err172 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "investment_mix_source" },
-                        message: "must have required property '" + "investment_mix_source" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err172];
-                    } else {
-                        vErrors.push(err172);
-                    }
-                    errors++;
-                }
-                if (data62.rollup_basis === undefined) {
-                    const err173 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "rollup_basis" },
-                        message: "must have required property '" + "rollup_basis" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err173];
-                    } else {
-                        vErrors.push(err173);
-                    }
-                    errors++;
-                }
-                if (data62.work_unit_count === undefined) {
-                    const err174 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "work_unit_count" },
-                        message: "must have required property '" + "work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err174];
-                    } else {
-                        vErrors.push(err174);
-                    }
-                    errors++;
-                }
-                if (data62.project_own_work_unit_count === undefined) {
-                    const err175 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "project_own_work_unit_count" },
-                        message:
-                            "must have required property '" + "project_own_work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err175];
-                    } else {
-                        vErrors.push(err175);
-                    }
-                    errors++;
-                }
-                for (const key8 in data62) {
-                    if (!(
-                        key8 === "investment_mix_source" ||
-                        key8 === "rollup_basis" ||
-                        key8 === "work_unit_count" ||
-                        key8 === "project_own_work_unit_count"
-                    )) {
-                        const err176 = {
-                            instancePath: instancePath + "/investment_mix",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key8 },
-                            message: "must NOT have additional properties",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err176];
-                        } else {
-                            vErrors.push(err176);
-                        }
-                        errors++;
-                    }
-                }
-                if (data62.investment_mix_source !== undefined) {
-                    if (typeof data62.investment_mix_source !== "string") {
-                        const err177 = {
-                            instancePath: instancePath + "/investment_mix/investment_mix_source",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err177];
@@ -22151,115 +22182,112 @@ function validate67(
                         errors++;
                     }
                 }
-                if (data62.rollup_basis !== undefined) {
-                    let data64 = data62.rollup_basis;
-                    if (typeof data64 === "string") {
-                        if (func2(data64) > 128) {
-                            const err178 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err178];
-                            } else {
-                                vErrors.push(err178);
-                            }
-                            errors++;
-                        }
-                        if (func2(data64) < 1) {
-                            const err179 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
-                                keyword: "minLength",
-                                params: { limit: 1 },
-                                message: "must NOT have fewer than 1 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err179];
-                            } else {
-                                vErrors.push(err179);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err180 = {
-                            instancePath: instancePath + "/investment_mix/rollup_basis",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                if (data51.cadence !== undefined) {
+                    let data65 = data51.cadence;
+                    if (typeof data65 !== "string") {
+                        const err178 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
                             keyword: "type",
                             params: { type: "string" },
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err180];
+                            vErrors = [err178];
                         } else {
-                            vErrors.push(err180);
+                            vErrors.push(err178);
+                        }
+                        errors++;
+                    }
+                    if (!(data65 === "day")) {
+                        const err179 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema87.properties.cadence.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err179];
+                        } else {
+                            vErrors.push(err179);
                         }
                         errors++;
                     }
                 }
-                if (data62.work_unit_count !== undefined) {
-                    let data65 = data62.work_unit_count;
-                    if (!(
-                        typeof data65 == "number" &&
-                        !(data65 % 1) &&
-                        !isNaN(data65) &&
-                        isFinite(data65)
-                    )) {
-                        const err181 = {
-                            instancePath: instancePath + "/investment_mix/work_unit_count",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err181];
-                        } else {
-                            vErrors.push(err181);
-                        }
-                        errors++;
-                    }
-                    if (typeof data65 == "number" && isFinite(data65)) {
-                        if (data65 < 0 || isNaN(data65)) {
-                            const err182 = {
-                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                if (data51.column_vocabularies !== undefined) {
+                    let data66 = data51.column_vocabularies;
+                    if (data66 && typeof data66 == "object" && !Array.isArray(data66)) {
+                        if (Object.keys(data66).length > 40) {
+                            const err180 = {
+                                instancePath:
+                                    instancePath + "/time_series_table/column_vocabularies",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
-                                vErrors = [err182];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err182);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
-                    }
-                }
-                if (data62.project_own_work_unit_count !== undefined) {
-                    let data66 = data62.project_own_work_unit_count;
-                    if (!(
-                        typeof data66 == "number" &&
-                        !(data66 % 1) &&
-                        !isNaN(data66) &&
-                        isFinite(data66)
-                    )) {
+                        for (const key10 in data66) {
+                            let data67 = data66[key10];
+                            if (typeof data67 !== "string") {
+                                const err181 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err181];
+                                } else {
+                                    vErrors.push(err181);
+                                }
+                                errors++;
+                            }
+                            if (!(data67 === "investment_theme" || data67 === "subcategory")) {
+                                const err182 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err182];
+                                } else {
+                                    vErrors.push(err182);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
                         const err183 = {
-                            instancePath:
-                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            instancePath: instancePath + "/time_series_table/column_vocabularies",
                             schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
                             keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err183];
@@ -22268,16 +22296,18 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data66 == "number" && isFinite(data66)) {
-                        if (data66 < 0 || isNaN(data66)) {
+                }
+                if (data51.word_columns !== undefined) {
+                    let data68 = data51.word_columns;
+                    if (data68 && typeof data68 == "object" && !Array.isArray(data68)) {
+                        if (Object.keys(data68).length > 40) {
                             const err184 = {
-                                instancePath:
-                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                instancePath: instancePath + "/time_series_table/word_columns",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
                                 vErrors = [err184];
@@ -22286,65 +22316,74 @@ function validate67(
                             }
                             errors++;
                         }
-                    }
-                }
-            } else {
-                const err185 = {
-                    instancePath: instancePath + "/investment_mix",
-                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err185];
-                } else {
-                    vErrors.push(err185);
-                }
-                errors++;
-            }
-        }
-        if (data.completion_forecast !== undefined) {
-            let data67 = data.completion_forecast;
-            if (data67 && typeof data67 == "object" && !Array.isArray(data67)) {
-                if (data67.state === undefined) {
-                    const err186 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err186];
+                        for (const key11 in data68) {
+                            let data69 = data68[key11];
+                            if (typeof data69 === "string") {
+                                if (func2(data69) > 128) {
+                                    const err185 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err185];
+                                    } else {
+                                        vErrors.push(err185);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data69) < 1) {
+                                    const err186 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err186];
+                                    } else {
+                                        vErrors.push(err186);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err187 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/word_columns/" +
+                                        key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err187];
+                                } else {
+                                    vErrors.push(err187);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        vErrors.push(err186);
-                    }
-                    errors++;
-                }
-                if (data67.computed_at === undefined) {
-                    const err187 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err187];
-                    } else {
-                        vErrors.push(err187);
-                    }
-                    errors++;
-                }
-                for (const key9 in data67) {
-                    if (!func1.call(schema90.properties, key9)) {
                         const err188 = {
-                            instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key9 },
-                            message: "must NOT have additional properties",
+                            instancePath: instancePath + "/time_series_table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err188];
@@ -22354,11 +22393,334 @@ function validate67(
                         errors++;
                     }
                 }
-                if (data67.work_scope_id !== undefined) {
-                    let data68 = data67.work_scope_id;
-                    if (typeof data68 === "string") {
-                        if (func2(data68) > 128) {
-                            const err189 = {
+            } else {
+                const err189 = {
+                    instancePath: instancePath + "/time_series_table",
+                    schemaPath: "#/$defs/ClaimedFactTable/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err189];
+                } else {
+                    vErrors.push(err189);
+                }
+                errors++;
+            }
+        }
+        if (data.investment_mix !== undefined) {
+            let data70 = data.investment_mix;
+            if (data70 && typeof data70 == "object" && !Array.isArray(data70)) {
+                if (data70.investment_mix_source === undefined) {
+                    const err190 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "investment_mix_source" },
+                        message: "must have required property '" + "investment_mix_source" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err190];
+                    } else {
+                        vErrors.push(err190);
+                    }
+                    errors++;
+                }
+                if (data70.rollup_basis === undefined) {
+                    const err191 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "rollup_basis" },
+                        message: "must have required property '" + "rollup_basis" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err191];
+                    } else {
+                        vErrors.push(err191);
+                    }
+                    errors++;
+                }
+                if (data70.work_unit_count === undefined) {
+                    const err192 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "work_unit_count" },
+                        message: "must have required property '" + "work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err192];
+                    } else {
+                        vErrors.push(err192);
+                    }
+                    errors++;
+                }
+                if (data70.project_own_work_unit_count === undefined) {
+                    const err193 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "project_own_work_unit_count" },
+                        message:
+                            "must have required property '" + "project_own_work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err193];
+                    } else {
+                        vErrors.push(err193);
+                    }
+                    errors++;
+                }
+                for (const key12 in data70) {
+                    if (!(
+                        key12 === "investment_mix_source" ||
+                        key12 === "rollup_basis" ||
+                        key12 === "work_unit_count" ||
+                        key12 === "project_own_work_unit_count"
+                    )) {
+                        const err194 = {
+                            instancePath: instancePath + "/investment_mix",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err194];
+                        } else {
+                            vErrors.push(err194);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.investment_mix_source !== undefined) {
+                    if (typeof data70.investment_mix_source !== "string") {
+                        const err195 = {
+                            instancePath: instancePath + "/investment_mix/investment_mix_source",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err195];
+                        } else {
+                            vErrors.push(err195);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.rollup_basis !== undefined) {
+                    let data72 = data70.rollup_basis;
+                    if (typeof data72 === "string") {
+                        if (func2(data72) > 128) {
+                            const err196 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err196];
+                            } else {
+                                vErrors.push(err196);
+                            }
+                            errors++;
+                        }
+                        if (func2(data72) < 1) {
+                            const err197 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err197];
+                            } else {
+                                vErrors.push(err197);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err198 = {
+                            instancePath: instancePath + "/investment_mix/rollup_basis",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err198];
+                        } else {
+                            vErrors.push(err198);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.work_unit_count !== undefined) {
+                    let data73 = data70.work_unit_count;
+                    if (!(
+                        typeof data73 == "number" &&
+                        !(data73 % 1) &&
+                        !isNaN(data73) &&
+                        isFinite(data73)
+                    )) {
+                        const err199 = {
+                            instancePath: instancePath + "/investment_mix/work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err199];
+                        } else {
+                            vErrors.push(err199);
+                        }
+                        errors++;
+                    }
+                    if (typeof data73 == "number" && isFinite(data73)) {
+                        if (data73 < 0 || isNaN(data73)) {
+                            const err200 = {
+                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data70.project_own_work_unit_count !== undefined) {
+                    let data74 = data70.project_own_work_unit_count;
+                    if (!(
+                        typeof data74 == "number" &&
+                        !(data74 % 1) &&
+                        !isNaN(data74) &&
+                        isFinite(data74)
+                    )) {
+                        const err201 = {
+                            instancePath:
+                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err201];
+                        } else {
+                            vErrors.push(err201);
+                        }
+                        errors++;
+                    }
+                    if (typeof data74 == "number" && isFinite(data74)) {
+                        if (data74 < 0 || isNaN(data74)) {
+                            const err202 = {
+                                instancePath:
+                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err202];
+                            } else {
+                                vErrors.push(err202);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/investment_mix",
+                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.completion_forecast !== undefined) {
+            let data75 = data.completion_forecast;
+            if (data75 && typeof data75 == "object" && !Array.isArray(data75)) {
+                if (data75.state === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data75.computed_at === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key13 in data75) {
+                    if (!func1.call(schema90.properties, key13)) {
+                        const err206 = {
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data75.work_scope_id !== undefined) {
+                    let data76 = data75.work_scope_id;
+                    if (typeof data76 === "string") {
+                        if (func2(data76) > 128) {
+                            const err207 = {
                                 instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
@@ -22367,14 +22729,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err189];
+                                vErrors = [err207];
                             } else {
-                                vErrors.push(err189);
+                                vErrors.push(err207);
                             }
                             errors++;
                         }
                     } else {
-                        const err190 = {
+                        const err208 = {
                             instancePath: instancePath + "/completion_forecast/work_scope_id",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
@@ -22383,17 +22745,17 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err190];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err190);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data67.state !== undefined) {
-                    let data69 = data67.state;
-                    if (typeof data69 !== "string") {
-                        const err191 = {
+                if (data75.state !== undefined) {
+                    let data77 = data75.state;
+                    if (typeof data77 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
                             keyword: "type",
@@ -22401,22 +22763,22 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err191];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err191);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data69 === "available" ||
-                        data69 === "not_stored" ||
-                        data69 === "no_run_within_horizon" ||
-                        data69 === "over_limit" ||
-                        data69 === "malformed" ||
-                        data69 === "scope_ambiguous" ||
-                        data69 === "unmatched"
+                        data77 === "available" ||
+                        data77 === "not_stored" ||
+                        data77 === "no_run_within_horizon" ||
+                        data77 === "over_limit" ||
+                        data77 === "malformed" ||
+                        data77 === "scope_ambiguous" ||
+                        data77 === "unmatched"
                     )) {
-                        const err192 = {
+                        const err210 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
@@ -22424,18 +22786,18 @@ function validate67(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err192];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err192);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data67.computed_at !== undefined) {
-                    let data70 = data67.computed_at;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err193 = {
+                if (data75.computed_at !== undefined) {
+                    let data78 = data75.computed_at;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err211 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
@@ -22444,14 +22806,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err193];
+                                vErrors = [err211];
                             } else {
-                                vErrors.push(err193);
+                                vErrors.push(err211);
                             }
                             errors++;
                         }
-                        if (func2(data70) < 1) {
-                            const err194 = {
+                        if (func2(data78) < 1) {
+                            const err212 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -22460,14 +22822,14 @@ function validate67(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err194];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err194);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data70)) {
-                            const err195 = {
+                        if (!pattern13.test(data78)) {
+                            const err213 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -22482,14 +22844,14 @@ function validate67(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err195];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err195);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data70)) {
-                            const err196 = {
+                        if (!formats0.validate(data78)) {
+                            const err214 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -22498,14 +22860,14 @@ function validate67(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err196];
+                                vErrors = [err214];
                             } else {
-                                vErrors.push(err196);
+                                vErrors.push(err214);
                             }
                             errors++;
                         }
                     } else {
-                        const err197 = {
+                        const err215 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -22514,22 +22876,22 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err197];
+                            vErrors = [err215];
                         } else {
-                            vErrors.push(err197);
+                            vErrors.push(err215);
                         }
                         errors++;
                     }
                 }
-                if (data67.simulation_count !== undefined) {
-                    let data71 = data67.simulation_count;
+                if (data75.simulation_count !== undefined) {
+                    let data79 = data75.simulation_count;
                     if (!(
-                        typeof data71 == "number" &&
-                        !(data71 % 1) &&
-                        !isNaN(data71) &&
-                        isFinite(data71)
+                        typeof data79 == "number" &&
+                        !(data79 % 1) &&
+                        !isNaN(data79) &&
+                        isFinite(data79)
                     )) {
-                        const err198 = {
+                        const err216 = {
                             instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
@@ -22538,15 +22900,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err198];
+                            vErrors = [err216];
                         } else {
-                            vErrors.push(err198);
+                            vErrors.push(err216);
                         }
                         errors++;
                     }
-                    if (typeof data71 == "number" && isFinite(data71)) {
-                        if (data71 < 0 || isNaN(data71)) {
-                            const err199 = {
+                    if (typeof data79 == "number" && isFinite(data79)) {
+                        if (data79 < 0 || isNaN(data79)) {
+                            const err217 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
@@ -22556,23 +22918,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err199];
+                                vErrors = [err217];
                             } else {
-                                vErrors.push(err199);
+                                vErrors.push(err217);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.horizon_days !== undefined) {
-                    let data72 = data67.horizon_days;
+                if (data75.horizon_days !== undefined) {
+                    let data80 = data75.horizon_days;
                     if (!(
-                        typeof data72 == "number" &&
-                        !(data72 % 1) &&
-                        !isNaN(data72) &&
-                        isFinite(data72)
+                        typeof data80 == "number" &&
+                        !(data80 % 1) &&
+                        !isNaN(data80) &&
+                        isFinite(data80)
                     )) {
-                        const err200 = {
+                        const err218 = {
                             instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
@@ -22581,15 +22943,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err200];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err200);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (typeof data72 == "number" && isFinite(data72)) {
-                        if (data72 < 0 || isNaN(data72)) {
-                            const err201 = {
+                    if (typeof data80 == "number" && isFinite(data80)) {
+                        if (data80 < 0 || isNaN(data80)) {
+                            const err219 = {
                                 instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
@@ -22598,23 +22960,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err201];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err201);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.unfinished_runs !== undefined) {
-                    let data73 = data67.unfinished_runs;
+                if (data75.unfinished_runs !== undefined) {
+                    let data81 = data75.unfinished_runs;
                     if (!(
-                        typeof data73 == "number" &&
-                        !(data73 % 1) &&
-                        !isNaN(data73) &&
-                        isFinite(data73)
+                        typeof data81 == "number" &&
+                        !(data81 % 1) &&
+                        !isNaN(data81) &&
+                        isFinite(data81)
                     )) {
-                        const err202 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
@@ -22623,15 +22985,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
-                    if (typeof data73 == "number" && isFinite(data73)) {
-                        if (data73 < 0 || isNaN(data73)) {
-                            const err203 = {
+                    if (typeof data81 == "number" && isFinite(data81)) {
+                        if (data81 < 0 || isNaN(data81)) {
+                            const err221 = {
                                 instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
@@ -22640,23 +23002,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err203];
+                                vErrors = [err221];
                             } else {
-                                vErrors.push(err203);
+                                vErrors.push(err221);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.target_items !== undefined) {
-                    let data74 = data67.target_items;
+                if (data75.target_items !== undefined) {
+                    let data82 = data75.target_items;
                     if (!(
-                        typeof data74 == "number" &&
-                        !(data74 % 1) &&
-                        !isNaN(data74) &&
-                        isFinite(data74)
+                        typeof data82 == "number" &&
+                        !(data82 % 1) &&
+                        !isNaN(data82) &&
+                        isFinite(data82)
                     )) {
-                        const err204 = {
+                        const err222 = {
                             instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
@@ -22665,15 +23027,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err222];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err222);
                         }
                         errors++;
                     }
-                    if (typeof data74 == "number" && isFinite(data74)) {
-                        if (data74 < 0 || isNaN(data74)) {
-                            const err205 = {
+                    if (typeof data82 == "number" && isFinite(data82)) {
+                        if (data82 < 0 || isNaN(data82)) {
+                            const err223 = {
                                 instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
@@ -22682,23 +23044,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err205];
+                                vErrors = [err223];
                             } else {
-                                vErrors.push(err205);
+                                vErrors.push(err223);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data75 = data67.forecast_p50_days;
+                if (data75.forecast_p50_days !== undefined) {
+                    let data83 = data75.forecast_p50_days;
                     if (!(
-                        typeof data75 == "number" &&
-                        !(data75 % 1) &&
-                        !isNaN(data75) &&
-                        isFinite(data75)
+                        typeof data83 == "number" &&
+                        !(data83 % 1) &&
+                        !isNaN(data83) &&
+                        isFinite(data83)
                     )) {
-                        const err206 = {
+                        const err224 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
@@ -22707,15 +23069,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err224];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err224);
                         }
                         errors++;
                     }
-                    if (typeof data75 == "number" && isFinite(data75)) {
-                        if (data75 < 0 || isNaN(data75)) {
-                            const err207 = {
+                    if (typeof data83 == "number" && isFinite(data83)) {
+                        if (data83 < 0 || isNaN(data83)) {
+                            const err225 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
@@ -22725,23 +23087,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err207];
+                                vErrors = [err225];
                             } else {
-                                vErrors.push(err207);
+                                vErrors.push(err225);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data76 = data67.forecast_p85_days;
+                if (data75.forecast_p85_days !== undefined) {
+                    let data84 = data75.forecast_p85_days;
                     if (!(
-                        typeof data76 == "number" &&
-                        !(data76 % 1) &&
-                        !isNaN(data76) &&
-                        isFinite(data76)
+                        typeof data84 == "number" &&
+                        !(data84 % 1) &&
+                        !isNaN(data84) &&
+                        isFinite(data84)
                     )) {
-                        const err208 = {
+                        const err226 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
@@ -22750,15 +23112,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err226];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err226);
                         }
                         errors++;
                     }
-                    if (typeof data76 == "number" && isFinite(data76)) {
-                        if (data76 < 0 || isNaN(data76)) {
-                            const err209 = {
+                    if (typeof data84 == "number" && isFinite(data84)) {
+                        if (data84 < 0 || isNaN(data84)) {
+                            const err227 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
@@ -22768,23 +23130,23 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err209];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err209);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data77 = data67.forecast_p95_days;
+                if (data75.forecast_p95_days !== undefined) {
+                    let data85 = data75.forecast_p95_days;
                     if (!(
-                        typeof data77 == "number" &&
-                        !(data77 % 1) &&
-                        !isNaN(data77) &&
-                        isFinite(data77)
+                        typeof data85 == "number" &&
+                        !(data85 % 1) &&
+                        !isNaN(data85) &&
+                        isFinite(data85)
                     )) {
-                        const err210 = {
+                        const err228 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
@@ -22793,15 +23155,15 @@ function validate67(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err210];
+                            vErrors = [err228];
                         } else {
-                            vErrors.push(err210);
+                            vErrors.push(err228);
                         }
                         errors++;
                     }
-                    if (typeof data77 == "number" && isFinite(data77)) {
-                        if (data77 < 0 || isNaN(data77)) {
-                            const err211 = {
+                    if (typeof data85 == "number" && isFinite(data85)) {
+                        if (data85 < 0 || isNaN(data85)) {
+                            const err229 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_days",
                                 schemaPath:
@@ -22811,19 +23173,19 @@ function validate67(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_date !== undefined) {
-                    let data78 = data67.forecast_p50_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err212 = {
+                if (data75.forecast_p50_date !== undefined) {
+                    let data86 = data75.forecast_p50_date;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err230 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -22833,14 +23195,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err212];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err212);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err213 = {
+                        if (!pattern14.test(data86)) {
+                            const err231 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -22851,14 +23213,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err231];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err231);
                             }
                             errors++;
                         }
                     } else {
-                        const err214 = {
+                        const err232 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -22867,18 +23229,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err232];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err232);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p85_date !== undefined) {
-                    let data79 = data67.forecast_p85_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err215 = {
+                if (data75.forecast_p85_date !== undefined) {
+                    let data87 = data75.forecast_p85_date;
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 128) {
+                            const err233 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -22888,14 +23250,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err215];
+                                vErrors = [err233];
                             } else {
-                                vErrors.push(err215);
+                                vErrors.push(err233);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err216 = {
+                        if (!pattern14.test(data87)) {
+                            const err234 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -22906,14 +23268,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err234];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err234);
                             }
                             errors++;
                         }
                     } else {
-                        const err217 = {
+                        const err235 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -22922,18 +23284,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err217];
+                            vErrors = [err235];
                         } else {
-                            vErrors.push(err217);
+                            vErrors.push(err235);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p95_date !== undefined) {
-                    let data80 = data67.forecast_p95_date;
-                    if (typeof data80 === "string") {
-                        if (func2(data80) > 128) {
-                            const err218 = {
+                if (data75.forecast_p95_date !== undefined) {
+                    let data88 = data75.forecast_p95_date;
+                    if (typeof data88 === "string") {
+                        if (func2(data88) > 128) {
+                            const err236 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -22943,14 +23305,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err218];
+                                vErrors = [err236];
                             } else {
-                                vErrors.push(err218);
+                                vErrors.push(err236);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data80)) {
-                            const err219 = {
+                        if (!pattern14.test(data88)) {
+                            const err237 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -22961,14 +23323,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err219];
+                                vErrors = [err237];
                             } else {
-                                vErrors.push(err219);
+                                vErrors.push(err237);
                             }
                             errors++;
                         }
                     } else {
-                        const err220 = {
+                        const err238 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -22977,15 +23339,15 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err220];
+                            vErrors = [err238];
                         } else {
-                            vErrors.push(err220);
+                            vErrors.push(err238);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err221 = {
+                const err239 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -22993,15 +23355,15 @@ function validate67(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err221];
+                    vErrors = [err239];
                 } else {
-                    vErrors.push(err221);
+                    vErrors.push(err239);
                 }
                 errors++;
             }
         }
     } else {
-        const err222 = {
+        const err240 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -23009,9 +23371,9 @@ function validate67(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err222];
+            vErrors = [err240];
         } else {
-            vErrors.push(err222);
+            vErrors.push(err240);
         }
         errors++;
     }
@@ -47895,16 +48257,7 @@ function validate144(
                     errors++;
                 }
                 for (const key4 in data30) {
-                    if (!(
-                        key4 === "field" ||
-                        key4 === "shape" ||
-                        key4 === "key" ||
-                        key4 === "measures" ||
-                        key4 === "observations" ||
-                        key4 === "order_by" ||
-                        key4 === "measure_units" ||
-                        key4 === "cadence"
-                    )) {
+                    if (!func1.call(schema87.properties, key4)) {
                         const err89 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -48592,8 +48945,185 @@ function validate144(
                         errors++;
                     }
                 }
+                if (data30.column_vocabularies !== undefined) {
+                    let data45 = data30.column_vocabularies;
+                    if (data45 && typeof data45 == "object" && !Array.isArray(data45)) {
+                        if (Object.keys(data45).length > 40) {
+                            const err127 = {
+                                instancePath: instancePath + "/table/column_vocabularies",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err127];
+                            } else {
+                                vErrors.push(err127);
+                            }
+                            errors++;
+                        }
+                        for (const key6 in data45) {
+                            let data46 = data45[key6];
+                            if (typeof data46 !== "string") {
+                                const err128 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err128];
+                                } else {
+                                    vErrors.push(err128);
+                                }
+                                errors++;
+                            }
+                            if (!(data46 === "investment_theme" || data46 === "subcategory")) {
+                                const err129 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err129];
+                                } else {
+                                    vErrors.push(err129);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err130 = {
+                            instancePath: instancePath + "/table/column_vocabularies",
+                            schemaPath:
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err130];
+                        } else {
+                            vErrors.push(err130);
+                        }
+                        errors++;
+                    }
+                }
+                if (data30.word_columns !== undefined) {
+                    let data47 = data30.word_columns;
+                    if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
+                        if (Object.keys(data47).length > 40) {
+                            const err131 = {
+                                instancePath: instancePath + "/table/word_columns",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err131];
+                            } else {
+                                vErrors.push(err131);
+                            }
+                            errors++;
+                        }
+                        for (const key7 in data47) {
+                            let data48 = data47[key7];
+                            if (typeof data48 === "string") {
+                                if (func2(data48) > 128) {
+                                    const err132 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err132];
+                                    } else {
+                                        vErrors.push(err132);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data48) < 1) {
+                                    const err133 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err133];
+                                    } else {
+                                        vErrors.push(err133);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err134 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/word_columns/" +
+                                        key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err134];
+                                } else {
+                                    vErrors.push(err134);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err135 = {
+                            instancePath: instancePath + "/table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err135];
+                        } else {
+                            vErrors.push(err135);
+                        }
+                        errors++;
+                    }
+                }
             } else {
-                const err127 = {
+                const err136 = {
                     instancePath: instancePath + "/table",
                     schemaPath: "#/$defs/ClaimedFactTable/type",
                     keyword: "type",
@@ -48601,18 +49131,18 @@ function validate144(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err127];
+                    vErrors = [err136];
                 } else {
-                    vErrors.push(err127);
+                    vErrors.push(err136);
                 }
                 errors++;
             }
         }
         if (data.time_series_rows !== undefined) {
-            let data45 = data.time_series_rows;
-            if (Array.isArray(data45)) {
-                if (data45.length > 64) {
-                    const err128 = {
+            let data49 = data.time_series_rows;
+            if (Array.isArray(data49)) {
+                if (data49.length > 64) {
+                    const err137 = {
                         instancePath: instancePath + "/time_series_rows",
                         schemaPath: "#/properties/time_series_rows/maxItems",
                         keyword: "maxItems",
@@ -48620,18 +49150,18 @@ function validate144(
                         message: "must NOT have more than 64 items",
                     };
                     if (vErrors === null) {
-                        vErrors = [err128];
+                        vErrors = [err137];
                     } else {
-                        vErrors.push(err128);
+                        vErrors.push(err137);
                     }
                     errors++;
                 }
-                const len6 = data45.length;
+                const len6 = data49.length;
                 for (let i6 = 0; i6 < len6; i6++) {
                     if (
-                        !validate68(data45[i6], {
+                        !validate68(data49[i6], {
                             instancePath: instancePath + "/time_series_rows/" + i6,
-                            parentData: data45,
+                            parentData: data49,
                             parentDataProperty: i6,
                             rootData,
                             dynamicAnchors,
@@ -48645,7 +49175,7 @@ function validate144(
                     }
                 }
             } else {
-                const err129 = {
+                const err138 = {
                     instancePath: instancePath + "/time_series_rows",
                     schemaPath: "#/properties/time_series_rows/type",
                     keyword: "type",
@@ -48653,18 +49183,18 @@ function validate144(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err129];
+                    vErrors = [err138];
                 } else {
-                    vErrors.push(err129);
+                    vErrors.push(err138);
                 }
                 errors++;
             }
         }
         if (data.time_series_table !== undefined) {
-            let data47 = data.time_series_table;
-            if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
-                if (data47.field === undefined) {
-                    const err130 = {
+            let data51 = data.time_series_table;
+            if (data51 && typeof data51 == "object" && !Array.isArray(data51)) {
+                if (data51.field === undefined) {
+                    const err139 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -48672,14 +49202,14 @@ function validate144(
                         message: "must have required property '" + "field" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err130];
+                        vErrors = [err139];
                     } else {
-                        vErrors.push(err130);
+                        vErrors.push(err139);
                     }
                     errors++;
                 }
-                if (data47.shape === undefined) {
-                    const err131 = {
+                if (data51.shape === undefined) {
+                    const err140 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -48687,14 +49217,14 @@ function validate144(
                         message: "must have required property '" + "shape" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err131];
+                        vErrors = [err140];
                     } else {
-                        vErrors.push(err131);
+                        vErrors.push(err140);
                     }
                     errors++;
                 }
-                if (data47.key === undefined) {
-                    const err132 = {
+                if (data51.key === undefined) {
+                    const err141 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -48702,43 +49232,34 @@ function validate144(
                         message: "must have required property '" + "key" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err132];
+                        vErrors = [err141];
                     } else {
-                        vErrors.push(err132);
+                        vErrors.push(err141);
                     }
                     errors++;
                 }
-                for (const key6 in data47) {
-                    if (!(
-                        key6 === "field" ||
-                        key6 === "shape" ||
-                        key6 === "key" ||
-                        key6 === "measures" ||
-                        key6 === "observations" ||
-                        key6 === "order_by" ||
-                        key6 === "measure_units" ||
-                        key6 === "cadence"
-                    )) {
-                        const err133 = {
+                for (const key8 in data51) {
+                    if (!func1.call(schema87.properties, key8)) {
+                        const err142 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key8 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err133];
+                            vErrors = [err142];
                         } else {
-                            vErrors.push(err133);
+                            vErrors.push(err142);
                         }
                         errors++;
                     }
                 }
-                if (data47.field !== undefined) {
-                    let data48 = data47.field;
-                    if (typeof data48 === "string") {
-                        if (func2(data48) > 128) {
-                            const err134 = {
+                if (data51.field !== undefined) {
+                    let data52 = data51.field;
+                    if (typeof data52 === "string") {
+                        if (func2(data52) > 128) {
+                            const err143 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/maxLength",
                                 keyword: "maxLength",
@@ -48746,14 +49267,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err134];
+                                vErrors = [err143];
                             } else {
-                                vErrors.push(err134);
+                                vErrors.push(err143);
                             }
                             errors++;
                         }
-                        if (func2(data48) < 1) {
-                            const err135 = {
+                        if (func2(data52) < 1) {
+                            const err144 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/minLength",
                                 keyword: "minLength",
@@ -48761,14 +49282,14 @@ function validate144(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err135];
+                                vErrors = [err144];
                             } else {
-                                vErrors.push(err135);
+                                vErrors.push(err144);
                             }
                             errors++;
                         }
                     } else {
-                        const err136 = {
+                        const err145 = {
                             instancePath: instancePath + "/time_series_table/field",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/field/type",
                             keyword: "type",
@@ -48776,17 +49297,17 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err136];
+                            vErrors = [err145];
                         } else {
-                            vErrors.push(err136);
+                            vErrors.push(err145);
                         }
                         errors++;
                     }
                 }
-                if (data47.shape !== undefined) {
-                    let data49 = data47.shape;
-                    if (typeof data49 !== "string") {
-                        const err137 = {
+                if (data51.shape !== undefined) {
+                    let data53 = data51.shape;
+                    if (typeof data53 !== "string") {
+                        const err146 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/type",
                             keyword: "type",
@@ -48794,19 +49315,19 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err137];
+                            vErrors = [err146];
                         } else {
-                            vErrors.push(err137);
+                            vErrors.push(err146);
                         }
                         errors++;
                     }
                     if (!(
-                        data49 === "time_series" ||
-                        data49 === "breakdown" ||
-                        data49 === "ranking" ||
-                        data49 === "distribution"
+                        data53 === "time_series" ||
+                        data53 === "breakdown" ||
+                        data53 === "ranking" ||
+                        data53 === "distribution"
                     )) {
-                        const err138 = {
+                        const err147 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
@@ -48814,18 +49335,18 @@ function validate144(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err138];
+                            vErrors = [err147];
                         } else {
-                            vErrors.push(err138);
+                            vErrors.push(err147);
                         }
                         errors++;
                     }
                 }
-                if (data47.key !== undefined) {
-                    let data50 = data47.key;
-                    if (Array.isArray(data50)) {
-                        if (data50.length > 8) {
-                            const err139 = {
+                if (data51.key !== undefined) {
+                    let data54 = data51.key;
+                    if (Array.isArray(data54)) {
+                        if (data54.length > 8) {
+                            const err148 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/maxItems",
                                 keyword: "maxItems",
@@ -48833,14 +49354,14 @@ function validate144(
                                 message: "must NOT have more than 8 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err139];
+                                vErrors = [err148];
                             } else {
-                                vErrors.push(err139);
+                                vErrors.push(err148);
                             }
                             errors++;
                         }
-                        if (data50.length < 1) {
-                            const err140 = {
+                        if (data54.length < 1) {
+                            const err149 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/minItems",
                                 keyword: "minItems",
@@ -48848,18 +49369,18 @@ function validate144(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err140];
+                                vErrors = [err149];
                             } else {
-                                vErrors.push(err140);
+                                vErrors.push(err149);
                             }
                             errors++;
                         }
-                        const len7 = data50.length;
+                        const len7 = data54.length;
                         for (let i7 = 0; i7 < len7; i7++) {
-                            let data51 = data50[i7];
-                            if (typeof data51 === "string") {
-                                if (func2(data51) > 128) {
-                                    const err141 = {
+                            let data55 = data54[i7];
+                            if (typeof data55 === "string") {
+                                if (func2(data55) > 128) {
+                                    const err150 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/maxLength",
@@ -48868,14 +49389,14 @@ function validate144(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err141];
+                                        vErrors = [err150];
                                     } else {
-                                        vErrors.push(err141);
+                                        vErrors.push(err150);
                                     }
                                     errors++;
                                 }
-                                if (func2(data51) < 1) {
-                                    const err142 = {
+                                if (func2(data55) < 1) {
+                                    const err151 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/minLength",
@@ -48884,14 +49405,14 @@ function validate144(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err142];
+                                        vErrors = [err151];
                                     } else {
-                                        vErrors.push(err142);
+                                        vErrors.push(err151);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err143 = {
+                                const err152 = {
                                     instancePath: instancePath + "/time_series_table/key/" + i7,
                                     schemaPath:
                                         "#/$defs/ClaimedFactTable/properties/key/items/type",
@@ -48900,15 +49421,15 @@ function validate144(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err143];
+                                    vErrors = [err152];
                                 } else {
-                                    vErrors.push(err143);
+                                    vErrors.push(err152);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err144 = {
+                        const err153 = {
                             instancePath: instancePath + "/time_series_table/key",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/key/type",
                             keyword: "type",
@@ -48916,18 +49437,18 @@ function validate144(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err144];
+                            vErrors = [err153];
                         } else {
-                            vErrors.push(err144);
+                            vErrors.push(err153);
                         }
                         errors++;
                     }
                 }
-                if (data47.measures !== undefined) {
-                    let data52 = data47.measures;
-                    if (Array.isArray(data52)) {
-                        if (data52.length > 32) {
-                            const err145 = {
+                if (data51.measures !== undefined) {
+                    let data56 = data51.measures;
+                    if (Array.isArray(data56)) {
+                        if (data56.length > 32) {
+                            const err154 = {
                                 instancePath: instancePath + "/time_series_table/measures",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/measures/maxItems",
                                 keyword: "maxItems",
@@ -48935,18 +49456,18 @@ function validate144(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err145];
+                                vErrors = [err154];
                             } else {
-                                vErrors.push(err145);
+                                vErrors.push(err154);
                             }
                             errors++;
                         }
-                        const len8 = data52.length;
+                        const len8 = data56.length;
                         for (let i8 = 0; i8 < len8; i8++) {
-                            let data53 = data52[i8];
-                            if (typeof data53 === "string") {
-                                if (func2(data53) > 128) {
-                                    const err146 = {
+                            let data57 = data56[i8];
+                            if (typeof data57 === "string") {
+                                if (func2(data57) > 128) {
+                                    const err155 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -48956,14 +49477,14 @@ function validate144(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err146];
+                                        vErrors = [err155];
                                     } else {
-                                        vErrors.push(err146);
+                                        vErrors.push(err155);
                                     }
                                     errors++;
                                 }
-                                if (func2(data53) < 1) {
-                                    const err147 = {
+                                if (func2(data57) < 1) {
+                                    const err156 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -48973,14 +49494,14 @@ function validate144(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err147];
+                                        vErrors = [err156];
                                     } else {
-                                        vErrors.push(err147);
+                                        vErrors.push(err156);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err148 = {
+                                const err157 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measures/" + i8,
                                     schemaPath:
@@ -48990,15 +49511,15 @@ function validate144(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err148];
+                                    vErrors = [err157];
                                 } else {
-                                    vErrors.push(err148);
+                                    vErrors.push(err157);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err149 = {
+                        const err158 = {
                             instancePath: instancePath + "/time_series_table/measures",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measures/type",
                             keyword: "type",
@@ -49006,18 +49527,18 @@ function validate144(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err149];
+                            vErrors = [err158];
                         } else {
-                            vErrors.push(err149);
+                            vErrors.push(err158);
                         }
                         errors++;
                     }
                 }
-                if (data47.observations !== undefined) {
-                    let data54 = data47.observations;
-                    if (Array.isArray(data54)) {
-                        if (data54.length > 32) {
-                            const err150 = {
+                if (data51.observations !== undefined) {
+                    let data58 = data51.observations;
+                    if (Array.isArray(data58)) {
+                        if (data58.length > 32) {
+                            const err159 = {
                                 instancePath: instancePath + "/time_series_table/observations",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/observations/maxItems",
@@ -49026,18 +49547,18 @@ function validate144(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err150];
+                                vErrors = [err159];
                             } else {
-                                vErrors.push(err150);
+                                vErrors.push(err159);
                             }
                             errors++;
                         }
-                        const len9 = data54.length;
+                        const len9 = data58.length;
                         for (let i9 = 0; i9 < len9; i9++) {
-                            let data55 = data54[i9];
-                            if (typeof data55 === "string") {
-                                if (func2(data55) > 128) {
-                                    const err151 = {
+                            let data59 = data58[i9];
+                            if (typeof data59 === "string") {
+                                if (func2(data59) > 128) {
+                                    const err160 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -49047,14 +49568,14 @@ function validate144(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err151];
+                                        vErrors = [err160];
                                     } else {
-                                        vErrors.push(err151);
+                                        vErrors.push(err160);
                                     }
                                     errors++;
                                 }
-                                if (func2(data55) < 1) {
-                                    const err152 = {
+                                if (func2(data59) < 1) {
+                                    const err161 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -49064,14 +49585,14 @@ function validate144(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err152];
+                                        vErrors = [err161];
                                     } else {
-                                        vErrors.push(err152);
+                                        vErrors.push(err161);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err153 = {
+                                const err162 = {
                                     instancePath:
                                         instancePath + "/time_series_table/observations/" + i9,
                                     schemaPath:
@@ -49081,15 +49602,15 @@ function validate144(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err153];
+                                    vErrors = [err162];
                                 } else {
-                                    vErrors.push(err153);
+                                    vErrors.push(err162);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err154 = {
+                        const err163 = {
                             instancePath: instancePath + "/time_series_table/observations",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/observations/type",
                             keyword: "type",
@@ -49097,18 +49618,18 @@ function validate144(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err154];
+                            vErrors = [err163];
                         } else {
-                            vErrors.push(err154);
+                            vErrors.push(err163);
                         }
                         errors++;
                     }
                 }
-                if (data47.order_by !== undefined) {
-                    let data56 = data47.order_by;
-                    if (typeof data56 === "string") {
-                        if (func2(data56) > 128) {
-                            const err155 = {
+                if (data51.order_by !== undefined) {
+                    let data60 = data51.order_by;
+                    if (typeof data60 === "string") {
+                        if (func2(data60) > 128) {
+                            const err164 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/maxLength",
@@ -49117,14 +49638,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err155];
+                                vErrors = [err164];
                             } else {
-                                vErrors.push(err155);
+                                vErrors.push(err164);
                             }
                             errors++;
                         }
-                        if (func2(data56) < 1) {
-                            const err156 = {
+                        if (func2(data60) < 1) {
+                            const err165 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/minLength",
@@ -49133,14 +49654,14 @@ function validate144(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err156];
+                                vErrors = [err165];
                             } else {
-                                vErrors.push(err156);
+                                vErrors.push(err165);
                             }
                             errors++;
                         }
                     } else {
-                        const err157 = {
+                        const err166 = {
                             instancePath: instancePath + "/time_series_table/order_by",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/order_by/type",
                             keyword: "type",
@@ -49148,18 +49669,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err157];
+                            vErrors = [err166];
                         } else {
-                            vErrors.push(err157);
+                            vErrors.push(err166);
                         }
                         errors++;
                     }
                 }
-                if (data47.measure_units !== undefined) {
-                    let data57 = data47.measure_units;
-                    if (Array.isArray(data57)) {
-                        if (data57.length > 32) {
-                            const err158 = {
+                if (data51.measure_units !== undefined) {
+                    let data61 = data51.measure_units;
+                    if (Array.isArray(data61)) {
+                        if (data61.length > 32) {
+                            const err167 = {
                                 instancePath: instancePath + "/time_series_table/measure_units",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/measure_units/maxItems",
@@ -49168,18 +49689,18 @@ function validate144(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err158];
+                                vErrors = [err167];
                             } else {
-                                vErrors.push(err158);
+                                vErrors.push(err167);
                             }
                             errors++;
                         }
-                        const len10 = data57.length;
+                        const len10 = data61.length;
                         for (let i10 = 0; i10 < len10; i10++) {
-                            let data58 = data57[i10];
-                            if (data58 && typeof data58 == "object" && !Array.isArray(data58)) {
-                                if (data58.measure === undefined) {
-                                    const err159 = {
+                            let data62 = data61[i10];
+                            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
+                                if (data62.measure === undefined) {
+                                    const err168 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -49191,14 +49712,14 @@ function validate144(
                                         message: "must have required property '" + "measure" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err159];
+                                        vErrors = [err168];
                                     } else {
-                                        vErrors.push(err159);
+                                        vErrors.push(err168);
                                     }
                                     errors++;
                                 }
-                                if (data58.unit === undefined) {
-                                    const err160 = {
+                                if (data62.unit === undefined) {
+                                    const err169 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -49210,15 +49731,15 @@ function validate144(
                                         message: "must have required property '" + "unit" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err160];
+                                        vErrors = [err169];
                                     } else {
-                                        vErrors.push(err160);
+                                        vErrors.push(err169);
                                     }
                                     errors++;
                                 }
-                                for (const key7 in data58) {
-                                    if (!(key7 === "measure" || key7 === "unit")) {
-                                        const err161 = {
+                                for (const key9 in data62) {
+                                    if (!(key9 === "measure" || key9 === "unit")) {
+                                        const err170 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -49226,22 +49747,22 @@ function validate144(
                                             schemaPath:
                                                 "#/$defs/ClaimedFactTable/properties/measure_units/items/additionalProperties",
                                             keyword: "additionalProperties",
-                                            params: { additionalProperty: key7 },
+                                            params: { additionalProperty: key9 },
                                             message: "must NOT have additional properties",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err161];
+                                            vErrors = [err170];
                                         } else {
-                                            vErrors.push(err161);
+                                            vErrors.push(err170);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.measure !== undefined) {
-                                    let data59 = data58.measure;
-                                    if (typeof data59 === "string") {
-                                        if (func2(data59) > 128) {
-                                            const err162 = {
+                                if (data62.measure !== undefined) {
+                                    let data63 = data62.measure;
+                                    if (typeof data63 === "string") {
+                                        if (func2(data63) > 128) {
+                                            const err171 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -49254,14 +49775,14 @@ function validate144(
                                                 message: "must NOT have more than 128 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err162];
+                                                vErrors = [err171];
                                             } else {
-                                                vErrors.push(err162);
+                                                vErrors.push(err171);
                                             }
                                             errors++;
                                         }
-                                        if (func2(data59) < 1) {
-                                            const err163 = {
+                                        if (func2(data63) < 1) {
+                                            const err172 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -49274,14 +49795,14 @@ function validate144(
                                                 message: "must NOT have fewer than 1 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err163];
+                                                vErrors = [err172];
                                             } else {
-                                                vErrors.push(err163);
+                                                vErrors.push(err172);
                                             }
                                             errors++;
                                         }
                                     } else {
-                                        const err164 = {
+                                        const err173 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -49294,17 +49815,17 @@ function validate144(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err164];
+                                            vErrors = [err173];
                                         } else {
-                                            vErrors.push(err164);
+                                            vErrors.push(err173);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.unit !== undefined) {
-                                    let data60 = data58.unit;
-                                    if (typeof data60 !== "string") {
-                                        const err165 = {
+                                if (data62.unit !== undefined) {
+                                    let data64 = data62.unit;
+                                    if (typeof data64 !== "string") {
+                                        const err174 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -49317,20 +49838,20 @@ function validate144(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err165];
+                                            vErrors = [err174];
                                         } else {
-                                            vErrors.push(err165);
+                                            vErrors.push(err174);
                                         }
                                         errors++;
                                     }
                                     if (!(
-                                        data60 === "count" ||
-                                        data60 === "ratio" ||
-                                        data60 === "hours" ||
-                                        data60 === "days" ||
-                                        data60 === "points"
+                                        data64 === "count" ||
+                                        data64 === "ratio" ||
+                                        data64 === "hours" ||
+                                        data64 === "days" ||
+                                        data64 === "points"
                                     )) {
-                                        const err166 = {
+                                        const err175 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -49347,15 +49868,15 @@ function validate144(
                                             message: "must be equal to one of the allowed values",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err166];
+                                            vErrors = [err175];
                                         } else {
-                                            vErrors.push(err166);
+                                            vErrors.push(err175);
                                         }
                                         errors++;
                                     }
                                 }
                             } else {
-                                const err167 = {
+                                const err176 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measure_units/" + i10,
                                     schemaPath:
@@ -49365,173 +49886,20 @@ function validate144(
                                     message: "must be object",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err167];
+                                    vErrors = [err176];
                                 } else {
-                                    vErrors.push(err167);
+                                    vErrors.push(err176);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err168 = {
+                        const err177 = {
                             instancePath: instancePath + "/time_series_table/measure_units",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measure_units/type",
                             keyword: "type",
                             params: { type: "array" },
                             message: "must be array",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err168];
-                        } else {
-                            vErrors.push(err168);
-                        }
-                        errors++;
-                    }
-                }
-                if (data47.cadence !== undefined) {
-                    let data61 = data47.cadence;
-                    if (typeof data61 !== "string") {
-                        const err169 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err169];
-                        } else {
-                            vErrors.push(err169);
-                        }
-                        errors++;
-                    }
-                    if (!(data61 === "day")) {
-                        const err170 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
-                            message: "must be equal to one of the allowed values",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err170];
-                        } else {
-                            vErrors.push(err170);
-                        }
-                        errors++;
-                    }
-                }
-            } else {
-                const err171 = {
-                    instancePath: instancePath + "/time_series_table",
-                    schemaPath: "#/$defs/ClaimedFactTable/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err171];
-                } else {
-                    vErrors.push(err171);
-                }
-                errors++;
-            }
-        }
-        if (data.investment_mix !== undefined) {
-            let data62 = data.investment_mix;
-            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
-                if (data62.investment_mix_source === undefined) {
-                    const err172 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "investment_mix_source" },
-                        message: "must have required property '" + "investment_mix_source" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err172];
-                    } else {
-                        vErrors.push(err172);
-                    }
-                    errors++;
-                }
-                if (data62.rollup_basis === undefined) {
-                    const err173 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "rollup_basis" },
-                        message: "must have required property '" + "rollup_basis" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err173];
-                    } else {
-                        vErrors.push(err173);
-                    }
-                    errors++;
-                }
-                if (data62.work_unit_count === undefined) {
-                    const err174 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "work_unit_count" },
-                        message: "must have required property '" + "work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err174];
-                    } else {
-                        vErrors.push(err174);
-                    }
-                    errors++;
-                }
-                if (data62.project_own_work_unit_count === undefined) {
-                    const err175 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "project_own_work_unit_count" },
-                        message:
-                            "must have required property '" + "project_own_work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err175];
-                    } else {
-                        vErrors.push(err175);
-                    }
-                    errors++;
-                }
-                for (const key8 in data62) {
-                    if (!(
-                        key8 === "investment_mix_source" ||
-                        key8 === "rollup_basis" ||
-                        key8 === "work_unit_count" ||
-                        key8 === "project_own_work_unit_count"
-                    )) {
-                        const err176 = {
-                            instancePath: instancePath + "/investment_mix",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key8 },
-                            message: "must NOT have additional properties",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err176];
-                        } else {
-                            vErrors.push(err176);
-                        }
-                        errors++;
-                    }
-                }
-                if (data62.investment_mix_source !== undefined) {
-                    if (typeof data62.investment_mix_source !== "string") {
-                        const err177 = {
-                            instancePath: instancePath + "/investment_mix/investment_mix_source",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err177];
@@ -49541,115 +49909,112 @@ function validate144(
                         errors++;
                     }
                 }
-                if (data62.rollup_basis !== undefined) {
-                    let data64 = data62.rollup_basis;
-                    if (typeof data64 === "string") {
-                        if (func2(data64) > 128) {
-                            const err178 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err178];
-                            } else {
-                                vErrors.push(err178);
-                            }
-                            errors++;
-                        }
-                        if (func2(data64) < 1) {
-                            const err179 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
-                                keyword: "minLength",
-                                params: { limit: 1 },
-                                message: "must NOT have fewer than 1 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err179];
-                            } else {
-                                vErrors.push(err179);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err180 = {
-                            instancePath: instancePath + "/investment_mix/rollup_basis",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                if (data51.cadence !== undefined) {
+                    let data65 = data51.cadence;
+                    if (typeof data65 !== "string") {
+                        const err178 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
                             keyword: "type",
                             params: { type: "string" },
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err180];
+                            vErrors = [err178];
                         } else {
-                            vErrors.push(err180);
+                            vErrors.push(err178);
+                        }
+                        errors++;
+                    }
+                    if (!(data65 === "day")) {
+                        const err179 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema87.properties.cadence.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err179];
+                        } else {
+                            vErrors.push(err179);
                         }
                         errors++;
                     }
                 }
-                if (data62.work_unit_count !== undefined) {
-                    let data65 = data62.work_unit_count;
-                    if (!(
-                        typeof data65 == "number" &&
-                        !(data65 % 1) &&
-                        !isNaN(data65) &&
-                        isFinite(data65)
-                    )) {
-                        const err181 = {
-                            instancePath: instancePath + "/investment_mix/work_unit_count",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err181];
-                        } else {
-                            vErrors.push(err181);
-                        }
-                        errors++;
-                    }
-                    if (typeof data65 == "number" && isFinite(data65)) {
-                        if (data65 < 0 || isNaN(data65)) {
-                            const err182 = {
-                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                if (data51.column_vocabularies !== undefined) {
+                    let data66 = data51.column_vocabularies;
+                    if (data66 && typeof data66 == "object" && !Array.isArray(data66)) {
+                        if (Object.keys(data66).length > 40) {
+                            const err180 = {
+                                instancePath:
+                                    instancePath + "/time_series_table/column_vocabularies",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
-                                vErrors = [err182];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err182);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
-                    }
-                }
-                if (data62.project_own_work_unit_count !== undefined) {
-                    let data66 = data62.project_own_work_unit_count;
-                    if (!(
-                        typeof data66 == "number" &&
-                        !(data66 % 1) &&
-                        !isNaN(data66) &&
-                        isFinite(data66)
-                    )) {
+                        for (const key10 in data66) {
+                            let data67 = data66[key10];
+                            if (typeof data67 !== "string") {
+                                const err181 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err181];
+                                } else {
+                                    vErrors.push(err181);
+                                }
+                                errors++;
+                            }
+                            if (!(data67 === "investment_theme" || data67 === "subcategory")) {
+                                const err182 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err182];
+                                } else {
+                                    vErrors.push(err182);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
                         const err183 = {
-                            instancePath:
-                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            instancePath: instancePath + "/time_series_table/column_vocabularies",
                             schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
                             keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err183];
@@ -49658,16 +50023,18 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data66 == "number" && isFinite(data66)) {
-                        if (data66 < 0 || isNaN(data66)) {
+                }
+                if (data51.word_columns !== undefined) {
+                    let data68 = data51.word_columns;
+                    if (data68 && typeof data68 == "object" && !Array.isArray(data68)) {
+                        if (Object.keys(data68).length > 40) {
                             const err184 = {
-                                instancePath:
-                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                instancePath: instancePath + "/time_series_table/word_columns",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
                                 vErrors = [err184];
@@ -49676,65 +50043,74 @@ function validate144(
                             }
                             errors++;
                         }
-                    }
-                }
-            } else {
-                const err185 = {
-                    instancePath: instancePath + "/investment_mix",
-                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err185];
-                } else {
-                    vErrors.push(err185);
-                }
-                errors++;
-            }
-        }
-        if (data.completion_forecast !== undefined) {
-            let data67 = data.completion_forecast;
-            if (data67 && typeof data67 == "object" && !Array.isArray(data67)) {
-                if (data67.state === undefined) {
-                    const err186 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err186];
+                        for (const key11 in data68) {
+                            let data69 = data68[key11];
+                            if (typeof data69 === "string") {
+                                if (func2(data69) > 128) {
+                                    const err185 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err185];
+                                    } else {
+                                        vErrors.push(err185);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data69) < 1) {
+                                    const err186 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err186];
+                                    } else {
+                                        vErrors.push(err186);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err187 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/word_columns/" +
+                                        key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err187];
+                                } else {
+                                    vErrors.push(err187);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        vErrors.push(err186);
-                    }
-                    errors++;
-                }
-                if (data67.computed_at === undefined) {
-                    const err187 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err187];
-                    } else {
-                        vErrors.push(err187);
-                    }
-                    errors++;
-                }
-                for (const key9 in data67) {
-                    if (!func1.call(schema90.properties, key9)) {
                         const err188 = {
-                            instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key9 },
-                            message: "must NOT have additional properties",
+                            instancePath: instancePath + "/time_series_table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err188];
@@ -49744,11 +50120,334 @@ function validate144(
                         errors++;
                     }
                 }
-                if (data67.work_scope_id !== undefined) {
-                    let data68 = data67.work_scope_id;
-                    if (typeof data68 === "string") {
-                        if (func2(data68) > 128) {
-                            const err189 = {
+            } else {
+                const err189 = {
+                    instancePath: instancePath + "/time_series_table",
+                    schemaPath: "#/$defs/ClaimedFactTable/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err189];
+                } else {
+                    vErrors.push(err189);
+                }
+                errors++;
+            }
+        }
+        if (data.investment_mix !== undefined) {
+            let data70 = data.investment_mix;
+            if (data70 && typeof data70 == "object" && !Array.isArray(data70)) {
+                if (data70.investment_mix_source === undefined) {
+                    const err190 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "investment_mix_source" },
+                        message: "must have required property '" + "investment_mix_source" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err190];
+                    } else {
+                        vErrors.push(err190);
+                    }
+                    errors++;
+                }
+                if (data70.rollup_basis === undefined) {
+                    const err191 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "rollup_basis" },
+                        message: "must have required property '" + "rollup_basis" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err191];
+                    } else {
+                        vErrors.push(err191);
+                    }
+                    errors++;
+                }
+                if (data70.work_unit_count === undefined) {
+                    const err192 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "work_unit_count" },
+                        message: "must have required property '" + "work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err192];
+                    } else {
+                        vErrors.push(err192);
+                    }
+                    errors++;
+                }
+                if (data70.project_own_work_unit_count === undefined) {
+                    const err193 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "project_own_work_unit_count" },
+                        message:
+                            "must have required property '" + "project_own_work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err193];
+                    } else {
+                        vErrors.push(err193);
+                    }
+                    errors++;
+                }
+                for (const key12 in data70) {
+                    if (!(
+                        key12 === "investment_mix_source" ||
+                        key12 === "rollup_basis" ||
+                        key12 === "work_unit_count" ||
+                        key12 === "project_own_work_unit_count"
+                    )) {
+                        const err194 = {
+                            instancePath: instancePath + "/investment_mix",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err194];
+                        } else {
+                            vErrors.push(err194);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.investment_mix_source !== undefined) {
+                    if (typeof data70.investment_mix_source !== "string") {
+                        const err195 = {
+                            instancePath: instancePath + "/investment_mix/investment_mix_source",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err195];
+                        } else {
+                            vErrors.push(err195);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.rollup_basis !== undefined) {
+                    let data72 = data70.rollup_basis;
+                    if (typeof data72 === "string") {
+                        if (func2(data72) > 128) {
+                            const err196 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err196];
+                            } else {
+                                vErrors.push(err196);
+                            }
+                            errors++;
+                        }
+                        if (func2(data72) < 1) {
+                            const err197 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err197];
+                            } else {
+                                vErrors.push(err197);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err198 = {
+                            instancePath: instancePath + "/investment_mix/rollup_basis",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err198];
+                        } else {
+                            vErrors.push(err198);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.work_unit_count !== undefined) {
+                    let data73 = data70.work_unit_count;
+                    if (!(
+                        typeof data73 == "number" &&
+                        !(data73 % 1) &&
+                        !isNaN(data73) &&
+                        isFinite(data73)
+                    )) {
+                        const err199 = {
+                            instancePath: instancePath + "/investment_mix/work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err199];
+                        } else {
+                            vErrors.push(err199);
+                        }
+                        errors++;
+                    }
+                    if (typeof data73 == "number" && isFinite(data73)) {
+                        if (data73 < 0 || isNaN(data73)) {
+                            const err200 = {
+                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data70.project_own_work_unit_count !== undefined) {
+                    let data74 = data70.project_own_work_unit_count;
+                    if (!(
+                        typeof data74 == "number" &&
+                        !(data74 % 1) &&
+                        !isNaN(data74) &&
+                        isFinite(data74)
+                    )) {
+                        const err201 = {
+                            instancePath:
+                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err201];
+                        } else {
+                            vErrors.push(err201);
+                        }
+                        errors++;
+                    }
+                    if (typeof data74 == "number" && isFinite(data74)) {
+                        if (data74 < 0 || isNaN(data74)) {
+                            const err202 = {
+                                instancePath:
+                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err202];
+                            } else {
+                                vErrors.push(err202);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/investment_mix",
+                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.completion_forecast !== undefined) {
+            let data75 = data.completion_forecast;
+            if (data75 && typeof data75 == "object" && !Array.isArray(data75)) {
+                if (data75.state === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data75.computed_at === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key13 in data75) {
+                    if (!func1.call(schema90.properties, key13)) {
+                        const err206 = {
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data75.work_scope_id !== undefined) {
+                    let data76 = data75.work_scope_id;
+                    if (typeof data76 === "string") {
+                        if (func2(data76) > 128) {
+                            const err207 = {
                                 instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
@@ -49757,14 +50456,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err189];
+                                vErrors = [err207];
                             } else {
-                                vErrors.push(err189);
+                                vErrors.push(err207);
                             }
                             errors++;
                         }
                     } else {
-                        const err190 = {
+                        const err208 = {
                             instancePath: instancePath + "/completion_forecast/work_scope_id",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
@@ -49773,17 +50472,17 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err190];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err190);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data67.state !== undefined) {
-                    let data69 = data67.state;
-                    if (typeof data69 !== "string") {
-                        const err191 = {
+                if (data75.state !== undefined) {
+                    let data77 = data75.state;
+                    if (typeof data77 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
                             keyword: "type",
@@ -49791,22 +50490,22 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err191];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err191);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data69 === "available" ||
-                        data69 === "not_stored" ||
-                        data69 === "no_run_within_horizon" ||
-                        data69 === "over_limit" ||
-                        data69 === "malformed" ||
-                        data69 === "scope_ambiguous" ||
-                        data69 === "unmatched"
+                        data77 === "available" ||
+                        data77 === "not_stored" ||
+                        data77 === "no_run_within_horizon" ||
+                        data77 === "over_limit" ||
+                        data77 === "malformed" ||
+                        data77 === "scope_ambiguous" ||
+                        data77 === "unmatched"
                     )) {
-                        const err192 = {
+                        const err210 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
@@ -49814,18 +50513,18 @@ function validate144(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err192];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err192);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data67.computed_at !== undefined) {
-                    let data70 = data67.computed_at;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err193 = {
+                if (data75.computed_at !== undefined) {
+                    let data78 = data75.computed_at;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err211 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
@@ -49834,14 +50533,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err193];
+                                vErrors = [err211];
                             } else {
-                                vErrors.push(err193);
+                                vErrors.push(err211);
                             }
                             errors++;
                         }
-                        if (func2(data70) < 1) {
-                            const err194 = {
+                        if (func2(data78) < 1) {
+                            const err212 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -49850,14 +50549,14 @@ function validate144(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err194];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err194);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data70)) {
-                            const err195 = {
+                        if (!pattern13.test(data78)) {
+                            const err213 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -49872,14 +50571,14 @@ function validate144(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err195];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err195);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data70)) {
-                            const err196 = {
+                        if (!formats0.validate(data78)) {
+                            const err214 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -49888,14 +50587,14 @@ function validate144(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err196];
+                                vErrors = [err214];
                             } else {
-                                vErrors.push(err196);
+                                vErrors.push(err214);
                             }
                             errors++;
                         }
                     } else {
-                        const err197 = {
+                        const err215 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -49904,22 +50603,22 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err197];
+                            vErrors = [err215];
                         } else {
-                            vErrors.push(err197);
+                            vErrors.push(err215);
                         }
                         errors++;
                     }
                 }
-                if (data67.simulation_count !== undefined) {
-                    let data71 = data67.simulation_count;
+                if (data75.simulation_count !== undefined) {
+                    let data79 = data75.simulation_count;
                     if (!(
-                        typeof data71 == "number" &&
-                        !(data71 % 1) &&
-                        !isNaN(data71) &&
-                        isFinite(data71)
+                        typeof data79 == "number" &&
+                        !(data79 % 1) &&
+                        !isNaN(data79) &&
+                        isFinite(data79)
                     )) {
-                        const err198 = {
+                        const err216 = {
                             instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
@@ -49928,15 +50627,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err198];
+                            vErrors = [err216];
                         } else {
-                            vErrors.push(err198);
+                            vErrors.push(err216);
                         }
                         errors++;
                     }
-                    if (typeof data71 == "number" && isFinite(data71)) {
-                        if (data71 < 0 || isNaN(data71)) {
-                            const err199 = {
+                    if (typeof data79 == "number" && isFinite(data79)) {
+                        if (data79 < 0 || isNaN(data79)) {
+                            const err217 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
@@ -49946,23 +50645,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err199];
+                                vErrors = [err217];
                             } else {
-                                vErrors.push(err199);
+                                vErrors.push(err217);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.horizon_days !== undefined) {
-                    let data72 = data67.horizon_days;
+                if (data75.horizon_days !== undefined) {
+                    let data80 = data75.horizon_days;
                     if (!(
-                        typeof data72 == "number" &&
-                        !(data72 % 1) &&
-                        !isNaN(data72) &&
-                        isFinite(data72)
+                        typeof data80 == "number" &&
+                        !(data80 % 1) &&
+                        !isNaN(data80) &&
+                        isFinite(data80)
                     )) {
-                        const err200 = {
+                        const err218 = {
                             instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
@@ -49971,15 +50670,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err200];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err200);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (typeof data72 == "number" && isFinite(data72)) {
-                        if (data72 < 0 || isNaN(data72)) {
-                            const err201 = {
+                    if (typeof data80 == "number" && isFinite(data80)) {
+                        if (data80 < 0 || isNaN(data80)) {
+                            const err219 = {
                                 instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
@@ -49988,23 +50687,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err201];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err201);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.unfinished_runs !== undefined) {
-                    let data73 = data67.unfinished_runs;
+                if (data75.unfinished_runs !== undefined) {
+                    let data81 = data75.unfinished_runs;
                     if (!(
-                        typeof data73 == "number" &&
-                        !(data73 % 1) &&
-                        !isNaN(data73) &&
-                        isFinite(data73)
+                        typeof data81 == "number" &&
+                        !(data81 % 1) &&
+                        !isNaN(data81) &&
+                        isFinite(data81)
                     )) {
-                        const err202 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
@@ -50013,15 +50712,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
-                    if (typeof data73 == "number" && isFinite(data73)) {
-                        if (data73 < 0 || isNaN(data73)) {
-                            const err203 = {
+                    if (typeof data81 == "number" && isFinite(data81)) {
+                        if (data81 < 0 || isNaN(data81)) {
+                            const err221 = {
                                 instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
@@ -50030,23 +50729,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err203];
+                                vErrors = [err221];
                             } else {
-                                vErrors.push(err203);
+                                vErrors.push(err221);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.target_items !== undefined) {
-                    let data74 = data67.target_items;
+                if (data75.target_items !== undefined) {
+                    let data82 = data75.target_items;
                     if (!(
-                        typeof data74 == "number" &&
-                        !(data74 % 1) &&
-                        !isNaN(data74) &&
-                        isFinite(data74)
+                        typeof data82 == "number" &&
+                        !(data82 % 1) &&
+                        !isNaN(data82) &&
+                        isFinite(data82)
                     )) {
-                        const err204 = {
+                        const err222 = {
                             instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
@@ -50055,15 +50754,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err222];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err222);
                         }
                         errors++;
                     }
-                    if (typeof data74 == "number" && isFinite(data74)) {
-                        if (data74 < 0 || isNaN(data74)) {
-                            const err205 = {
+                    if (typeof data82 == "number" && isFinite(data82)) {
+                        if (data82 < 0 || isNaN(data82)) {
+                            const err223 = {
                                 instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
@@ -50072,23 +50771,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err205];
+                                vErrors = [err223];
                             } else {
-                                vErrors.push(err205);
+                                vErrors.push(err223);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data75 = data67.forecast_p50_days;
+                if (data75.forecast_p50_days !== undefined) {
+                    let data83 = data75.forecast_p50_days;
                     if (!(
-                        typeof data75 == "number" &&
-                        !(data75 % 1) &&
-                        !isNaN(data75) &&
-                        isFinite(data75)
+                        typeof data83 == "number" &&
+                        !(data83 % 1) &&
+                        !isNaN(data83) &&
+                        isFinite(data83)
                     )) {
-                        const err206 = {
+                        const err224 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
@@ -50097,15 +50796,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err224];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err224);
                         }
                         errors++;
                     }
-                    if (typeof data75 == "number" && isFinite(data75)) {
-                        if (data75 < 0 || isNaN(data75)) {
-                            const err207 = {
+                    if (typeof data83 == "number" && isFinite(data83)) {
+                        if (data83 < 0 || isNaN(data83)) {
+                            const err225 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
@@ -50115,23 +50814,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err207];
+                                vErrors = [err225];
                             } else {
-                                vErrors.push(err207);
+                                vErrors.push(err225);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data76 = data67.forecast_p85_days;
+                if (data75.forecast_p85_days !== undefined) {
+                    let data84 = data75.forecast_p85_days;
                     if (!(
-                        typeof data76 == "number" &&
-                        !(data76 % 1) &&
-                        !isNaN(data76) &&
-                        isFinite(data76)
+                        typeof data84 == "number" &&
+                        !(data84 % 1) &&
+                        !isNaN(data84) &&
+                        isFinite(data84)
                     )) {
-                        const err208 = {
+                        const err226 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
@@ -50140,15 +50839,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err226];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err226);
                         }
                         errors++;
                     }
-                    if (typeof data76 == "number" && isFinite(data76)) {
-                        if (data76 < 0 || isNaN(data76)) {
-                            const err209 = {
+                    if (typeof data84 == "number" && isFinite(data84)) {
+                        if (data84 < 0 || isNaN(data84)) {
+                            const err227 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
@@ -50158,23 +50857,23 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err209];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err209);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data77 = data67.forecast_p95_days;
+                if (data75.forecast_p95_days !== undefined) {
+                    let data85 = data75.forecast_p95_days;
                     if (!(
-                        typeof data77 == "number" &&
-                        !(data77 % 1) &&
-                        !isNaN(data77) &&
-                        isFinite(data77)
+                        typeof data85 == "number" &&
+                        !(data85 % 1) &&
+                        !isNaN(data85) &&
+                        isFinite(data85)
                     )) {
-                        const err210 = {
+                        const err228 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
@@ -50183,15 +50882,15 @@ function validate144(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err210];
+                            vErrors = [err228];
                         } else {
-                            vErrors.push(err210);
+                            vErrors.push(err228);
                         }
                         errors++;
                     }
-                    if (typeof data77 == "number" && isFinite(data77)) {
-                        if (data77 < 0 || isNaN(data77)) {
-                            const err211 = {
+                    if (typeof data85 == "number" && isFinite(data85)) {
+                        if (data85 < 0 || isNaN(data85)) {
+                            const err229 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_days",
                                 schemaPath:
@@ -50201,19 +50900,19 @@ function validate144(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_date !== undefined) {
-                    let data78 = data67.forecast_p50_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err212 = {
+                if (data75.forecast_p50_date !== undefined) {
+                    let data86 = data75.forecast_p50_date;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err230 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -50223,14 +50922,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err212];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err212);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err213 = {
+                        if (!pattern14.test(data86)) {
+                            const err231 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -50241,14 +50940,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err231];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err231);
                             }
                             errors++;
                         }
                     } else {
-                        const err214 = {
+                        const err232 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -50257,18 +50956,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err232];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err232);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p85_date !== undefined) {
-                    let data79 = data67.forecast_p85_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err215 = {
+                if (data75.forecast_p85_date !== undefined) {
+                    let data87 = data75.forecast_p85_date;
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 128) {
+                            const err233 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -50278,14 +50977,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err215];
+                                vErrors = [err233];
                             } else {
-                                vErrors.push(err215);
+                                vErrors.push(err233);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err216 = {
+                        if (!pattern14.test(data87)) {
+                            const err234 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -50296,14 +50995,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err234];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err234);
                             }
                             errors++;
                         }
                     } else {
-                        const err217 = {
+                        const err235 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -50312,18 +51011,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err217];
+                            vErrors = [err235];
                         } else {
-                            vErrors.push(err217);
+                            vErrors.push(err235);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p95_date !== undefined) {
-                    let data80 = data67.forecast_p95_date;
-                    if (typeof data80 === "string") {
-                        if (func2(data80) > 128) {
-                            const err218 = {
+                if (data75.forecast_p95_date !== undefined) {
+                    let data88 = data75.forecast_p95_date;
+                    if (typeof data88 === "string") {
+                        if (func2(data88) > 128) {
+                            const err236 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -50333,14 +51032,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err218];
+                                vErrors = [err236];
                             } else {
-                                vErrors.push(err218);
+                                vErrors.push(err236);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data80)) {
-                            const err219 = {
+                        if (!pattern14.test(data88)) {
+                            const err237 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -50351,14 +51050,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err219];
+                                vErrors = [err237];
                             } else {
-                                vErrors.push(err219);
+                                vErrors.push(err237);
                             }
                             errors++;
                         }
                     } else {
-                        const err220 = {
+                        const err238 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -50367,15 +51066,15 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err220];
+                            vErrors = [err238];
                         } else {
-                            vErrors.push(err220);
+                            vErrors.push(err238);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err221 = {
+                const err239 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -50383,15 +51082,15 @@ function validate144(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err221];
+                    vErrors = [err239];
                 } else {
-                    vErrors.push(err221);
+                    vErrors.push(err239);
                 }
                 errors++;
             }
         }
     } else {
-        const err222 = {
+        const err240 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -50399,9 +51098,9 @@ function validate144(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err222];
+            vErrors = [err240];
         } else {
-            vErrors.push(err222);
+            vErrors.push(err240);
         }
         errors++;
     }
@@ -63553,6 +64252,31 @@ const schema196 = {
                     type: "string",
                     enum: ["day"],
                 },
+                column_vocabularies: {
+                    description:
+                        "CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.",
+                    type: "object",
+                    maxProperties: 40,
+                    additionalProperties: {
+                        description:
+                            "`investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.",
+                        type: "string",
+                        enum: ["investment_theme", "subcategory"],
+                    },
+                },
+                word_columns: {
+                    description:
+                        "CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.",
+                    type: "object",
+                    maxProperties: 40,
+                    additionalProperties: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 128,
+                        description:
+                            "Another name in `observations`: the column that carries the id's served word.",
+                    },
+                },
             },
             required: ["field", "shape", "key"],
         },
@@ -69165,6 +69889,31 @@ const schema213 = {
             type: "string",
             enum: ["day"],
         },
+        column_vocabularies: {
+            description:
+                "CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.",
+            type: "object",
+            maxProperties: 40,
+            additionalProperties: {
+                description:
+                    "`investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.",
+                type: "string",
+                enum: ["investment_theme", "subcategory"],
+            },
+        },
+        word_columns: {
+            description:
+                "CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.",
+            type: "object",
+            maxProperties: 40,
+            additionalProperties: {
+                type: "string",
+                minLength: 1,
+                maxLength: 128,
+                description:
+                    "Another name in `observations`: the column that carries the id's served word.",
+            },
+        },
     },
     required: ["field", "shape", "key"],
 };
@@ -70332,16 +71081,7 @@ function validate195(
                     errors++;
                 }
                 for (const key3 in data21) {
-                    if (!(
-                        key3 === "field" ||
-                        key3 === "shape" ||
-                        key3 === "key" ||
-                        key3 === "measures" ||
-                        key3 === "observations" ||
-                        key3 === "order_by" ||
-                        key3 === "measure_units" ||
-                        key3 === "cadence"
-                    )) {
+                    if (!func1.call(schema213.properties, key3)) {
                         const err56 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ProjectedFactTable/additionalProperties",
@@ -71030,8 +71770,185 @@ function validate195(
                         errors++;
                     }
                 }
+                if (data21.column_vocabularies !== undefined) {
+                    let data36 = data21.column_vocabularies;
+                    if (data36 && typeof data36 == "object" && !Array.isArray(data36)) {
+                        if (Object.keys(data36).length > 40) {
+                            const err94 = {
+                                instancePath: instancePath + "/table/column_vocabularies",
+                                schemaPath:
+                                    "#/$defs/ProjectedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err94];
+                            } else {
+                                vErrors.push(err94);
+                            }
+                            errors++;
+                        }
+                        for (const key5 in data36) {
+                            let data37 = data36[key5];
+                            if (typeof data37 !== "string") {
+                                const err95 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key5.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err95];
+                                } else {
+                                    vErrors.push(err95);
+                                }
+                                errors++;
+                            }
+                            if (!(data37 === "investment_theme" || data37 === "subcategory")) {
+                                const err96 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key5.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema213.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err96];
+                                } else {
+                                    vErrors.push(err96);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err97 = {
+                            instancePath: instancePath + "/table/column_vocabularies",
+                            schemaPath:
+                                "#/$defs/ProjectedFactTable/properties/column_vocabularies/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err97];
+                        } else {
+                            vErrors.push(err97);
+                        }
+                        errors++;
+                    }
+                }
+                if (data21.word_columns !== undefined) {
+                    let data38 = data21.word_columns;
+                    if (data38 && typeof data38 == "object" && !Array.isArray(data38)) {
+                        if (Object.keys(data38).length > 40) {
+                            const err98 = {
+                                instancePath: instancePath + "/table/word_columns",
+                                schemaPath:
+                                    "#/$defs/ProjectedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err98];
+                            } else {
+                                vErrors.push(err98);
+                            }
+                            errors++;
+                        }
+                        for (const key6 in data38) {
+                            let data39 = data38[key6];
+                            if (typeof data39 === "string") {
+                                if (func2(data39) > 128) {
+                                    const err99 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err99];
+                                    } else {
+                                        vErrors.push(err99);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data39) < 1) {
+                                    const err100 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err100];
+                                    } else {
+                                        vErrors.push(err100);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err101 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/word_columns/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err101];
+                                } else {
+                                    vErrors.push(err101);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err102 = {
+                            instancePath: instancePath + "/table/word_columns",
+                            schemaPath: "#/$defs/ProjectedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err102];
+                        } else {
+                            vErrors.push(err102);
+                        }
+                        errors++;
+                    }
+                }
             } else {
-                const err94 = {
+                const err103 = {
                     instancePath: instancePath + "/table",
                     schemaPath: "#/$defs/ProjectedFactTable/type",
                     keyword: "type",
@@ -71039,18 +71956,18 @@ function validate195(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err94];
+                    vErrors = [err103];
                 } else {
-                    vErrors.push(err94);
+                    vErrors.push(err103);
                 }
                 errors++;
             }
         }
         if (data.time_series_rows !== undefined) {
-            let data36 = data.time_series_rows;
-            if (Array.isArray(data36)) {
-                if (data36.length > 64) {
-                    const err95 = {
+            let data40 = data.time_series_rows;
+            if (Array.isArray(data40)) {
+                if (data40.length > 64) {
+                    const err104 = {
                         instancePath: instancePath + "/time_series_rows",
                         schemaPath: "#/properties/time_series_rows/maxItems",
                         keyword: "maxItems",
@@ -71058,18 +71975,18 @@ function validate195(
                         message: "must NOT have more than 64 items",
                     };
                     if (vErrors === null) {
-                        vErrors = [err95];
+                        vErrors = [err104];
                     } else {
-                        vErrors.push(err95);
+                        vErrors.push(err104);
                     }
                     errors++;
                 }
-                const len5 = data36.length;
+                const len5 = data40.length;
                 for (let i5 = 0; i5 < len5; i5++) {
                     if (
-                        !validate190(data36[i5], {
+                        !validate190(data40[i5], {
                             instancePath: instancePath + "/time_series_rows/" + i5,
-                            parentData: data36,
+                            parentData: data40,
                             parentDataProperty: i5,
                             rootData,
                             dynamicAnchors,
@@ -71083,7 +72000,7 @@ function validate195(
                     }
                 }
             } else {
-                const err96 = {
+                const err105 = {
                     instancePath: instancePath + "/time_series_rows",
                     schemaPath: "#/properties/time_series_rows/type",
                     keyword: "type",
@@ -71091,18 +72008,18 @@ function validate195(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err96];
+                    vErrors = [err105];
                 } else {
-                    vErrors.push(err96);
+                    vErrors.push(err105);
                 }
                 errors++;
             }
         }
         if (data.time_series_table !== undefined) {
-            let data38 = data.time_series_table;
-            if (data38 && typeof data38 == "object" && !Array.isArray(data38)) {
-                if (data38.field === undefined) {
-                    const err97 = {
+            let data42 = data.time_series_table;
+            if (data42 && typeof data42 == "object" && !Array.isArray(data42)) {
+                if (data42.field === undefined) {
+                    const err106 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ProjectedFactTable/required",
                         keyword: "required",
@@ -71110,14 +72027,14 @@ function validate195(
                         message: "must have required property '" + "field" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err97];
+                        vErrors = [err106];
                     } else {
-                        vErrors.push(err97);
+                        vErrors.push(err106);
                     }
                     errors++;
                 }
-                if (data38.shape === undefined) {
-                    const err98 = {
+                if (data42.shape === undefined) {
+                    const err107 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ProjectedFactTable/required",
                         keyword: "required",
@@ -71125,14 +72042,14 @@ function validate195(
                         message: "must have required property '" + "shape" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err98];
+                        vErrors = [err107];
                     } else {
-                        vErrors.push(err98);
+                        vErrors.push(err107);
                     }
                     errors++;
                 }
-                if (data38.key === undefined) {
-                    const err99 = {
+                if (data42.key === undefined) {
+                    const err108 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ProjectedFactTable/required",
                         keyword: "required",
@@ -71140,43 +72057,34 @@ function validate195(
                         message: "must have required property '" + "key" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err99];
+                        vErrors = [err108];
                     } else {
-                        vErrors.push(err99);
+                        vErrors.push(err108);
                     }
                     errors++;
                 }
-                for (const key5 in data38) {
-                    if (!(
-                        key5 === "field" ||
-                        key5 === "shape" ||
-                        key5 === "key" ||
-                        key5 === "measures" ||
-                        key5 === "observations" ||
-                        key5 === "order_by" ||
-                        key5 === "measure_units" ||
-                        key5 === "cadence"
-                    )) {
-                        const err100 = {
+                for (const key7 in data42) {
+                    if (!func1.call(schema213.properties, key7)) {
+                        const err109 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ProjectedFactTable/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key5 },
+                            params: { additionalProperty: key7 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err100];
+                            vErrors = [err109];
                         } else {
-                            vErrors.push(err100);
+                            vErrors.push(err109);
                         }
                         errors++;
                     }
                 }
-                if (data38.field !== undefined) {
-                    let data39 = data38.field;
-                    if (typeof data39 === "string") {
-                        if (func2(data39) > 128) {
-                            const err101 = {
+                if (data42.field !== undefined) {
+                    let data43 = data42.field;
+                    if (typeof data43 === "string") {
+                        if (func2(data43) > 128) {
+                            const err110 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ProjectedFactTable/properties/field/maxLength",
                                 keyword: "maxLength",
@@ -71184,14 +72092,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err101];
+                                vErrors = [err110];
                             } else {
-                                vErrors.push(err101);
+                                vErrors.push(err110);
                             }
                             errors++;
                         }
-                        if (func2(data39) < 1) {
-                            const err102 = {
+                        if (func2(data43) < 1) {
+                            const err111 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ProjectedFactTable/properties/field/minLength",
                                 keyword: "minLength",
@@ -71199,14 +72107,14 @@ function validate195(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err102];
+                                vErrors = [err111];
                             } else {
-                                vErrors.push(err102);
+                                vErrors.push(err111);
                             }
                             errors++;
                         }
                     } else {
-                        const err103 = {
+                        const err112 = {
                             instancePath: instancePath + "/time_series_table/field",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/field/type",
                             keyword: "type",
@@ -71214,17 +72122,17 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err103];
+                            vErrors = [err112];
                         } else {
-                            vErrors.push(err103);
+                            vErrors.push(err112);
                         }
                         errors++;
                     }
                 }
-                if (data38.shape !== undefined) {
-                    let data40 = data38.shape;
-                    if (typeof data40 !== "string") {
-                        const err104 = {
+                if (data42.shape !== undefined) {
+                    let data44 = data42.shape;
+                    if (typeof data44 !== "string") {
+                        const err113 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/shape/type",
                             keyword: "type",
@@ -71232,19 +72140,19 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err104];
+                            vErrors = [err113];
                         } else {
-                            vErrors.push(err104);
+                            vErrors.push(err113);
                         }
                         errors++;
                     }
                     if (!(
-                        data40 === "time_series" ||
-                        data40 === "breakdown" ||
-                        data40 === "ranking" ||
-                        data40 === "distribution"
+                        data44 === "time_series" ||
+                        data44 === "breakdown" ||
+                        data44 === "ranking" ||
+                        data44 === "distribution"
                     )) {
-                        const err105 = {
+                        const err114 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/shape/enum",
                             keyword: "enum",
@@ -71252,18 +72160,18 @@ function validate195(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err105];
+                            vErrors = [err114];
                         } else {
-                            vErrors.push(err105);
+                            vErrors.push(err114);
                         }
                         errors++;
                     }
                 }
-                if (data38.key !== undefined) {
-                    let data41 = data38.key;
-                    if (Array.isArray(data41)) {
-                        if (data41.length > 8) {
-                            const err106 = {
+                if (data42.key !== undefined) {
+                    let data45 = data42.key;
+                    if (Array.isArray(data45)) {
+                        if (data45.length > 8) {
+                            const err115 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ProjectedFactTable/properties/key/maxItems",
                                 keyword: "maxItems",
@@ -71271,14 +72179,14 @@ function validate195(
                                 message: "must NOT have more than 8 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err106];
+                                vErrors = [err115];
                             } else {
-                                vErrors.push(err106);
+                                vErrors.push(err115);
                             }
                             errors++;
                         }
-                        if (data41.length < 1) {
-                            const err107 = {
+                        if (data45.length < 1) {
+                            const err116 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ProjectedFactTable/properties/key/minItems",
                                 keyword: "minItems",
@@ -71286,18 +72194,18 @@ function validate195(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err107];
+                                vErrors = [err116];
                             } else {
-                                vErrors.push(err107);
+                                vErrors.push(err116);
                             }
                             errors++;
                         }
-                        const len6 = data41.length;
+                        const len6 = data45.length;
                         for (let i6 = 0; i6 < len6; i6++) {
-                            let data42 = data41[i6];
-                            if (typeof data42 === "string") {
-                                if (func2(data42) > 128) {
-                                    const err108 = {
+                            let data46 = data45[i6];
+                            if (typeof data46 === "string") {
+                                if (func2(data46) > 128) {
+                                    const err117 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i6,
                                         schemaPath:
                                             "#/$defs/ProjectedFactTable/properties/key/items/maxLength",
@@ -71306,14 +72214,14 @@ function validate195(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err108];
+                                        vErrors = [err117];
                                     } else {
-                                        vErrors.push(err108);
+                                        vErrors.push(err117);
                                     }
                                     errors++;
                                 }
-                                if (func2(data42) < 1) {
-                                    const err109 = {
+                                if (func2(data46) < 1) {
+                                    const err118 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i6,
                                         schemaPath:
                                             "#/$defs/ProjectedFactTable/properties/key/items/minLength",
@@ -71322,14 +72230,14 @@ function validate195(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err109];
+                                        vErrors = [err118];
                                     } else {
-                                        vErrors.push(err109);
+                                        vErrors.push(err118);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err110 = {
+                                const err119 = {
                                     instancePath: instancePath + "/time_series_table/key/" + i6,
                                     schemaPath:
                                         "#/$defs/ProjectedFactTable/properties/key/items/type",
@@ -71338,15 +72246,15 @@ function validate195(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err110];
+                                    vErrors = [err119];
                                 } else {
-                                    vErrors.push(err110);
+                                    vErrors.push(err119);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err111 = {
+                        const err120 = {
                             instancePath: instancePath + "/time_series_table/key",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/key/type",
                             keyword: "type",
@@ -71354,18 +72262,18 @@ function validate195(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err111];
+                            vErrors = [err120];
                         } else {
-                            vErrors.push(err111);
+                            vErrors.push(err120);
                         }
                         errors++;
                     }
                 }
-                if (data38.measures !== undefined) {
-                    let data43 = data38.measures;
-                    if (Array.isArray(data43)) {
-                        if (data43.length > 32) {
-                            const err112 = {
+                if (data42.measures !== undefined) {
+                    let data47 = data42.measures;
+                    if (Array.isArray(data47)) {
+                        if (data47.length > 32) {
+                            const err121 = {
                                 instancePath: instancePath + "/time_series_table/measures",
                                 schemaPath:
                                     "#/$defs/ProjectedFactTable/properties/measures/maxItems",
@@ -71374,18 +72282,18 @@ function validate195(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err112];
+                                vErrors = [err121];
                             } else {
-                                vErrors.push(err112);
+                                vErrors.push(err121);
                             }
                             errors++;
                         }
-                        const len7 = data43.length;
+                        const len7 = data47.length;
                         for (let i7 = 0; i7 < len7; i7++) {
-                            let data44 = data43[i7];
-                            if (typeof data44 === "string") {
-                                if (func2(data44) > 128) {
-                                    const err113 = {
+                            let data48 = data47[i7];
+                            if (typeof data48 === "string") {
+                                if (func2(data48) > 128) {
+                                    const err122 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i7,
                                         schemaPath:
@@ -71395,14 +72303,14 @@ function validate195(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err113];
+                                        vErrors = [err122];
                                     } else {
-                                        vErrors.push(err113);
+                                        vErrors.push(err122);
                                     }
                                     errors++;
                                 }
-                                if (func2(data44) < 1) {
-                                    const err114 = {
+                                if (func2(data48) < 1) {
+                                    const err123 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i7,
                                         schemaPath:
@@ -71412,14 +72320,14 @@ function validate195(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err114];
+                                        vErrors = [err123];
                                     } else {
-                                        vErrors.push(err114);
+                                        vErrors.push(err123);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err115 = {
+                                const err124 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measures/" + i7,
                                     schemaPath:
@@ -71429,15 +72337,15 @@ function validate195(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err115];
+                                    vErrors = [err124];
                                 } else {
-                                    vErrors.push(err115);
+                                    vErrors.push(err124);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err116 = {
+                        const err125 = {
                             instancePath: instancePath + "/time_series_table/measures",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/measures/type",
                             keyword: "type",
@@ -71445,18 +72353,18 @@ function validate195(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err116];
+                            vErrors = [err125];
                         } else {
-                            vErrors.push(err116);
+                            vErrors.push(err125);
                         }
                         errors++;
                     }
                 }
-                if (data38.observations !== undefined) {
-                    let data45 = data38.observations;
-                    if (Array.isArray(data45)) {
-                        if (data45.length > 32) {
-                            const err117 = {
+                if (data42.observations !== undefined) {
+                    let data49 = data42.observations;
+                    if (Array.isArray(data49)) {
+                        if (data49.length > 32) {
+                            const err126 = {
                                 instancePath: instancePath + "/time_series_table/observations",
                                 schemaPath:
                                     "#/$defs/ProjectedFactTable/properties/observations/maxItems",
@@ -71465,18 +72373,18 @@ function validate195(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err117];
+                                vErrors = [err126];
                             } else {
-                                vErrors.push(err117);
+                                vErrors.push(err126);
                             }
                             errors++;
                         }
-                        const len8 = data45.length;
+                        const len8 = data49.length;
                         for (let i8 = 0; i8 < len8; i8++) {
-                            let data46 = data45[i8];
-                            if (typeof data46 === "string") {
-                                if (func2(data46) > 128) {
-                                    const err118 = {
+                            let data50 = data49[i8];
+                            if (typeof data50 === "string") {
+                                if (func2(data50) > 128) {
+                                    const err127 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i8,
                                         schemaPath:
@@ -71486,14 +72394,14 @@ function validate195(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err118];
+                                        vErrors = [err127];
                                     } else {
-                                        vErrors.push(err118);
+                                        vErrors.push(err127);
                                     }
                                     errors++;
                                 }
-                                if (func2(data46) < 1) {
-                                    const err119 = {
+                                if (func2(data50) < 1) {
+                                    const err128 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i8,
                                         schemaPath:
@@ -71503,14 +72411,14 @@ function validate195(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err119];
+                                        vErrors = [err128];
                                     } else {
-                                        vErrors.push(err119);
+                                        vErrors.push(err128);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err120 = {
+                                const err129 = {
                                     instancePath:
                                         instancePath + "/time_series_table/observations/" + i8,
                                     schemaPath:
@@ -71520,15 +72428,15 @@ function validate195(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err120];
+                                    vErrors = [err129];
                                 } else {
-                                    vErrors.push(err120);
+                                    vErrors.push(err129);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err121 = {
+                        const err130 = {
                             instancePath: instancePath + "/time_series_table/observations",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/observations/type",
                             keyword: "type",
@@ -71536,18 +72444,18 @@ function validate195(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err121];
+                            vErrors = [err130];
                         } else {
-                            vErrors.push(err121);
+                            vErrors.push(err130);
                         }
                         errors++;
                     }
                 }
-                if (data38.order_by !== undefined) {
-                    let data47 = data38.order_by;
-                    if (typeof data47 === "string") {
-                        if (func2(data47) > 128) {
-                            const err122 = {
+                if (data42.order_by !== undefined) {
+                    let data51 = data42.order_by;
+                    if (typeof data51 === "string") {
+                        if (func2(data51) > 128) {
+                            const err131 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ProjectedFactTable/properties/order_by/maxLength",
@@ -71556,14 +72464,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err122];
+                                vErrors = [err131];
                             } else {
-                                vErrors.push(err122);
+                                vErrors.push(err131);
                             }
                             errors++;
                         }
-                        if (func2(data47) < 1) {
-                            const err123 = {
+                        if (func2(data51) < 1) {
+                            const err132 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ProjectedFactTable/properties/order_by/minLength",
@@ -71572,14 +72480,14 @@ function validate195(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err123];
+                                vErrors = [err132];
                             } else {
-                                vErrors.push(err123);
+                                vErrors.push(err132);
                             }
                             errors++;
                         }
                     } else {
-                        const err124 = {
+                        const err133 = {
                             instancePath: instancePath + "/time_series_table/order_by",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/order_by/type",
                             keyword: "type",
@@ -71587,18 +72495,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err124];
+                            vErrors = [err133];
                         } else {
-                            vErrors.push(err124);
+                            vErrors.push(err133);
                         }
                         errors++;
                     }
                 }
-                if (data38.measure_units !== undefined) {
-                    let data48 = data38.measure_units;
-                    if (Array.isArray(data48)) {
-                        if (data48.length > 32) {
-                            const err125 = {
+                if (data42.measure_units !== undefined) {
+                    let data52 = data42.measure_units;
+                    if (Array.isArray(data52)) {
+                        if (data52.length > 32) {
+                            const err134 = {
                                 instancePath: instancePath + "/time_series_table/measure_units",
                                 schemaPath:
                                     "#/$defs/ProjectedFactTable/properties/measure_units/maxItems",
@@ -71607,18 +72515,18 @@ function validate195(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err125];
+                                vErrors = [err134];
                             } else {
-                                vErrors.push(err125);
+                                vErrors.push(err134);
                             }
                             errors++;
                         }
-                        const len9 = data48.length;
+                        const len9 = data52.length;
                         for (let i9 = 0; i9 < len9; i9++) {
-                            let data49 = data48[i9];
-                            if (data49 && typeof data49 == "object" && !Array.isArray(data49)) {
-                                if (data49.measure === undefined) {
-                                    const err126 = {
+                            let data53 = data52[i9];
+                            if (data53 && typeof data53 == "object" && !Array.isArray(data53)) {
+                                if (data53.measure === undefined) {
+                                    const err135 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measure_units/" + i9,
                                         schemaPath:
@@ -71628,14 +72536,14 @@ function validate195(
                                         message: "must have required property '" + "measure" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err126];
+                                        vErrors = [err135];
                                     } else {
-                                        vErrors.push(err126);
+                                        vErrors.push(err135);
                                     }
                                     errors++;
                                 }
-                                if (data49.unit === undefined) {
-                                    const err127 = {
+                                if (data53.unit === undefined) {
+                                    const err136 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measure_units/" + i9,
                                         schemaPath:
@@ -71645,15 +72553,15 @@ function validate195(
                                         message: "must have required property '" + "unit" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err127];
+                                        vErrors = [err136];
                                     } else {
-                                        vErrors.push(err127);
+                                        vErrors.push(err136);
                                     }
                                     errors++;
                                 }
-                                for (const key6 in data49) {
-                                    if (!(key6 === "measure" || key6 === "unit")) {
-                                        const err128 = {
+                                for (const key8 in data53) {
+                                    if (!(key8 === "measure" || key8 === "unit")) {
+                                        const err137 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -71661,22 +72569,22 @@ function validate195(
                                             schemaPath:
                                                 "#/$defs/ProjectedFactTable/properties/measure_units/items/additionalProperties",
                                             keyword: "additionalProperties",
-                                            params: { additionalProperty: key6 },
+                                            params: { additionalProperty: key8 },
                                             message: "must NOT have additional properties",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err128];
+                                            vErrors = [err137];
                                         } else {
-                                            vErrors.push(err128);
+                                            vErrors.push(err137);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data49.measure !== undefined) {
-                                    let data50 = data49.measure;
-                                    if (typeof data50 === "string") {
-                                        if (func2(data50) > 128) {
-                                            const err129 = {
+                                if (data53.measure !== undefined) {
+                                    let data54 = data53.measure;
+                                    if (typeof data54 === "string") {
+                                        if (func2(data54) > 128) {
+                                            const err138 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -71689,14 +72597,14 @@ function validate195(
                                                 message: "must NOT have more than 128 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err129];
+                                                vErrors = [err138];
                                             } else {
-                                                vErrors.push(err129);
+                                                vErrors.push(err138);
                                             }
                                             errors++;
                                         }
-                                        if (func2(data50) < 1) {
-                                            const err130 = {
+                                        if (func2(data54) < 1) {
+                                            const err139 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -71709,14 +72617,14 @@ function validate195(
                                                 message: "must NOT have fewer than 1 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err130];
+                                                vErrors = [err139];
                                             } else {
-                                                vErrors.push(err130);
+                                                vErrors.push(err139);
                                             }
                                             errors++;
                                         }
                                     } else {
-                                        const err131 = {
+                                        const err140 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -71729,17 +72637,17 @@ function validate195(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err131];
+                                            vErrors = [err140];
                                         } else {
-                                            vErrors.push(err131);
+                                            vErrors.push(err140);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data49.unit !== undefined) {
-                                    let data51 = data49.unit;
-                                    if (typeof data51 !== "string") {
-                                        const err132 = {
+                                if (data53.unit !== undefined) {
+                                    let data55 = data53.unit;
+                                    if (typeof data55 !== "string") {
+                                        const err141 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -71752,20 +72660,20 @@ function validate195(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err132];
+                                            vErrors = [err141];
                                         } else {
-                                            vErrors.push(err132);
+                                            vErrors.push(err141);
                                         }
                                         errors++;
                                     }
                                     if (!(
-                                        data51 === "count" ||
-                                        data51 === "ratio" ||
-                                        data51 === "hours" ||
-                                        data51 === "days" ||
-                                        data51 === "points"
+                                        data55 === "count" ||
+                                        data55 === "ratio" ||
+                                        data55 === "hours" ||
+                                        data55 === "days" ||
+                                        data55 === "points"
                                     )) {
-                                        const err133 = {
+                                        const err142 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -71782,15 +72690,15 @@ function validate195(
                                             message: "must be equal to one of the allowed values",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err133];
+                                            vErrors = [err142];
                                         } else {
-                                            vErrors.push(err133);
+                                            vErrors.push(err142);
                                         }
                                         errors++;
                                     }
                                 }
                             } else {
-                                const err134 = {
+                                const err143 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measure_units/" + i9,
                                     schemaPath:
@@ -71800,173 +72708,20 @@ function validate195(
                                     message: "must be object",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err134];
+                                    vErrors = [err143];
                                 } else {
-                                    vErrors.push(err134);
+                                    vErrors.push(err143);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err135 = {
+                        const err144 = {
                             instancePath: instancePath + "/time_series_table/measure_units",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/measure_units/type",
                             keyword: "type",
                             params: { type: "array" },
                             message: "must be array",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err135];
-                        } else {
-                            vErrors.push(err135);
-                        }
-                        errors++;
-                    }
-                }
-                if (data38.cadence !== undefined) {
-                    let data52 = data38.cadence;
-                    if (typeof data52 !== "string") {
-                        const err136 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err136];
-                        } else {
-                            vErrors.push(err136);
-                        }
-                        errors++;
-                    }
-                    if (!(data52 === "day")) {
-                        const err137 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema213.properties.cadence.enum },
-                            message: "must be equal to one of the allowed values",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err137];
-                        } else {
-                            vErrors.push(err137);
-                        }
-                        errors++;
-                    }
-                }
-            } else {
-                const err138 = {
-                    instancePath: instancePath + "/time_series_table",
-                    schemaPath: "#/$defs/ProjectedFactTable/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err138];
-                } else {
-                    vErrors.push(err138);
-                }
-                errors++;
-            }
-        }
-        if (data.investment_mix !== undefined) {
-            let data53 = data.investment_mix;
-            if (data53 && typeof data53 == "object" && !Array.isArray(data53)) {
-                if (data53.investment_mix_source === undefined) {
-                    const err139 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "investment_mix_source" },
-                        message: "must have required property '" + "investment_mix_source" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err139];
-                    } else {
-                        vErrors.push(err139);
-                    }
-                    errors++;
-                }
-                if (data53.rollup_basis === undefined) {
-                    const err140 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "rollup_basis" },
-                        message: "must have required property '" + "rollup_basis" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err140];
-                    } else {
-                        vErrors.push(err140);
-                    }
-                    errors++;
-                }
-                if (data53.work_unit_count === undefined) {
-                    const err141 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "work_unit_count" },
-                        message: "must have required property '" + "work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err141];
-                    } else {
-                        vErrors.push(err141);
-                    }
-                    errors++;
-                }
-                if (data53.project_own_work_unit_count === undefined) {
-                    const err142 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "project_own_work_unit_count" },
-                        message:
-                            "must have required property '" + "project_own_work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err142];
-                    } else {
-                        vErrors.push(err142);
-                    }
-                    errors++;
-                }
-                for (const key7 in data53) {
-                    if (!(
-                        key7 === "investment_mix_source" ||
-                        key7 === "rollup_basis" ||
-                        key7 === "work_unit_count" ||
-                        key7 === "project_own_work_unit_count"
-                    )) {
-                        const err143 = {
-                            instancePath: instancePath + "/investment_mix",
-                            schemaPath: "#/$defs/ProjectedInvestmentMix/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key7 },
-                            message: "must NOT have additional properties",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err143];
-                        } else {
-                            vErrors.push(err143);
-                        }
-                        errors++;
-                    }
-                }
-                if (data53.investment_mix_source !== undefined) {
-                    if (typeof data53.investment_mix_source !== "string") {
-                        const err144 = {
-                            instancePath: instancePath + "/investment_mix/investment_mix_source",
-                            schemaPath:
-                                "#/$defs/ProjectedInvestmentMix/properties/investment_mix_source/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err144];
@@ -71976,116 +72731,112 @@ function validate195(
                         errors++;
                     }
                 }
-                if (data53.rollup_basis !== undefined) {
-                    let data55 = data53.rollup_basis;
-                    if (typeof data55 === "string") {
-                        if (func2(data55) > 128) {
-                            const err145 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err145];
-                            } else {
-                                vErrors.push(err145);
-                            }
-                            errors++;
-                        }
-                        if (func2(data55) < 1) {
-                            const err146 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/minLength",
-                                keyword: "minLength",
-                                params: { limit: 1 },
-                                message: "must NOT have fewer than 1 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err146];
-                            } else {
-                                vErrors.push(err146);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err147 = {
-                            instancePath: instancePath + "/investment_mix/rollup_basis",
-                            schemaPath:
-                                "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/type",
+                if (data42.cadence !== undefined) {
+                    let data56 = data42.cadence;
+                    if (typeof data56 !== "string") {
+                        const err145 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/type",
                             keyword: "type",
                             params: { type: "string" },
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err147];
+                            vErrors = [err145];
                         } else {
-                            vErrors.push(err147);
+                            vErrors.push(err145);
+                        }
+                        errors++;
+                    }
+                    if (!(data56 === "day")) {
+                        const err146 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema213.properties.cadence.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err146];
+                        } else {
+                            vErrors.push(err146);
                         }
                         errors++;
                     }
                 }
-                if (data53.work_unit_count !== undefined) {
-                    let data56 = data53.work_unit_count;
-                    if (!(
-                        typeof data56 == "number" &&
-                        !(data56 % 1) &&
-                        !isNaN(data56) &&
-                        isFinite(data56)
-                    )) {
-                        const err148 = {
-                            instancePath: instancePath + "/investment_mix/work_unit_count",
-                            schemaPath:
-                                "#/$defs/ProjectedInvestmentMix/properties/work_unit_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err148];
-                        } else {
-                            vErrors.push(err148);
-                        }
-                        errors++;
-                    }
-                    if (typeof data56 == "number" && isFinite(data56)) {
-                        if (data56 < 0 || isNaN(data56)) {
-                            const err149 = {
-                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                if (data42.column_vocabularies !== undefined) {
+                    let data57 = data42.column_vocabularies;
+                    if (data57 && typeof data57 == "object" && !Array.isArray(data57)) {
+                        if (Object.keys(data57).length > 40) {
+                            const err147 = {
+                                instancePath:
+                                    instancePath + "/time_series_table/column_vocabularies",
                                 schemaPath:
-                                    "#/$defs/ProjectedInvestmentMix/properties/work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ProjectedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
-                                vErrors = [err149];
+                                vErrors = [err147];
                             } else {
-                                vErrors.push(err149);
+                                vErrors.push(err147);
                             }
                             errors++;
                         }
-                    }
-                }
-                if (data53.project_own_work_unit_count !== undefined) {
-                    let data57 = data53.project_own_work_unit_count;
-                    if (!(
-                        typeof data57 == "number" &&
-                        !(data57 % 1) &&
-                        !isNaN(data57) &&
-                        isFinite(data57)
-                    )) {
+                        for (const key9 in data57) {
+                            let data58 = data57[key9];
+                            if (typeof data58 !== "string") {
+                                const err148 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key9.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err148];
+                                } else {
+                                    vErrors.push(err148);
+                                }
+                                errors++;
+                            }
+                            if (!(data58 === "investment_theme" || data58 === "subcategory")) {
+                                const err149 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key9.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema213.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err149];
+                                } else {
+                                    vErrors.push(err149);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
                         const err150 = {
-                            instancePath:
-                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            instancePath: instancePath + "/time_series_table/column_vocabularies",
                             schemaPath:
-                                "#/$defs/ProjectedInvestmentMix/properties/project_own_work_unit_count/type",
+                                "#/$defs/ProjectedFactTable/properties/column_vocabularies/type",
                             keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err150];
@@ -72094,16 +72845,18 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data57 == "number" && isFinite(data57)) {
-                        if (data57 < 0 || isNaN(data57)) {
+                }
+                if (data42.word_columns !== undefined) {
+                    let data59 = data42.word_columns;
+                    if (data59 && typeof data59 == "object" && !Array.isArray(data59)) {
+                        if (Object.keys(data59).length > 40) {
                             const err151 = {
-                                instancePath:
-                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                instancePath: instancePath + "/time_series_table/word_columns",
                                 schemaPath:
-                                    "#/$defs/ProjectedInvestmentMix/properties/project_own_work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ProjectedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
                                 vErrors = [err151];
@@ -72112,65 +72865,74 @@ function validate195(
                             }
                             errors++;
                         }
-                    }
-                }
-            } else {
-                const err152 = {
-                    instancePath: instancePath + "/investment_mix",
-                    schemaPath: "#/$defs/ProjectedInvestmentMix/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err152];
-                } else {
-                    vErrors.push(err152);
-                }
-                errors++;
-            }
-        }
-        if (data.completion_forecast !== undefined) {
-            let data58 = data.completion_forecast;
-            if (data58 && typeof data58 == "object" && !Array.isArray(data58)) {
-                if (data58.state === undefined) {
-                    const err153 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err153];
+                        for (const key10 in data59) {
+                            let data60 = data59[key10];
+                            if (typeof data60 === "string") {
+                                if (func2(data60) > 128) {
+                                    const err152 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err152];
+                                    } else {
+                                        vErrors.push(err152);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data60) < 1) {
+                                    const err153 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err153];
+                                    } else {
+                                        vErrors.push(err153);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err154 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/word_columns/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ProjectedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err154];
+                                } else {
+                                    vErrors.push(err154);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        vErrors.push(err153);
-                    }
-                    errors++;
-                }
-                if (data58.computed_at === undefined) {
-                    const err154 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err154];
-                    } else {
-                        vErrors.push(err154);
-                    }
-                    errors++;
-                }
-                for (const key8 in data58) {
-                    if (!func1.call(schema216.properties, key8)) {
                         const err155 = {
-                            instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ProjectedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key8 },
-                            message: "must NOT have additional properties",
+                            instancePath: instancePath + "/time_series_table/word_columns",
+                            schemaPath: "#/$defs/ProjectedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err155];
@@ -72180,11 +72942,335 @@ function validate195(
                         errors++;
                     }
                 }
-                if (data58.work_scope_id !== undefined) {
-                    let data59 = data58.work_scope_id;
-                    if (typeof data59 === "string") {
-                        if (func2(data59) > 128) {
-                            const err156 = {
+            } else {
+                const err156 = {
+                    instancePath: instancePath + "/time_series_table",
+                    schemaPath: "#/$defs/ProjectedFactTable/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err156];
+                } else {
+                    vErrors.push(err156);
+                }
+                errors++;
+            }
+        }
+        if (data.investment_mix !== undefined) {
+            let data61 = data.investment_mix;
+            if (data61 && typeof data61 == "object" && !Array.isArray(data61)) {
+                if (data61.investment_mix_source === undefined) {
+                    const err157 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "investment_mix_source" },
+                        message: "must have required property '" + "investment_mix_source" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err157];
+                    } else {
+                        vErrors.push(err157);
+                    }
+                    errors++;
+                }
+                if (data61.rollup_basis === undefined) {
+                    const err158 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "rollup_basis" },
+                        message: "must have required property '" + "rollup_basis" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err158];
+                    } else {
+                        vErrors.push(err158);
+                    }
+                    errors++;
+                }
+                if (data61.work_unit_count === undefined) {
+                    const err159 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "work_unit_count" },
+                        message: "must have required property '" + "work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err159];
+                    } else {
+                        vErrors.push(err159);
+                    }
+                    errors++;
+                }
+                if (data61.project_own_work_unit_count === undefined) {
+                    const err160 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ProjectedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "project_own_work_unit_count" },
+                        message:
+                            "must have required property '" + "project_own_work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err160];
+                    } else {
+                        vErrors.push(err160);
+                    }
+                    errors++;
+                }
+                for (const key11 in data61) {
+                    if (!(
+                        key11 === "investment_mix_source" ||
+                        key11 === "rollup_basis" ||
+                        key11 === "work_unit_count" ||
+                        key11 === "project_own_work_unit_count"
+                    )) {
+                        const err161 = {
+                            instancePath: instancePath + "/investment_mix",
+                            schemaPath: "#/$defs/ProjectedInvestmentMix/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key11 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err161];
+                        } else {
+                            vErrors.push(err161);
+                        }
+                        errors++;
+                    }
+                }
+                if (data61.investment_mix_source !== undefined) {
+                    if (typeof data61.investment_mix_source !== "string") {
+                        const err162 = {
+                            instancePath: instancePath + "/investment_mix/investment_mix_source",
+                            schemaPath:
+                                "#/$defs/ProjectedInvestmentMix/properties/investment_mix_source/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err162];
+                        } else {
+                            vErrors.push(err162);
+                        }
+                        errors++;
+                    }
+                }
+                if (data61.rollup_basis !== undefined) {
+                    let data63 = data61.rollup_basis;
+                    if (typeof data63 === "string") {
+                        if (func2(data63) > 128) {
+                            const err163 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err163];
+                            } else {
+                                vErrors.push(err163);
+                            }
+                            errors++;
+                        }
+                        if (func2(data63) < 1) {
+                            const err164 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err164];
+                            } else {
+                                vErrors.push(err164);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err165 = {
+                            instancePath: instancePath + "/investment_mix/rollup_basis",
+                            schemaPath:
+                                "#/$defs/ProjectedInvestmentMix/properties/rollup_basis/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err165];
+                        } else {
+                            vErrors.push(err165);
+                        }
+                        errors++;
+                    }
+                }
+                if (data61.work_unit_count !== undefined) {
+                    let data64 = data61.work_unit_count;
+                    if (!(
+                        typeof data64 == "number" &&
+                        !(data64 % 1) &&
+                        !isNaN(data64) &&
+                        isFinite(data64)
+                    )) {
+                        const err166 = {
+                            instancePath: instancePath + "/investment_mix/work_unit_count",
+                            schemaPath:
+                                "#/$defs/ProjectedInvestmentMix/properties/work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err166];
+                        } else {
+                            vErrors.push(err166);
+                        }
+                        errors++;
+                    }
+                    if (typeof data64 == "number" && isFinite(data64)) {
+                        if (data64 < 0 || isNaN(data64)) {
+                            const err167 = {
+                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ProjectedInvestmentMix/properties/work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err167];
+                            } else {
+                                vErrors.push(err167);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data61.project_own_work_unit_count !== undefined) {
+                    let data65 = data61.project_own_work_unit_count;
+                    if (!(
+                        typeof data65 == "number" &&
+                        !(data65 % 1) &&
+                        !isNaN(data65) &&
+                        isFinite(data65)
+                    )) {
+                        const err168 = {
+                            instancePath:
+                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            schemaPath:
+                                "#/$defs/ProjectedInvestmentMix/properties/project_own_work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err168];
+                        } else {
+                            vErrors.push(err168);
+                        }
+                        errors++;
+                    }
+                    if (typeof data65 == "number" && isFinite(data65)) {
+                        if (data65 < 0 || isNaN(data65)) {
+                            const err169 = {
+                                instancePath:
+                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ProjectedInvestmentMix/properties/project_own_work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err169];
+                            } else {
+                                vErrors.push(err169);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+            } else {
+                const err170 = {
+                    instancePath: instancePath + "/investment_mix",
+                    schemaPath: "#/$defs/ProjectedInvestmentMix/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err170];
+                } else {
+                    vErrors.push(err170);
+                }
+                errors++;
+            }
+        }
+        if (data.completion_forecast !== undefined) {
+            let data66 = data.completion_forecast;
+            if (data66 && typeof data66 == "object" && !Array.isArray(data66)) {
+                if (data66.state === undefined) {
+                    const err171 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err171];
+                    } else {
+                        vErrors.push(err171);
+                    }
+                    errors++;
+                }
+                if (data66.computed_at === undefined) {
+                    const err172 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err172];
+                    } else {
+                        vErrors.push(err172);
+                    }
+                    errors++;
+                }
+                for (const key12 in data66) {
+                    if (!func1.call(schema216.properties, key12)) {
+                        const err173 = {
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ProjectedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err173];
+                        } else {
+                            vErrors.push(err173);
+                        }
+                        errors++;
+                    }
+                }
+                if (data66.work_scope_id !== undefined) {
+                    let data67 = data66.work_scope_id;
+                    if (typeof data67 === "string") {
+                        if (func2(data67) > 128) {
+                            const err174 = {
                                 instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/maxLength",
@@ -72193,14 +73279,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err156];
+                                vErrors = [err174];
                             } else {
-                                vErrors.push(err156);
+                                vErrors.push(err174);
                             }
                             errors++;
                         }
                     } else {
-                        const err157 = {
+                        const err175 = {
                             instancePath: instancePath + "/completion_forecast/work_scope_id",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/type",
@@ -72209,17 +73295,17 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err157];
+                            vErrors = [err175];
                         } else {
-                            vErrors.push(err157);
+                            vErrors.push(err175);
                         }
                         errors++;
                     }
                 }
-                if (data58.state !== undefined) {
-                    let data60 = data58.state;
-                    if (typeof data60 !== "string") {
-                        const err158 = {
+                if (data66.state !== undefined) {
+                    let data68 = data66.state;
+                    if (typeof data68 !== "string") {
+                        const err176 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/type",
                             keyword: "type",
@@ -72227,22 +73313,22 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err158];
+                            vErrors = [err176];
                         } else {
-                            vErrors.push(err158);
+                            vErrors.push(err176);
                         }
                         errors++;
                     }
                     if (!(
-                        data60 === "available" ||
-                        data60 === "not_stored" ||
-                        data60 === "no_run_within_horizon" ||
-                        data60 === "over_limit" ||
-                        data60 === "malformed" ||
-                        data60 === "scope_ambiguous" ||
-                        data60 === "unmatched"
+                        data68 === "available" ||
+                        data68 === "not_stored" ||
+                        data68 === "no_run_within_horizon" ||
+                        data68 === "over_limit" ||
+                        data68 === "malformed" ||
+                        data68 === "scope_ambiguous" ||
+                        data68 === "unmatched"
                     )) {
-                        const err159 = {
+                        const err177 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/enum",
                             keyword: "enum",
@@ -72250,18 +73336,18 @@ function validate195(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err159];
+                            vErrors = [err177];
                         } else {
-                            vErrors.push(err159);
+                            vErrors.push(err177);
                         }
                         errors++;
                     }
                 }
-                if (data58.computed_at !== undefined) {
-                    let data61 = data58.computed_at;
-                    if (typeof data61 === "string") {
-                        if (func2(data61) > 128) {
-                            const err160 = {
+                if (data66.computed_at !== undefined) {
+                    let data69 = data66.computed_at;
+                    if (typeof data69 === "string") {
+                        if (func2(data69) > 128) {
+                            const err178 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/maxLength",
@@ -72270,14 +73356,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err160];
+                                vErrors = [err178];
                             } else {
-                                vErrors.push(err160);
+                                vErrors.push(err178);
                             }
                             errors++;
                         }
-                        if (func2(data61) < 1) {
-                            const err161 = {
+                        if (func2(data69) < 1) {
+                            const err179 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/minLength",
@@ -72286,14 +73372,14 @@ function validate195(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err161];
+                                vErrors = [err179];
                             } else {
-                                vErrors.push(err161);
+                                vErrors.push(err179);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data61)) {
-                            const err162 = {
+                        if (!pattern13.test(data69)) {
+                            const err180 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/pattern",
@@ -72308,14 +73394,14 @@ function validate195(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err162];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err162);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data61)) {
-                            const err163 = {
+                        if (!formats0.validate(data69)) {
+                            const err181 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/format",
@@ -72324,14 +73410,14 @@ function validate195(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err163];
+                                vErrors = [err181];
                             } else {
-                                vErrors.push(err163);
+                                vErrors.push(err181);
                             }
                             errors++;
                         }
                     } else {
-                        const err164 = {
+                        const err182 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/computed_at/type",
@@ -72340,22 +73426,22 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err164];
+                            vErrors = [err182];
                         } else {
-                            vErrors.push(err164);
+                            vErrors.push(err182);
                         }
                         errors++;
                     }
                 }
-                if (data58.simulation_count !== undefined) {
-                    let data62 = data58.simulation_count;
+                if (data66.simulation_count !== undefined) {
+                    let data70 = data66.simulation_count;
                     if (!(
-                        typeof data62 == "number" &&
-                        !(data62 % 1) &&
-                        !isNaN(data62) &&
-                        isFinite(data62)
+                        typeof data70 == "number" &&
+                        !(data70 % 1) &&
+                        !isNaN(data70) &&
+                        isFinite(data70)
                     )) {
-                        const err165 = {
+                        const err183 = {
                             instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/simulation_count/type",
@@ -72364,15 +73450,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err165];
+                            vErrors = [err183];
                         } else {
-                            vErrors.push(err165);
+                            vErrors.push(err183);
                         }
                         errors++;
                     }
-                    if (typeof data62 == "number" && isFinite(data62)) {
-                        if (data62 < 0 || isNaN(data62)) {
-                            const err166 = {
+                    if (typeof data70 == "number" && isFinite(data70)) {
+                        if (data70 < 0 || isNaN(data70)) {
+                            const err184 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
@@ -72382,23 +73468,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err166];
+                                vErrors = [err184];
                             } else {
-                                vErrors.push(err166);
+                                vErrors.push(err184);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.horizon_days !== undefined) {
-                    let data63 = data58.horizon_days;
+                if (data66.horizon_days !== undefined) {
+                    let data71 = data66.horizon_days;
                     if (!(
-                        typeof data63 == "number" &&
-                        !(data63 % 1) &&
-                        !isNaN(data63) &&
-                        isFinite(data63)
+                        typeof data71 == "number" &&
+                        !(data71 % 1) &&
+                        !isNaN(data71) &&
+                        isFinite(data71)
                     )) {
-                        const err167 = {
+                        const err185 = {
                             instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/horizon_days/type",
@@ -72407,15 +73493,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err167];
+                            vErrors = [err185];
                         } else {
-                            vErrors.push(err167);
+                            vErrors.push(err185);
                         }
                         errors++;
                     }
-                    if (typeof data63 == "number" && isFinite(data63)) {
-                        if (data63 < 0 || isNaN(data63)) {
-                            const err168 = {
+                    if (typeof data71 == "number" && isFinite(data71)) {
+                        if (data71 < 0 || isNaN(data71)) {
+                            const err186 = {
                                 instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/horizon_days/minimum",
@@ -72424,23 +73510,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err168];
+                                vErrors = [err186];
                             } else {
-                                vErrors.push(err168);
+                                vErrors.push(err186);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.unfinished_runs !== undefined) {
-                    let data64 = data58.unfinished_runs;
+                if (data66.unfinished_runs !== undefined) {
+                    let data72 = data66.unfinished_runs;
                     if (!(
-                        typeof data64 == "number" &&
-                        !(data64 % 1) &&
-                        !isNaN(data64) &&
-                        isFinite(data64)
+                        typeof data72 == "number" &&
+                        !(data72 % 1) &&
+                        !isNaN(data72) &&
+                        isFinite(data72)
                     )) {
-                        const err169 = {
+                        const err187 = {
                             instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/type",
@@ -72449,15 +73535,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err169];
+                            vErrors = [err187];
                         } else {
-                            vErrors.push(err169);
+                            vErrors.push(err187);
                         }
                         errors++;
                     }
-                    if (typeof data64 == "number" && isFinite(data64)) {
-                        if (data64 < 0 || isNaN(data64)) {
-                            const err170 = {
+                    if (typeof data72 == "number" && isFinite(data72)) {
+                        if (data72 < 0 || isNaN(data72)) {
+                            const err188 = {
                                 instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/minimum",
@@ -72466,23 +73552,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err170];
+                                vErrors = [err188];
                             } else {
-                                vErrors.push(err170);
+                                vErrors.push(err188);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.target_items !== undefined) {
-                    let data65 = data58.target_items;
+                if (data66.target_items !== undefined) {
+                    let data73 = data66.target_items;
                     if (!(
-                        typeof data65 == "number" &&
-                        !(data65 % 1) &&
-                        !isNaN(data65) &&
-                        isFinite(data65)
+                        typeof data73 == "number" &&
+                        !(data73 % 1) &&
+                        !isNaN(data73) &&
+                        isFinite(data73)
                     )) {
-                        const err171 = {
+                        const err189 = {
                             instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/target_items/type",
@@ -72491,15 +73577,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err171];
+                            vErrors = [err189];
                         } else {
-                            vErrors.push(err171);
+                            vErrors.push(err189);
                         }
                         errors++;
                     }
-                    if (typeof data65 == "number" && isFinite(data65)) {
-                        if (data65 < 0 || isNaN(data65)) {
-                            const err172 = {
+                    if (typeof data73 == "number" && isFinite(data73)) {
+                        if (data73 < 0 || isNaN(data73)) {
+                            const err190 = {
                                 instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/target_items/minimum",
@@ -72508,23 +73594,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err172];
+                                vErrors = [err190];
                             } else {
-                                vErrors.push(err172);
+                                vErrors.push(err190);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.forecast_p50_days !== undefined) {
-                    let data66 = data58.forecast_p50_days;
+                if (data66.forecast_p50_days !== undefined) {
+                    let data74 = data66.forecast_p50_days;
                     if (!(
-                        typeof data66 == "number" &&
-                        !(data66 % 1) &&
-                        !isNaN(data66) &&
-                        isFinite(data66)
+                        typeof data74 == "number" &&
+                        !(data74 % 1) &&
+                        !isNaN(data74) &&
+                        isFinite(data74)
                     )) {
-                        const err173 = {
+                        const err191 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/type",
@@ -72533,15 +73619,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err173];
+                            vErrors = [err191];
                         } else {
-                            vErrors.push(err173);
+                            vErrors.push(err191);
                         }
                         errors++;
                     }
-                    if (typeof data66 == "number" && isFinite(data66)) {
-                        if (data66 < 0 || isNaN(data66)) {
-                            const err174 = {
+                    if (typeof data74 == "number" && isFinite(data74)) {
+                        if (data74 < 0 || isNaN(data74)) {
+                            const err192 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
@@ -72551,23 +73637,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err174];
+                                vErrors = [err192];
                             } else {
-                                vErrors.push(err174);
+                                vErrors.push(err192);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.forecast_p85_days !== undefined) {
-                    let data67 = data58.forecast_p85_days;
+                if (data66.forecast_p85_days !== undefined) {
+                    let data75 = data66.forecast_p85_days;
                     if (!(
-                        typeof data67 == "number" &&
-                        !(data67 % 1) &&
-                        !isNaN(data67) &&
-                        isFinite(data67)
+                        typeof data75 == "number" &&
+                        !(data75 % 1) &&
+                        !isNaN(data75) &&
+                        isFinite(data75)
                     )) {
-                        const err175 = {
+                        const err193 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/type",
@@ -72576,15 +73662,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err175];
+                            vErrors = [err193];
                         } else {
-                            vErrors.push(err175);
+                            vErrors.push(err193);
                         }
                         errors++;
                     }
-                    if (typeof data67 == "number" && isFinite(data67)) {
-                        if (data67 < 0 || isNaN(data67)) {
-                            const err176 = {
+                    if (typeof data75 == "number" && isFinite(data75)) {
+                        if (data75 < 0 || isNaN(data75)) {
+                            const err194 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
@@ -72594,23 +73680,23 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err176];
+                                vErrors = [err194];
                             } else {
-                                vErrors.push(err176);
+                                vErrors.push(err194);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.forecast_p95_days !== undefined) {
-                    let data68 = data58.forecast_p95_days;
+                if (data66.forecast_p95_days !== undefined) {
+                    let data76 = data66.forecast_p95_days;
                     if (!(
-                        typeof data68 == "number" &&
-                        !(data68 % 1) &&
-                        !isNaN(data68) &&
-                        isFinite(data68)
+                        typeof data76 == "number" &&
+                        !(data76 % 1) &&
+                        !isNaN(data76) &&
+                        isFinite(data76)
                     )) {
-                        const err177 = {
+                        const err195 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_days",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/type",
@@ -72619,15 +73705,15 @@ function validate195(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err177];
+                            vErrors = [err195];
                         } else {
-                            vErrors.push(err177);
+                            vErrors.push(err195);
                         }
                         errors++;
                     }
-                    if (typeof data68 == "number" && isFinite(data68)) {
-                        if (data68 < 0 || isNaN(data68)) {
-                            const err178 = {
+                    if (typeof data76 == "number" && isFinite(data76)) {
+                        if (data76 < 0 || isNaN(data76)) {
+                            const err196 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_days",
                                 schemaPath:
@@ -72637,19 +73723,19 @@ function validate195(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err178];
+                                vErrors = [err196];
                             } else {
-                                vErrors.push(err178);
+                                vErrors.push(err196);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data58.forecast_p50_date !== undefined) {
-                    let data69 = data58.forecast_p50_date;
-                    if (typeof data69 === "string") {
-                        if (func2(data69) > 128) {
-                            const err179 = {
+                if (data66.forecast_p50_date !== undefined) {
+                    let data77 = data66.forecast_p50_date;
+                    if (typeof data77 === "string") {
+                        if (func2(data77) > 128) {
+                            const err197 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -72659,14 +73745,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err179];
+                                vErrors = [err197];
                             } else {
-                                vErrors.push(err179);
+                                vErrors.push(err197);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data69)) {
-                            const err180 = {
+                        if (!pattern14.test(data77)) {
+                            const err198 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -72677,14 +73763,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err180];
+                                vErrors = [err198];
                             } else {
-                                vErrors.push(err180);
+                                vErrors.push(err198);
                             }
                             errors++;
                         }
                     } else {
-                        const err181 = {
+                        const err199 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_date/type",
@@ -72693,18 +73779,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err181];
+                            vErrors = [err199];
                         } else {
-                            vErrors.push(err181);
+                            vErrors.push(err199);
                         }
                         errors++;
                     }
                 }
-                if (data58.forecast_p85_date !== undefined) {
-                    let data70 = data58.forecast_p85_date;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err182 = {
+                if (data66.forecast_p85_date !== undefined) {
+                    let data78 = data66.forecast_p85_date;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err200 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -72714,14 +73800,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err182];
+                                vErrors = [err200];
                             } else {
-                                vErrors.push(err182);
+                                vErrors.push(err200);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data70)) {
-                            const err183 = {
+                        if (!pattern14.test(data78)) {
+                            const err201 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -72732,14 +73818,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err183];
+                                vErrors = [err201];
                             } else {
-                                vErrors.push(err183);
+                                vErrors.push(err201);
                             }
                             errors++;
                         }
                     } else {
-                        const err184 = {
+                        const err202 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_date/type",
@@ -72748,18 +73834,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err184];
+                            vErrors = [err202];
                         } else {
-                            vErrors.push(err184);
+                            vErrors.push(err202);
                         }
                         errors++;
                     }
                 }
-                if (data58.forecast_p95_date !== undefined) {
-                    let data71 = data58.forecast_p95_date;
-                    if (typeof data71 === "string") {
-                        if (func2(data71) > 128) {
-                            const err185 = {
+                if (data66.forecast_p95_date !== undefined) {
+                    let data79 = data66.forecast_p95_date;
+                    if (typeof data79 === "string") {
+                        if (func2(data79) > 128) {
+                            const err203 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -72769,14 +73855,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err185];
+                                vErrors = [err203];
                             } else {
-                                vErrors.push(err185);
+                                vErrors.push(err203);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data71)) {
-                            const err186 = {
+                        if (!pattern14.test(data79)) {
+                            const err204 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -72787,14 +73873,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err186];
+                                vErrors = [err204];
                             } else {
-                                vErrors.push(err186);
+                                vErrors.push(err204);
                             }
                             errors++;
                         }
                     } else {
-                        const err187 = {
+                        const err205 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_date/type",
@@ -72803,15 +73889,15 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err187];
+                            vErrors = [err205];
                         } else {
-                            vErrors.push(err187);
+                            vErrors.push(err205);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err188 = {
+                const err206 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ProjectedCompletionForecast/type",
                     keyword: "type",
@@ -72819,15 +73905,15 @@ function validate195(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err188];
+                    vErrors = [err206];
                 } else {
-                    vErrors.push(err188);
+                    vErrors.push(err206);
                 }
                 errors++;
             }
         }
     } else {
-        const err189 = {
+        const err207 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -72835,9 +73921,9 @@ function validate195(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err189];
+            vErrors = [err207];
         } else {
-            vErrors.push(err189);
+            vErrors.push(err207);
         }
         errors++;
     }
@@ -101415,16 +102501,7 @@ function validate274(
                     errors++;
                 }
                 for (const key4 in data30) {
-                    if (!(
-                        key4 === "field" ||
-                        key4 === "shape" ||
-                        key4 === "key" ||
-                        key4 === "measures" ||
-                        key4 === "observations" ||
-                        key4 === "order_by" ||
-                        key4 === "measure_units" ||
-                        key4 === "cadence"
-                    )) {
+                    if (!func1.call(schema87.properties, key4)) {
                         const err89 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -102112,8 +103189,185 @@ function validate274(
                         errors++;
                     }
                 }
+                if (data30.column_vocabularies !== undefined) {
+                    let data45 = data30.column_vocabularies;
+                    if (data45 && typeof data45 == "object" && !Array.isArray(data45)) {
+                        if (Object.keys(data45).length > 40) {
+                            const err127 = {
+                                instancePath: instancePath + "/table/column_vocabularies",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err127];
+                            } else {
+                                vErrors.push(err127);
+                            }
+                            errors++;
+                        }
+                        for (const key6 in data45) {
+                            let data46 = data45[key6];
+                            if (typeof data46 !== "string") {
+                                const err128 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err128];
+                                } else {
+                                    vErrors.push(err128);
+                                }
+                                errors++;
+                            }
+                            if (!(data46 === "investment_theme" || data46 === "subcategory")) {
+                                const err129 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err129];
+                                } else {
+                                    vErrors.push(err129);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err130 = {
+                            instancePath: instancePath + "/table/column_vocabularies",
+                            schemaPath:
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err130];
+                        } else {
+                            vErrors.push(err130);
+                        }
+                        errors++;
+                    }
+                }
+                if (data30.word_columns !== undefined) {
+                    let data47 = data30.word_columns;
+                    if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
+                        if (Object.keys(data47).length > 40) {
+                            const err131 = {
+                                instancePath: instancePath + "/table/word_columns",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err131];
+                            } else {
+                                vErrors.push(err131);
+                            }
+                            errors++;
+                        }
+                        for (const key7 in data47) {
+                            let data48 = data47[key7];
+                            if (typeof data48 === "string") {
+                                if (func2(data48) > 128) {
+                                    const err132 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err132];
+                                    } else {
+                                        vErrors.push(err132);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data48) < 1) {
+                                    const err133 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err133];
+                                    } else {
+                                        vErrors.push(err133);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err134 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/word_columns/" +
+                                        key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err134];
+                                } else {
+                                    vErrors.push(err134);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err135 = {
+                            instancePath: instancePath + "/table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err135];
+                        } else {
+                            vErrors.push(err135);
+                        }
+                        errors++;
+                    }
+                }
             } else {
-                const err127 = {
+                const err136 = {
                     instancePath: instancePath + "/table",
                     schemaPath: "#/$defs/ClaimedFactTable/type",
                     keyword: "type",
@@ -102121,18 +103375,18 @@ function validate274(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err127];
+                    vErrors = [err136];
                 } else {
-                    vErrors.push(err127);
+                    vErrors.push(err136);
                 }
                 errors++;
             }
         }
         if (data.time_series_rows !== undefined) {
-            let data45 = data.time_series_rows;
-            if (Array.isArray(data45)) {
-                if (data45.length > 64) {
-                    const err128 = {
+            let data49 = data.time_series_rows;
+            if (Array.isArray(data49)) {
+                if (data49.length > 64) {
+                    const err137 = {
                         instancePath: instancePath + "/time_series_rows",
                         schemaPath: "#/properties/time_series_rows/maxItems",
                         keyword: "maxItems",
@@ -102140,18 +103394,18 @@ function validate274(
                         message: "must NOT have more than 64 items",
                     };
                     if (vErrors === null) {
-                        vErrors = [err128];
+                        vErrors = [err137];
                     } else {
-                        vErrors.push(err128);
+                        vErrors.push(err137);
                     }
                     errors++;
                 }
-                const len6 = data45.length;
+                const len6 = data49.length;
                 for (let i6 = 0; i6 < len6; i6++) {
                     if (
-                        !validate68(data45[i6], {
+                        !validate68(data49[i6], {
                             instancePath: instancePath + "/time_series_rows/" + i6,
-                            parentData: data45,
+                            parentData: data49,
                             parentDataProperty: i6,
                             rootData,
                             dynamicAnchors,
@@ -102165,7 +103419,7 @@ function validate274(
                     }
                 }
             } else {
-                const err129 = {
+                const err138 = {
                     instancePath: instancePath + "/time_series_rows",
                     schemaPath: "#/properties/time_series_rows/type",
                     keyword: "type",
@@ -102173,18 +103427,18 @@ function validate274(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err129];
+                    vErrors = [err138];
                 } else {
-                    vErrors.push(err129);
+                    vErrors.push(err138);
                 }
                 errors++;
             }
         }
         if (data.time_series_table !== undefined) {
-            let data47 = data.time_series_table;
-            if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
-                if (data47.field === undefined) {
-                    const err130 = {
+            let data51 = data.time_series_table;
+            if (data51 && typeof data51 == "object" && !Array.isArray(data51)) {
+                if (data51.field === undefined) {
+                    const err139 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -102192,14 +103446,14 @@ function validate274(
                         message: "must have required property '" + "field" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err130];
+                        vErrors = [err139];
                     } else {
-                        vErrors.push(err130);
+                        vErrors.push(err139);
                     }
                     errors++;
                 }
-                if (data47.shape === undefined) {
-                    const err131 = {
+                if (data51.shape === undefined) {
+                    const err140 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -102207,14 +103461,14 @@ function validate274(
                         message: "must have required property '" + "shape" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err131];
+                        vErrors = [err140];
                     } else {
-                        vErrors.push(err131);
+                        vErrors.push(err140);
                     }
                     errors++;
                 }
-                if (data47.key === undefined) {
-                    const err132 = {
+                if (data51.key === undefined) {
+                    const err141 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -102222,43 +103476,34 @@ function validate274(
                         message: "must have required property '" + "key" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err132];
+                        vErrors = [err141];
                     } else {
-                        vErrors.push(err132);
+                        vErrors.push(err141);
                     }
                     errors++;
                 }
-                for (const key6 in data47) {
-                    if (!(
-                        key6 === "field" ||
-                        key6 === "shape" ||
-                        key6 === "key" ||
-                        key6 === "measures" ||
-                        key6 === "observations" ||
-                        key6 === "order_by" ||
-                        key6 === "measure_units" ||
-                        key6 === "cadence"
-                    )) {
-                        const err133 = {
+                for (const key8 in data51) {
+                    if (!func1.call(schema87.properties, key8)) {
+                        const err142 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key8 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err133];
+                            vErrors = [err142];
                         } else {
-                            vErrors.push(err133);
+                            vErrors.push(err142);
                         }
                         errors++;
                     }
                 }
-                if (data47.field !== undefined) {
-                    let data48 = data47.field;
-                    if (typeof data48 === "string") {
-                        if (func2(data48) > 128) {
-                            const err134 = {
+                if (data51.field !== undefined) {
+                    let data52 = data51.field;
+                    if (typeof data52 === "string") {
+                        if (func2(data52) > 128) {
+                            const err143 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/maxLength",
                                 keyword: "maxLength",
@@ -102266,14 +103511,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err134];
+                                vErrors = [err143];
                             } else {
-                                vErrors.push(err134);
+                                vErrors.push(err143);
                             }
                             errors++;
                         }
-                        if (func2(data48) < 1) {
-                            const err135 = {
+                        if (func2(data52) < 1) {
+                            const err144 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/minLength",
                                 keyword: "minLength",
@@ -102281,14 +103526,14 @@ function validate274(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err135];
+                                vErrors = [err144];
                             } else {
-                                vErrors.push(err135);
+                                vErrors.push(err144);
                             }
                             errors++;
                         }
                     } else {
-                        const err136 = {
+                        const err145 = {
                             instancePath: instancePath + "/time_series_table/field",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/field/type",
                             keyword: "type",
@@ -102296,17 +103541,17 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err136];
+                            vErrors = [err145];
                         } else {
-                            vErrors.push(err136);
+                            vErrors.push(err145);
                         }
                         errors++;
                     }
                 }
-                if (data47.shape !== undefined) {
-                    let data49 = data47.shape;
-                    if (typeof data49 !== "string") {
-                        const err137 = {
+                if (data51.shape !== undefined) {
+                    let data53 = data51.shape;
+                    if (typeof data53 !== "string") {
+                        const err146 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/type",
                             keyword: "type",
@@ -102314,19 +103559,19 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err137];
+                            vErrors = [err146];
                         } else {
-                            vErrors.push(err137);
+                            vErrors.push(err146);
                         }
                         errors++;
                     }
                     if (!(
-                        data49 === "time_series" ||
-                        data49 === "breakdown" ||
-                        data49 === "ranking" ||
-                        data49 === "distribution"
+                        data53 === "time_series" ||
+                        data53 === "breakdown" ||
+                        data53 === "ranking" ||
+                        data53 === "distribution"
                     )) {
-                        const err138 = {
+                        const err147 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
@@ -102334,18 +103579,18 @@ function validate274(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err138];
+                            vErrors = [err147];
                         } else {
-                            vErrors.push(err138);
+                            vErrors.push(err147);
                         }
                         errors++;
                     }
                 }
-                if (data47.key !== undefined) {
-                    let data50 = data47.key;
-                    if (Array.isArray(data50)) {
-                        if (data50.length > 8) {
-                            const err139 = {
+                if (data51.key !== undefined) {
+                    let data54 = data51.key;
+                    if (Array.isArray(data54)) {
+                        if (data54.length > 8) {
+                            const err148 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/maxItems",
                                 keyword: "maxItems",
@@ -102353,14 +103598,14 @@ function validate274(
                                 message: "must NOT have more than 8 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err139];
+                                vErrors = [err148];
                             } else {
-                                vErrors.push(err139);
+                                vErrors.push(err148);
                             }
                             errors++;
                         }
-                        if (data50.length < 1) {
-                            const err140 = {
+                        if (data54.length < 1) {
+                            const err149 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/minItems",
                                 keyword: "minItems",
@@ -102368,18 +103613,18 @@ function validate274(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err140];
+                                vErrors = [err149];
                             } else {
-                                vErrors.push(err140);
+                                vErrors.push(err149);
                             }
                             errors++;
                         }
-                        const len7 = data50.length;
+                        const len7 = data54.length;
                         for (let i7 = 0; i7 < len7; i7++) {
-                            let data51 = data50[i7];
-                            if (typeof data51 === "string") {
-                                if (func2(data51) > 128) {
-                                    const err141 = {
+                            let data55 = data54[i7];
+                            if (typeof data55 === "string") {
+                                if (func2(data55) > 128) {
+                                    const err150 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/maxLength",
@@ -102388,14 +103633,14 @@ function validate274(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err141];
+                                        vErrors = [err150];
                                     } else {
-                                        vErrors.push(err141);
+                                        vErrors.push(err150);
                                     }
                                     errors++;
                                 }
-                                if (func2(data51) < 1) {
-                                    const err142 = {
+                                if (func2(data55) < 1) {
+                                    const err151 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/minLength",
@@ -102404,14 +103649,14 @@ function validate274(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err142];
+                                        vErrors = [err151];
                                     } else {
-                                        vErrors.push(err142);
+                                        vErrors.push(err151);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err143 = {
+                                const err152 = {
                                     instancePath: instancePath + "/time_series_table/key/" + i7,
                                     schemaPath:
                                         "#/$defs/ClaimedFactTable/properties/key/items/type",
@@ -102420,15 +103665,15 @@ function validate274(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err143];
+                                    vErrors = [err152];
                                 } else {
-                                    vErrors.push(err143);
+                                    vErrors.push(err152);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err144 = {
+                        const err153 = {
                             instancePath: instancePath + "/time_series_table/key",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/key/type",
                             keyword: "type",
@@ -102436,18 +103681,18 @@ function validate274(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err144];
+                            vErrors = [err153];
                         } else {
-                            vErrors.push(err144);
+                            vErrors.push(err153);
                         }
                         errors++;
                     }
                 }
-                if (data47.measures !== undefined) {
-                    let data52 = data47.measures;
-                    if (Array.isArray(data52)) {
-                        if (data52.length > 32) {
-                            const err145 = {
+                if (data51.measures !== undefined) {
+                    let data56 = data51.measures;
+                    if (Array.isArray(data56)) {
+                        if (data56.length > 32) {
+                            const err154 = {
                                 instancePath: instancePath + "/time_series_table/measures",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/measures/maxItems",
                                 keyword: "maxItems",
@@ -102455,18 +103700,18 @@ function validate274(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err145];
+                                vErrors = [err154];
                             } else {
-                                vErrors.push(err145);
+                                vErrors.push(err154);
                             }
                             errors++;
                         }
-                        const len8 = data52.length;
+                        const len8 = data56.length;
                         for (let i8 = 0; i8 < len8; i8++) {
-                            let data53 = data52[i8];
-                            if (typeof data53 === "string") {
-                                if (func2(data53) > 128) {
-                                    const err146 = {
+                            let data57 = data56[i8];
+                            if (typeof data57 === "string") {
+                                if (func2(data57) > 128) {
+                                    const err155 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -102476,14 +103721,14 @@ function validate274(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err146];
+                                        vErrors = [err155];
                                     } else {
-                                        vErrors.push(err146);
+                                        vErrors.push(err155);
                                     }
                                     errors++;
                                 }
-                                if (func2(data53) < 1) {
-                                    const err147 = {
+                                if (func2(data57) < 1) {
+                                    const err156 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -102493,14 +103738,14 @@ function validate274(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err147];
+                                        vErrors = [err156];
                                     } else {
-                                        vErrors.push(err147);
+                                        vErrors.push(err156);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err148 = {
+                                const err157 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measures/" + i8,
                                     schemaPath:
@@ -102510,15 +103755,15 @@ function validate274(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err148];
+                                    vErrors = [err157];
                                 } else {
-                                    vErrors.push(err148);
+                                    vErrors.push(err157);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err149 = {
+                        const err158 = {
                             instancePath: instancePath + "/time_series_table/measures",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measures/type",
                             keyword: "type",
@@ -102526,18 +103771,18 @@ function validate274(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err149];
+                            vErrors = [err158];
                         } else {
-                            vErrors.push(err149);
+                            vErrors.push(err158);
                         }
                         errors++;
                     }
                 }
-                if (data47.observations !== undefined) {
-                    let data54 = data47.observations;
-                    if (Array.isArray(data54)) {
-                        if (data54.length > 32) {
-                            const err150 = {
+                if (data51.observations !== undefined) {
+                    let data58 = data51.observations;
+                    if (Array.isArray(data58)) {
+                        if (data58.length > 32) {
+                            const err159 = {
                                 instancePath: instancePath + "/time_series_table/observations",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/observations/maxItems",
@@ -102546,18 +103791,18 @@ function validate274(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err150];
+                                vErrors = [err159];
                             } else {
-                                vErrors.push(err150);
+                                vErrors.push(err159);
                             }
                             errors++;
                         }
-                        const len9 = data54.length;
+                        const len9 = data58.length;
                         for (let i9 = 0; i9 < len9; i9++) {
-                            let data55 = data54[i9];
-                            if (typeof data55 === "string") {
-                                if (func2(data55) > 128) {
-                                    const err151 = {
+                            let data59 = data58[i9];
+                            if (typeof data59 === "string") {
+                                if (func2(data59) > 128) {
+                                    const err160 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -102567,14 +103812,14 @@ function validate274(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err151];
+                                        vErrors = [err160];
                                     } else {
-                                        vErrors.push(err151);
+                                        vErrors.push(err160);
                                     }
                                     errors++;
                                 }
-                                if (func2(data55) < 1) {
-                                    const err152 = {
+                                if (func2(data59) < 1) {
+                                    const err161 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -102584,14 +103829,14 @@ function validate274(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err152];
+                                        vErrors = [err161];
                                     } else {
-                                        vErrors.push(err152);
+                                        vErrors.push(err161);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err153 = {
+                                const err162 = {
                                     instancePath:
                                         instancePath + "/time_series_table/observations/" + i9,
                                     schemaPath:
@@ -102601,15 +103846,15 @@ function validate274(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err153];
+                                    vErrors = [err162];
                                 } else {
-                                    vErrors.push(err153);
+                                    vErrors.push(err162);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err154 = {
+                        const err163 = {
                             instancePath: instancePath + "/time_series_table/observations",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/observations/type",
                             keyword: "type",
@@ -102617,18 +103862,18 @@ function validate274(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err154];
+                            vErrors = [err163];
                         } else {
-                            vErrors.push(err154);
+                            vErrors.push(err163);
                         }
                         errors++;
                     }
                 }
-                if (data47.order_by !== undefined) {
-                    let data56 = data47.order_by;
-                    if (typeof data56 === "string") {
-                        if (func2(data56) > 128) {
-                            const err155 = {
+                if (data51.order_by !== undefined) {
+                    let data60 = data51.order_by;
+                    if (typeof data60 === "string") {
+                        if (func2(data60) > 128) {
+                            const err164 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/maxLength",
@@ -102637,14 +103882,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err155];
+                                vErrors = [err164];
                             } else {
-                                vErrors.push(err155);
+                                vErrors.push(err164);
                             }
                             errors++;
                         }
-                        if (func2(data56) < 1) {
-                            const err156 = {
+                        if (func2(data60) < 1) {
+                            const err165 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/minLength",
@@ -102653,14 +103898,14 @@ function validate274(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err156];
+                                vErrors = [err165];
                             } else {
-                                vErrors.push(err156);
+                                vErrors.push(err165);
                             }
                             errors++;
                         }
                     } else {
-                        const err157 = {
+                        const err166 = {
                             instancePath: instancePath + "/time_series_table/order_by",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/order_by/type",
                             keyword: "type",
@@ -102668,18 +103913,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err157];
+                            vErrors = [err166];
                         } else {
-                            vErrors.push(err157);
+                            vErrors.push(err166);
                         }
                         errors++;
                     }
                 }
-                if (data47.measure_units !== undefined) {
-                    let data57 = data47.measure_units;
-                    if (Array.isArray(data57)) {
-                        if (data57.length > 32) {
-                            const err158 = {
+                if (data51.measure_units !== undefined) {
+                    let data61 = data51.measure_units;
+                    if (Array.isArray(data61)) {
+                        if (data61.length > 32) {
+                            const err167 = {
                                 instancePath: instancePath + "/time_series_table/measure_units",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/measure_units/maxItems",
@@ -102688,18 +103933,18 @@ function validate274(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err158];
+                                vErrors = [err167];
                             } else {
-                                vErrors.push(err158);
+                                vErrors.push(err167);
                             }
                             errors++;
                         }
-                        const len10 = data57.length;
+                        const len10 = data61.length;
                         for (let i10 = 0; i10 < len10; i10++) {
-                            let data58 = data57[i10];
-                            if (data58 && typeof data58 == "object" && !Array.isArray(data58)) {
-                                if (data58.measure === undefined) {
-                                    const err159 = {
+                            let data62 = data61[i10];
+                            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
+                                if (data62.measure === undefined) {
+                                    const err168 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -102711,14 +103956,14 @@ function validate274(
                                         message: "must have required property '" + "measure" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err159];
+                                        vErrors = [err168];
                                     } else {
-                                        vErrors.push(err159);
+                                        vErrors.push(err168);
                                     }
                                     errors++;
                                 }
-                                if (data58.unit === undefined) {
-                                    const err160 = {
+                                if (data62.unit === undefined) {
+                                    const err169 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -102730,15 +103975,15 @@ function validate274(
                                         message: "must have required property '" + "unit" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err160];
+                                        vErrors = [err169];
                                     } else {
-                                        vErrors.push(err160);
+                                        vErrors.push(err169);
                                     }
                                     errors++;
                                 }
-                                for (const key7 in data58) {
-                                    if (!(key7 === "measure" || key7 === "unit")) {
-                                        const err161 = {
+                                for (const key9 in data62) {
+                                    if (!(key9 === "measure" || key9 === "unit")) {
+                                        const err170 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -102746,22 +103991,22 @@ function validate274(
                                             schemaPath:
                                                 "#/$defs/ClaimedFactTable/properties/measure_units/items/additionalProperties",
                                             keyword: "additionalProperties",
-                                            params: { additionalProperty: key7 },
+                                            params: { additionalProperty: key9 },
                                             message: "must NOT have additional properties",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err161];
+                                            vErrors = [err170];
                                         } else {
-                                            vErrors.push(err161);
+                                            vErrors.push(err170);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.measure !== undefined) {
-                                    let data59 = data58.measure;
-                                    if (typeof data59 === "string") {
-                                        if (func2(data59) > 128) {
-                                            const err162 = {
+                                if (data62.measure !== undefined) {
+                                    let data63 = data62.measure;
+                                    if (typeof data63 === "string") {
+                                        if (func2(data63) > 128) {
+                                            const err171 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -102774,14 +104019,14 @@ function validate274(
                                                 message: "must NOT have more than 128 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err162];
+                                                vErrors = [err171];
                                             } else {
-                                                vErrors.push(err162);
+                                                vErrors.push(err171);
                                             }
                                             errors++;
                                         }
-                                        if (func2(data59) < 1) {
-                                            const err163 = {
+                                        if (func2(data63) < 1) {
+                                            const err172 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -102794,14 +104039,14 @@ function validate274(
                                                 message: "must NOT have fewer than 1 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err163];
+                                                vErrors = [err172];
                                             } else {
-                                                vErrors.push(err163);
+                                                vErrors.push(err172);
                                             }
                                             errors++;
                                         }
                                     } else {
-                                        const err164 = {
+                                        const err173 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -102814,17 +104059,17 @@ function validate274(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err164];
+                                            vErrors = [err173];
                                         } else {
-                                            vErrors.push(err164);
+                                            vErrors.push(err173);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.unit !== undefined) {
-                                    let data60 = data58.unit;
-                                    if (typeof data60 !== "string") {
-                                        const err165 = {
+                                if (data62.unit !== undefined) {
+                                    let data64 = data62.unit;
+                                    if (typeof data64 !== "string") {
+                                        const err174 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -102837,20 +104082,20 @@ function validate274(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err165];
+                                            vErrors = [err174];
                                         } else {
-                                            vErrors.push(err165);
+                                            vErrors.push(err174);
                                         }
                                         errors++;
                                     }
                                     if (!(
-                                        data60 === "count" ||
-                                        data60 === "ratio" ||
-                                        data60 === "hours" ||
-                                        data60 === "days" ||
-                                        data60 === "points"
+                                        data64 === "count" ||
+                                        data64 === "ratio" ||
+                                        data64 === "hours" ||
+                                        data64 === "days" ||
+                                        data64 === "points"
                                     )) {
-                                        const err166 = {
+                                        const err175 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -102867,15 +104112,15 @@ function validate274(
                                             message: "must be equal to one of the allowed values",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err166];
+                                            vErrors = [err175];
                                         } else {
-                                            vErrors.push(err166);
+                                            vErrors.push(err175);
                                         }
                                         errors++;
                                     }
                                 }
                             } else {
-                                const err167 = {
+                                const err176 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measure_units/" + i10,
                                     schemaPath:
@@ -102885,173 +104130,20 @@ function validate274(
                                     message: "must be object",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err167];
+                                    vErrors = [err176];
                                 } else {
-                                    vErrors.push(err167);
+                                    vErrors.push(err176);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err168 = {
+                        const err177 = {
                             instancePath: instancePath + "/time_series_table/measure_units",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measure_units/type",
                             keyword: "type",
                             params: { type: "array" },
                             message: "must be array",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err168];
-                        } else {
-                            vErrors.push(err168);
-                        }
-                        errors++;
-                    }
-                }
-                if (data47.cadence !== undefined) {
-                    let data61 = data47.cadence;
-                    if (typeof data61 !== "string") {
-                        const err169 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err169];
-                        } else {
-                            vErrors.push(err169);
-                        }
-                        errors++;
-                    }
-                    if (!(data61 === "day")) {
-                        const err170 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
-                            message: "must be equal to one of the allowed values",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err170];
-                        } else {
-                            vErrors.push(err170);
-                        }
-                        errors++;
-                    }
-                }
-            } else {
-                const err171 = {
-                    instancePath: instancePath + "/time_series_table",
-                    schemaPath: "#/$defs/ClaimedFactTable/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err171];
-                } else {
-                    vErrors.push(err171);
-                }
-                errors++;
-            }
-        }
-        if (data.investment_mix !== undefined) {
-            let data62 = data.investment_mix;
-            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
-                if (data62.investment_mix_source === undefined) {
-                    const err172 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "investment_mix_source" },
-                        message: "must have required property '" + "investment_mix_source" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err172];
-                    } else {
-                        vErrors.push(err172);
-                    }
-                    errors++;
-                }
-                if (data62.rollup_basis === undefined) {
-                    const err173 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "rollup_basis" },
-                        message: "must have required property '" + "rollup_basis" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err173];
-                    } else {
-                        vErrors.push(err173);
-                    }
-                    errors++;
-                }
-                if (data62.work_unit_count === undefined) {
-                    const err174 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "work_unit_count" },
-                        message: "must have required property '" + "work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err174];
-                    } else {
-                        vErrors.push(err174);
-                    }
-                    errors++;
-                }
-                if (data62.project_own_work_unit_count === undefined) {
-                    const err175 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "project_own_work_unit_count" },
-                        message:
-                            "must have required property '" + "project_own_work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err175];
-                    } else {
-                        vErrors.push(err175);
-                    }
-                    errors++;
-                }
-                for (const key8 in data62) {
-                    if (!(
-                        key8 === "investment_mix_source" ||
-                        key8 === "rollup_basis" ||
-                        key8 === "work_unit_count" ||
-                        key8 === "project_own_work_unit_count"
-                    )) {
-                        const err176 = {
-                            instancePath: instancePath + "/investment_mix",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key8 },
-                            message: "must NOT have additional properties",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err176];
-                        } else {
-                            vErrors.push(err176);
-                        }
-                        errors++;
-                    }
-                }
-                if (data62.investment_mix_source !== undefined) {
-                    if (typeof data62.investment_mix_source !== "string") {
-                        const err177 = {
-                            instancePath: instancePath + "/investment_mix/investment_mix_source",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err177];
@@ -103061,115 +104153,112 @@ function validate274(
                         errors++;
                     }
                 }
-                if (data62.rollup_basis !== undefined) {
-                    let data64 = data62.rollup_basis;
-                    if (typeof data64 === "string") {
-                        if (func2(data64) > 128) {
-                            const err178 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err178];
-                            } else {
-                                vErrors.push(err178);
-                            }
-                            errors++;
-                        }
-                        if (func2(data64) < 1) {
-                            const err179 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
-                                keyword: "minLength",
-                                params: { limit: 1 },
-                                message: "must NOT have fewer than 1 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err179];
-                            } else {
-                                vErrors.push(err179);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err180 = {
-                            instancePath: instancePath + "/investment_mix/rollup_basis",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                if (data51.cadence !== undefined) {
+                    let data65 = data51.cadence;
+                    if (typeof data65 !== "string") {
+                        const err178 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
                             keyword: "type",
                             params: { type: "string" },
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err180];
+                            vErrors = [err178];
                         } else {
-                            vErrors.push(err180);
+                            vErrors.push(err178);
+                        }
+                        errors++;
+                    }
+                    if (!(data65 === "day")) {
+                        const err179 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema87.properties.cadence.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err179];
+                        } else {
+                            vErrors.push(err179);
                         }
                         errors++;
                     }
                 }
-                if (data62.work_unit_count !== undefined) {
-                    let data65 = data62.work_unit_count;
-                    if (!(
-                        typeof data65 == "number" &&
-                        !(data65 % 1) &&
-                        !isNaN(data65) &&
-                        isFinite(data65)
-                    )) {
-                        const err181 = {
-                            instancePath: instancePath + "/investment_mix/work_unit_count",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err181];
-                        } else {
-                            vErrors.push(err181);
-                        }
-                        errors++;
-                    }
-                    if (typeof data65 == "number" && isFinite(data65)) {
-                        if (data65 < 0 || isNaN(data65)) {
-                            const err182 = {
-                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                if (data51.column_vocabularies !== undefined) {
+                    let data66 = data51.column_vocabularies;
+                    if (data66 && typeof data66 == "object" && !Array.isArray(data66)) {
+                        if (Object.keys(data66).length > 40) {
+                            const err180 = {
+                                instancePath:
+                                    instancePath + "/time_series_table/column_vocabularies",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
-                                vErrors = [err182];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err182);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
-                    }
-                }
-                if (data62.project_own_work_unit_count !== undefined) {
-                    let data66 = data62.project_own_work_unit_count;
-                    if (!(
-                        typeof data66 == "number" &&
-                        !(data66 % 1) &&
-                        !isNaN(data66) &&
-                        isFinite(data66)
-                    )) {
+                        for (const key10 in data66) {
+                            let data67 = data66[key10];
+                            if (typeof data67 !== "string") {
+                                const err181 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err181];
+                                } else {
+                                    vErrors.push(err181);
+                                }
+                                errors++;
+                            }
+                            if (!(data67 === "investment_theme" || data67 === "subcategory")) {
+                                const err182 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err182];
+                                } else {
+                                    vErrors.push(err182);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
                         const err183 = {
-                            instancePath:
-                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            instancePath: instancePath + "/time_series_table/column_vocabularies",
                             schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
                             keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err183];
@@ -103178,16 +104267,18 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data66 == "number" && isFinite(data66)) {
-                        if (data66 < 0 || isNaN(data66)) {
+                }
+                if (data51.word_columns !== undefined) {
+                    let data68 = data51.word_columns;
+                    if (data68 && typeof data68 == "object" && !Array.isArray(data68)) {
+                        if (Object.keys(data68).length > 40) {
                             const err184 = {
-                                instancePath:
-                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                instancePath: instancePath + "/time_series_table/word_columns",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
                                 vErrors = [err184];
@@ -103196,65 +104287,74 @@ function validate274(
                             }
                             errors++;
                         }
-                    }
-                }
-            } else {
-                const err185 = {
-                    instancePath: instancePath + "/investment_mix",
-                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err185];
-                } else {
-                    vErrors.push(err185);
-                }
-                errors++;
-            }
-        }
-        if (data.completion_forecast !== undefined) {
-            let data67 = data.completion_forecast;
-            if (data67 && typeof data67 == "object" && !Array.isArray(data67)) {
-                if (data67.state === undefined) {
-                    const err186 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err186];
+                        for (const key11 in data68) {
+                            let data69 = data68[key11];
+                            if (typeof data69 === "string") {
+                                if (func2(data69) > 128) {
+                                    const err185 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err185];
+                                    } else {
+                                        vErrors.push(err185);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data69) < 1) {
+                                    const err186 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err186];
+                                    } else {
+                                        vErrors.push(err186);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err187 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/word_columns/" +
+                                        key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err187];
+                                } else {
+                                    vErrors.push(err187);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        vErrors.push(err186);
-                    }
-                    errors++;
-                }
-                if (data67.computed_at === undefined) {
-                    const err187 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err187];
-                    } else {
-                        vErrors.push(err187);
-                    }
-                    errors++;
-                }
-                for (const key9 in data67) {
-                    if (!func1.call(schema90.properties, key9)) {
                         const err188 = {
-                            instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key9 },
-                            message: "must NOT have additional properties",
+                            instancePath: instancePath + "/time_series_table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err188];
@@ -103264,11 +104364,334 @@ function validate274(
                         errors++;
                     }
                 }
-                if (data67.work_scope_id !== undefined) {
-                    let data68 = data67.work_scope_id;
-                    if (typeof data68 === "string") {
-                        if (func2(data68) > 128) {
-                            const err189 = {
+            } else {
+                const err189 = {
+                    instancePath: instancePath + "/time_series_table",
+                    schemaPath: "#/$defs/ClaimedFactTable/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err189];
+                } else {
+                    vErrors.push(err189);
+                }
+                errors++;
+            }
+        }
+        if (data.investment_mix !== undefined) {
+            let data70 = data.investment_mix;
+            if (data70 && typeof data70 == "object" && !Array.isArray(data70)) {
+                if (data70.investment_mix_source === undefined) {
+                    const err190 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "investment_mix_source" },
+                        message: "must have required property '" + "investment_mix_source" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err190];
+                    } else {
+                        vErrors.push(err190);
+                    }
+                    errors++;
+                }
+                if (data70.rollup_basis === undefined) {
+                    const err191 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "rollup_basis" },
+                        message: "must have required property '" + "rollup_basis" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err191];
+                    } else {
+                        vErrors.push(err191);
+                    }
+                    errors++;
+                }
+                if (data70.work_unit_count === undefined) {
+                    const err192 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "work_unit_count" },
+                        message: "must have required property '" + "work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err192];
+                    } else {
+                        vErrors.push(err192);
+                    }
+                    errors++;
+                }
+                if (data70.project_own_work_unit_count === undefined) {
+                    const err193 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "project_own_work_unit_count" },
+                        message:
+                            "must have required property '" + "project_own_work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err193];
+                    } else {
+                        vErrors.push(err193);
+                    }
+                    errors++;
+                }
+                for (const key12 in data70) {
+                    if (!(
+                        key12 === "investment_mix_source" ||
+                        key12 === "rollup_basis" ||
+                        key12 === "work_unit_count" ||
+                        key12 === "project_own_work_unit_count"
+                    )) {
+                        const err194 = {
+                            instancePath: instancePath + "/investment_mix",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err194];
+                        } else {
+                            vErrors.push(err194);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.investment_mix_source !== undefined) {
+                    if (typeof data70.investment_mix_source !== "string") {
+                        const err195 = {
+                            instancePath: instancePath + "/investment_mix/investment_mix_source",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err195];
+                        } else {
+                            vErrors.push(err195);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.rollup_basis !== undefined) {
+                    let data72 = data70.rollup_basis;
+                    if (typeof data72 === "string") {
+                        if (func2(data72) > 128) {
+                            const err196 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err196];
+                            } else {
+                                vErrors.push(err196);
+                            }
+                            errors++;
+                        }
+                        if (func2(data72) < 1) {
+                            const err197 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err197];
+                            } else {
+                                vErrors.push(err197);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err198 = {
+                            instancePath: instancePath + "/investment_mix/rollup_basis",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err198];
+                        } else {
+                            vErrors.push(err198);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.work_unit_count !== undefined) {
+                    let data73 = data70.work_unit_count;
+                    if (!(
+                        typeof data73 == "number" &&
+                        !(data73 % 1) &&
+                        !isNaN(data73) &&
+                        isFinite(data73)
+                    )) {
+                        const err199 = {
+                            instancePath: instancePath + "/investment_mix/work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err199];
+                        } else {
+                            vErrors.push(err199);
+                        }
+                        errors++;
+                    }
+                    if (typeof data73 == "number" && isFinite(data73)) {
+                        if (data73 < 0 || isNaN(data73)) {
+                            const err200 = {
+                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data70.project_own_work_unit_count !== undefined) {
+                    let data74 = data70.project_own_work_unit_count;
+                    if (!(
+                        typeof data74 == "number" &&
+                        !(data74 % 1) &&
+                        !isNaN(data74) &&
+                        isFinite(data74)
+                    )) {
+                        const err201 = {
+                            instancePath:
+                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err201];
+                        } else {
+                            vErrors.push(err201);
+                        }
+                        errors++;
+                    }
+                    if (typeof data74 == "number" && isFinite(data74)) {
+                        if (data74 < 0 || isNaN(data74)) {
+                            const err202 = {
+                                instancePath:
+                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err202];
+                            } else {
+                                vErrors.push(err202);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/investment_mix",
+                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.completion_forecast !== undefined) {
+            let data75 = data.completion_forecast;
+            if (data75 && typeof data75 == "object" && !Array.isArray(data75)) {
+                if (data75.state === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data75.computed_at === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key13 in data75) {
+                    if (!func1.call(schema90.properties, key13)) {
+                        const err206 = {
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data75.work_scope_id !== undefined) {
+                    let data76 = data75.work_scope_id;
+                    if (typeof data76 === "string") {
+                        if (func2(data76) > 128) {
+                            const err207 = {
                                 instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
@@ -103277,14 +104700,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err189];
+                                vErrors = [err207];
                             } else {
-                                vErrors.push(err189);
+                                vErrors.push(err207);
                             }
                             errors++;
                         }
                     } else {
-                        const err190 = {
+                        const err208 = {
                             instancePath: instancePath + "/completion_forecast/work_scope_id",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
@@ -103293,17 +104716,17 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err190];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err190);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data67.state !== undefined) {
-                    let data69 = data67.state;
-                    if (typeof data69 !== "string") {
-                        const err191 = {
+                if (data75.state !== undefined) {
+                    let data77 = data75.state;
+                    if (typeof data77 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
                             keyword: "type",
@@ -103311,22 +104734,22 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err191];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err191);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data69 === "available" ||
-                        data69 === "not_stored" ||
-                        data69 === "no_run_within_horizon" ||
-                        data69 === "over_limit" ||
-                        data69 === "malformed" ||
-                        data69 === "scope_ambiguous" ||
-                        data69 === "unmatched"
+                        data77 === "available" ||
+                        data77 === "not_stored" ||
+                        data77 === "no_run_within_horizon" ||
+                        data77 === "over_limit" ||
+                        data77 === "malformed" ||
+                        data77 === "scope_ambiguous" ||
+                        data77 === "unmatched"
                     )) {
-                        const err192 = {
+                        const err210 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
@@ -103334,18 +104757,18 @@ function validate274(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err192];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err192);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data67.computed_at !== undefined) {
-                    let data70 = data67.computed_at;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err193 = {
+                if (data75.computed_at !== undefined) {
+                    let data78 = data75.computed_at;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err211 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
@@ -103354,14 +104777,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err193];
+                                vErrors = [err211];
                             } else {
-                                vErrors.push(err193);
+                                vErrors.push(err211);
                             }
                             errors++;
                         }
-                        if (func2(data70) < 1) {
-                            const err194 = {
+                        if (func2(data78) < 1) {
+                            const err212 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -103370,14 +104793,14 @@ function validate274(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err194];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err194);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data70)) {
-                            const err195 = {
+                        if (!pattern13.test(data78)) {
+                            const err213 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -103392,14 +104815,14 @@ function validate274(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err195];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err195);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data70)) {
-                            const err196 = {
+                        if (!formats0.validate(data78)) {
+                            const err214 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -103408,14 +104831,14 @@ function validate274(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err196];
+                                vErrors = [err214];
                             } else {
-                                vErrors.push(err196);
+                                vErrors.push(err214);
                             }
                             errors++;
                         }
                     } else {
-                        const err197 = {
+                        const err215 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -103424,22 +104847,22 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err197];
+                            vErrors = [err215];
                         } else {
-                            vErrors.push(err197);
+                            vErrors.push(err215);
                         }
                         errors++;
                     }
                 }
-                if (data67.simulation_count !== undefined) {
-                    let data71 = data67.simulation_count;
+                if (data75.simulation_count !== undefined) {
+                    let data79 = data75.simulation_count;
                     if (!(
-                        typeof data71 == "number" &&
-                        !(data71 % 1) &&
-                        !isNaN(data71) &&
-                        isFinite(data71)
+                        typeof data79 == "number" &&
+                        !(data79 % 1) &&
+                        !isNaN(data79) &&
+                        isFinite(data79)
                     )) {
-                        const err198 = {
+                        const err216 = {
                             instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
@@ -103448,15 +104871,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err198];
+                            vErrors = [err216];
                         } else {
-                            vErrors.push(err198);
+                            vErrors.push(err216);
                         }
                         errors++;
                     }
-                    if (typeof data71 == "number" && isFinite(data71)) {
-                        if (data71 < 0 || isNaN(data71)) {
-                            const err199 = {
+                    if (typeof data79 == "number" && isFinite(data79)) {
+                        if (data79 < 0 || isNaN(data79)) {
+                            const err217 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
@@ -103466,23 +104889,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err199];
+                                vErrors = [err217];
                             } else {
-                                vErrors.push(err199);
+                                vErrors.push(err217);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.horizon_days !== undefined) {
-                    let data72 = data67.horizon_days;
+                if (data75.horizon_days !== undefined) {
+                    let data80 = data75.horizon_days;
                     if (!(
-                        typeof data72 == "number" &&
-                        !(data72 % 1) &&
-                        !isNaN(data72) &&
-                        isFinite(data72)
+                        typeof data80 == "number" &&
+                        !(data80 % 1) &&
+                        !isNaN(data80) &&
+                        isFinite(data80)
                     )) {
-                        const err200 = {
+                        const err218 = {
                             instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
@@ -103491,15 +104914,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err200];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err200);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (typeof data72 == "number" && isFinite(data72)) {
-                        if (data72 < 0 || isNaN(data72)) {
-                            const err201 = {
+                    if (typeof data80 == "number" && isFinite(data80)) {
+                        if (data80 < 0 || isNaN(data80)) {
+                            const err219 = {
                                 instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
@@ -103508,23 +104931,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err201];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err201);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.unfinished_runs !== undefined) {
-                    let data73 = data67.unfinished_runs;
+                if (data75.unfinished_runs !== undefined) {
+                    let data81 = data75.unfinished_runs;
                     if (!(
-                        typeof data73 == "number" &&
-                        !(data73 % 1) &&
-                        !isNaN(data73) &&
-                        isFinite(data73)
+                        typeof data81 == "number" &&
+                        !(data81 % 1) &&
+                        !isNaN(data81) &&
+                        isFinite(data81)
                     )) {
-                        const err202 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
@@ -103533,15 +104956,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
-                    if (typeof data73 == "number" && isFinite(data73)) {
-                        if (data73 < 0 || isNaN(data73)) {
-                            const err203 = {
+                    if (typeof data81 == "number" && isFinite(data81)) {
+                        if (data81 < 0 || isNaN(data81)) {
+                            const err221 = {
                                 instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
@@ -103550,23 +104973,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err203];
+                                vErrors = [err221];
                             } else {
-                                vErrors.push(err203);
+                                vErrors.push(err221);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.target_items !== undefined) {
-                    let data74 = data67.target_items;
+                if (data75.target_items !== undefined) {
+                    let data82 = data75.target_items;
                     if (!(
-                        typeof data74 == "number" &&
-                        !(data74 % 1) &&
-                        !isNaN(data74) &&
-                        isFinite(data74)
+                        typeof data82 == "number" &&
+                        !(data82 % 1) &&
+                        !isNaN(data82) &&
+                        isFinite(data82)
                     )) {
-                        const err204 = {
+                        const err222 = {
                             instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
@@ -103575,15 +104998,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err222];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err222);
                         }
                         errors++;
                     }
-                    if (typeof data74 == "number" && isFinite(data74)) {
-                        if (data74 < 0 || isNaN(data74)) {
-                            const err205 = {
+                    if (typeof data82 == "number" && isFinite(data82)) {
+                        if (data82 < 0 || isNaN(data82)) {
+                            const err223 = {
                                 instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
@@ -103592,23 +105015,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err205];
+                                vErrors = [err223];
                             } else {
-                                vErrors.push(err205);
+                                vErrors.push(err223);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data75 = data67.forecast_p50_days;
+                if (data75.forecast_p50_days !== undefined) {
+                    let data83 = data75.forecast_p50_days;
                     if (!(
-                        typeof data75 == "number" &&
-                        !(data75 % 1) &&
-                        !isNaN(data75) &&
-                        isFinite(data75)
+                        typeof data83 == "number" &&
+                        !(data83 % 1) &&
+                        !isNaN(data83) &&
+                        isFinite(data83)
                     )) {
-                        const err206 = {
+                        const err224 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
@@ -103617,15 +105040,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err224];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err224);
                         }
                         errors++;
                     }
-                    if (typeof data75 == "number" && isFinite(data75)) {
-                        if (data75 < 0 || isNaN(data75)) {
-                            const err207 = {
+                    if (typeof data83 == "number" && isFinite(data83)) {
+                        if (data83 < 0 || isNaN(data83)) {
+                            const err225 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
@@ -103635,23 +105058,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err207];
+                                vErrors = [err225];
                             } else {
-                                vErrors.push(err207);
+                                vErrors.push(err225);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data76 = data67.forecast_p85_days;
+                if (data75.forecast_p85_days !== undefined) {
+                    let data84 = data75.forecast_p85_days;
                     if (!(
-                        typeof data76 == "number" &&
-                        !(data76 % 1) &&
-                        !isNaN(data76) &&
-                        isFinite(data76)
+                        typeof data84 == "number" &&
+                        !(data84 % 1) &&
+                        !isNaN(data84) &&
+                        isFinite(data84)
                     )) {
-                        const err208 = {
+                        const err226 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
@@ -103660,15 +105083,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err226];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err226);
                         }
                         errors++;
                     }
-                    if (typeof data76 == "number" && isFinite(data76)) {
-                        if (data76 < 0 || isNaN(data76)) {
-                            const err209 = {
+                    if (typeof data84 == "number" && isFinite(data84)) {
+                        if (data84 < 0 || isNaN(data84)) {
+                            const err227 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
@@ -103678,23 +105101,23 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err209];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err209);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data77 = data67.forecast_p95_days;
+                if (data75.forecast_p95_days !== undefined) {
+                    let data85 = data75.forecast_p95_days;
                     if (!(
-                        typeof data77 == "number" &&
-                        !(data77 % 1) &&
-                        !isNaN(data77) &&
-                        isFinite(data77)
+                        typeof data85 == "number" &&
+                        !(data85 % 1) &&
+                        !isNaN(data85) &&
+                        isFinite(data85)
                     )) {
-                        const err210 = {
+                        const err228 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
@@ -103703,15 +105126,15 @@ function validate274(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err210];
+                            vErrors = [err228];
                         } else {
-                            vErrors.push(err210);
+                            vErrors.push(err228);
                         }
                         errors++;
                     }
-                    if (typeof data77 == "number" && isFinite(data77)) {
-                        if (data77 < 0 || isNaN(data77)) {
-                            const err211 = {
+                    if (typeof data85 == "number" && isFinite(data85)) {
+                        if (data85 < 0 || isNaN(data85)) {
+                            const err229 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_days",
                                 schemaPath:
@@ -103721,19 +105144,19 @@ function validate274(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_date !== undefined) {
-                    let data78 = data67.forecast_p50_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err212 = {
+                if (data75.forecast_p50_date !== undefined) {
+                    let data86 = data75.forecast_p50_date;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err230 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -103743,14 +105166,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err212];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err212);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err213 = {
+                        if (!pattern14.test(data86)) {
+                            const err231 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -103761,14 +105184,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err231];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err231);
                             }
                             errors++;
                         }
                     } else {
-                        const err214 = {
+                        const err232 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -103777,18 +105200,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err232];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err232);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p85_date !== undefined) {
-                    let data79 = data67.forecast_p85_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err215 = {
+                if (data75.forecast_p85_date !== undefined) {
+                    let data87 = data75.forecast_p85_date;
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 128) {
+                            const err233 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -103798,14 +105221,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err215];
+                                vErrors = [err233];
                             } else {
-                                vErrors.push(err215);
+                                vErrors.push(err233);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err216 = {
+                        if (!pattern14.test(data87)) {
+                            const err234 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -103816,14 +105239,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err234];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err234);
                             }
                             errors++;
                         }
                     } else {
-                        const err217 = {
+                        const err235 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -103832,18 +105255,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err217];
+                            vErrors = [err235];
                         } else {
-                            vErrors.push(err217);
+                            vErrors.push(err235);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p95_date !== undefined) {
-                    let data80 = data67.forecast_p95_date;
-                    if (typeof data80 === "string") {
-                        if (func2(data80) > 128) {
-                            const err218 = {
+                if (data75.forecast_p95_date !== undefined) {
+                    let data88 = data75.forecast_p95_date;
+                    if (typeof data88 === "string") {
+                        if (func2(data88) > 128) {
+                            const err236 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -103853,14 +105276,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err218];
+                                vErrors = [err236];
                             } else {
-                                vErrors.push(err218);
+                                vErrors.push(err236);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data80)) {
-                            const err219 = {
+                        if (!pattern14.test(data88)) {
+                            const err237 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -103871,14 +105294,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err219];
+                                vErrors = [err237];
                             } else {
-                                vErrors.push(err219);
+                                vErrors.push(err237);
                             }
                             errors++;
                         }
                     } else {
-                        const err220 = {
+                        const err238 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -103887,15 +105310,15 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err220];
+                            vErrors = [err238];
                         } else {
-                            vErrors.push(err220);
+                            vErrors.push(err238);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err221 = {
+                const err239 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -103903,15 +105326,15 @@ function validate274(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err221];
+                    vErrors = [err239];
                 } else {
-                    vErrors.push(err221);
+                    vErrors.push(err239);
                 }
                 errors++;
             }
         }
     } else {
-        const err222 = {
+        const err240 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -103919,9 +105342,9 @@ function validate274(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err222];
+            vErrors = [err240];
         } else {
-            vErrors.push(err222);
+            vErrors.push(err240);
         }
         errors++;
     }
@@ -121809,16 +123232,7 @@ function validate338(
                     errors++;
                 }
                 for (const key4 in data30) {
-                    if (!(
-                        key4 === "field" ||
-                        key4 === "shape" ||
-                        key4 === "key" ||
-                        key4 === "measures" ||
-                        key4 === "observations" ||
-                        key4 === "order_by" ||
-                        key4 === "measure_units" ||
-                        key4 === "cadence"
-                    )) {
+                    if (!func1.call(schema87.properties, key4)) {
                         const err89 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -122506,8 +123920,185 @@ function validate338(
                         errors++;
                     }
                 }
+                if (data30.column_vocabularies !== undefined) {
+                    let data45 = data30.column_vocabularies;
+                    if (data45 && typeof data45 == "object" && !Array.isArray(data45)) {
+                        if (Object.keys(data45).length > 40) {
+                            const err127 = {
+                                instancePath: instancePath + "/table/column_vocabularies",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err127];
+                            } else {
+                                vErrors.push(err127);
+                            }
+                            errors++;
+                        }
+                        for (const key6 in data45) {
+                            let data46 = data45[key6];
+                            if (typeof data46 !== "string") {
+                                const err128 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err128];
+                                } else {
+                                    vErrors.push(err128);
+                                }
+                                errors++;
+                            }
+                            if (!(data46 === "investment_theme" || data46 === "subcategory")) {
+                                const err129 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/column_vocabularies/" +
+                                        key6.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err129];
+                                } else {
+                                    vErrors.push(err129);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err130 = {
+                            instancePath: instancePath + "/table/column_vocabularies",
+                            schemaPath:
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err130];
+                        } else {
+                            vErrors.push(err130);
+                        }
+                        errors++;
+                    }
+                }
+                if (data30.word_columns !== undefined) {
+                    let data47 = data30.word_columns;
+                    if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
+                        if (Object.keys(data47).length > 40) {
+                            const err131 = {
+                                instancePath: instancePath + "/table/word_columns",
+                                schemaPath:
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err131];
+                            } else {
+                                vErrors.push(err131);
+                            }
+                            errors++;
+                        }
+                        for (const key7 in data47) {
+                            let data48 = data47[key7];
+                            if (typeof data48 === "string") {
+                                if (func2(data48) > 128) {
+                                    const err132 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err132];
+                                    } else {
+                                        vErrors.push(err132);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data48) < 1) {
+                                    const err133 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/table/word_columns/" +
+                                            key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err133];
+                                    } else {
+                                        vErrors.push(err133);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err134 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/table/word_columns/" +
+                                        key7.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err134];
+                                } else {
+                                    vErrors.push(err134);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err135 = {
+                            instancePath: instancePath + "/table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err135];
+                        } else {
+                            vErrors.push(err135);
+                        }
+                        errors++;
+                    }
+                }
             } else {
-                const err127 = {
+                const err136 = {
                     instancePath: instancePath + "/table",
                     schemaPath: "#/$defs/ClaimedFactTable/type",
                     keyword: "type",
@@ -122515,18 +124106,18 @@ function validate338(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err127];
+                    vErrors = [err136];
                 } else {
-                    vErrors.push(err127);
+                    vErrors.push(err136);
                 }
                 errors++;
             }
         }
         if (data.time_series_rows !== undefined) {
-            let data45 = data.time_series_rows;
-            if (Array.isArray(data45)) {
-                if (data45.length > 64) {
-                    const err128 = {
+            let data49 = data.time_series_rows;
+            if (Array.isArray(data49)) {
+                if (data49.length > 64) {
+                    const err137 = {
                         instancePath: instancePath + "/time_series_rows",
                         schemaPath: "#/properties/time_series_rows/maxItems",
                         keyword: "maxItems",
@@ -122534,18 +124125,18 @@ function validate338(
                         message: "must NOT have more than 64 items",
                     };
                     if (vErrors === null) {
-                        vErrors = [err128];
+                        vErrors = [err137];
                     } else {
-                        vErrors.push(err128);
+                        vErrors.push(err137);
                     }
                     errors++;
                 }
-                const len6 = data45.length;
+                const len6 = data49.length;
                 for (let i6 = 0; i6 < len6; i6++) {
                     if (
-                        !validate68(data45[i6], {
+                        !validate68(data49[i6], {
                             instancePath: instancePath + "/time_series_rows/" + i6,
-                            parentData: data45,
+                            parentData: data49,
                             parentDataProperty: i6,
                             rootData,
                             dynamicAnchors,
@@ -122559,7 +124150,7 @@ function validate338(
                     }
                 }
             } else {
-                const err129 = {
+                const err138 = {
                     instancePath: instancePath + "/time_series_rows",
                     schemaPath: "#/properties/time_series_rows/type",
                     keyword: "type",
@@ -122567,18 +124158,18 @@ function validate338(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err129];
+                    vErrors = [err138];
                 } else {
-                    vErrors.push(err129);
+                    vErrors.push(err138);
                 }
                 errors++;
             }
         }
         if (data.time_series_table !== undefined) {
-            let data47 = data.time_series_table;
-            if (data47 && typeof data47 == "object" && !Array.isArray(data47)) {
-                if (data47.field === undefined) {
-                    const err130 = {
+            let data51 = data.time_series_table;
+            if (data51 && typeof data51 == "object" && !Array.isArray(data51)) {
+                if (data51.field === undefined) {
+                    const err139 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -122586,14 +124177,14 @@ function validate338(
                         message: "must have required property '" + "field" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err130];
+                        vErrors = [err139];
                     } else {
-                        vErrors.push(err130);
+                        vErrors.push(err139);
                     }
                     errors++;
                 }
-                if (data47.shape === undefined) {
-                    const err131 = {
+                if (data51.shape === undefined) {
+                    const err140 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -122601,14 +124192,14 @@ function validate338(
                         message: "must have required property '" + "shape" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err131];
+                        vErrors = [err140];
                     } else {
-                        vErrors.push(err131);
+                        vErrors.push(err140);
                     }
                     errors++;
                 }
-                if (data47.key === undefined) {
-                    const err132 = {
+                if (data51.key === undefined) {
+                    const err141 = {
                         instancePath: instancePath + "/time_series_table",
                         schemaPath: "#/$defs/ClaimedFactTable/required",
                         keyword: "required",
@@ -122616,43 +124207,34 @@ function validate338(
                         message: "must have required property '" + "key" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err132];
+                        vErrors = [err141];
                     } else {
-                        vErrors.push(err132);
+                        vErrors.push(err141);
                     }
                     errors++;
                 }
-                for (const key6 in data47) {
-                    if (!(
-                        key6 === "field" ||
-                        key6 === "shape" ||
-                        key6 === "key" ||
-                        key6 === "measures" ||
-                        key6 === "observations" ||
-                        key6 === "order_by" ||
-                        key6 === "measure_units" ||
-                        key6 === "cadence"
-                    )) {
-                        const err133 = {
+                for (const key8 in data51) {
+                    if (!func1.call(schema87.properties, key8)) {
+                        const err142 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key8 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err133];
+                            vErrors = [err142];
                         } else {
-                            vErrors.push(err133);
+                            vErrors.push(err142);
                         }
                         errors++;
                     }
                 }
-                if (data47.field !== undefined) {
-                    let data48 = data47.field;
-                    if (typeof data48 === "string") {
-                        if (func2(data48) > 128) {
-                            const err134 = {
+                if (data51.field !== undefined) {
+                    let data52 = data51.field;
+                    if (typeof data52 === "string") {
+                        if (func2(data52) > 128) {
+                            const err143 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/maxLength",
                                 keyword: "maxLength",
@@ -122660,14 +124242,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err134];
+                                vErrors = [err143];
                             } else {
-                                vErrors.push(err134);
+                                vErrors.push(err143);
                             }
                             errors++;
                         }
-                        if (func2(data48) < 1) {
-                            const err135 = {
+                        if (func2(data52) < 1) {
+                            const err144 = {
                                 instancePath: instancePath + "/time_series_table/field",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/field/minLength",
                                 keyword: "minLength",
@@ -122675,14 +124257,14 @@ function validate338(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err135];
+                                vErrors = [err144];
                             } else {
-                                vErrors.push(err135);
+                                vErrors.push(err144);
                             }
                             errors++;
                         }
                     } else {
-                        const err136 = {
+                        const err145 = {
                             instancePath: instancePath + "/time_series_table/field",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/field/type",
                             keyword: "type",
@@ -122690,17 +124272,17 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err136];
+                            vErrors = [err145];
                         } else {
-                            vErrors.push(err136);
+                            vErrors.push(err145);
                         }
                         errors++;
                     }
                 }
-                if (data47.shape !== undefined) {
-                    let data49 = data47.shape;
-                    if (typeof data49 !== "string") {
-                        const err137 = {
+                if (data51.shape !== undefined) {
+                    let data53 = data51.shape;
+                    if (typeof data53 !== "string") {
+                        const err146 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/type",
                             keyword: "type",
@@ -122708,19 +124290,19 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err137];
+                            vErrors = [err146];
                         } else {
-                            vErrors.push(err137);
+                            vErrors.push(err146);
                         }
                         errors++;
                     }
                     if (!(
-                        data49 === "time_series" ||
-                        data49 === "breakdown" ||
-                        data49 === "ranking" ||
-                        data49 === "distribution"
+                        data53 === "time_series" ||
+                        data53 === "breakdown" ||
+                        data53 === "ranking" ||
+                        data53 === "distribution"
                     )) {
-                        const err138 = {
+                        const err147 = {
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
@@ -122728,18 +124310,18 @@ function validate338(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err138];
+                            vErrors = [err147];
                         } else {
-                            vErrors.push(err138);
+                            vErrors.push(err147);
                         }
                         errors++;
                     }
                 }
-                if (data47.key !== undefined) {
-                    let data50 = data47.key;
-                    if (Array.isArray(data50)) {
-                        if (data50.length > 8) {
-                            const err139 = {
+                if (data51.key !== undefined) {
+                    let data54 = data51.key;
+                    if (Array.isArray(data54)) {
+                        if (data54.length > 8) {
+                            const err148 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/maxItems",
                                 keyword: "maxItems",
@@ -122747,14 +124329,14 @@ function validate338(
                                 message: "must NOT have more than 8 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err139];
+                                vErrors = [err148];
                             } else {
-                                vErrors.push(err139);
+                                vErrors.push(err148);
                             }
                             errors++;
                         }
-                        if (data50.length < 1) {
-                            const err140 = {
+                        if (data54.length < 1) {
+                            const err149 = {
                                 instancePath: instancePath + "/time_series_table/key",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/key/minItems",
                                 keyword: "minItems",
@@ -122762,18 +124344,18 @@ function validate338(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err140];
+                                vErrors = [err149];
                             } else {
-                                vErrors.push(err140);
+                                vErrors.push(err149);
                             }
                             errors++;
                         }
-                        const len7 = data50.length;
+                        const len7 = data54.length;
                         for (let i7 = 0; i7 < len7; i7++) {
-                            let data51 = data50[i7];
-                            if (typeof data51 === "string") {
-                                if (func2(data51) > 128) {
-                                    const err141 = {
+                            let data55 = data54[i7];
+                            if (typeof data55 === "string") {
+                                if (func2(data55) > 128) {
+                                    const err150 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/maxLength",
@@ -122782,14 +124364,14 @@ function validate338(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err141];
+                                        vErrors = [err150];
                                     } else {
-                                        vErrors.push(err141);
+                                        vErrors.push(err150);
                                     }
                                     errors++;
                                 }
-                                if (func2(data51) < 1) {
-                                    const err142 = {
+                                if (func2(data55) < 1) {
+                                    const err151 = {
                                         instancePath: instancePath + "/time_series_table/key/" + i7,
                                         schemaPath:
                                             "#/$defs/ClaimedFactTable/properties/key/items/minLength",
@@ -122798,14 +124380,14 @@ function validate338(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err142];
+                                        vErrors = [err151];
                                     } else {
-                                        vErrors.push(err142);
+                                        vErrors.push(err151);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err143 = {
+                                const err152 = {
                                     instancePath: instancePath + "/time_series_table/key/" + i7,
                                     schemaPath:
                                         "#/$defs/ClaimedFactTable/properties/key/items/type",
@@ -122814,15 +124396,15 @@ function validate338(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err143];
+                                    vErrors = [err152];
                                 } else {
-                                    vErrors.push(err143);
+                                    vErrors.push(err152);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err144 = {
+                        const err153 = {
                             instancePath: instancePath + "/time_series_table/key",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/key/type",
                             keyword: "type",
@@ -122830,18 +124412,18 @@ function validate338(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err144];
+                            vErrors = [err153];
                         } else {
-                            vErrors.push(err144);
+                            vErrors.push(err153);
                         }
                         errors++;
                     }
                 }
-                if (data47.measures !== undefined) {
-                    let data52 = data47.measures;
-                    if (Array.isArray(data52)) {
-                        if (data52.length > 32) {
-                            const err145 = {
+                if (data51.measures !== undefined) {
+                    let data56 = data51.measures;
+                    if (Array.isArray(data56)) {
+                        if (data56.length > 32) {
+                            const err154 = {
                                 instancePath: instancePath + "/time_series_table/measures",
                                 schemaPath: "#/$defs/ClaimedFactTable/properties/measures/maxItems",
                                 keyword: "maxItems",
@@ -122849,18 +124431,18 @@ function validate338(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err145];
+                                vErrors = [err154];
                             } else {
-                                vErrors.push(err145);
+                                vErrors.push(err154);
                             }
                             errors++;
                         }
-                        const len8 = data52.length;
+                        const len8 = data56.length;
                         for (let i8 = 0; i8 < len8; i8++) {
-                            let data53 = data52[i8];
-                            if (typeof data53 === "string") {
-                                if (func2(data53) > 128) {
-                                    const err146 = {
+                            let data57 = data56[i8];
+                            if (typeof data57 === "string") {
+                                if (func2(data57) > 128) {
+                                    const err155 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -122870,14 +124452,14 @@ function validate338(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err146];
+                                        vErrors = [err155];
                                     } else {
-                                        vErrors.push(err146);
+                                        vErrors.push(err155);
                                     }
                                     errors++;
                                 }
-                                if (func2(data53) < 1) {
-                                    const err147 = {
+                                if (func2(data57) < 1) {
+                                    const err156 = {
                                         instancePath:
                                             instancePath + "/time_series_table/measures/" + i8,
                                         schemaPath:
@@ -122887,14 +124469,14 @@ function validate338(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err147];
+                                        vErrors = [err156];
                                     } else {
-                                        vErrors.push(err147);
+                                        vErrors.push(err156);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err148 = {
+                                const err157 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measures/" + i8,
                                     schemaPath:
@@ -122904,15 +124486,15 @@ function validate338(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err148];
+                                    vErrors = [err157];
                                 } else {
-                                    vErrors.push(err148);
+                                    vErrors.push(err157);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err149 = {
+                        const err158 = {
                             instancePath: instancePath + "/time_series_table/measures",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measures/type",
                             keyword: "type",
@@ -122920,18 +124502,18 @@ function validate338(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err149];
+                            vErrors = [err158];
                         } else {
-                            vErrors.push(err149);
+                            vErrors.push(err158);
                         }
                         errors++;
                     }
                 }
-                if (data47.observations !== undefined) {
-                    let data54 = data47.observations;
-                    if (Array.isArray(data54)) {
-                        if (data54.length > 32) {
-                            const err150 = {
+                if (data51.observations !== undefined) {
+                    let data58 = data51.observations;
+                    if (Array.isArray(data58)) {
+                        if (data58.length > 32) {
+                            const err159 = {
                                 instancePath: instancePath + "/time_series_table/observations",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/observations/maxItems",
@@ -122940,18 +124522,18 @@ function validate338(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err150];
+                                vErrors = [err159];
                             } else {
-                                vErrors.push(err150);
+                                vErrors.push(err159);
                             }
                             errors++;
                         }
-                        const len9 = data54.length;
+                        const len9 = data58.length;
                         for (let i9 = 0; i9 < len9; i9++) {
-                            let data55 = data54[i9];
-                            if (typeof data55 === "string") {
-                                if (func2(data55) > 128) {
-                                    const err151 = {
+                            let data59 = data58[i9];
+                            if (typeof data59 === "string") {
+                                if (func2(data59) > 128) {
+                                    const err160 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -122961,14 +124543,14 @@ function validate338(
                                         message: "must NOT have more than 128 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err151];
+                                        vErrors = [err160];
                                     } else {
-                                        vErrors.push(err151);
+                                        vErrors.push(err160);
                                     }
                                     errors++;
                                 }
-                                if (func2(data55) < 1) {
-                                    const err152 = {
+                                if (func2(data59) < 1) {
+                                    const err161 = {
                                         instancePath:
                                             instancePath + "/time_series_table/observations/" + i9,
                                         schemaPath:
@@ -122978,14 +124560,14 @@ function validate338(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err152];
+                                        vErrors = [err161];
                                     } else {
-                                        vErrors.push(err152);
+                                        vErrors.push(err161);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err153 = {
+                                const err162 = {
                                     instancePath:
                                         instancePath + "/time_series_table/observations/" + i9,
                                     schemaPath:
@@ -122995,15 +124577,15 @@ function validate338(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err153];
+                                    vErrors = [err162];
                                 } else {
-                                    vErrors.push(err153);
+                                    vErrors.push(err162);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err154 = {
+                        const err163 = {
                             instancePath: instancePath + "/time_series_table/observations",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/observations/type",
                             keyword: "type",
@@ -123011,18 +124593,18 @@ function validate338(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err154];
+                            vErrors = [err163];
                         } else {
-                            vErrors.push(err154);
+                            vErrors.push(err163);
                         }
                         errors++;
                     }
                 }
-                if (data47.order_by !== undefined) {
-                    let data56 = data47.order_by;
-                    if (typeof data56 === "string") {
-                        if (func2(data56) > 128) {
-                            const err155 = {
+                if (data51.order_by !== undefined) {
+                    let data60 = data51.order_by;
+                    if (typeof data60 === "string") {
+                        if (func2(data60) > 128) {
+                            const err164 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/maxLength",
@@ -123031,14 +124613,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err155];
+                                vErrors = [err164];
                             } else {
-                                vErrors.push(err155);
+                                vErrors.push(err164);
                             }
                             errors++;
                         }
-                        if (func2(data56) < 1) {
-                            const err156 = {
+                        if (func2(data60) < 1) {
+                            const err165 = {
                                 instancePath: instancePath + "/time_series_table/order_by",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/order_by/minLength",
@@ -123047,14 +124629,14 @@ function validate338(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err156];
+                                vErrors = [err165];
                             } else {
-                                vErrors.push(err156);
+                                vErrors.push(err165);
                             }
                             errors++;
                         }
                     } else {
-                        const err157 = {
+                        const err166 = {
                             instancePath: instancePath + "/time_series_table/order_by",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/order_by/type",
                             keyword: "type",
@@ -123062,18 +124644,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err157];
+                            vErrors = [err166];
                         } else {
-                            vErrors.push(err157);
+                            vErrors.push(err166);
                         }
                         errors++;
                     }
                 }
-                if (data47.measure_units !== undefined) {
-                    let data57 = data47.measure_units;
-                    if (Array.isArray(data57)) {
-                        if (data57.length > 32) {
-                            const err158 = {
+                if (data51.measure_units !== undefined) {
+                    let data61 = data51.measure_units;
+                    if (Array.isArray(data61)) {
+                        if (data61.length > 32) {
+                            const err167 = {
                                 instancePath: instancePath + "/time_series_table/measure_units",
                                 schemaPath:
                                     "#/$defs/ClaimedFactTable/properties/measure_units/maxItems",
@@ -123082,18 +124664,18 @@ function validate338(
                                 message: "must NOT have more than 32 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err158];
+                                vErrors = [err167];
                             } else {
-                                vErrors.push(err158);
+                                vErrors.push(err167);
                             }
                             errors++;
                         }
-                        const len10 = data57.length;
+                        const len10 = data61.length;
                         for (let i10 = 0; i10 < len10; i10++) {
-                            let data58 = data57[i10];
-                            if (data58 && typeof data58 == "object" && !Array.isArray(data58)) {
-                                if (data58.measure === undefined) {
-                                    const err159 = {
+                            let data62 = data61[i10];
+                            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
+                                if (data62.measure === undefined) {
+                                    const err168 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -123105,14 +124687,14 @@ function validate338(
                                         message: "must have required property '" + "measure" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err159];
+                                        vErrors = [err168];
                                     } else {
-                                        vErrors.push(err159);
+                                        vErrors.push(err168);
                                     }
                                     errors++;
                                 }
-                                if (data58.unit === undefined) {
-                                    const err160 = {
+                                if (data62.unit === undefined) {
+                                    const err169 = {
                                         instancePath:
                                             instancePath +
                                             "/time_series_table/measure_units/" +
@@ -123124,15 +124706,15 @@ function validate338(
                                         message: "must have required property '" + "unit" + "'",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err160];
+                                        vErrors = [err169];
                                     } else {
-                                        vErrors.push(err160);
+                                        vErrors.push(err169);
                                     }
                                     errors++;
                                 }
-                                for (const key7 in data58) {
-                                    if (!(key7 === "measure" || key7 === "unit")) {
-                                        const err161 = {
+                                for (const key9 in data62) {
+                                    if (!(key9 === "measure" || key9 === "unit")) {
+                                        const err170 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -123140,22 +124722,22 @@ function validate338(
                                             schemaPath:
                                                 "#/$defs/ClaimedFactTable/properties/measure_units/items/additionalProperties",
                                             keyword: "additionalProperties",
-                                            params: { additionalProperty: key7 },
+                                            params: { additionalProperty: key9 },
                                             message: "must NOT have additional properties",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err161];
+                                            vErrors = [err170];
                                         } else {
-                                            vErrors.push(err161);
+                                            vErrors.push(err170);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.measure !== undefined) {
-                                    let data59 = data58.measure;
-                                    if (typeof data59 === "string") {
-                                        if (func2(data59) > 128) {
-                                            const err162 = {
+                                if (data62.measure !== undefined) {
+                                    let data63 = data62.measure;
+                                    if (typeof data63 === "string") {
+                                        if (func2(data63) > 128) {
+                                            const err171 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -123168,14 +124750,14 @@ function validate338(
                                                 message: "must NOT have more than 128 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err162];
+                                                vErrors = [err171];
                                             } else {
-                                                vErrors.push(err162);
+                                                vErrors.push(err171);
                                             }
                                             errors++;
                                         }
-                                        if (func2(data59) < 1) {
-                                            const err163 = {
+                                        if (func2(data63) < 1) {
+                                            const err172 = {
                                                 instancePath:
                                                     instancePath +
                                                     "/time_series_table/measure_units/" +
@@ -123188,14 +124770,14 @@ function validate338(
                                                 message: "must NOT have fewer than 1 characters",
                                             };
                                             if (vErrors === null) {
-                                                vErrors = [err163];
+                                                vErrors = [err172];
                                             } else {
-                                                vErrors.push(err163);
+                                                vErrors.push(err172);
                                             }
                                             errors++;
                                         }
                                     } else {
-                                        const err164 = {
+                                        const err173 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -123208,17 +124790,17 @@ function validate338(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err164];
+                                            vErrors = [err173];
                                         } else {
-                                            vErrors.push(err164);
+                                            vErrors.push(err173);
                                         }
                                         errors++;
                                     }
                                 }
-                                if (data58.unit !== undefined) {
-                                    let data60 = data58.unit;
-                                    if (typeof data60 !== "string") {
-                                        const err165 = {
+                                if (data62.unit !== undefined) {
+                                    let data64 = data62.unit;
+                                    if (typeof data64 !== "string") {
+                                        const err174 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -123231,20 +124813,20 @@ function validate338(
                                             message: "must be string",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err165];
+                                            vErrors = [err174];
                                         } else {
-                                            vErrors.push(err165);
+                                            vErrors.push(err174);
                                         }
                                         errors++;
                                     }
                                     if (!(
-                                        data60 === "count" ||
-                                        data60 === "ratio" ||
-                                        data60 === "hours" ||
-                                        data60 === "days" ||
-                                        data60 === "points"
+                                        data64 === "count" ||
+                                        data64 === "ratio" ||
+                                        data64 === "hours" ||
+                                        data64 === "days" ||
+                                        data64 === "points"
                                     )) {
-                                        const err166 = {
+                                        const err175 = {
                                             instancePath:
                                                 instancePath +
                                                 "/time_series_table/measure_units/" +
@@ -123261,15 +124843,15 @@ function validate338(
                                             message: "must be equal to one of the allowed values",
                                         };
                                         if (vErrors === null) {
-                                            vErrors = [err166];
+                                            vErrors = [err175];
                                         } else {
-                                            vErrors.push(err166);
+                                            vErrors.push(err175);
                                         }
                                         errors++;
                                     }
                                 }
                             } else {
-                                const err167 = {
+                                const err176 = {
                                     instancePath:
                                         instancePath + "/time_series_table/measure_units/" + i10,
                                     schemaPath:
@@ -123279,173 +124861,20 @@ function validate338(
                                     message: "must be object",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err167];
+                                    vErrors = [err176];
                                 } else {
-                                    vErrors.push(err167);
+                                    vErrors.push(err176);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err168 = {
+                        const err177 = {
                             instancePath: instancePath + "/time_series_table/measure_units",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/measure_units/type",
                             keyword: "type",
                             params: { type: "array" },
                             message: "must be array",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err168];
-                        } else {
-                            vErrors.push(err168);
-                        }
-                        errors++;
-                    }
-                }
-                if (data47.cadence !== undefined) {
-                    let data61 = data47.cadence;
-                    if (typeof data61 !== "string") {
-                        const err169 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err169];
-                        } else {
-                            vErrors.push(err169);
-                        }
-                        errors++;
-                    }
-                    if (!(data61 === "day")) {
-                        const err170 = {
-                            instancePath: instancePath + "/time_series_table/cadence",
-                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
-                            message: "must be equal to one of the allowed values",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err170];
-                        } else {
-                            vErrors.push(err170);
-                        }
-                        errors++;
-                    }
-                }
-            } else {
-                const err171 = {
-                    instancePath: instancePath + "/time_series_table",
-                    schemaPath: "#/$defs/ClaimedFactTable/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err171];
-                } else {
-                    vErrors.push(err171);
-                }
-                errors++;
-            }
-        }
-        if (data.investment_mix !== undefined) {
-            let data62 = data.investment_mix;
-            if (data62 && typeof data62 == "object" && !Array.isArray(data62)) {
-                if (data62.investment_mix_source === undefined) {
-                    const err172 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "investment_mix_source" },
-                        message: "must have required property '" + "investment_mix_source" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err172];
-                    } else {
-                        vErrors.push(err172);
-                    }
-                    errors++;
-                }
-                if (data62.rollup_basis === undefined) {
-                    const err173 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "rollup_basis" },
-                        message: "must have required property '" + "rollup_basis" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err173];
-                    } else {
-                        vErrors.push(err173);
-                    }
-                    errors++;
-                }
-                if (data62.work_unit_count === undefined) {
-                    const err174 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "work_unit_count" },
-                        message: "must have required property '" + "work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err174];
-                    } else {
-                        vErrors.push(err174);
-                    }
-                    errors++;
-                }
-                if (data62.project_own_work_unit_count === undefined) {
-                    const err175 = {
-                        instancePath: instancePath + "/investment_mix",
-                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
-                        keyword: "required",
-                        params: { missingProperty: "project_own_work_unit_count" },
-                        message:
-                            "must have required property '" + "project_own_work_unit_count" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err175];
-                    } else {
-                        vErrors.push(err175);
-                    }
-                    errors++;
-                }
-                for (const key8 in data62) {
-                    if (!(
-                        key8 === "investment_mix_source" ||
-                        key8 === "rollup_basis" ||
-                        key8 === "work_unit_count" ||
-                        key8 === "project_own_work_unit_count"
-                    )) {
-                        const err176 = {
-                            instancePath: instancePath + "/investment_mix",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key8 },
-                            message: "must NOT have additional properties",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err176];
-                        } else {
-                            vErrors.push(err176);
-                        }
-                        errors++;
-                    }
-                }
-                if (data62.investment_mix_source !== undefined) {
-                    if (typeof data62.investment_mix_source !== "string") {
-                        const err177 = {
-                            instancePath: instancePath + "/investment_mix/investment_mix_source",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err177];
@@ -123455,115 +124884,112 @@ function validate338(
                         errors++;
                     }
                 }
-                if (data62.rollup_basis !== undefined) {
-                    let data64 = data62.rollup_basis;
-                    if (typeof data64 === "string") {
-                        if (func2(data64) > 128) {
-                            const err178 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err178];
-                            } else {
-                                vErrors.push(err178);
-                            }
-                            errors++;
-                        }
-                        if (func2(data64) < 1) {
-                            const err179 = {
-                                instancePath: instancePath + "/investment_mix/rollup_basis",
-                                schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
-                                keyword: "minLength",
-                                params: { limit: 1 },
-                                message: "must NOT have fewer than 1 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err179];
-                            } else {
-                                vErrors.push(err179);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err180 = {
-                            instancePath: instancePath + "/investment_mix/rollup_basis",
-                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                if (data51.cadence !== undefined) {
+                    let data65 = data51.cadence;
+                    if (typeof data65 !== "string") {
+                        const err178 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/type",
                             keyword: "type",
                             params: { type: "string" },
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err180];
+                            vErrors = [err178];
                         } else {
-                            vErrors.push(err180);
+                            vErrors.push(err178);
+                        }
+                        errors++;
+                    }
+                    if (!(data65 === "day")) {
+                        const err179 = {
+                            instancePath: instancePath + "/time_series_table/cadence",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema87.properties.cadence.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err179];
+                        } else {
+                            vErrors.push(err179);
                         }
                         errors++;
                     }
                 }
-                if (data62.work_unit_count !== undefined) {
-                    let data65 = data62.work_unit_count;
-                    if (!(
-                        typeof data65 == "number" &&
-                        !(data65 % 1) &&
-                        !isNaN(data65) &&
-                        isFinite(data65)
-                    )) {
-                        const err181 = {
-                            instancePath: instancePath + "/investment_mix/work_unit_count",
-                            schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err181];
-                        } else {
-                            vErrors.push(err181);
-                        }
-                        errors++;
-                    }
-                    if (typeof data65 == "number" && isFinite(data65)) {
-                        if (data65 < 0 || isNaN(data65)) {
-                            const err182 = {
-                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                if (data51.column_vocabularies !== undefined) {
+                    let data66 = data51.column_vocabularies;
+                    if (data66 && typeof data66 == "object" && !Array.isArray(data66)) {
+                        if (Object.keys(data66).length > 40) {
+                            const err180 = {
+                                instancePath:
+                                    instancePath + "/time_series_table/column_vocabularies",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/column_vocabularies/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
-                                vErrors = [err182];
+                                vErrors = [err180];
                             } else {
-                                vErrors.push(err182);
+                                vErrors.push(err180);
                             }
                             errors++;
                         }
-                    }
-                }
-                if (data62.project_own_work_unit_count !== undefined) {
-                    let data66 = data62.project_own_work_unit_count;
-                    if (!(
-                        typeof data66 == "number" &&
-                        !(data66 % 1) &&
-                        !isNaN(data66) &&
-                        isFinite(data66)
-                    )) {
+                        for (const key10 in data66) {
+                            let data67 = data66[key10];
+                            if (typeof data67 !== "string") {
+                                const err181 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err181];
+                                } else {
+                                    vErrors.push(err181);
+                                }
+                                errors++;
+                            }
+                            if (!(data67 === "investment_theme" || data67 === "subcategory")) {
+                                const err182 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/column_vocabularies/" +
+                                        key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/column_vocabularies/additionalProperties/enum",
+                                    keyword: "enum",
+                                    params: {
+                                        allowedValues:
+                                            schema87.properties.column_vocabularies
+                                                .additionalProperties.enum,
+                                    },
+                                    message: "must be equal to one of the allowed values",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err182];
+                                } else {
+                                    vErrors.push(err182);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
                         const err183 = {
-                            instancePath:
-                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            instancePath: instancePath + "/time_series_table/column_vocabularies",
                             schemaPath:
-                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                                "#/$defs/ClaimedFactTable/properties/column_vocabularies/type",
                             keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err183];
@@ -123572,16 +124998,18 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data66 == "number" && isFinite(data66)) {
-                        if (data66 < 0 || isNaN(data66)) {
+                }
+                if (data51.word_columns !== undefined) {
+                    let data68 = data51.word_columns;
+                    if (data68 && typeof data68 == "object" && !Array.isArray(data68)) {
+                        if (Object.keys(data68).length > 40) {
                             const err184 = {
-                                instancePath:
-                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                instancePath: instancePath + "/time_series_table/word_columns",
                                 schemaPath:
-                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                    "#/$defs/ClaimedFactTable/properties/word_columns/maxProperties",
+                                keyword: "maxProperties",
+                                params: { limit: 40 },
+                                message: "must NOT have more than 40 properties",
                             };
                             if (vErrors === null) {
                                 vErrors = [err184];
@@ -123590,65 +125018,74 @@ function validate338(
                             }
                             errors++;
                         }
-                    }
-                }
-            } else {
-                const err185 = {
-                    instancePath: instancePath + "/investment_mix",
-                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
-                    keyword: "type",
-                    params: { type: "object" },
-                    message: "must be object",
-                };
-                if (vErrors === null) {
-                    vErrors = [err185];
-                } else {
-                    vErrors.push(err185);
-                }
-                errors++;
-            }
-        }
-        if (data.completion_forecast !== undefined) {
-            let data67 = data.completion_forecast;
-            if (data67 && typeof data67 == "object" && !Array.isArray(data67)) {
-                if (data67.state === undefined) {
-                    const err186 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err186];
+                        for (const key11 in data68) {
+                            let data69 = data68[key11];
+                            if (typeof data69 === "string") {
+                                if (func2(data69) > 128) {
+                                    const err185 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 128 },
+                                        message: "must NOT have more than 128 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err185];
+                                    } else {
+                                        vErrors.push(err185);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data69) < 1) {
+                                    const err186 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/time_series_table/word_columns/" +
+                                            key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                        schemaPath:
+                                            "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err186];
+                                    } else {
+                                        vErrors.push(err186);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err187 = {
+                                    instancePath:
+                                        instancePath +
+                                        "/time_series_table/word_columns/" +
+                                        key11.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                    schemaPath:
+                                        "#/$defs/ClaimedFactTable/properties/word_columns/additionalProperties/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err187];
+                                } else {
+                                    vErrors.push(err187);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        vErrors.push(err186);
-                    }
-                    errors++;
-                }
-                if (data67.computed_at === undefined) {
-                    const err187 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err187];
-                    } else {
-                        vErrors.push(err187);
-                    }
-                    errors++;
-                }
-                for (const key9 in data67) {
-                    if (!func1.call(schema90.properties, key9)) {
                         const err188 = {
-                            instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key9 },
-                            message: "must NOT have additional properties",
+                            instancePath: instancePath + "/time_series_table/word_columns",
+                            schemaPath: "#/$defs/ClaimedFactTable/properties/word_columns/type",
+                            keyword: "type",
+                            params: { type: "object" },
+                            message: "must be object",
                         };
                         if (vErrors === null) {
                             vErrors = [err188];
@@ -123658,11 +125095,334 @@ function validate338(
                         errors++;
                     }
                 }
-                if (data67.work_scope_id !== undefined) {
-                    let data68 = data67.work_scope_id;
-                    if (typeof data68 === "string") {
-                        if (func2(data68) > 128) {
-                            const err189 = {
+            } else {
+                const err189 = {
+                    instancePath: instancePath + "/time_series_table",
+                    schemaPath: "#/$defs/ClaimedFactTable/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err189];
+                } else {
+                    vErrors.push(err189);
+                }
+                errors++;
+            }
+        }
+        if (data.investment_mix !== undefined) {
+            let data70 = data.investment_mix;
+            if (data70 && typeof data70 == "object" && !Array.isArray(data70)) {
+                if (data70.investment_mix_source === undefined) {
+                    const err190 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "investment_mix_source" },
+                        message: "must have required property '" + "investment_mix_source" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err190];
+                    } else {
+                        vErrors.push(err190);
+                    }
+                    errors++;
+                }
+                if (data70.rollup_basis === undefined) {
+                    const err191 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "rollup_basis" },
+                        message: "must have required property '" + "rollup_basis" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err191];
+                    } else {
+                        vErrors.push(err191);
+                    }
+                    errors++;
+                }
+                if (data70.work_unit_count === undefined) {
+                    const err192 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "work_unit_count" },
+                        message: "must have required property '" + "work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err192];
+                    } else {
+                        vErrors.push(err192);
+                    }
+                    errors++;
+                }
+                if (data70.project_own_work_unit_count === undefined) {
+                    const err193 = {
+                        instancePath: instancePath + "/investment_mix",
+                        schemaPath: "#/$defs/ClaimedInvestmentMix/required",
+                        keyword: "required",
+                        params: { missingProperty: "project_own_work_unit_count" },
+                        message:
+                            "must have required property '" + "project_own_work_unit_count" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err193];
+                    } else {
+                        vErrors.push(err193);
+                    }
+                    errors++;
+                }
+                for (const key12 in data70) {
+                    if (!(
+                        key12 === "investment_mix_source" ||
+                        key12 === "rollup_basis" ||
+                        key12 === "work_unit_count" ||
+                        key12 === "project_own_work_unit_count"
+                    )) {
+                        const err194 = {
+                            instancePath: instancePath + "/investment_mix",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err194];
+                        } else {
+                            vErrors.push(err194);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.investment_mix_source !== undefined) {
+                    if (typeof data70.investment_mix_source !== "string") {
+                        const err195 = {
+                            instancePath: instancePath + "/investment_mix/investment_mix_source",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/investment_mix_source/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err195];
+                        } else {
+                            vErrors.push(err195);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.rollup_basis !== undefined) {
+                    let data72 = data70.rollup_basis;
+                    if (typeof data72 === "string") {
+                        if (func2(data72) > 128) {
+                            const err196 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err196];
+                            } else {
+                                vErrors.push(err196);
+                            }
+                            errors++;
+                        }
+                        if (func2(data72) < 1) {
+                            const err197 = {
+                                instancePath: instancePath + "/investment_mix/rollup_basis",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err197];
+                            } else {
+                                vErrors.push(err197);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err198 = {
+                            instancePath: instancePath + "/investment_mix/rollup_basis",
+                            schemaPath: "#/$defs/ClaimedInvestmentMix/properties/rollup_basis/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err198];
+                        } else {
+                            vErrors.push(err198);
+                        }
+                        errors++;
+                    }
+                }
+                if (data70.work_unit_count !== undefined) {
+                    let data73 = data70.work_unit_count;
+                    if (!(
+                        typeof data73 == "number" &&
+                        !(data73 % 1) &&
+                        !isNaN(data73) &&
+                        isFinite(data73)
+                    )) {
+                        const err199 = {
+                            instancePath: instancePath + "/investment_mix/work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err199];
+                        } else {
+                            vErrors.push(err199);
+                        }
+                        errors++;
+                    }
+                    if (typeof data73 == "number" && isFinite(data73)) {
+                        if (data73 < 0 || isNaN(data73)) {
+                            const err200 = {
+                                instancePath: instancePath + "/investment_mix/work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data70.project_own_work_unit_count !== undefined) {
+                    let data74 = data70.project_own_work_unit_count;
+                    if (!(
+                        typeof data74 == "number" &&
+                        !(data74 % 1) &&
+                        !isNaN(data74) &&
+                        isFinite(data74)
+                    )) {
+                        const err201 = {
+                            instancePath:
+                                instancePath + "/investment_mix/project_own_work_unit_count",
+                            schemaPath:
+                                "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err201];
+                        } else {
+                            vErrors.push(err201);
+                        }
+                        errors++;
+                    }
+                    if (typeof data74 == "number" && isFinite(data74)) {
+                        if (data74 < 0 || isNaN(data74)) {
+                            const err202 = {
+                                instancePath:
+                                    instancePath + "/investment_mix/project_own_work_unit_count",
+                                schemaPath:
+                                    "#/$defs/ClaimedInvestmentMix/properties/project_own_work_unit_count/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err202];
+                            } else {
+                                vErrors.push(err202);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/investment_mix",
+                    schemaPath: "#/$defs/ClaimedInvestmentMix/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.completion_forecast !== undefined) {
+            let data75 = data.completion_forecast;
+            if (data75 && typeof data75 == "object" && !Array.isArray(data75)) {
+                if (data75.state === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data75.computed_at === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key13 in data75) {
+                    if (!func1.call(schema90.properties, key13)) {
+                        const err206 = {
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data75.work_scope_id !== undefined) {
+                    let data76 = data75.work_scope_id;
+                    if (typeof data76 === "string") {
+                        if (func2(data76) > 128) {
+                            const err207 = {
                                 instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
@@ -123671,14 +125431,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err189];
+                                vErrors = [err207];
                             } else {
-                                vErrors.push(err189);
+                                vErrors.push(err207);
                             }
                             errors++;
                         }
                     } else {
-                        const err190 = {
+                        const err208 = {
                             instancePath: instancePath + "/completion_forecast/work_scope_id",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
@@ -123687,17 +125447,17 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err190];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err190);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data67.state !== undefined) {
-                    let data69 = data67.state;
-                    if (typeof data69 !== "string") {
-                        const err191 = {
+                if (data75.state !== undefined) {
+                    let data77 = data75.state;
+                    if (typeof data77 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
                             keyword: "type",
@@ -123705,22 +125465,22 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err191];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err191);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data69 === "available" ||
-                        data69 === "not_stored" ||
-                        data69 === "no_run_within_horizon" ||
-                        data69 === "over_limit" ||
-                        data69 === "malformed" ||
-                        data69 === "scope_ambiguous" ||
-                        data69 === "unmatched"
+                        data77 === "available" ||
+                        data77 === "not_stored" ||
+                        data77 === "no_run_within_horizon" ||
+                        data77 === "over_limit" ||
+                        data77 === "malformed" ||
+                        data77 === "scope_ambiguous" ||
+                        data77 === "unmatched"
                     )) {
-                        const err192 = {
+                        const err210 = {
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
@@ -123728,18 +125488,18 @@ function validate338(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err192];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err192);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data67.computed_at !== undefined) {
-                    let data70 = data67.computed_at;
-                    if (typeof data70 === "string") {
-                        if (func2(data70) > 128) {
-                            const err193 = {
+                if (data75.computed_at !== undefined) {
+                    let data78 = data75.computed_at;
+                    if (typeof data78 === "string") {
+                        if (func2(data78) > 128) {
+                            const err211 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
@@ -123748,14 +125508,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err193];
+                                vErrors = [err211];
                             } else {
-                                vErrors.push(err193);
+                                vErrors.push(err211);
                             }
                             errors++;
                         }
-                        if (func2(data70) < 1) {
-                            const err194 = {
+                        if (func2(data78) < 1) {
+                            const err212 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -123764,14 +125524,14 @@ function validate338(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err194];
+                                vErrors = [err212];
                             } else {
-                                vErrors.push(err194);
+                                vErrors.push(err212);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data70)) {
-                            const err195 = {
+                        if (!pattern13.test(data78)) {
+                            const err213 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -123786,14 +125546,14 @@ function validate338(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err195];
+                                vErrors = [err213];
                             } else {
-                                vErrors.push(err195);
+                                vErrors.push(err213);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data70)) {
-                            const err196 = {
+                        if (!formats0.validate(data78)) {
+                            const err214 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -123802,14 +125562,14 @@ function validate338(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err196];
+                                vErrors = [err214];
                             } else {
-                                vErrors.push(err196);
+                                vErrors.push(err214);
                             }
                             errors++;
                         }
                     } else {
-                        const err197 = {
+                        const err215 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -123818,22 +125578,22 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err197];
+                            vErrors = [err215];
                         } else {
-                            vErrors.push(err197);
+                            vErrors.push(err215);
                         }
                         errors++;
                     }
                 }
-                if (data67.simulation_count !== undefined) {
-                    let data71 = data67.simulation_count;
+                if (data75.simulation_count !== undefined) {
+                    let data79 = data75.simulation_count;
                     if (!(
-                        typeof data71 == "number" &&
-                        !(data71 % 1) &&
-                        !isNaN(data71) &&
-                        isFinite(data71)
+                        typeof data79 == "number" &&
+                        !(data79 % 1) &&
+                        !isNaN(data79) &&
+                        isFinite(data79)
                     )) {
-                        const err198 = {
+                        const err216 = {
                             instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
@@ -123842,15 +125602,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err198];
+                            vErrors = [err216];
                         } else {
-                            vErrors.push(err198);
+                            vErrors.push(err216);
                         }
                         errors++;
                     }
-                    if (typeof data71 == "number" && isFinite(data71)) {
-                        if (data71 < 0 || isNaN(data71)) {
-                            const err199 = {
+                    if (typeof data79 == "number" && isFinite(data79)) {
+                        if (data79 < 0 || isNaN(data79)) {
+                            const err217 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
@@ -123860,23 +125620,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err199];
+                                vErrors = [err217];
                             } else {
-                                vErrors.push(err199);
+                                vErrors.push(err217);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.horizon_days !== undefined) {
-                    let data72 = data67.horizon_days;
+                if (data75.horizon_days !== undefined) {
+                    let data80 = data75.horizon_days;
                     if (!(
-                        typeof data72 == "number" &&
-                        !(data72 % 1) &&
-                        !isNaN(data72) &&
-                        isFinite(data72)
+                        typeof data80 == "number" &&
+                        !(data80 % 1) &&
+                        !isNaN(data80) &&
+                        isFinite(data80)
                     )) {
-                        const err200 = {
+                        const err218 = {
                             instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
@@ -123885,15 +125645,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err200];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err200);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (typeof data72 == "number" && isFinite(data72)) {
-                        if (data72 < 0 || isNaN(data72)) {
-                            const err201 = {
+                    if (typeof data80 == "number" && isFinite(data80)) {
+                        if (data80 < 0 || isNaN(data80)) {
+                            const err219 = {
                                 instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
@@ -123902,23 +125662,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err201];
+                                vErrors = [err219];
                             } else {
-                                vErrors.push(err201);
+                                vErrors.push(err219);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.unfinished_runs !== undefined) {
-                    let data73 = data67.unfinished_runs;
+                if (data75.unfinished_runs !== undefined) {
+                    let data81 = data75.unfinished_runs;
                     if (!(
-                        typeof data73 == "number" &&
-                        !(data73 % 1) &&
-                        !isNaN(data73) &&
-                        isFinite(data73)
+                        typeof data81 == "number" &&
+                        !(data81 % 1) &&
+                        !isNaN(data81) &&
+                        isFinite(data81)
                     )) {
-                        const err202 = {
+                        const err220 = {
                             instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
@@ -123927,15 +125687,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
-                    if (typeof data73 == "number" && isFinite(data73)) {
-                        if (data73 < 0 || isNaN(data73)) {
-                            const err203 = {
+                    if (typeof data81 == "number" && isFinite(data81)) {
+                        if (data81 < 0 || isNaN(data81)) {
+                            const err221 = {
                                 instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
@@ -123944,23 +125704,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err203];
+                                vErrors = [err221];
                             } else {
-                                vErrors.push(err203);
+                                vErrors.push(err221);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.target_items !== undefined) {
-                    let data74 = data67.target_items;
+                if (data75.target_items !== undefined) {
+                    let data82 = data75.target_items;
                     if (!(
-                        typeof data74 == "number" &&
-                        !(data74 % 1) &&
-                        !isNaN(data74) &&
-                        isFinite(data74)
+                        typeof data82 == "number" &&
+                        !(data82 % 1) &&
+                        !isNaN(data82) &&
+                        isFinite(data82)
                     )) {
-                        const err204 = {
+                        const err222 = {
                             instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
@@ -123969,15 +125729,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err222];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err222);
                         }
                         errors++;
                     }
-                    if (typeof data74 == "number" && isFinite(data74)) {
-                        if (data74 < 0 || isNaN(data74)) {
-                            const err205 = {
+                    if (typeof data82 == "number" && isFinite(data82)) {
+                        if (data82 < 0 || isNaN(data82)) {
+                            const err223 = {
                                 instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
@@ -123986,23 +125746,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err205];
+                                vErrors = [err223];
                             } else {
-                                vErrors.push(err205);
+                                vErrors.push(err223);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_days !== undefined) {
-                    let data75 = data67.forecast_p50_days;
+                if (data75.forecast_p50_days !== undefined) {
+                    let data83 = data75.forecast_p50_days;
                     if (!(
-                        typeof data75 == "number" &&
-                        !(data75 % 1) &&
-                        !isNaN(data75) &&
-                        isFinite(data75)
+                        typeof data83 == "number" &&
+                        !(data83 % 1) &&
+                        !isNaN(data83) &&
+                        isFinite(data83)
                     )) {
-                        const err206 = {
+                        const err224 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
@@ -124011,15 +125771,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err224];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err224);
                         }
                         errors++;
                     }
-                    if (typeof data75 == "number" && isFinite(data75)) {
-                        if (data75 < 0 || isNaN(data75)) {
-                            const err207 = {
+                    if (typeof data83 == "number" && isFinite(data83)) {
+                        if (data83 < 0 || isNaN(data83)) {
+                            const err225 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_days",
                                 schemaPath:
@@ -124029,23 +125789,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err207];
+                                vErrors = [err225];
                             } else {
-                                vErrors.push(err207);
+                                vErrors.push(err225);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p85_days !== undefined) {
-                    let data76 = data67.forecast_p85_days;
+                if (data75.forecast_p85_days !== undefined) {
+                    let data84 = data75.forecast_p85_days;
                     if (!(
-                        typeof data76 == "number" &&
-                        !(data76 % 1) &&
-                        !isNaN(data76) &&
-                        isFinite(data76)
+                        typeof data84 == "number" &&
+                        !(data84 % 1) &&
+                        !isNaN(data84) &&
+                        isFinite(data84)
                     )) {
-                        const err208 = {
+                        const err226 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
@@ -124054,15 +125814,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err226];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err226);
                         }
                         errors++;
                     }
-                    if (typeof data76 == "number" && isFinite(data76)) {
-                        if (data76 < 0 || isNaN(data76)) {
-                            const err209 = {
+                    if (typeof data84 == "number" && isFinite(data84)) {
+                        if (data84 < 0 || isNaN(data84)) {
+                            const err227 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_days",
                                 schemaPath:
@@ -124072,23 +125832,23 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err209];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err209);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p95_days !== undefined) {
-                    let data77 = data67.forecast_p95_days;
+                if (data75.forecast_p95_days !== undefined) {
+                    let data85 = data75.forecast_p95_days;
                     if (!(
-                        typeof data77 == "number" &&
-                        !(data77 % 1) &&
-                        !isNaN(data77) &&
-                        isFinite(data77)
+                        typeof data85 == "number" &&
+                        !(data85 % 1) &&
+                        !isNaN(data85) &&
+                        isFinite(data85)
                     )) {
-                        const err210 = {
+                        const err228 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_days",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
@@ -124097,15 +125857,15 @@ function validate338(
                             message: "must be integer",
                         };
                         if (vErrors === null) {
-                            vErrors = [err210];
+                            vErrors = [err228];
                         } else {
-                            vErrors.push(err210);
+                            vErrors.push(err228);
                         }
                         errors++;
                     }
-                    if (typeof data77 == "number" && isFinite(data77)) {
-                        if (data77 < 0 || isNaN(data77)) {
-                            const err211 = {
+                    if (typeof data85 == "number" && isFinite(data85)) {
+                        if (data85 < 0 || isNaN(data85)) {
+                            const err229 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_days",
                                 schemaPath:
@@ -124115,19 +125875,19 @@ function validate338(
                                 message: "must be >= 0",
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
                     }
                 }
-                if (data67.forecast_p50_date !== undefined) {
-                    let data78 = data67.forecast_p50_date;
-                    if (typeof data78 === "string") {
-                        if (func2(data78) > 128) {
-                            const err212 = {
+                if (data75.forecast_p50_date !== undefined) {
+                    let data86 = data75.forecast_p50_date;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err230 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -124137,14 +125897,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err212];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err212);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data78)) {
-                            const err213 = {
+                        if (!pattern14.test(data86)) {
+                            const err231 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -124155,14 +125915,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err231];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err231);
                             }
                             errors++;
                         }
                     } else {
-                        const err214 = {
+                        const err232 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -124171,18 +125931,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err232];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err232);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p85_date !== undefined) {
-                    let data79 = data67.forecast_p85_date;
-                    if (typeof data79 === "string") {
-                        if (func2(data79) > 128) {
-                            const err215 = {
+                if (data75.forecast_p85_date !== undefined) {
+                    let data87 = data75.forecast_p85_date;
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 128) {
+                            const err233 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -124192,14 +125952,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err215];
+                                vErrors = [err233];
                             } else {
-                                vErrors.push(err215);
+                                vErrors.push(err233);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data79)) {
-                            const err216 = {
+                        if (!pattern14.test(data87)) {
+                            const err234 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -124210,14 +125970,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err216];
+                                vErrors = [err234];
                             } else {
-                                vErrors.push(err216);
+                                vErrors.push(err234);
                             }
                             errors++;
                         }
                     } else {
-                        const err217 = {
+                        const err235 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -124226,18 +125986,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err217];
+                            vErrors = [err235];
                         } else {
-                            vErrors.push(err217);
+                            vErrors.push(err235);
                         }
                         errors++;
                     }
                 }
-                if (data67.forecast_p95_date !== undefined) {
-                    let data80 = data67.forecast_p95_date;
-                    if (typeof data80 === "string") {
-                        if (func2(data80) > 128) {
-                            const err218 = {
+                if (data75.forecast_p95_date !== undefined) {
+                    let data88 = data75.forecast_p95_date;
+                    if (typeof data88 === "string") {
+                        if (func2(data88) > 128) {
+                            const err236 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -124247,14 +126007,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err218];
+                                vErrors = [err236];
                             } else {
-                                vErrors.push(err218);
+                                vErrors.push(err236);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data80)) {
-                            const err219 = {
+                        if (!pattern14.test(data88)) {
+                            const err237 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -124265,14 +126025,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err219];
+                                vErrors = [err237];
                             } else {
-                                vErrors.push(err219);
+                                vErrors.push(err237);
                             }
                             errors++;
                         }
                     } else {
-                        const err220 = {
+                        const err238 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -124281,15 +126041,15 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err220];
+                            vErrors = [err238];
                         } else {
-                            vErrors.push(err220);
+                            vErrors.push(err238);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err221 = {
+                const err239 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -124297,15 +126057,15 @@ function validate338(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err221];
+                    vErrors = [err239];
                 } else {
-                    vErrors.push(err221);
+                    vErrors.push(err239);
                 }
                 errors++;
             }
         }
     } else {
-        const err222 = {
+        const err240 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -124313,9 +126073,9 @@ function validate338(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err222];
+            vErrors = [err240];
         } else {
-            vErrors.push(err222);
+            vErrors.push(err240);
         }
         errors++;
     }
