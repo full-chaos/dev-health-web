@@ -1,8 +1,8 @@
 // Scratch generator of page-forecast-curve.json (CHAOS-4613), not built by this repo. From a detached
 // dev-health-ops worktree, add the two files below, then `go run ./cmd/zzcapacity <path>`. One stored
 // capacity_forecasts row goes through ops' real scanForecastRow, dates through their GraphQL marshaller.
-// slot-forecast-curve.json is ask-dev's real shapeDetail on ask-dev's forecast-curve.json (the same row
-// through acr's real path).
+// The row stores an item target of 40 (CHAOS-12714), as ask-dev's forecast-curve fixture at acr a70e1c78
+// does: the slot reads ask-dev's fixtures (the same row through acr's real path) at web's ask-dev pin.
 
 // internal/queryapi/capacityforecast/zz_fixture_export.go
 package capacityforecast
@@ -37,9 +37,10 @@ func ZZStoredForecastJSON() ([]byte, error) {
 	team, scope := "chaos", "linear:CHAOS"
 	day := func(y int, m time.Month, d int) *time.Time { t := time.Date(y, m, d, 0, 0, 0, 0, time.UTC); return &t }
 	u16 := func(v uint16) *uint16 { return &v }
+	u32 := func(v uint32) *uint32 { return &v }
 	row := zzRow{
 		"forecast-chaos-0001", computed, &team, &scope, uint32(40),
-		(*uint32)(nil), (*time.Time)(nil), day(2026, 11, 17), day(2026, 11, 23), day(2026, 12, 2),
+		u32(40), (*time.Time)(nil), day(2026, 11, 17), day(2026, 11, 23), day(2026, 12, 2),
 		u16(15), u16(21), u16(30), (*uint32)(nil), (*uint32)(nil), (*uint32)(nil),
 		3.25, 1.1, uint16(90),
 		uint8(0), uint8(0),

@@ -38,6 +38,8 @@ async function expectForecast(scope: Locator) {
     // The value table stays the chart's accessible form, out of sight: the horizon bin is its last row.
     await expect(figure.locator(".sr-only table")).toHaveCount(1);
     await expect(figure.locator(".sr-only table")).toContainText("365");
+    // CHAOS-12714: the stored item target is named as the capacity page names it.
+    await expect(figure).toContainText("in which all 40 items were done by that day");
     return figure;
 }
 

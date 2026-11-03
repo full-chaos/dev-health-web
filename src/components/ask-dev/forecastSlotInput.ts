@@ -5,7 +5,8 @@ import type { CompletionRangeInput } from "@/components/capacity/completionRange
 /**
  * The Ask Dev slot's form (CHAOS-4613): ask-dev's verified forecast detail as the input of the one
  * `completionRangeView` the capacity page draws with. It only reads fields; it does no arithmetic.
- * acr serves no simulated item count, so the item count is absent and the words say "all items".
+ * The item target is the stored row's own (acr's `target_items`, CHAOS-12708): with one, the words
+ * say "all N items" as the page does; with none stored, it is absent and the words say "all items".
  */
 export function forecastSlotInput(detail: ForecastShapeDetail): CompletionRangeInput {
     const { summary } = detail;
@@ -19,7 +20,7 @@ export function forecastSlotInput(detail: ForecastShapeDetail): CompletionRangeI
         runs: summary.simulation_count,
         horizonDays: summary.horizon_days,
         unfinishedRuns: summary.unfinished_runs,
-        targetItems: undefined,
+        targetItems: summary.target_items,
         percentiles: {
             P50: { days: summary.forecast_p50_days, date: summary.forecast_p50_date },
             P85: { days: summary.forecast_p85_days, date: summary.forecast_p85_date },

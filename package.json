@@ -52,7 +52,7 @@
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
-        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#d4026212d5719ebb3064b2cb0ecaff9ba564585c",
+        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#6e1c6268eadddc10d835fe077d9fe326f1298467",
         "@sentry/nextjs": "^11.7.0",
         "@tailwindcss/typography": "^0.5.20",
         "@urql/core": "^6",

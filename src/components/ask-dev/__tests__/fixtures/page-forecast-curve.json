@@ -48,6 +48,7 @@
     "p85Days": 21,
     "p95Date": "2026-12-02",
     "p95Days": 30,
+    "targetItems": 40,
     "teamId": "chaos",
     "throughputMean": 3.25,
     "throughputStddev": 1.1,
