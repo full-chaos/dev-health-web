@@ -17,8 +17,10 @@ vi.mock("sonner", () => ({
     toast: { error: (m: string) => toastError(m), success: (m: string) => toastSuccess(m) },
 }));
 
-const createUser = vi.fn();
-vi.mock("@/lib/admin/server", () => ({ createUser: (data: unknown) => createUser(data) }));
+const inviteCurrentOrgMember = vi.fn();
+vi.mock("@/lib/admin/server", () => ({
+    inviteCurrentOrgMember: (email: string, role: string) => inviteCurrentOrgMember(email, role),
+}));
 
 import NewUserPage from "./page";
 
@@ -27,7 +29,7 @@ beforeEach(() => {
     refresh.mockReset();
     toastError.mockReset();
     toastSuccess.mockReset();
-    createUser.mockReset();
+    inviteCurrentOrgMember.mockReset();
 });
 
 async function fillAndSubmit(role?: string) {
@@ -35,51 +37,49 @@ async function fillAndSubmit(role?: string) {
     render(<NewUserPage />);
     await user.type(screen.getByLabelText(/Email/u), "new.admin@example.com");
     if (role) await user.selectOptions(screen.getByLabelText("Role"), role);
-    await user.click(screen.getByRole("button", { name: "Add User" }));
+    await user.click(screen.getByRole("button", { name: "Send invite" }));
 }
 
-describe("Add User page (CHAOS-8972)", () => {
-    it("offers Member, Admin and Viewer with Member first", () => {
+describe("Add User page sends an invite (CHAOS-10881)", () => {
+    it("offers Member, Admin and Viewer with Member first, and no password field", () => {
         render(<NewUserPage />);
         const options = Array.from(
             (screen.getByLabelText("Role") as HTMLSelectElement).options,
         ).map((o) => o.textContent);
         expect(options).toEqual(["Member", "Admin", "Viewer"]);
         expect((screen.getByLabelText("Role") as HTMLSelectElement).value).toBe("member");
+        expect(screen.queryByLabelText(/Password/u)).not.toBeInTheDocument();
     });
 
-    it("sends the chosen role and returns to a refreshed Users list", async () => {
-        createUser.mockResolvedValue({ data: { email: "new.admin@example.com" } });
+    it("sends the invite with the chosen role and returns to a refreshed Users list", async () => {
+        inviteCurrentOrgMember.mockResolvedValue({ data: { id: "i1" } });
         await fillAndSubmit("admin");
 
         await waitFor(() => expect(push).toHaveBeenCalledWith("/org/admin/users"));
-        expect(createUser).toHaveBeenCalledWith(
-            expect.objectContaining({ email: "new.admin@example.com", role: "admin" }),
-        );
+        expect(inviteCurrentOrgMember).toHaveBeenCalledWith("new.admin@example.com", "admin");
         expect(refresh).toHaveBeenCalled();
         expect(toastError).not.toHaveBeenCalled();
+        expect(toastSuccess).toHaveBeenCalledWith("Invite sent to new.admin@example.com");
     });
 
-    it("shows the served error and stays on the form", async () => {
-        createUser.mockResolvedValue({
-            error: "User with email new.admin@example.com already exists",
+    it("shows the refusal sentence and stays on the form", async () => {
+        inviteCurrentOrgMember.mockResolvedValue({
+            error: "An invite for this email is already pending.",
         });
         await fillAndSubmit();
 
         await waitFor(() =>
-            expect(toastError).toHaveBeenCalledWith(
-                "User with email new.admin@example.com already exists",
-            ),
+            expect(toastError).toHaveBeenCalledWith("An invite for this email is already pending."),
         );
         expect(push).not.toHaveBeenCalled();
     });
 
     it("shows a failure when the action itself throws, and re-enables the form", async () => {
-        createUser.mockRejectedValue(new Error("Failed to find Server Action"));
+        inviteCurrentOrgMember.mockRejectedValue(new Error("Failed to find Server Action"));
         await fillAndSubmit();
 
         await waitFor(() => expect(toastError).toHaveBeenCalledWith(ACTION_FAILED_MESSAGE));
         expect(push).not.toHaveBeenCalled();
-        expect(screen.getByRole("button", { name: "Add User" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Send invite" })).toBeEnabled();
     });
 });
