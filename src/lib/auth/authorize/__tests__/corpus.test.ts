@@ -107,10 +107,12 @@ suite("authorization_request.v1 examples", () => {
 });
 
 suite("vocabulary/reason-codes.json decision_reason_code", () => {
-    const vocab = JSON.parse(text(path.join(v1, "vocabulary/reason-codes.json"))) as {
-        decision_reason_code: { values: string[] };
-    };
-    const values = vocab.decision_reason_code.values;
+    const values = (): string[] =>
+        (
+            JSON.parse(text(path.join(v1, "vocabulary/reason-codes.json"))) as {
+                decision_reason_code: { values: string[] };
+            }
+        ).decision_reason_code.values;
     const body = (reason_code: string, allowed: boolean) =>
         JSON.stringify({
             schema_version: "authorization_decision.v1",
@@ -123,16 +125,18 @@ suite("vocabulary/reason-codes.json decision_reason_code", () => {
             expires_at: "2026-09-03T05:00:30Z",
         });
     it("is not empty", () => {
-        expect(values.length).toBeGreaterThan(0);
+        expect(values().length).toBeGreaterThan(0);
     });
-    it.each(values)("decodes %s with the matching allowed flag", (code) => {
-        const allow = code.startsWith("allowed_by_");
-        const r = parseDecision(body(code, allow), FIXTURE_NOW);
-        expect(r.ok && r.decision.allowed).toBe(allow);
-        expect(parseDecision(body(code, !allow), FIXTURE_NOW).ok).toBe(false);
+    it("decodes every code with the matching allowed flag", () => {
+        for (const code of values()) {
+            const allow = code.startsWith("allowed_by_");
+            const r = parseDecision(body(code, allow), FIXTURE_NOW);
+            expect(r.ok && r.decision.allowed, code).toBe(allow);
+            expect(parseDecision(body(code, !allow), FIXTURE_NOW).ok, code).toBe(false);
+        }
     });
     it("is the set the client accepts, no more and no fewer", () => {
-        expect([...WIRE_REASON_CODES].sort()).toEqual([...values].sort());
+        expect([...WIRE_REASON_CODES].sort()).toEqual([...values()].sort());
     });
 });
 
