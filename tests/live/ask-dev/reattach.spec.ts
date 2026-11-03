@@ -211,11 +211,21 @@ test("1a: an attach after a lost create stream resumes the events with no gap (3
                     message: `${name}: no attach was read`,
                 })
                 .toBeGreaterThan(0);
-            const created = streams.filter(isCreate).at(index);
+            // Paired by the submission, never by the order the streams ended (Codex r1 P3): the
+            // create's `accepted` echoes its submission id.
+            const created = streams
+                .filter(isCreate)
+                .find((stream) => streamText(stream).includes(submission));
             const attach = streams.find(isAttachOf(submission))!;
             expect(created, `${name}: the create stream was not read`).toBeDefined();
             const cursor = attach.lastEventId === null ? null : Number(attach.lastEventId);
             const mismatches = seqMismatches(seqsOf(created!), seqsOf(attach), cursor);
+            // The attach that resumed the run must also end it: a truncated one resumed nothing.
+            const attachTypes = framesOf(streamText(attach)).flatMap((frame) =>
+                frame.type === undefined ? [] : [frame.type],
+            );
+            if (attachTypes.at(-1) !== "result")
+                mismatches.push(`attach: ends with ${String(attachTypes.at(-1))}, not the result`);
             runs.push({
                 name,
                 submission,
@@ -253,17 +263,34 @@ test("1b: an attach with a Last-Event-ID ACR never issued gets 410 cursor_expire
     const requestIds = watchRequestIds(page);
     const proxy = await startFaultProxy(ACR, "cut-after-first-stage");
     const evidence: Record<string, unknown> = {};
-    const refusals: Array<{ status: number; code: unknown }> = [];
+    // Each refused attach by its own path, and each status read's result id: 1b binds the 410 and
+    // the replay to the target run (Codex r1 P3).
+    const refusals: Array<{ path: string; status: number; code: unknown }> = [];
+    const statusResults: Array<{ path: string; resultId: unknown }> = [];
     page.on("response", (response) => {
         const url = new URL(response.url());
-        if (url.origin !== ACR || !url.pathname.endsWith("/events") || response.status() < 400)
-            return;
-        void response
-            .json()
-            .then((body: { error?: { code?: unknown } }) =>
-                refusals.push({ status: response.status(), code: body.error?.code }),
-            )
-            .catch(() => refusals.push({ status: response.status(), code: null }));
+        if (url.origin !== ACR) return;
+        if (url.pathname.endsWith("/events") && response.status() >= 400) {
+            void response
+                .json()
+                .then((body: { error?: { code?: unknown } }) =>
+                    refusals.push({
+                        path: url.pathname,
+                        status: response.status(),
+                        code: body.error?.code,
+                    }),
+                )
+                .catch(() =>
+                    refusals.push({ path: url.pathname, status: response.status(), code: null }),
+                );
+        } else if (/\/submissions\/[^/]+$/u.test(url.pathname) && response.status() === 200) {
+            void response
+                .json()
+                .then((body: { result_id?: unknown }) =>
+                    statusResults.push({ path: url.pathname, resultId: body.result_id }),
+                )
+                .catch(() => statusResults.push({ path: url.pathname, resultId: null }));
+        }
     });
     const { calls, surface } = await panel(page);
     try {
@@ -295,14 +322,28 @@ test("1b: an attach with a Last-Event-ID ACR never issued gets 410 cursor_expire
             ({ call, index }) =>
                 call.path === statusPath(submission) && index > (firstAttach?.index ?? Infinity),
         );
+        // The replay is of the result the target's status read named, nothing else.
+        await expect
+            .poll(
+                () => statusResults.filter((read) => read.path === statusPath(submission)).length,
+                {
+                    message: "the target's status read gave no body",
+                },
+            )
+            .toBeGreaterThan(0);
+        const named = statusResults
+            .filter((read) => read.path === statusPath(submission))
+            .at(-1)!.resultId;
         const replay = calls.findIndex(
             (call, index) =>
-                /\/result_[0-9a-f]{32}$/u.test(call.path) &&
+                typeof named === "string" &&
+                call.path.endsWith(`/${named}`) &&
                 call.status === 200 &&
                 index > (statusRead?.index ?? Infinity),
         );
         evidence.fabricated = fabricated;
         evidence.refusals = refusals;
+        evidence.status_result_id = named;
         evidence.order = order.map(({ call, index }) => ({
             index,
             method: call.method,
@@ -314,9 +355,15 @@ test("1b: an attach with a Last-Event-ID ACR never issued gets 410 cursor_expire
             firstAttach?.call.status,
             "the attach with the fabricated cursor was not refused 410",
         ).toBe(410);
-        expect(refusals[0]?.code, "ACR's 410 was not cursor_expired").toBe("cursor_expired");
+        expect(
+            refusals.find((refusal) => refusal.path === eventsPath(submission))?.code,
+            "ACR's 410 to the target's attach was not cursor_expired",
+        ).toBe("cursor_expired");
         expect(statusRead, "after the 410 the store read no status").toBeDefined();
-        expect(replay, "after the status the store replayed no result").toBeGreaterThan(-1);
+        expect(
+            replay,
+            "after the status the store did not replay the result it named",
+        ).toBeGreaterThan(-1);
         expect(investigations(calls), "the recovery sent a create").toHaveLength(1);
     } finally {
         evidence.request_ids = requestIds;
@@ -440,7 +487,12 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
         // when nothing at all was written for 10 s. Run 1 had heartbeats only: no comment was due.
         const keepalives = frames.filter((frame) => frame.comment === "keepalive").length;
         const heartbeats = frames.filter((frame) => frame.type === "heartbeat").length;
-        const silence = longestSilenceMs(attach.chunks, attach.endedAt);
+        // From the request, not the first chunk: the wait for the first byte is a silence too
+        // (Codex r1 P3).
+        const silence = longestSilenceMs(
+            [{ at: attach.sentAt, text: "" }, ...attach.chunks],
+            attach.endedAt,
+        );
         // D, as the store takes it from the replayed accepted: started_at + budget_seconds + 30 s.
         const acceptedData = streamText(attach)
             .split(/\r?\n/u)
@@ -463,10 +515,13 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
         const waits = {
             attach_headers: { from: attach.sentAt, to: attach.chunks[0]?.at ?? attach.endedAt },
             attach_stream: { from: attach.sentAt, to: attach.endedAt },
-            status_reads: calls.filter(
-                (call) => call.method === "GET" && call.path === statusPath(submission),
-            ).length,
-            replays: calls.filter((call) => /\/result_[0-9a-f]{32}$/u.test(call.path)).length,
+            // Each status read and replay by the time its answer came (Codex r1 P3: not a count).
+            status_reads: requestIds
+                .filter((id) => id.method === "GET" && id.path === statusPath(submission))
+                .map((id) => Date.parse(id.at)),
+            replays: requestIds
+                .filter((id) => /\/result_[0-9a-f]{32}$/u.test(id.path))
+                .map((id) => Date.parse(id.at)),
         };
         evidence.attach = {
             cursor: attach.lastEventId,
@@ -507,6 +562,12 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
         expect(waits.attach_stream.to, "the attach stream outlived D").toBeLessThanOrEqual(
             deadline,
         );
+        for (const [name, answeredAt] of [
+            ...waits.status_reads.map((at) => ["status read", at] as const),
+            ...waits.replays.map((at) => ["replay", at] as const),
+        ]) {
+            expect(answeredAt, `a ${name} outlived D`).toBeLessThanOrEqual(deadline);
+        }
     } finally {
         evidence.request_ids = requestIds;
         evidence.acr_calls = acrCalls(calls);
