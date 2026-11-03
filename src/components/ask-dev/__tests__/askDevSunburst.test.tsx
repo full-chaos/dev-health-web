@@ -153,10 +153,12 @@ describe("the host's sunburst for a verified shape (CHAOS-12813)", () => {
                     { name: "Bugfix" },
                 ],
             },
-            1,
+            // A total of 4: a share derived from the total would read 5.0%, the served one 20.0%.
+            4,
             "",
         );
         expect(html).toContain("20.0%");
+        expect(html).not.toContain("5.0%");
         expect(html).toContain("Quality / Reliability");
         expect(html).toContain(sunburst.value_label);
     });
@@ -233,6 +235,7 @@ describe("the adapter never throws on a malformed sunburst (codex r1 on #1797)",
             changed((shape) => void delete (shape.series[1] as { points?: unknown }).points),
         ],
         ["a null ring", changed((shape) => void ((shape.series as unknown[])[1] = null))],
+        ["an empty ring", changed((shape) => void (shape.series[1]!.points = [] as never))],
         [
             "a null point",
             changed((shape) => void ((shape.series[1]!.points as unknown[])[0] = null)),

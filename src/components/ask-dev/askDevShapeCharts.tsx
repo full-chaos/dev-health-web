@@ -209,7 +209,8 @@ function AskDevSankey({
  */
 function sunburstData(shape: RenderShape): SunburstNode | null {
     // A malformed shape is refused here, never thrown on: ask-dev then shows its table. Every
-    // series and every point must be an object, and every series must hold a points array.
+    // series and every point must be an object, and every series must hold points: an empty ring
+    // would draw a theme with no subcategories.
     const isObject = (value: unknown): value is object =>
         typeof value === "object" && value !== null;
     const series: readonly unknown[] = Array.isArray(shape.series) ? shape.series : [];
@@ -217,7 +218,7 @@ function sunburstData(shape: RenderShape): SunburstNode | null {
         const points: unknown = isObject(entry)
             ? (entry as { points?: unknown }).points
             : undefined;
-        return Array.isArray(points) && points.every(isObject);
+        return Array.isArray(points) && points.length > 0 && points.every(isObject);
     });
     if (!readable) return null;
     const [inner, ...rings] = series as RenderShape["series"];
