@@ -79,6 +79,7 @@ describe("orgMemberRefusalText by status and legacy go-api text", () => {
         expect(orgMemberRefusalText({ status: 422, detail: "email: bad" })).toBeUndefined();
         expect(orgMemberRefusalText({ status: 400, detail: "Something else" })).toBeUndefined();
         expect(orgMemberRefusalText({ status: 401, detail: "No access token" })).toBeUndefined();
+        expect(orgMemberRefusalText({ status: 401, code: "token_expired" })).toBeUndefined();
         expect(orgMemberRefusalText({ status: 500 })).toBeUndefined();
     });
 });
