@@ -45,6 +45,7 @@
         "test:e2e:pagerduty-final-qa:smoke": "playwright test --project=pagerduty-final-qa tests/pagerduty-final-qa-p0.spec.ts",
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
+        "test:e2e:visual": "playwright test -c playwright.visual.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:e2e:live:ask-dev": "LIVE_ASK_DEV=1 playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
