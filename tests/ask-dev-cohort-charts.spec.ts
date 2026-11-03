@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 import { kiacRanking, seedRanking } from "./fixtures/ask-dev/cohortFixtures";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11943: the cohort charts (attention bars, driver stack) in the ranking panel of the real
 // Ask Dev panel, drawn as SVG by the ask-dev render, from scrubbed captures (kiac repository ranking; public seed
 // corpus). The panel's test-mode answer source reads the answer from session storage.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const KEY = "ask-dev:test-mode-answer";
 
 test.describe.configure({ mode: "serial" });

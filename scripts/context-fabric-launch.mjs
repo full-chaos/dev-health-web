@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { generateKeyPairSync } from "node:crypto";
 import { join, resolve } from "node:path";
+import { e2ePorts } from "../ci/e2e-ports.mjs";
 import { shouldForwardSupervisorSignal } from "./owned-process-lifecycle.mjs";
 
 const rootDirectory = resolve(import.meta.dirname, "..");
@@ -80,7 +81,10 @@ const launchTarget = process.argv[2];
 if (launchTarget === "ops-mock") {
     await startOwned(process.execPath, ["--import", "tsx", "./tests/mocks/http-server.ts"], {
         cwd: rootDirectory,
-        env: { ...process.env, MOCK_SERVER_PORT: process.env.MOCK_SERVER_PORT ?? "8012" },
+        env: {
+            ...process.env,
+            MOCK_SERVER_PORT: process.env.MOCK_SERVER_PORT ?? String(e2ePorts.contextFabricOpsPort),
+        },
     });
 } else if (launchTarget === "acr-mock") {
     await prepareAcrMock();
@@ -88,14 +92,18 @@ if (launchTarget === "ops-mock") {
         cwd: rootDirectory,
         env: {
             ...process.env,
-            ACR_MOCK_PORT: process.env.ACR_MOCK_PORT ?? "8013",
+            ACR_MOCK_PORT: process.env.ACR_MOCK_PORT ?? String(e2ePorts.contextFabricAcrPort),
         },
     });
 } else if (launchTarget === "bff") {
     await prepareBff();
     await startOwned(process.execPath, ["server.js"], {
         cwd: runtimeDirectory,
-        env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: process.env.PORT ?? "3012" },
+        env: {
+            ...process.env,
+            HOSTNAME: "127.0.0.1",
+            PORT: process.env.PORT ?? String(e2ePorts.contextFabricBffPort),
+        },
     });
 } else {
     throw new Error("Expected Context Fabric launcher target: ops-mock, acr-mock, or bff.");

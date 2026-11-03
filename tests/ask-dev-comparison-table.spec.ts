@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 /** ask-dev's fixture: a real served comparison, with the claims and the table added by hand. */
 const answer = JSON.parse(

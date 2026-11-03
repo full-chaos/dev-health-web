@@ -3,12 +3,13 @@ import { spawn } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 import { resolvePackageManagerCommand } from "./package-manager.mjs";
 
 const environment = {
     ...process.env,
     AUTH_SECRET: "context-fabric-production-playwright",
-    BACKEND_URL: "http://127.0.0.1:8012",
+    BACKEND_URL: e2eOrigin(e2ePorts.contextFabricOpsPort),
     NEXT_PUBLIC_SENTRY_REPLAY_ROUTES: "",
     NODE_ENV: "production",
 };

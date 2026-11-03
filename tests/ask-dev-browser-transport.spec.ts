@@ -12,6 +12,7 @@ import {
 import { serveAskDevAuthorize } from "./mocks/acr-browser-client";
 import { AcrOAuthMock } from "./mocks/acr-oauth";
 import { investigationStreamFor } from "./mocks/acr-investigation-stream";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-12104 (T14a): the browser's ACR transport, offline, through the real panel.
@@ -25,7 +26,7 @@ import { investigationStreamFor } from "./mocks/acr-investigation-stream";
  * The live proof (a real ACR) rides the tickets T14 blocks, after CHAOS-12313.
  */
 
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const QUESTION = "Which projects are at risk this quarter?";
 /** A well-formed thread id: its read goes to ACR (CHAOS-12336). */
 const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

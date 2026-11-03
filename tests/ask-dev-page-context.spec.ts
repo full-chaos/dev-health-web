@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-3584 (I-22): the page context proposed as chips in the real Ask Dev panel, and sent with
 // the next question as ACR subject hints. The test-mode page context (`pageContext/
 // AskDevPageContext.tsx`) registers the entities of "the page" from session storage, as a page will
 // (CHAOS-11938); the test-mode transport plays a scripted ACR stream and records every call. No
 // request leaves the browser for ACR.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",

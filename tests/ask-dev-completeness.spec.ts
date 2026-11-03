@@ -3,13 +3,14 @@ import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 import { rawWordsInNode } from "../src/test/rawWords";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-12245, chris's ruling (2026-10-31): "web never shows the raw completeness state". Each state
 // in the real Ask Dev panel, from real ACR answers captured on the kiac stack: `complete` adds
 // nothing, `not_derived` renders nothing about completeness, `partial` and `degraded` add one plain
 // sentence that names the missing data. The panel's test-mode source reads the answer from session
 // storage; nothing is fetched.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 

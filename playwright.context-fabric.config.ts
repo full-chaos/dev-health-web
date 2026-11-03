@@ -1,12 +1,13 @@
 import { defineConfig } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "./ci/e2e-ports.mjs";
 import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
 
-export const BFF_PORT = process.env.CONTEXT_FABRIC_BFF_PORT ?? "3012";
-export const OPS_MOCK_PORT = process.env.CONTEXT_FABRIC_OPS_PORT ?? "8012";
-export const ACR_MOCK_PORT = process.env.CONTEXT_FABRIC_ACR_PORT ?? "8013";
-export const BFF_ORIGIN = `http://127.0.0.1:${BFF_PORT}`;
-export const OPS_MOCK_ORIGIN = `http://127.0.0.1:${OPS_MOCK_PORT}`;
-export const ACR_API_ORIGIN = `http://127.0.0.1:${ACR_MOCK_PORT}`;
+export const BFF_PORT = String(e2ePorts.contextFabricBffPort);
+export const OPS_MOCK_PORT = String(e2ePorts.contextFabricOpsPort);
+export const ACR_MOCK_PORT = String(e2ePorts.contextFabricAcrPort);
+export const BFF_ORIGIN = e2eOrigin(BFF_PORT);
+export const OPS_MOCK_ORIGIN = e2eOrigin(OPS_MOCK_PORT);
+export const ACR_API_ORIGIN = e2eOrigin(ACR_MOCK_PORT);
 
 const AUTH_FILE = "test-results/.auth/state.json";
 const RESULTS_DIRECTORY =

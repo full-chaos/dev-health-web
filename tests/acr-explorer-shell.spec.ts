@@ -1,6 +1,7 @@
 import { expect, test, type ConsoleMessage, type Page } from "@playwright/test";
 
 import { recordCapabilityRequestFaults } from "./helpers/capability-request-faults";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
@@ -70,7 +71,7 @@ async function expectHealthyExplorer({
 
 test.describe("Context Fabric Validation", () => {
     test.beforeEach(async ({ request }) => {
-        const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
+        const response = await request.post(`${e2eOrigin(e2ePorts.mockPort)}/__test/entitlements`, {
             data: { scenario: "provisioned" },
         });
         expect(response.ok()).toBe(true);

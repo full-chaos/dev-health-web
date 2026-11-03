@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 /**
  * CHAOS-12707: at phone width the completion forecast figure's day axis printed its dates on top

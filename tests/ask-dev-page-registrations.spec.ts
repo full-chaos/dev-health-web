@@ -5,13 +5,14 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
 import { encodeFilter } from "../src/lib/filters/encode";
 import type { MetricFilter } from "../src/lib/filters/types";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-11938 (I-23): each approved page states its own Ask Dev context. No test-mode page context
 // is seeded: the chips come from the page's own registration, through the shell's registry. The
 // test-mode transport plays a scripted ACR stream and records every call; no request leaves the
 // browser for ACR. The mock backend serves the organization "E2E Organization" (`org-e2e`), the
 // teams by id with no names, and the repository id -> name map.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = { stream: "ask-dev:test-mode-stream", calls: "ask-dev:test-mode-calls" } as const;
 const SOURCE = "ask_dev_page_context";

@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 // CHAOS-9130: one first load of a filter-bar page is one server render. The default `f` is written
 // with no navigation, so the page makes one document request, no RSC request, and one set of
 // backend reads.
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 const PAGES = ["/code", "/explore"];
 
 const backendCount = async (request: import("@playwright/test").APIRequestContext) =>

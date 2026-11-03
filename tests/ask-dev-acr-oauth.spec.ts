@@ -6,6 +6,7 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { serveAskDevAuthorize } from "./mocks/acr-browser-client";
 import { ACR_DEV_BROWSER_CLIENT_ID, AcrOAuthMock } from "./mocks/acr-oauth";
+import { e2eOrigin, e2ePorts } from "../ci/e2e-ports.mjs";
 
 /**
  * CHAOS-12303 (c2 of the T13 split), CHAOS-12474: the browser's silent ACR authorization, offline.
@@ -22,7 +23,7 @@ import { ACR_DEV_BROWSER_CLIENT_ID, AcrOAuthMock } from "./mocks/acr-oauth";
 
 const SHOTS = process.env.ASK_DEV_ACR_SHOTS ?? "";
 const FAMILY_KEY = "ask-dev:acr-family";
-const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+const MOCK = e2eOrigin(e2ePorts.mockPort);
 
 async function shot(page: Page, name: string) {
     if (SHOTS === "") return;
