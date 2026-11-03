@@ -1,0 +1,154 @@
+# Drill stack for the web assertion key rotation (CHAOS-11236). One pod, one namespace, no registry push.
+# Apply into the drill namespace only. Secrets come from `stack-secrets` (never printed); images are the
+# digests already on the bigboy k3s node. acr-api rereads the JWKS file on every assertion; the `jwks`
+# sidecar seeds the shared emptyDir from ConfigMap `jwks-seed` (acr-api refuses an empty JWKS at start) and owns it so the drill can rewrite the file with `kubectl exec`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: entitlement-standin
+data:
+    nginx.conf.tpl: |
+        worker_processes 1;
+        pid /tmp/nginx.pid;
+        error_log /dev/stderr warn;
+        events { worker_connections 64; }
+        http {
+          access_log off;
+          client_body_temp_path /tmp/cb; proxy_temp_path /tmp/pt; fastcgi_temp_path /tmp/ft;
+          uwsgi_temp_path /tmp/ut; scgi_temp_path /tmp/st;
+          server {
+            listen 8088;
+            location = /healthz { return 200 "ok\n"; }
+            location = /api/v1/internal/acr/health {
+              if ($http_authorization != "Bearer @TOKEN@") { return 401; }
+              default_type application/json;
+              return 200 '{"schema_version":"acr_service_health.v1","service":"dev-health-ops","status":"ok"}';
+            }
+            location ~ "^/api/v1/internal/acr/entitlements/([0-9A-Za-z_-]{1,64})$" {
+              if ($http_authorization != "Bearer @TOKEN@") { return 401; }
+              default_type application/json;
+              return 200 '{"schema_version":"acr_entitlement.v1","org_id":"$1","agent_context_runtime":true}';
+            }
+            location / { return 404; }
+          }
+        }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: stack
+    labels: { app: stack }
+spec:
+    securityContext: { fsGroup: 65532 }
+    imagePullSecrets: [{ name: ghcr-pull }]
+    volumes:
+        - { name: pgdata, emptyDir: {} }
+        - { name: chdata, emptyDir: {} }
+        - { name: jwks, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+        - { name: seed, configMap: { name: jwks-seed } }
+        - { name: ent, emptyDir: {} }
+        - { name: tpl, configMap: { name: entitlement-standin } }
+        - { name: sec, secret: { secretName: stack-secrets, defaultMode: 0440 } }
+    initContainers:
+        # acr-api refuses a token file that is a symlink or group-readable: copy the secret to a 0600 file it owns.
+        - name: prepare-entitlement-token
+          image: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          command: ["sh", "-c", "umask 077 && cp /var/run/sec/ent-token /var/run/ent/token"]
+          securityContext: { runAsUser: 65532, runAsGroup: 65532 }
+          volumeMounts:
+              - { name: sec, mountPath: /var/run/sec, readOnly: true }
+              - { name: ent, mountPath: /var/run/ent }
+    containers:
+        - name: postgres
+          image: postgres:18-alpine@sha256:a1d02e4bd40c94d3bf2bdd3678c137388e76d9efcd23c285e9429d336a834b44
+          env:
+              - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+              - { name: POSTGRES_DB, value: acr }
+              - {
+                    name: POSTGRES_PASSWORD,
+                    valueFrom: { secretKeyRef: { name: stack-secrets, key: pg-admin } },
+                }
+          volumeMounts: [{ name: pgdata, mountPath: /var/lib/postgresql/data }]
+        - name: clickhouse
+          image: clickhouse/clickhouse-server@sha256:f90a77560f72b10802106ee49e9870e41668cbc496e280c3911f6e3b216657f3
+          env:
+              - { name: CLICKHOUSE_USER, value: ch }
+              - {
+                    name: CLICKHOUSE_PASSWORD,
+                    valueFrom: { secretKeyRef: { name: stack-secrets, key: ch-pass } },
+                }
+          volumeMounts: [{ name: chdata, mountPath: /var/lib/clickhouse }]
+        - name: entitlement
+          image: docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+          command: ["/bin/sh", "-c"]
+          args:
+              - |
+                  set -eu
+                  T="$(cat /var/run/sec/ent-token)"
+                  sed "s|@TOKEN@|${T}|" /tpl/nginx.conf.tpl > /tmp/nginx.conf
+                  exec nginx -c /tmp/nginx.conf -g 'daemon off;'
+          volumeMounts:
+              - { name: tpl, mountPath: /tpl, readOnly: true }
+              - { name: sec, mountPath: /var/run/sec, readOnly: true }
+              - { name: tmp, mountPath: /tmp }
+        - name: jwks
+          image: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+          command:
+              [
+                  "sh",
+                  "-c",
+                  "umask 022; cp /seed/web-jwks.json /jwks/web-jwks.json; exec sleep 86400",
+              ]
+          volumeMounts:
+              - { name: jwks, mountPath: /jwks }
+              - { name: seed, mountPath: /seed, readOnly: true }
+        - name: acr-api
+          image: ghcr.io/full-chaos/dev-health-acr/acr-api@sha256:6f0d6f60721e7cac6c9f3835f0aa0703facebf7a102b7af001da899cc4fb6af1
+          command: ["/usr/local/bin/acr-api", "serve"]
+          env:
+              - {
+                    name: PGRT,
+                    valueFrom: { secretKeyRef: { name: stack-secrets, key: pg-runtime } },
+                }
+              - { name: CHPW, valueFrom: { secretKeyRef: { name: stack-secrets, key: ch-pass } } }
+              - {
+                    name: ACR_POSTGRES_DSN,
+                    value: "postgres://acr_runtime:$(PGRT)@127.0.0.1:5432/acr?sslmode=disable",
+                }
+              - {
+                    name: ACR_CLICKHOUSE_DSN,
+                    value: "clickhouse://ch:$(CHPW)@127.0.0.1:9000/default",
+                }
+              - { name: ACR_EVIDENCE_ID_ACTIVE_KID, value: drill }
+              - name: EVK
+                valueFrom: { secretKeyRef: { name: stack-secrets, key: evid } }
+              - { name: ACR_EVIDENCE_ID_KEYS, value: "drill=$(EVK)" }
+              - { name: ACR_ADDR, value: ":8080" }
+              - { name: ACR_ENVIRONMENT, value: staging }
+              - { name: ACR_REQUIRE_BACKING_STORES, value: "true" }
+              - { name: ACR_POSTGRES_CONNECTION_KIND, value: direct }
+              - { name: ACR_DEV_HEALTH_ENTITLEMENT_URL, value: "http://127.0.0.1:8088" }
+              - { name: ACR_DEV_HEALTH_ENTITLEMENT_TOKEN_FILE, value: /var/run/ent/token }
+              - { name: ACR_DEV_HEALTH_ENTITLEMENT_TIMEOUT, value: 5s }
+              - { name: ACR_DEVICE_VERIFICATION_URL, value: "http://drill.invalid/acr/device" }
+              - { name: ACR_ENABLE_EPISODE_WRITEBACK, value: "false" }
+              - { name: ACR_WEB_ASSERTION_ISSUER, value: dev-health-web }
+              - { name: ACR_WEB_ASSERTION_AUDIENCE, value: acr-api }
+              - { name: ACR_WEB_ASSERTION_JWKS_FILE, value: /jwks/web-jwks.json }
+          securityContext: { runAsUser: 65532, runAsGroup: 65532 }
+          volumeMounts:
+              - { name: jwks, mountPath: /jwks, readOnly: true }
+              - { name: ent, mountPath: /var/run/ent, readOnly: true }
+              - { name: tmp, mountPath: /tmp }
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: stack
+spec:
+    publishNotReadyAddresses: true
+    selector: { app: stack }
+    ports:
+        - { name: pg, port: 5432 }
+        - { name: api, port: 8080 }
