@@ -92,7 +92,8 @@ const latencyEntries = LATENCY_CASES.map((name) => ({
 // CHAOS-11946 (Phase 3): each rich view's frame and claims, scripted so the view the answer serves
 // depends on the data alone. No delays: Phase 3 times nothing. `claim_fields`/`claim_first_only`
 // need acr's modeloracle from main bbe95afa or later (CHAOS-12809); an older oracle refuses this
-// plan at load, so a run never answers with the wrong claims.
+// plan at load, so a run never answers with the wrong claims. `claim_detail_tables` (the sankey's
+// table, claimed by name with value null) needs the modeloracle with CHAOS-12857.
 const named = (term: string) => ({ kind: "named_subject", terms: [term] });
 const RICH_PLAN: Record<
     RichCase,
@@ -203,6 +204,32 @@ const RICH_PLAN: Record<
             },
         },
         currentAxis: false,
+    },
+    sankey: {
+        // A team's repositories with the one goal allocate_investment: the scope-anchor allocation
+        // route serves it from the team's own fact (CHAOS-12606), and the sankey plots the table
+        // the claim names (CHAOS-12580, CHAOS-12582).
+        interpretation: {
+            shape: "open",
+            requested_judgment: "investment",
+            subject_terms: ["Fullchaos"],
+            requested_subject_kind: "repository",
+            scope_anchor_kind: "team",
+            scope_anchor_term: "Fullchaos",
+            time_context: { axis: "current" },
+            fact_requirements: [{ kind: "investment" }],
+            clarification_needed: false,
+            question_frame: {
+                goals: ["allocate_investment"],
+                subject_expression: {
+                    kind: "children_of_scope",
+                    anchor_terms: ["Fullchaos"],
+                    member_kind: "repository",
+                },
+                temporal: "current",
+            },
+        },
+        claims: { claim_detail_tables: ["repository_theme_breakdown"] },
     },
     cohort: {
         interpretation: {
