@@ -29,6 +29,28 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
+// Not sent by web. The ACR service uses these for team/repository scope
+// (CHAOS-12698); they live here so the ops wire-parity gate has a live binding.
+// Derived from INVESTMENT_BREAKDOWN_QUERY so the bodies can never drift.
+const INVESTMENT_BREAKDOWN_OPERATION_PREFIX = "query InvestmentBreakdown(";
+
+function scopedInvestmentBreakdownQuery(operationName: string): string {
+    const parts = INVESTMENT_BREAKDOWN_QUERY.split(INVESTMENT_BREAKDOWN_OPERATION_PREFIX);
+    if (parts.length !== 2) {
+        throw new Error(
+            `INVESTMENT_BREAKDOWN_QUERY must contain "${INVESTMENT_BREAKDOWN_OPERATION_PREFIX}" exactly once`,
+        );
+    }
+    return `${parts[0]}query ${operationName}(${parts[1]}`;
+}
+
+export const INVESTMENT_BREAKDOWN_TEAM_QUERY =
+    scopedInvestmentBreakdownQuery("InvestmentBreakdownTeam");
+
+export const INVESTMENT_BREAKDOWN_REPOSITORY_QUERY = scopedInvestmentBreakdownQuery(
+    "InvestmentBreakdownRepository",
+);
+
 // Query for fetching same-dimension flow matrix (team↔team, repo↔repo, work_type↔work_type).
 // Backed by analytics.flowMatrix resolver (CHAOS-1289) — returns directional N×N data
 // where source and target share a single dimension.
