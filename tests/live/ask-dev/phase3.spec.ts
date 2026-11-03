@@ -560,7 +560,7 @@ for (const replicate of REPLICATES) {
     });
 }
 
-test("sankey: the repository flow renders from the served shape", () => {
+test("sankey [behind a flag]: the repository flow renders from the served shape", () => {
     if (!SANKEY) {
         // Listed as NOT RUN by ci/live-e2e-skip-gate.mjs, never as a pass or a plain skip.
         test.info().annotations.push({
@@ -574,7 +574,7 @@ test("sankey: the repository flow renders from the served shape", () => {
     expect(SANKEY, "NOT RUN: the sankey case has no question yet").toBe(false);
 });
 
-test("sunburst: the investment subcategories render from the served shape", () => {
+test("sunburst [behind a flag]: the investment subcategories render from the served shape", () => {
     if (!SUNBURST) {
         test.info().annotations.push({
             type: "NOT RUN",

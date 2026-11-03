@@ -150,12 +150,14 @@ type EvidenceWindow = {
     end?: string;
     relative_id?: string;
     as_of?: string;
+    provenance?: string;
 };
 
 /**
  * AC-7 and AC-8: the Coverage panel's window line for a served window (ask-dev
- * `evidenceWindowRange`). A missing window is "Not reported.", never a guessed one. `formatDay`
- * is the page's own date form, so the comparison runs in the browser's locale.
+ * `evidenceWindowRange`, then the served provenance word). A missing window is "Not reported.",
+ * never a guessed one. `formatDay` is the page's own date form, so the comparison runs in the
+ * browser's locale.
  */
 export function evidenceWindowText(
     window: EvidenceWindow | undefined | null,
@@ -170,7 +172,12 @@ export function evidenceWindowText(
     } else if (window?.as_of !== undefined) {
         range = `As of ${formatDay(window.as_of)}`;
     }
-    return `Evidence window: ${range ?? "Not reported."}`;
+    // A served window also states where it came from, in its served word (ask-dev `CoveragePanel`).
+    const provenance =
+        window?.provenance === undefined
+            ? ""
+            : ` · ${servedWordOr(labels, "window_provenance", window.provenance)}`;
+    return `Evidence window: ${range ?? "Not reported."}${window == null ? "" : provenance}`;
 }
 
 type ClaimedTable = {

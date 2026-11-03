@@ -205,27 +205,35 @@ describe("servedShapes", () => {
 describe("evidenceWindowText (AC-7, AC-8)", () => {
     const day = (iso: string) => `day(${iso})`;
 
-    it("states a served window, and a missing one as not reported (never a guessed window)", () => {
+    it("states a served window with its served provenance word, and a missing one as not reported", () => {
         expect(
             evidenceWindowText(
                 { start: "2026-10-04T00:00:00Z", end: "2026-11-03T00:00:00Z", provenance: "x" },
                 {},
                 day,
             ),
-        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-03T00:00:00Z)");
-        expect(evidenceWindowText({ relative_id: "trailing_30d", provenance: "x" }, {}, day)).toBe(
-            "Evidence window: trailing 30d",
-        );
+        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-03T00:00:00Z) · x");
         expect(
             evidenceWindowText(
-                { relative_id: "trailing_30d", provenance: "x" },
-                { "window_relative_id:trailing_30d": "Last 30 days" },
+                { relative_id: "trailing_30d", provenance: "question_stated" },
+                {},
                 day,
             ),
-        ).toBe("Evidence window: Last 30 days");
+        ).toBe("Evidence window: trailing 30d · question stated");
+        expect(
+            evidenceWindowText(
+                { relative_id: "trailing_30d", provenance: "question_stated" },
+                {
+                    "window_relative_id:trailing_30d": "Last 30 days",
+                    "window_provenance:question_stated": "stated in the question",
+                },
+                day,
+            ),
+        ).toBe("Evidence window: Last 30 days · stated in the question");
         expect(
             evidenceWindowText({ as_of: "2026-11-03T00:00:00Z", provenance: "x" }, {}, day),
-        ).toBe("Evidence window: As of day(2026-11-03T00:00:00Z)");
+        ).toBe("Evidence window: As of day(2026-11-03T00:00:00Z) · x");
+        // Never a guessed window, and no provenance for a window that was not served.
         expect(evidenceWindowText(undefined, {}, day)).toBe("Evidence window: Not reported.");
     });
 });
