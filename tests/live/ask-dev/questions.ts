@@ -33,6 +33,25 @@ export const CASES = {
     // CHAOS-12209 (`dev-page.spec.ts`): Expand while the run holds, then a follow-up on the thread.
     devExpand: "Hold: what is the status of full-chaos/dev-health-web?",
     devFollowUp: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12864 (`terminals.spec.ts`): one case per test. Under one nonce, terminals once shared
+    // `stop`, `long`, `stages`, ... with routed.spec.ts and with itself, so ACR served a case
+    // another case's stored answer or ended run (a full run failed 3 cases that pass alone).
+    termStalled: "Hold: what is the status of full-chaos/dev-health-web?",
+    termAdmission: "Hold: what is the status of full-chaos/dev-health-web?",
+    termBrokenSeq: "What is the status of full-chaos/dev-health-web?",
+    termEndOfStream: "Hold: what is the status of full-chaos/dev-health-web?",
+    termBudget: "What is the status of full-chaos/dev-health-web?",
+    termMismatch: "Hold: what is the status of full-chaos/dev-health-web?",
+    termMismatchOther: "What is the status of full-chaos/dev-health-web?",
+    termAbandoned: "Hold: what is the status of full-chaos/dev-health-web?",
+    termInProgress: "Hold: what is the status of full-chaos/dev-health-web?",
+    termDeadline: "Long: what is the status of full-chaos/dev-health-web?",
+    termModelDeadline: "Late: what is the status of full-chaos/dev-health-web?",
+    termStreamOff: "What is the status of full-chaos/dev-health-web?",
+    termAllowance: "What is the status of full-chaos/dev-health-web?",
+    termOrgLimit: "Hold: what is the status of full-chaos/dev-health-web?",
+    termRunEndedStalled: "Hold: what is the status of full-chaos/dev-health-web?",
+    termRunEndedEos: "Hold: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
