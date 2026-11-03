@@ -5603,6 +5603,7 @@ export type ClaimedFact = {
     time_series_rows?: ClaimedFactRow[];
     time_series_table?: ClaimedFactTable1;
     investment_mix?: ClaimedInvestmentMix;
+    completion_forecast?: ClaimedCompletionForecast;
 };
 export type ScalarValue = {
     string?: string;
@@ -8316,6 +8317,52 @@ export type TimeContext1 =
  */
 export type WindowConfirmationMode = "" | "headless" | "nudge";
 /**
+ * CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.
+ */
+export type RenderShape = {
+    [k: string]: unknown | undefined;
+} & {
+    shape_id: string;
+    kind: RenderKind;
+    presentation?: RenderPresentation;
+    selected_by: RenderShapeRule;
+    title: string;
+    axis_kind: RenderAxisKind;
+    axis_label: string;
+    value_label: string;
+    value_unit?: RenderValueUnit;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    series:
+        | [RenderSeries]
+        | [RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+          ]
+        | [
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+          ];
+};
+/**
  * CHAOS-4415: the visual encoding of a "series" shape. Kind names the DATA shape, presentation names the drawing -- a bar chart and a line chart carry identical payloads, so bars are not their own kind.
  */
 export type RenderPresentation = "bars" | "stacked_bars" | "line";
@@ -8329,6 +8376,8 @@ export type RenderShapeRule =
     | "investment_theme_share"
     | "comparison_side_by_side"
     | "investment_subcategory_share"
+    | "completion_forecast"
+    | "completion_forecast_percentiles"
     | "investment_repository_flow"
     | "landscape_position";
 /**
@@ -9274,6 +9323,30 @@ export interface ClaimedInvestmentMix {
     work_unit_count: number;
     project_own_work_unit_count: number;
 }
+/**
+ * Additive (CHAOS-12608): the completion forecast of a team workload claim's grounding fact, the same stored forecast row the claim is grounded on. Set by the server from the claim's grounding fact, never model-authored, only on a team workload claim, and only when the deployment serves the forecast's distribution. A completion forecast or forecast percentiles shape cites its numbers (claimed_fact_forecast_summary). An absent percentile, date or count is not 0.
+ */
+export interface ClaimedCompletionForecast {
+    work_scope_id?: string;
+    state:
+        | "available"
+        | "not_stored"
+        | "no_run_within_horizon"
+        | "over_limit"
+        | "malformed"
+        | "scope_ambiguous"
+        | "unmatched";
+    computed_at: string;
+    simulation_count?: number;
+    horizon_days?: number;
+    unfinished_runs?: number;
+    forecast_p50_days?: number;
+    forecast_p85_days?: number;
+    forecast_p95_days?: number;
+    forecast_p50_date?: string;
+    forecast_p85_date?: string;
+    forecast_p95_date?: string;
+}
 export interface CohortExclusion {
     subject: SubjectRef;
     reason: string;
@@ -9518,50 +9591,6 @@ export interface RelationshipEdge {
     evidence_ref_ids: [string, ...string[]];
 }
 /**
- * CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.
- */
-export interface RenderShape {
-    shape_id: string;
-    kind: RenderKind;
-    presentation?: RenderPresentation;
-    selected_by: RenderShapeRule;
-    title: string;
-    axis_kind: RenderAxisKind;
-    axis_label: string;
-    value_label: string;
-    value_unit?: RenderValueUnit;
-    /**
-     * @minItems 1
-     * @maxItems 8
-     */
-    series:
-        | [RenderSeries]
-        | [RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-          ]
-        | [
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-          ];
-}
-/**
  * CHAOS-4415: one named line/bar family within a shape. A series with no point for a label has a genuine gap there -- never a zero.
  */
 export interface RenderSeries {
@@ -9569,7 +9598,7 @@ export interface RenderSeries {
     label: string;
     /**
      * @minItems 1
-     * @maxItems 64
+     * @maxItems 366
      */
     points: [RenderPoint, ...RenderPoint[]];
 }
@@ -9589,7 +9618,9 @@ export interface RenderPointSource {
         | "cohort_member_score"
         | "cohort_driver_weight_contributed"
         | "claimed_fact_row"
-        | "claimed_fact_value";
+        | "claimed_fact_value"
+        | "claimed_fact_table_row"
+        | "claimed_fact_forecast_summary";
     subject_canonical_id?: string;
     signal?: string;
     claim_id?: string;
