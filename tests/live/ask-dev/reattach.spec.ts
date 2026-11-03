@@ -411,7 +411,7 @@ test("2a: Stop on a long run: ACR takes the cancel, and no model attempt starts 
     }
 });
 
-test("4a and 4c: a reload during a long run restores it; the attach stays alive with keepalives, and no wait outlives D from accepted", async ({
+test("4a and 4c: a reload during a long run restores it; the attach stays alive past the ingress limit, and no wait outlives D from accepted", async ({
     page,
 }, testInfo) => {
     test.setTimeout(240_000);
@@ -435,7 +435,11 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
             .toBeGreaterThan(0);
         const attach = streams.filter(isAttachOf(submission)).at(-1)!;
         const frames = framesOf(streamText(attach));
+        // ACR keeps a stream alive two ways (acr contracts v1, `…HeartbeatInterval`): a `heartbeat`
+        // event when no other event was written for 10 s, and on an attach a `: keepalive` comment
+        // when nothing at all was written for 10 s. Run 1 had heartbeats only: no comment was due.
         const keepalives = frames.filter((frame) => frame.comment === "keepalive").length;
+        const heartbeats = frames.filter((frame) => frame.type === "heartbeat").length;
         const silence = longestSilenceMs(attach.chunks, attach.endedAt);
         // D, as the store takes it from the replayed accepted: started_at + budget_seconds + 30 s.
         const acceptedData = streamText(attach)
@@ -469,6 +473,7 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
             status: attach.status,
             seconds: Math.round((attach.endedAt - attach.sentAt) / 1000),
             keepalives,
+            heartbeats,
             longest_silence_ms: silence,
         };
         evidence.deadline = {
@@ -482,13 +487,19 @@ test("4a and 4c: a reload during a long run restores it; the attach stays alive 
             "the restored run's attach sent a cursor: it is not the cursorless restore",
         ).toBeNull();
         expect(
-            keepalives,
-            "the attach stream sent no keepalive through its silences",
+            keepalives + heartbeats,
+            "the attach stream sent no heartbeat or keepalive through its silences",
         ).toBeGreaterThanOrEqual(2);
+        // The contract's bound is 11 s (interval + slack) at ACR; the browser adds network jitter.
         expect(
             silence,
-            "the attach stream was silent longer than one keepalive interval",
-        ).toBeLessThanOrEqual(11_000);
+            "the attach stream was silent longer than its 11 s bound",
+        ).toBeLessThanOrEqual(12_000);
+        // Prod ingress closes a connection idle for 60 s (proxy-read-timeout): this one lived longer.
+        expect(
+            attach.endedAt - attach.sentAt,
+            "the attach did not outlive the ingress idle limit (60 s)",
+        ).toBeGreaterThan(60_000);
         expect(
             waits.attach_headers.to,
             "the attach's wait for headers outlived D",
