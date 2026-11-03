@@ -86,6 +86,8 @@ export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
  * - `landscape`: two teams on churn and delivery units. Their landscape claims draw the quadrant,
  *   but only when both teams hold the same newest day (CHAOS-4611 ruling 3, CHAOS-12676).
  * - `cohort`: the teams that are struggling, ranked with their drivers.
+ * - `window`: one team's open work over a stated date range. A non-current axis composes no
+ *   effective window, so the answer must say its window was not reported (AC-7).
  */
 const RICH_BASES = {
     forecast: "when will the Fullchaos team finish its open work over the last 30 days?",
@@ -96,6 +98,7 @@ const RICH_BASES = {
     landscape:
         "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
     cohort: "which teams are struggling and why over the last 30 days?",
+    window: "how was the Fullchaos team's open work between 2026-10-01 and 2026-10-15?",
 } as const;
 
 export type RichCase = keyof typeof RICH_BASES;

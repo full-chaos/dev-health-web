@@ -134,3 +134,139 @@ export function elapsedTimeMismatches(
     });
     return mismatches;
 }
+
+/** A served word, else the term with spaces (ask-dev `vocabularyWord`): never a table of our own. */
+export function servedWordOr(
+    labels: Readonly<Record<string, string>> | undefined,
+    vocabulary: string,
+    value: string,
+): string {
+    const word = labels?.[`${vocabulary}:${value}`]?.trim();
+    return word === undefined || word === "" ? value.replaceAll("_", " ") : word;
+}
+
+type EvidenceWindow = {
+    start?: string;
+    end?: string;
+    relative_id?: string;
+    as_of?: string;
+};
+
+/**
+ * AC-7 and AC-8: the Coverage panel's window line for a served window (ask-dev
+ * `evidenceWindowRange`). A missing window is "Not reported.", never a guessed one. `formatDay`
+ * is the page's own date form, so the comparison runs in the browser's locale.
+ */
+export function evidenceWindowText(
+    window: EvidenceWindow | undefined | null,
+    labels: Readonly<Record<string, string>> | undefined,
+    formatDay: (iso: string) => string,
+): string {
+    let range: string | undefined;
+    if (window?.start !== undefined && window.end !== undefined) {
+        range = `${formatDay(window.start)} – ${formatDay(window.end)}`;
+    } else if (window?.relative_id !== undefined) {
+        range = servedWordOr(labels, "window_relative_id", window.relative_id);
+    } else if (window?.as_of !== undefined) {
+        range = `As of ${formatDay(window.as_of)}`;
+    }
+    return `Evidence window: ${range ?? "Not reported."}`;
+}
+
+type ClaimedTable = {
+    measures?: readonly string[];
+    measure_units?: ReadonlyArray<{ measure: string; unit: string }>;
+};
+
+/**
+ * AC-8: units only as served. Every unit a claimed table declares for one of its measures (exactly
+ * one entry), in its served word, must be drawn; and no drawn unit word may be one ACR never
+ * served for a claimed table.
+ */
+export function unitWordMismatches(
+    claims: ReadonlyArray<{ table?: ClaimedTable }>,
+    labels: Readonly<Record<string, string>> | undefined,
+    drawn: readonly string[],
+): string[] {
+    const served = new Set<string>();
+    // A claimed-fact table draws the claim's `table` only (ask-dev `FactRowsPanel`).
+    for (const { table } of claims) {
+        for (const measure of table?.measures ?? []) {
+            const entries = (table?.measure_units ?? []).filter(
+                (entry) => entry.measure === measure,
+            );
+            if (entries.length !== 1) continue;
+            const word = labels?.[`measure_unit:${entries[0]!.unit}`]?.trim();
+            if (word !== undefined && word !== "") served.add(word);
+        }
+    }
+    const shown = new Set(drawn.map((word) => word.trim()));
+    return [
+        ...[...served]
+            .filter((word) => !shown.has(word))
+            .map((word) => `served unit word "${word}" is not drawn`),
+        ...[...shown]
+            .filter((word) => !served.has(word))
+            .map((word) => `drawn unit word "${word}" is not a served unit of any claimed table`),
+    ];
+}
+
+/**
+ * AC-11: each ranking row shows its served outcome (raw value and word), an absent outcome is a
+ * dash, and no two outcomes share one word (checks 8, 12, 13).
+ */
+export function outcomeWordMismatches(
+    rows: ReadonlyArray<{
+        outcome: string | undefined;
+        drawnValue: string | null;
+        drawnWord: string;
+    }>,
+    labels: Readonly<Record<string, string>> | undefined,
+): string[] {
+    const mismatches: string[] = [];
+    const wordOf = new Map<string, string>();
+    rows.forEach((row, index) => {
+        const at = `row ${String(index + 1)}`;
+        if (row.outcome === undefined) {
+            if (row.drawnWord.trim() !== "—")
+                mismatches.push(`${at}: no served outcome, drawn "${row.drawnWord}"`);
+            return;
+        }
+        if (row.drawnValue !== row.outcome) {
+            mismatches.push(
+                `${at}: outcome "${row.outcome}" carries the raw value "${String(row.drawnValue)}"`,
+            );
+            return;
+        }
+        const served = servedWordOr(labels, "member_outcome", row.outcome);
+        if (row.drawnWord.trim() !== served) {
+            mismatches.push(
+                `${at}: outcome "${row.outcome}" drawn as "${row.drawnWord}", served word "${served}"`,
+            );
+            return;
+        }
+        wordOf.set(row.outcome, served);
+    });
+    const outcomes = [...wordOf.keys()];
+    outcomes.forEach((left, index) => {
+        for (const right of outcomes.slice(index + 1)) {
+            if (wordOf.get(left) === wordOf.get(right)) {
+                mismatches.push(
+                    `outcomes "${left}" and "${right}" share the word "${wordOf.get(left)!}"`,
+                );
+            }
+        }
+    });
+    return mismatches;
+}
+
+/**
+ * The value columns' headings must be the served series' labels, in served order: a table whose
+ * cells match but whose headings are swapped would put each value under the other side's name.
+ */
+export function headingMismatches(shape: ServedShape, headings: readonly string[]): string[] {
+    const served = shape.series.map((series) => series.label);
+    return headings.join("\u0000") === served.join("\u0000")
+        ? []
+        : [`value columns headed [${headings.join(", ")}], served series [${served.join(", ")}]`];
+}

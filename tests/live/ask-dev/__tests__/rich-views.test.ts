@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
     elapsedTimeMismatches,
+    evidenceWindowText,
     expectedRows,
+    headingMismatches,
+    outcomeWordMismatches,
     servedShapes,
     tableMismatches,
+    unitWordMismatches,
     type ServedShape,
 } from "../rich-views";
 
@@ -195,5 +199,163 @@ describe("servedShapes", () => {
         expect(servedShapes({ render_shapes: [trend] })).toEqual([trend]);
         expect(servedShapes({})).toEqual([]);
         expect(servedShapes(undefined)).toEqual([]);
+    });
+});
+
+describe("evidenceWindowText (AC-7, AC-8)", () => {
+    const day = (iso: string) => `day(${iso})`;
+
+    it("states a served window, and a missing one as not reported (never a guessed window)", () => {
+        expect(
+            evidenceWindowText(
+                { start: "2026-10-04T00:00:00Z", end: "2026-11-03T00:00:00Z", provenance: "x" },
+                {},
+                day,
+            ),
+        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-03T00:00:00Z)");
+        expect(evidenceWindowText({ relative_id: "trailing_30d", provenance: "x" }, {}, day)).toBe(
+            "Evidence window: trailing 30d",
+        );
+        expect(
+            evidenceWindowText(
+                { relative_id: "trailing_30d", provenance: "x" },
+                { "window_relative_id:trailing_30d": "Last 30 days" },
+                day,
+            ),
+        ).toBe("Evidence window: Last 30 days");
+        expect(
+            evidenceWindowText({ as_of: "2026-11-03T00:00:00Z", provenance: "x" }, {}, day),
+        ).toBe("Evidence window: As of day(2026-11-03T00:00:00Z)");
+        expect(evidenceWindowText(undefined, {}, day)).toBe("Evidence window: Not reported.");
+    });
+});
+
+describe("unitWordMismatches (AC-8)", () => {
+    const claims = [
+        {
+            table: {
+                measures: ["cumulative_share", "runs"],
+                measure_units: [
+                    { measure: "cumulative_share", unit: "ratio" },
+                    { measure: "runs", unit: "count" },
+                ],
+            },
+        },
+        { table: { measures: ["days"], measure_units: [] } },
+    ];
+    const labels = { "measure_unit:ratio": "share", "measure_unit:count": "runs" };
+
+    it("finds nothing when the drawn unit words are exactly the served ones", () => {
+        expect(unitWordMismatches(claims, labels, ["share", "runs"])).toEqual([]);
+    });
+
+    it("reports a served unit word the tables do not show, and a drawn unit ACR never served", () => {
+        expect(unitWordMismatches(claims, labels, ["share"])).toEqual([
+            'served unit word "runs" is not drawn',
+        ]);
+        expect(unitWordMismatches(claims, labels, ["share", "runs", "hours"])).toEqual([
+            'drawn unit word "hours" is not a served unit of any claimed table',
+        ]);
+    });
+
+    it("states no unit for a measure declared twice, nor one with no served word", () => {
+        const twice = [
+            {
+                table: {
+                    measures: ["runs"],
+                    measure_units: [
+                        { measure: "runs", unit: "count" },
+                        { measure: "runs", unit: "ratio" },
+                    ],
+                },
+            },
+        ];
+        expect(unitWordMismatches(twice, labels, [])).toEqual([]);
+        expect(unitWordMismatches(claims, {}, [])).toEqual([]);
+    });
+});
+
+describe("outcomeWordMismatches (AC-11)", () => {
+    const labels = {
+        "member_outcome:qualified": "Qualified",
+        "member_outcome:provisional": "Provisional",
+    };
+
+    it("finds nothing when each row shows its served outcome in its own word", () => {
+        expect(
+            outcomeWordMismatches(
+                [
+                    { outcome: "qualified", drawnValue: "qualified", drawnWord: "Qualified" },
+                    { outcome: "provisional", drawnValue: "provisional", drawnWord: "Provisional" },
+                    {
+                        outcome: "insufficient_evidence",
+                        drawnValue: "insufficient_evidence",
+                        drawnWord: "insufficient evidence",
+                    },
+                    { outcome: undefined, drawnValue: null, drawnWord: "—" },
+                ],
+                labels,
+            ),
+        ).toEqual([]);
+    });
+
+    it("reports a row whose word or raw value is not the served outcome's", () => {
+        expect(
+            outcomeWordMismatches(
+                [{ outcome: "provisional", drawnValue: "provisional", drawnWord: "Qualified" }],
+                labels,
+            ),
+        ).toEqual(['row 1: outcome "provisional" drawn as "Qualified", served word "Provisional"']);
+        expect(
+            outcomeWordMismatches(
+                [{ outcome: "provisional", drawnValue: "qualified", drawnWord: "Provisional" }],
+                labels,
+            ),
+        ).toEqual(['row 1: outcome "provisional" carries the raw value "qualified"']);
+    });
+
+    it("reports two outcomes that share one word (checks 8, 12, 13)", () => {
+        expect(
+            outcomeWordMismatches(
+                [
+                    { outcome: "qualified", drawnValue: "qualified", drawnWord: "Fine" },
+                    { outcome: "provisional", drawnValue: "provisional", drawnWord: "Fine" },
+                ],
+                { "member_outcome:qualified": "Fine", "member_outcome:provisional": "Fine" },
+            ),
+        ).toEqual(['outcomes "qualified" and "provisional" share the word "Fine"']);
+    });
+});
+
+describe("headingMismatches (Codex r1 P3 on #1803)", () => {
+    const twoSeries: ServedShape = {
+        shape_id: "rs_1",
+        kind: "table",
+        selected_by: "comparison_side_by_side",
+        title: "Pull request delivery",
+        series: [
+            { key: "repository:a", label: "full-chaos/dev-health-acr", points: [] },
+            { key: "repository:b", label: "full-chaos/dev-health-ops", points: [] },
+        ],
+    };
+
+    it("finds nothing when each value column is headed by its served series, in served order", () => {
+        expect(
+            headingMismatches(twoSeries, [
+                "full-chaos/dev-health-acr",
+                "full-chaos/dev-health-ops",
+            ]),
+        ).toEqual([]);
+    });
+
+    it("reports swapped headings: the cells would then sit under the other side's name", () => {
+        expect(
+            headingMismatches(twoSeries, [
+                "full-chaos/dev-health-ops",
+                "full-chaos/dev-health-acr",
+            ]),
+        ).toEqual([
+            "value columns headed [full-chaos/dev-health-ops, full-chaos/dev-health-acr], served series [full-chaos/dev-health-acr, full-chaos/dev-health-ops]",
+        ]);
     });
 });

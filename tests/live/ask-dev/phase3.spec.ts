@@ -14,8 +14,12 @@ import {
 import { REPLICATES, richQuestionFor, type Replicate, type RichCase } from "./questions";
 import {
     elapsedTimeMismatches,
+    evidenceWindowText,
+    headingMismatches,
+    outcomeWordMismatches,
     servedShapes,
     tableMismatches,
+    unitWordMismatches,
     type DrawnRow,
     type ServedShape,
 } from "./rich-views";
@@ -167,10 +171,20 @@ const rowsOf = (table: Locator): Promise<DrawnRow[]> =>
         })),
     );
 
-/** The one drawn figure that captions a served shape's title. */
+/** The value columns' headings (the first column is the axis), without their unit words. */
+const headingsOf = (table: Locator): Promise<string[]> =>
+    table.locator("thead th").evaluateAll((cells) =>
+        cells.slice(1).map((cell) => {
+            const copy = cell.cloneNode(true) as HTMLElement;
+            for (const unit of copy.querySelectorAll('[data-testid="measure-unit"]')) unit.remove();
+            return (copy.textContent ?? "").trim();
+        }),
+    );
+
+/** The one drawn figure whose caption IS a served shape's title (exact, never a substring). */
 const figureOf = (answer: Locator, shape: ServedShape): Locator =>
     answer.locator("figure").filter({
-        has: answer.page().locator("figcaption", { hasText: shape.title }),
+        has: answer.page().locator("figcaption").getByText(shape.title, { exact: true }),
     });
 
 /** A drawn chart's value table must state the served shape exactly. */
@@ -184,6 +198,7 @@ async function expectDrawnAsServed(
     const table = figure.locator("table").first();
     await expect(table).toHaveCount(1);
     expect(tableMismatches(shape, await rowsOf(table), ranks), shape.title).toEqual([]);
+    expect(headingMismatches(shape, await headingsOf(table)), shape.title).toEqual([]);
 }
 
 /**
@@ -199,6 +214,14 @@ async function expectLedger(answer: Locator, result: Served): Promise<void> {
     for (const title of drawnTitles) {
         expect(titles.has(title), `drawn view "${title}" captions no served shape`).toBe(true);
     }
+    // A panel view has no figure caption: each served one must have its own panel.
+    const comparisons = shapes.filter((shape) => shape.selected_by === "comparison_side_by_side");
+    if (comparisons.length > 0) {
+        await expect(answer.getByTestId("comparison-table")).toHaveCount(comparisons.length);
+    }
+    if (shapes.some((shape) => shape.selected_by === "completion_forecast_percentiles")) {
+        await expect(answer.getByTestId("forecast-percentiles")).toHaveCount(1);
+    }
     const notDrawn = shapes.filter(
         (shape) => !drawnTitles.includes(shape.title) && !panelRules.has(shape.selected_by),
     );
@@ -212,6 +235,45 @@ async function expectLedger(answer: Locator, result: Served): Promise<void> {
 
 /** Rules whose view is a panel with a heading, not a captioned figure. */
 const panelRules = new Set(["comparison_side_by_side", "completion_forecast_percentiles"]);
+
+type Labels = Record<string, string>;
+const labelsOf = (result: Served): Labels => (result.vocabulary_labels as Labels | undefined) ?? {};
+
+/**
+ * AC-7 and AC-8: the answer's window line states the served window, or says it was not reported.
+ * Dates are formatted by the page itself, so the comparison runs in the browser's locale.
+ */
+async function expectWindowLine(page: Page, answer: Locator, result: Served): Promise<void> {
+    const window = result.effective_evidence_window as
+        { start?: string; end?: string; relative_id?: string; as_of?: string } | undefined;
+    const isos = [window?.start, window?.end, window?.as_of].filter(
+        (iso): iso is string => iso !== undefined,
+    );
+    const days = await page.evaluate(
+        (list) =>
+            Object.fromEntries(
+                list.map((iso) => {
+                    const date = new Date(iso);
+                    return [
+                        iso,
+                        Number.isNaN(date.getTime())
+                            ? iso
+                            : date.toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                              }),
+                    ];
+                }),
+            ),
+        isos,
+    );
+    const line = answer.getByTestId("coverage-evidence-window").first();
+    await expect(line, "the answer states its evidence window").toHaveCount(1);
+    expect((await line.textContent())?.trim()).toBe(
+        evidenceWindowText(window, labelsOf(result), (iso) => days[iso] ?? iso),
+    );
+}
 
 async function axeViolations(page: Page, selector: string): Promise<string[]> {
     await page.evaluate(readFileSync(require.resolve("axe-core/axe.min.js"), "utf8"));
@@ -265,6 +327,22 @@ for (const replicate of REPLICATES) {
             ).toEqual([]);
             expect(elapsedTimeMismatches(marks), trend.title).toEqual([]);
         }
+        // AC-8: the claimed-fact table states units only as served, and the answer its window.
+        await expect(answer.locator("table.fact-table").first()).toHaveCount(1);
+        const claims = (result.claimed_facts as Parameters<typeof unitWordMismatches>[0]) ?? [];
+        const drawnUnits = await answer
+            .locator('table.fact-table thead [data-testid="measure-unit"]')
+            .allTextContents();
+        expect(unitWordMismatches(claims, labelsOf(result), drawnUnits)).toEqual([]);
+        test.info().annotations.push({
+            type: "AC-8",
+            description: `unit words drawn [${drawnUnits.join(", ")}]; window ${JSON.stringify(result.effective_evidence_window ?? null)}`,
+        });
+        expect(
+            result.effective_evidence_window,
+            "the forecast answer serves its window",
+        ).toBeDefined();
+        await expectWindowLine(page, answer, result);
         await expectLedger(answer, result);
         // AC-4: the panel with its charts open passes axe AA.
         expect(await axeViolations(page, '[data-testid="ask-dev-panel"]')).toEqual([]);
@@ -300,6 +378,24 @@ for (const replicate of REPLICATES) {
         const exact = section.getByTestId("comparison-table-exact");
         const table = ((await exact.count()) > 0 ? exact : section).locator("table").first();
         expect(tableMismatches(shape!, await rowsOf(table)), shape!.title).toEqual([]);
+        expect(headingMismatches(shape!, await headingsOf(table)), shape!.title).toEqual([]);
+        await expectLedger(answer, result);
+        await page.context().close();
+    });
+
+    test(`window ${String(replicate)}: an answer with no window says so, and states no guessed one`, async ({
+        browser,
+        baseURL,
+    }) => {
+        // AC-7: a non-current axis (a stated date range) composes no effective window
+        // (acr window.go: composeEffectiveWindowForFrame), and the server fills a default only on
+        // the current axis. The answer must then say the window was not reported.
+        const { page, answer, result } = await answerFor(browser, baseURL, "window", replicate);
+        expect(
+            result.effective_evidence_window,
+            "NOT CAPTURED: the answer served a window, so a missing one cannot be shown",
+        ).toBeUndefined();
+        await expectWindowLine(page, answer, result);
         await expectLedger(answer, result);
         await page.context().close();
     });
@@ -323,19 +419,29 @@ for (const replicate of REPLICATES) {
             description:
                 "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, read from acr's render-shape selection log, which the answer does not carry). Never a pass.",
         });
-        // Expected to fail while the gap holds. The day a quadrant is served this reports "expected to
-        // fail, but passed" (red), and the case must be flipped to an ordinary one.
-        test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
-        // THE assertion that fails while the gap holds: the quadrant is drawn. Then it must state the
-        // served shape exactly, like every other view.
         const quadrant = answer.getByTestId("landscape-quadrant");
-        await expect(quadrant, "KNOWN GAP CHAOS-12676: the quadrant is drawn").toHaveCount(1);
+        const quadrantServed = servedShapes(result).some(
+            (shape) => shape.selected_by === "landscape_position",
+        );
+        if (!quadrantServed) {
+            // Expected to fail while the gap holds, on THE assertion that fails today: the quadrant
+            // is drawn.
+            test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
+            await expect(quadrant, "KNOWN GAP CHAOS-12676: the quadrant is drawn").toHaveCount(1);
+        }
+        // Served: it must be drawn as served (a real failure if not), and then the case fails loudly,
+        // because CHAOS-12676 no longer holds and this case must become an ordinary one.
         const [shape] = served(
             result,
             "landscape_position",
             "both teams must hold landscape rows on one day (CHAOS-12676)",
         );
+        await expect(quadrant).toHaveCount(1);
         await expectDrawnAsServed(figureOf(quadrant, shape!), shape!);
+        expect(
+            quadrantServed,
+            "CHAOS-12676 no longer holds: the quadrant is served and drawn; flip this case to an ordinary one",
+        ).toBe(false);
         await page.context().close();
     });
 
@@ -387,6 +493,40 @@ for (const replicate of REPLICATES) {
             description: alphabetical.every((member, index) => member === ranked[index])
                 ? "NOT MET in this replicate: the served rank order is alphabetical"
                 : "served rank order differs from the alphabetical order",
+        });
+
+        // AC-11: teams, projects and repositories only, and each outcome in its own served word.
+        const kinds = (members as { subject: { kind?: string } }[]).map(
+            (member) => member.subject.kind,
+        );
+        expect(
+            kinds.filter((kind) => !["team", "project", "repository"].includes(String(kind))),
+            "a cohort member that is not a team, project or repository",
+        ).toEqual([]);
+        const drawnOutcomes = await ranking.getByTestId("ranking-row").evaluateAll((rows) =>
+            rows.map((row) => {
+                // The outcome is the row's fourth cell (rank, subject, score, outcome, ...).
+                const cell = row.querySelectorAll("td")[3];
+                const badge = cell?.querySelector(".badge[data-value]") ?? null;
+                return {
+                    drawnValue: badge?.getAttribute("data-value") ?? null,
+                    drawnWord: ((badge ?? cell)?.textContent ?? "").trim(),
+                };
+            }),
+        );
+        expect(drawnOutcomes.length).toBe(ranked.length);
+        expect(
+            outcomeWordMismatches(
+                ranked.map((member, index) => ({
+                    outcome: (member as { outcome?: string }).outcome,
+                    ...drawnOutcomes[index]!,
+                })),
+                labelsOf(result),
+            ),
+        ).toEqual([]);
+        test.info().annotations.push({
+            type: "AC-11",
+            description: `outcomes drawn [${drawnOutcomes.map((row) => `${String(row.drawnValue)}=${row.drawnWord}`).join(", ")}]`,
         });
 
         // AC-1: the attention bars and the driver contribution stack, in rank order.

@@ -96,7 +96,12 @@ const latencyEntries = LATENCY_CASES.map((name) => ({
 const named = (term: string) => ({ kind: "named_subject", terms: [term] });
 const RICH_PLAN: Record<
     RichCase,
-    { interpretation: Record<string, unknown>; claims?: Record<string, unknown> }
+    {
+        interpretation: Record<string, unknown>;
+        claims?: Record<string, unknown>;
+        /** False for a non-current axis: no window class is stated (default true). */
+        currentAxis?: boolean;
+    }
 > = {
     forecast: {
         interpretation: {
@@ -177,6 +182,28 @@ const RICH_PLAN: Record<
         },
         claims: { claim_fields: ["churn_loc_30d", "delivery_units_30d"] },
     },
+    window: {
+        // A stated range is a non-current axis: no window class, and no effective window composed.
+        interpretation: {
+            shape: "single_subject",
+            requested_judgment: "status",
+            subject_terms: ["Fullchaos"],
+            requested_subject_kind: "team",
+            time_context: {
+                axis: "range",
+                start: "2026-10-01T00:00:00Z",
+                end: "2026-10-15T00:00:00Z",
+            },
+            fact_requirements: [{ kind: "workload" }],
+            clarification_needed: false,
+            question_frame: {
+                goals: ["assess_state"],
+                subject_expression: named("Fullchaos"),
+                temporal: "bounded_window",
+            },
+        },
+        currentAxis: false,
+    },
     cohort: {
         interpretation: {
             shape: "discovered_cohort",
@@ -208,11 +235,14 @@ const richEntries = RICH_CASES.flatMap((name) =>
     REPLICATES.map((replicate) => ({
         question: richQuestionFor(name, replicate, nonce),
         delay_ms: { interpret: 0, synthesize: 0, phrase: 0 },
-        interpretation: {
-            ...RICH_PLAN[name].interpretation,
-            window_class: "recent_activity_lookup",
-            window_confidence: "high",
-        },
+        interpretation:
+            RICH_PLAN[name].currentAxis === false
+                ? RICH_PLAN[name].interpretation
+                : {
+                      ...RICH_PLAN[name].interpretation,
+                      window_class: "recent_activity_lookup",
+                      window_confidence: "high",
+                  },
         synthesis: { ...RICH_SYNTHESIS, ...RICH_PLAN[name].claims },
     })),
 );
