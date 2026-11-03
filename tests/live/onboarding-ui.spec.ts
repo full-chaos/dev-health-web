@@ -11,6 +11,7 @@ import { expect, test } from "@playwright/test";
 import {
     clickHydratedOnboardingControl,
     envFault,
+    expectRegisterAccepted,
     getSuperuserToken,
     isServerActionTo,
     liveBackendUrl,
@@ -56,14 +57,8 @@ test("signup form submits successfully and redirects with registered banner", as
     await page.getByRole("button", { name: "Create account" }).click();
     const registerResponse = await registerResponsePromise;
 
-    // Skip if the backend rate-limits this IP (3 registrations / hour).
-    if (registerResponse.status() === 429) {
-        envFault("Register rate-limited (429) \u2014 skipping browser signup test");
-        return;
-    }
-    expect([201, 202], `Unexpected register status: ${await registerResponse.text()}`).toContain(
-        registerResponse.status(),
-    );
+    // A 429 (the backend rate-limits this IP, 3 registrations / hour) is an environment fault.
+    expectRegisterAccepted(registerResponse);
 
     // Should redirect to signin with registered=true banner
     await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
@@ -91,10 +86,7 @@ test("fresh verified user lands on onboarding, not the dashboard @guided", async
         data: { email, password, full_name: "UI Onboard User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (!regRes.ok()) {
-        envFault("Registration failed \u2014 backend may be unavailable");
-        return;
-    }
+    expectRegisterAccepted(regRes);
 
     // Verify the email so login succeeds. Requires the seeded superuser admin,
     // which is kept distinct from this orgless test user.
@@ -142,10 +134,7 @@ test("full signup then explicit workspace creation reaches dashboard @guided", a
         data: { email, password, full_name: "UI Journey User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (!regRes.ok()) {
-        envFault("Registration failed \u2014 backend may be unavailable");
-        return;
-    }
+    expectRegisterAccepted(regRes);
 
     // Verify the email via the seeded superuser admin so login succeeds.
     const suToken = await getSuperuserToken(request);

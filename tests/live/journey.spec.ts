@@ -15,9 +15,11 @@ import { expect, test } from "@playwright/test";
 import {
     authHeaders,
     envFault,
+    expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
+    REGISTER_ACCEPTED_STATUS,
     setupFault,
     setupUser,
     testEmail,
@@ -66,33 +68,27 @@ async function listCredentialIds(
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
+test("POST /register \u2192 accepted (202)", async ({ request }) => {
     const email = testEmail("reg");
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: "TestPass123!", full_name: "Reg User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (res.status() === 429) {
-        envFault("Register rate-limited (429)");
-        return;
-    }
-    expect([201, 202]).toContain(res.status());
+    expectRegisterAccepted(res);
 
-    // From 202 on, the answer is one message with no ids, and a taken address gets the same status and body.
-    if (res.status() === 202) {
-        const data = (await res.json()) as Record<string, unknown>;
-        expect(typeof data.message).toBe("string");
-        expect(data.user_id).toBeUndefined();
-        expect(data.org_id).toBeUndefined();
+    // The answer is one message with no ids, and a taken address gets the same status and body.
+    const data = (await res.json()) as Record<string, unknown>;
+    expect(typeof data.message).toBe("string");
+    expect(data.user_id).toBeUndefined();
+    expect(data.org_id).toBeUndefined();
 
-        const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password: "TestPass123!", full_name: "Reg User" },
-            headers: { Origin: liveBackendUrl },
-        });
-        if (again.status() !== 429) {
-            expect(again.status()).toBe(202);
-            expect(await again.text()).toBe(JSON.stringify(data));
-        }
+    const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+        data: { email, password: "TestPass123!", full_name: "Reg User" },
+        headers: { Origin: liveBackendUrl },
+    });
+    if (again.status() !== 429) {
+        expect(again.status()).toBe(REGISTER_ACCEPTED_STATUS);
+        expect(await again.text()).toBe(JSON.stringify(data));
     }
 });
 
@@ -108,10 +104,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true @guided"
         data: { email, password: "TestPass123!", full_name: "Login User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (!regRes.ok()) {
-        envFault("Registration failed \u2014 backend may be unavailable");
-        return;
-    }
+    expectRegisterAccepted(regRes);
 
     // Verify the user's email via superuser so login returns tokens
     const suToken = await getSuperuserToken(request);
