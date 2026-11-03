@@ -19,6 +19,9 @@ describe("SignupCompletedEmitter on the wire", () => {
         resetTelemetryForTests();
         resetSignupCompletedForTests();
         window.localStorage.clear();
+        for (const part of document.cookie.split(";")) {
+            document.cookie = `${part.split("=")[0]?.trim()}=; Max-Age=0; Path=/`;
+        }
         delete process.env.NEXT_PUBLIC_TELEMETRY_ENABLED;
     });
 
