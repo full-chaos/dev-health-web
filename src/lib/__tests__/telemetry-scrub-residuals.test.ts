@@ -29,6 +29,31 @@ describe("residual: password with a space and a slash", () => {
     });
 });
 
+describe("residual: astral characters count as one toward the bounds (CHAOS-12685)", () => {
+    const EMOJI = "\u{1F4A5}";
+    it.each([
+        [
+            "a 65 code point user",
+            (v: string) => `postgres://${EMOJI.repeat(65)}:${v} /tail@db.internal/x`,
+        ],
+        [
+            "a 247 code point password",
+            (v: string) => `postgres://svc:${v}${EMOJI.repeat(220)} tail@db.internal/x`,
+        ],
+    ])("removes userinfo from text and url: %s", (_name, build) => {
+        const value = token();
+        expect(scrubTelemetryText(`connect ${build(value)} failed`)).not.toContain(value);
+        expect(scrubTelemetryUrl(build(value))).not.toContain(value);
+    });
+
+    it("keeps the 250 ms budget on 16 KB of astral characters", () => {
+        const text = `postgres://svc:${`${EMOJI} `.repeat(4_000)}@db.internal`.slice(0, 16_000);
+        const start = performance.now();
+        scrubTelemetryText(text);
+        expect(performance.now() - start).toBeLessThan(250);
+    });
+});
+
 describe("residual: scheme-less userinfo, host forms", () => {
     it.each([
         ["bracketed IPv6 host", (v: string) => `svc:${v}@[2001:db8::1]:5432/app`],

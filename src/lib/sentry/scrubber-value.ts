@@ -124,7 +124,7 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     // too: fail safe. Written limits (CHAOS-10777): a user part over 128 or a password over 256
     // characters is not matched (the bounds keep the rule linear on a 16 KB scalar; a longer scalar is
     // dropped whole), and `\r` and `@` in the password are not matched (the `@` ends it).
-    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^@\r]{1,256}@/gi, `$1${FILTERED}@`],
+    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^@\r]{1,256}@/giu, `$1${FILTERED}@`],
     // `user:pass@host` with no scheme. The host is a plain name, an `_`-prefixed name or a bracketed
     // IPv6 literal. A password with `/`, `:` or a space, a user after `:` or `/`, and a user over 64
     // characters or not ASCII stay unmatched on purpose: each widening reads paths, `host:port` text and
