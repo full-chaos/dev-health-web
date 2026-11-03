@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/shared/Button";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { CredentialKindBadge } from "./CredentialKindBadge";
 import { EditCredentialModal } from "./EditCredentialModal";
 import { deriveCredentialStatus } from "./credentialStatus";
 import { getAuthMethodLabel, isGitHubAppCredential } from "./authMethod";
@@ -80,6 +81,11 @@ export function CredentialsTable({
             key: "name",
             header: "Name",
             render: (row) => <span className="font-medium">{row.name}</span>,
+        },
+        {
+            key: "kind",
+            header: "Kind",
+            render: () => <CredentialKindBadge kind="integration" />,
         },
         {
             key: "authMethod",
