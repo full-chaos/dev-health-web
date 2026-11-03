@@ -1,0 +1,20 @@
+# Org, member and user writes web may make. Row = key<TAB>file<TAB>reason. A row that matches no site fails as stale.
+POST /orgs	src/lib/admin/api/orgs.ts	org create; go-api proxies the first owner (CHAOS-10988)
+PATCH /orgs/{}	src/lib/admin/api/orgs.ts	org update; suspend/reactivate proxied
+PATCH /orgs/me	src/lib/admin/api/orgs.ts	org profile rename through selfRequest
+DELETE /orgs/{}	src/lib/admin/api/orgs.ts	org delete and dry run; proxied to deprovision
+POST /orgs/{}/invites	src/lib/admin/api/orgs.ts	invite create; proxied to invites/create
+POST /orgs/{}/members	src/lib/admin/api/orgs.ts	member add; proxied to memberships/add
+PATCH /orgs/{}/members/{}	src/lib/admin/api/orgs.ts	member role; proxied to memberships/role
+DELETE /orgs/{}/members/{}	src/lib/admin/api/orgs.ts	member remove; proxied to memberships/remove
+POST /orgs/{}/transfer-ownership	src/lib/admin/api/orgs.ts	owner handover; proxied to memberships/transfer
+POST /orgs/{}/feature-overrides	src/lib/admin/api/billing.ts	entitlement override, no membership change
+DELETE /orgs/{}/feature-overrides/{}	src/lib/admin/api/billing.ts	entitlement override, no membership change
+POST /users	src/lib/admin/api/users.ts	platform user and service account create; callers pinned by the call rows below
+PATCH /users/{}	src/lib/admin/api/users.ts	principal state, no membership (PLAN-10881 call 11)
+DELETE /users/{}	src/lib/admin/api/users.ts	user delete (PLAN-10881 call 12)
+POST /users/{}/password	src/lib/admin/api/users.ts	password set by an admin, no membership change
+call adminApi.users.create	src/lib/admin/server/users.ts	createPlatformUser only (no X-Org-Id, no membership)
+call adminApi.users.create	src/lib/admin/server/serviceAccounts.ts	service account principal create
+POST /admin/integrations/github/install-callback	src/app/(app)/org/admin/integrations/github-app/callback/route.ts	integration install, not identity
+POST /admin/integrations/github/install-url	src/app/(app)/org/admin/integrations/github-app/install/route.ts	integration install, not identity
