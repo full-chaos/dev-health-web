@@ -125,6 +125,22 @@ async function answerFor(
         type: "run",
         description: `${name}${String(replicate)}: ${String(result.request_id)} → ${String(result.result_id)} (${String(result.status)}), ${String(servedShapes(result).length)} shapes`,
     });
+    // The mechanism, not just the outcome (AGENTS rule 4): every case's answer must be a
+    // SYNTHESIZED answer. When the model call fails, acr serves a facts-only fallback and marks it
+    // with a coverage detail from the synthesis step (synthesis_model_failure.go); a view drawn on
+    // that fallback is not a pass.
+    const synthesisFailures = (
+        ((
+            result.coverage as
+                { details?: { source?: string; code?: string; raw?: string }[] } | undefined
+        )?.details ?? []) as { source?: string; code?: string; raw?: string }[]
+    ).filter(
+        (detail) => detail.code === "synthesis_model_failed" || detail.code === "synthesis_not_run",
+    );
+    expect(
+        synthesisFailures.map((detail) => detail.raw ?? detail.code),
+        `${name}${String(replicate)}: the answer is acr's fallback, not a synthesized answer`,
+    ).toEqual([]);
     return { page, surface, answer, result };
 }
 
@@ -159,6 +175,20 @@ function describeServed(result: Served): string {
             .join(", ")}]`,
         `claims [${claims.join(", ")}]`,
         `fact sources [${sources.join(", ")}]`,
+        `committed [${(
+            ((result.subject_resolution as { committed?: { canonical_id?: string }[] } | undefined)
+                ?.committed ?? []) as { canonical_id?: string }[]
+        )
+            .map((subject) => String(subject.canonical_id))
+            .join(", ")}]`,
+        `cohort members ${String(((result.cohort as { members?: unknown[] } | undefined)?.members ?? []).length)}`,
+        `synthesis details [${(
+            ((result.coverage as { details?: { source?: string; raw?: string }[] } | undefined)
+                ?.details ?? []) as { source?: string; raw?: string }[]
+        )
+            .filter((detail) => detail.source === "context-fabric:synthesis")
+            .map((detail) => String(detail.raw))
+            .join(", ")}]`,
     ].join("; ");
 }
 
