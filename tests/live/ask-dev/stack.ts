@@ -280,6 +280,16 @@ export async function signIn(page: Page): Promise<void> {
     }
 }
 
+/**
+ * CHAOS-12864: a case that signs out signs in first, in its own context, so its sign-out ends a
+ * session of its own. The cases of a file share one session through the `beforeAll` storageState;
+ * signing that one out left every later case on `/dashboard` with no session and no launcher.
+ */
+export async function ownSession(page: Page): Promise<void> {
+    await page.context().clearCookies();
+    await signIn(page);
+}
+
 /** This tab's ACR token family. It holds a refresh token, so only its random id leaves the page. */
 export const familyIdOf = (page: Page): Promise<string | null> =>
     page.evaluate(() => {

@@ -44,6 +44,34 @@ describe("the live Ask Dev cases ask their own questions (CHAOS-12864)", () => {
         expect(repeated).toEqual([]);
     });
 
+    it("every case that signs out signs in to a session of its own first", () => {
+        // The click on "Sign out", and the start of the test or helper it sits in.
+        const unowned = specs.flatMap((file) => {
+            const text = readFileSync(path.join(LIVE, file), "utf8");
+            return Array.from(text.matchAll(/name: \/sign out\/iu \}\)\.click\(\)/gu)).flatMap(
+                (click) => {
+                    const before = text.slice(0, click.index);
+                    const start = Math.max(
+                        before.lastIndexOf("\n    test("),
+                        before.lastIndexOf("\ntest("),
+                        before.lastIndexOf("\nasync function "),
+                    );
+                    return before.slice(start).includes("await ownSession(page)")
+                        ? []
+                        : [`${file}:${before.split("\n").length}`];
+                },
+            );
+        });
+        // Discriminating: both sign-out sites are found.
+        const clicks = specs.flatMap((file) =>
+            Array.from(
+                readFileSync(path.join(LIVE, file), "utf8").matchAll(/name: \/sign out\/iu/gu),
+            ),
+        );
+        expect(clicks.length).toBeGreaterThanOrEqual(2);
+        expect(unowned).toEqual([]);
+    });
+
     it("every asked name is a planned case, so make-plan.ts writes it into the oracle's plan", () => {
         const unplanned = specs.flatMap((file) => asked(file)).filter((name) => !(name in CASES));
         expect(unplanned).toEqual([]);
