@@ -40,9 +40,23 @@ describe("CHAOS-3017 CI contracts", () => {
     it("makes the test aggregator fail closed on its explicit required stages", () => {
         const aggregator = job(contents(TESTS_WORKFLOW), "test");
 
-        expect(aggregator).toMatch(
-            /needs: \[changes, format, quality, build, unit, e2e-default, e2e-onboarding\]/,
-        );
+        const needs = /^        needs:\s*\[([^\]]*)\]/mu.exec(aggregator)?.[1] ?? "";
+        expect(
+            needs
+                .split(",")
+                .map((stage) => stage.trim())
+                .filter((stage) => stage !== ""),
+        ).toEqual([
+            "changes",
+            "format",
+            "quality",
+            "build",
+            "unit",
+            "e2e-default",
+            "e2e-onboarding",
+            // CHAOS-12871: the Ask Dev rich-view baselines are required through the aggregate.
+            "visual",
+        ]);
         expect(aggregator).toMatch(/^        if: always\(\)$/mu);
         expect(aggregator).not.toContain("toJson(needs)");
         expect(aggregator).not.toContain("continue-on-error:");

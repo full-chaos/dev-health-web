@@ -176,6 +176,9 @@ function AskDevSankey({
         <SankeyChart
             animation={!reduceMotion}
             height={SANKEY_HEIGHT}
+            // In the panel and at phone width the two columns' labels meet in the middle; the
+            // smaller node's label gives way, and the value table keeps every word (CHAOS-12872).
+            hideOverlappingLabels
             labelPositionByDepth={SANKEY_LABELS}
             links={graph.links}
             nodes={graph.nodes}
