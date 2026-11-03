@@ -23,7 +23,7 @@ import {
     type DrawnRow,
     type ServedShape,
 } from "./rich-views";
-import { ORACLE, ask, panel, signIn, watchResults } from "./stack";
+import { ORACLE, ask, expectSynthesized, panel, signIn, watchResults } from "./stack";
 
 /**
  * CHAOS-11946 (I-50): the Phase 3 live acceptance suite. Each rich view must render LIVE from the
@@ -126,21 +126,8 @@ async function answerFor(
         description: `${name}${String(replicate)}: ${String(result.request_id)} → ${String(result.result_id)} (${String(result.status)}), ${String(servedShapes(result).length)} shapes`,
     });
     // The mechanism, not just the outcome (AGENTS rule 4): every case's answer must be a
-    // SYNTHESIZED answer. When the model call fails, acr serves a facts-only fallback and marks it
-    // with a coverage detail from the synthesis step (synthesis_model_failure.go); a view drawn on
-    // that fallback is not a pass.
-    const synthesisFailures = (
-        ((
-            result.coverage as
-                { details?: { source?: string; code?: string; raw?: string }[] } | undefined
-        )?.details ?? []) as { source?: string; code?: string; raw?: string }[]
-    ).filter(
-        (detail) => detail.code === "synthesis_model_failed" || detail.code === "synthesis_not_run",
-    );
-    expect(
-        synthesisFailures.map((detail) => detail.raw ?? detail.code),
-        `${name}${String(replicate)}: the answer is acr's fallback, not a synthesized answer`,
-    ).toEqual([]);
+    // SYNTHESIZED answer, never acr's facts-only fallback.
+    expectSynthesized(result, `${name}${String(replicate)}`);
     return { page, surface, answer, result };
 }
 
