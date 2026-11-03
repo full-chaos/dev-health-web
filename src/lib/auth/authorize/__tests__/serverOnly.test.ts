@@ -11,7 +11,12 @@ const modules = readdirSync(dir).filter((f) => f.endsWith(".ts"));
 
 describe("authorize modules are server-only", () => {
     it("lists the modules", () => {
-        expect(modules.sort()).toEqual(["client.ts", "decision.ts", "request.ts"]);
+        expect(modules.sort()).toEqual([
+            "client.ts",
+            "decision.ts",
+            "repositoryKey.ts",
+            "request.ts",
+        ]);
     });
     it.each(modules)("%s imports server-only first", (file) => {
         const text = readFileSync(path.join(dir, file), "utf8");
