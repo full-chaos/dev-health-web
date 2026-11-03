@@ -7,7 +7,10 @@ vi.mock("@playwright/test", () => ({ expect: () => undefined }));
 import {
     ACR,
     CONNECT_WORDS,
+    expectFallback,
+    expectSynthesized,
     secretsOf,
+    synthesisFallbackDetails,
     watchAcr,
     watchAuthorization,
     watchPageLoad,
@@ -160,5 +163,68 @@ describe("what a page that never drew was waiting for (CHAOS-11940)", () => {
             failed: ["GET localhost:3000/_next/static/chunks/app.js"],
         });
         expect(text).not.toContain(BEARER);
+    });
+});
+
+/**
+ * CHAOS-11946 / CHAOS-12844: acr serves a facts-only fallback when synthesis fails, marked by a
+ * coverage detail from the synthesis step. A live case that expects an answer must reject that
+ * fallback; a case that expects the fallback by design must see the marker.
+ */
+describe("synthesis fallback marker", () => {
+    const served = (codes: string[]) => ({
+        coverage: {
+            details: codes.map((code) => ({
+                source: "context-fabric:synthesis",
+                code,
+                raw: `${code}:synthesis_rejected`,
+            })),
+        },
+    });
+
+    it("finds the fallback details, and nothing else", () => {
+        expect(synthesisFallbackDetails(served(["synthesis_model_failed"]))).toHaveLength(1);
+        expect(synthesisFallbackDetails(served(["synthesis_not_run"]))).toHaveLength(1);
+        expect(
+            synthesisFallbackDetails(served(["fact_score_withheld", "synthesis_input_bounded"])),
+        ).toEqual([]);
+        expect(synthesisFallbackDetails({})).toEqual([]);
+        expect(synthesisFallbackDetails(undefined)).toEqual([]);
+    });
+
+    // Codex P2 on #1804 (executed): an answer over the request's byte bound comes back as
+    // context_fabric_answer_projection.v1, which has no `coverage`; its details are top-level
+    // `coverage_details`, with the same shape and codes.
+    it("finds the fallback details on a projected answer too", () => {
+        const projected = {
+            coverage_details: [
+                {
+                    source: "context-fabric:synthesis",
+                    code: "synthesis_model_failed",
+                    raw: "synthesis_model_failed:synthesis_rejected",
+                },
+            ],
+        };
+        expect(synthesisFallbackDetails(projected)).toHaveLength(1);
+        expect(() => expectSynthesized(projected, "cohort1")).toThrow(
+            "cohort1: the answer is acr's fallback, not a synthesized answer (synthesis_model_failed:synthesis_rejected)",
+        );
+        expect(
+            synthesisFallbackDetails({ coverage_details: [{ code: "fact_score_withheld" }] }),
+        ).toEqual([]);
+    });
+
+    it("refuses a fallback where a synthesized answer is expected, naming the case and the detail", () => {
+        expect(() => expectSynthesized(served([]), "cohort1")).not.toThrow();
+        expect(() => expectSynthesized(served(["synthesis_model_failed"]), "cohort1")).toThrow(
+            "cohort1: the answer is acr's fallback, not a synthesized answer (synthesis_model_failed:synthesis_rejected)",
+        );
+    });
+
+    it("refuses a synthesized answer where the fallback is expected by design", () => {
+        expect(() => expectFallback(served(["synthesis_not_run"]), "model deadline")).not.toThrow();
+        expect(() => expectFallback(served([]), "model deadline")).toThrow(
+            "model deadline: the answer was expected to be acr's fallback, and it carries no synthesis failure",
+        );
     });
 });

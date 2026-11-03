@@ -386,3 +386,54 @@ export const closeEvidence = (page: Page) =>
         .getByRole("dialog", { name: "Evidence & Context" })
         .getByRole("button", { name: "Close" })
         .click();
+
+/** A coverage detail as served; only the fields the fallback check reads. */
+export type CoverageDetail = { source?: string; code?: string; raw?: string };
+
+/** The codes acr's synthesis step files when it serves a facts-only fallback (CHAOS-11946). */
+const SYNTHESIS_FALLBACK_CODES = new Set(["synthesis_model_failed", "synthesis_not_run"]);
+
+/**
+ * The served result's coverage details that say the answer is acr's facts-only fallback: the model
+ * call failed or was not run (acr `synthesis_model_failure.go`). Pure, for any served result.
+ */
+export function synthesisFallbackDetails(result: unknown): CoverageDetail[] {
+    // A full result carries `coverage.details`; a projected one (an answer over the request's byte
+    // bound, context_fabric_answer_projection.v1) has no `coverage` and carries top-level
+    // `coverage_details` with the same shape (Codex P2 on #1804).
+    const served = result as
+        { coverage?: { details?: unknown }; coverage_details?: unknown } | null | undefined;
+    return [served?.coverage?.details, served?.coverage_details].flatMap((details) =>
+        Array.isArray(details)
+            ? (details as CoverageDetail[]).filter((detail) =>
+                  SYNTHESIS_FALLBACK_CODES.has(String(detail?.code)),
+              )
+            : [],
+    );
+}
+
+const describeDetails = (details: CoverageDetail[]): string =>
+    details.map((detail) => detail.raw ?? detail.code).join(", ");
+
+/**
+ * A case that expects an answer asserts the MECHANISM (AGENTS rule 4): the answer was synthesized.
+ * A view drawn on acr's fallback is not a pass (CHAOS-11946 cohort finding, CHAOS-12844). Throws,
+ * so it fails a Playwright case and can be tested without Playwright.
+ */
+export function expectSynthesized(result: unknown, label: string): void {
+    const details = synthesisFallbackDetails(result);
+    if (details.length > 0) {
+        throw new Error(
+            `${label}: the answer is acr's fallback, not a synthesized answer (${describeDetails(details)})`,
+        );
+    }
+}
+
+/** A case that expects acr's fallback by design (a synthesis out of time) asserts it got one. */
+export function expectFallback(result: unknown, label: string): void {
+    if (synthesisFallbackDetails(result).length === 0) {
+        throw new Error(
+            `${label}: the answer was expected to be acr's fallback, and it carries no synthesis failure`,
+        );
+    }
+}
