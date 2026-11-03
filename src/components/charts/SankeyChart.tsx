@@ -93,6 +93,20 @@ type SankeyChartProps = {
     nodeLabelAction?: (label: string, group: string | undefined) => string;
     /** Appends each node's value (the one its tooltip shows) to its label: "Quality 59.7". */
     showNodeValues?: boolean;
+    /**
+     * Draws each node's name as given, with no entity-label resolution. For names that are already
+     * served words (Ask Dev, CHAOS-4690): the resolver keeps only a path's last segment, so
+     * "acme/web" would read "web" and two repositories could share a word (CHAOS-12581).
+     */
+    verbatimNodeNames?: boolean;
+    /** `false` turns animation off, for a reader who asks for reduced motion. */
+    animation?: boolean;
+    /**
+     * Per-column label placement, passed to ECharts as the series' `levels`. A narrow host (Ask
+     * Dev's panel at phone width) puts the last column's labels inside, where the default right-hand
+     * labels would fall off the canvas (CHAOS-12581).
+     */
+    labelPositionByDepth?: ReadonlyArray<{ depth: number; position: "left" | "right" | "inside" }>;
     onItemClickAction?: (item: {
         type: "node" | "link";
         name?: string;
@@ -164,6 +178,9 @@ export function SankeyChart({
     tooltipFormatterAction,
     nodeLabelAction,
     showNodeValues = false,
+    verbatimNodeNames = false,
+    animation,
+    labelPositionByDepth,
     onItemClickAction,
 }: SankeyChartProps) {
     const chartTheme = useChartTheme();
@@ -180,6 +197,9 @@ export function SankeyChart({
 
     const displayNameForKey = useCallback(
         (value: string) => {
+            // Only a node's own name is drawn as given: an unknown key still resolves below.
+            const own = verbatimNodeNames ? labelByKey.get(value) : undefined;
+            if (own) return own;
             // Render-safe entity resolution (A7): a degraded label is the stable
             // short token, never a bare UUID/hash, so Sankey nodes/tooltips match
             // cards and tables.
@@ -190,7 +210,7 @@ export function SankeyChart({
             // missing labels never degrade to a placeholder token.
             return base ? chartEntityLabel(base) : base;
         },
-        [labelByKey],
+        [labelByKey, verbatimNodeNames],
     );
 
     const groupByKey = useMemo(() => {
@@ -299,6 +319,7 @@ export function SankeyChart({
         };
 
         return {
+            ...(animation === undefined ? {} : { animation }),
             tooltip: {
                 trigger: "item" as const,
                 confine: true,
@@ -374,6 +395,14 @@ export function SankeyChart({
                         borderWidth: 1,
                     },
                     nodeGap: 14,
+                    ...(labelPositionByDepth === undefined
+                        ? {}
+                        : {
+                              levels: labelPositionByDepth.map(({ depth, position }) => ({
+                                  depth,
+                                  label: { position },
+                              })),
+                          }),
                 },
             ],
         };
@@ -395,6 +424,8 @@ export function SankeyChart({
         showNodeValues,
         tooltipFormatterAction,
         displayNameForKey,
+        animation,
+        labelPositionByDepth,
     ]);
 
     // Memoize onEvents to prevent re-renders

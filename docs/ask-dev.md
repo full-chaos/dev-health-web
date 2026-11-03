@@ -115,6 +115,16 @@ History before a token is never `ready`, so it never reads "No conversations yet
 - A refused call is 429 `user_rate_limited`, with `Retry-After` and `no-store`. The browser shows the same words and Try again as for ACR's limit, and tries nothing by itself.
 - The limiter is the one `/api/acr/authorize` uses: a fixed window in Redis, keyed by user id, so every web replica counts in one budget. It has no in-memory fallback, and it fails closed: while Redis is unreachable, each attempt is refused, and a tab that holds a token or a family is not affected. A production boot needs `REDIS_URL`. A local `next dev` with no Redis refuses every attempt.
 
+## Charts in an answer
+
+Ask-dev's render checks each rich shape against the answer's own rows, then hands web only a verified shape through its `slots.shape` seam. Web's adapter, `askDevShapeChart` (`src/components/ask-dev/askDevShapeCharts.tsx`), maps that shape to the props of an existing web chart. It draws nothing itself and derives no number: every value and every word comes from the shape.
+
+- **Treemap** (`investment_theme_share`, CHAOS-12496): `TreemapChart`, one tile per theme share above 0.
+- **Sankey** (`investment_repository_flow`, CHAOS-12581): `SankeyChart`, one team's effort from its repositories to the themes. A node is a repository word or a theme word, a link is a point's exact value, and a zero link stays in the value table. The node names are drawn as served (`verbatimNodeNames`). Web's entity-label rule keeps only a path's last segment, so it would draw "acme/web" as "web", and two repositories could share a word (CHAOS-4690). The tooltip shows a small value as "<0.1", never "0".
+- **No chart** for any other shape, or for a shape the adapter cannot draw (a sankey with fewer than 2 repositories with effort, a unit on a sankey). The adapter returns `null`, and ask-dev then shows its value table and the line that says the chart is not shown here (CHAOS-12538).
+- **On demand:** each chart module loads only when its shape draws, so an answer with no rich shape loads no chart code.
+- **Reduced motion:** a reader who asks for reduced motion gets no chart animation.
+
 ## Evidence
 
 Each reference under an answer is a button, with ACR's served label. It opens the app's one evidence drawer, and web reads that reference with its own ACR access, scoped to the answer that cited it (CHAOS-12105). Two answers that cite one reference each open their own citation. Ask-dev's render draws the body; it holds no token and reads nothing.

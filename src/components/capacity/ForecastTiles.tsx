@@ -4,6 +4,8 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { dayFormat } from "@/lib/capacityDates";
 import { STATUS_PILL } from "@/lib/statusPill";
 
+import { PERCENTILE_ROLE } from "./percentileRoles";
+
 /**
  * A served date as "Jun 10": the calendar day it names, in every time zone (CHAOS-8507). The API
  * serves a forecast date as a UTC day (the day the forecast was computed plus N days), so it is
@@ -62,16 +64,7 @@ function Tile({
     );
 }
 
-/**
- * The role word of each percentile: one source for the tiles, the evidence facts and the marker
- * labels of the Completion range card (CHAOS-8614).
- */
-export const PERCENTILE_ROLE = {
-    P50: "optimistic",
-    P85: "target",
-    P95: "conservative",
-} as const;
-export type Percentile = keyof typeof PERCENTILE_ROLE;
+export { PERCENTILE_ROLE, type Percentile } from "./percentileRoles";
 
 /** A served day count as "1 day" / "14 days". */
 const daysText = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;

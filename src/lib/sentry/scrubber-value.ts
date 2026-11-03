@@ -80,6 +80,17 @@ const EMAIL_SHAPE = new RegExp(
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
+// Written limits (CHAOS-10777), each pinned in telemetry-scrub-residuals.test.ts:
+// - scrubTelemetryUrl on a scheme-less `user:password` still filters it; the text scrubber is the entry.
+// - Over-scrub is accepted as fail safe: prose of the form `host:port words @`, times written with `@`,
+//   package specs and image references with `@`, `label:name@host` text, e-mail and `user@host` notes.
+// - `%j` and `%o` of a plain object print `'[object Object]'` (no leak, the detail is lost).
+// - Object keys are not scrubbed, only values: keys are names set in code.
+// - The static sink guard cannot see a spread wrapped in parentheses, `as`, `await` or a ternary, a
+//   spread of a call whose name has no forbidden word, a computed logger member, a destructured logger
+//   or a computed field key. The runtime scrub is the control; the guard is a lint.
+// - Product telemetry sanitize is a key deny-list; a string under an allowed key still goes through the
+//   text scrub but has no length bound beyond the 16 KB scalar limit.
 /** `text` with each character either as is or as its `%XX` escape. */
 function escapedOrPlain(text: string): string {
     return [...text]
@@ -109,11 +120,17 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     [ENCODED_ACR_TOKEN, FILTERED],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
-    // A password that holds a space. Prose such as `host:8080 word me@x` is removed too: fail safe.
-    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^/@\r\n]{1,256}@/gi, `$1${FILTERED}@`],
-    // `user:pass@host` with no scheme.
+    // A password that holds a space, a slash or a newline. Prose such as `host:8080 word me@x` is removed
+    // too: fail safe. Written limits (CHAOS-10777): a user part over 128 or a password over 256
+    // characters is not matched (the bounds keep the rule linear on a 16 KB scalar; a longer scalar is
+    // dropped whole), and `\r` and `@` in the password are not matched (the `@` ends it).
+    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^@\r]{1,256}@/gi, `$1${FILTERED}@`],
+    // `user:pass@host` with no scheme. The host is a plain name, an `_`-prefixed name or a bracketed
+    // IPv6 literal. A password with `/`, `:` or a space, a user after `:` or `/`, and a user over 64
+    // characters or not ASCII stay unmatched on purpose: each widening reads paths, `host:port` text and
+    // package specs as credentials. Text with `@` that is not a credential is removed too (fail safe).
     [
-        /(?<![\w@:/.~%+-])[\w.~%+-]{1,64}:[^\s/@:]{1,256}@[a-z\d][\w.-]{0,253}/gi,
+        /(?<![\w@:/.~%+-])[\w.~%+-]{1,64}:[^\s/@:]{1,256}@(?:[a-z\d_][\w.-]{0,253}|\[[\da-f:.]{2,45}\])/gi,
         (match) => (/^mailto:/i.test(match) ? match : FILTERED),
     ],
     [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],

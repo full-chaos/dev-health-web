@@ -67,6 +67,19 @@ function setServiceToken(
     token.act_sub = value.actor;
 }
 
+// next-auth debug metadata has no fixed shape (provider config, tokens, profile, urls). Only key names and
+// number or boolean values are logged: no string and no nested value.
+function debugMetadataShape(metadata: unknown): Record<string, unknown> | undefined {
+    if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
+        return undefined;
+    }
+    const shape: Record<string, unknown> = { keys: Object.keys(metadata) };
+    for (const [key, value] of Object.entries(metadata)) {
+        if (typeof value === "number" || typeof value === "boolean") shape[key] = value;
+    }
+    return shape;
+}
+
 const nextAuth = NextAuth({
     trustHost: true,
     logger: {
@@ -77,7 +90,7 @@ const nextAuth = NextAuth({
             authLogger.warn({ code }, "next-auth warning");
         },
         debug: (message: string, metadata?: unknown) => {
-            authLogger.debug({ metadata }, message);
+            authLogger.debug({ metadata: debugMetadataShape(metadata) }, message);
         },
     },
     providers: [
