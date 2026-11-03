@@ -129,6 +129,29 @@ async function attachEvidence(
     });
 }
 
+/** A wait that fails at once, naming its step, instead of running the test into its timeout. */
+async function within<T>(promise: Promise<T>, ms: number, step: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${step}: nothing in ${String(ms)} ms`)), ms);
+    });
+    try {
+        return await Promise.race([promise, late]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
+ * The narrow panel's History view, on or off, by its toggle's own state: the rail's copy of the list
+ * stays in the DOM while hidden (run 2), so the list's presence says nothing.
+ */
+async function showHistory(surface: Locator, on: boolean): Promise<void> {
+    const toggle = surface.getByTestId("ask-dev-history-toggle");
+    if (((await toggle.getAttribute("aria-pressed")) === "true") !== on) await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", on ? "true" : "false");
+}
+
 /** Deletes a conversation from a History list, as a user does: Delete, then the confirm. */
 async function deleteFromHistory(surface: Locator, threadId: string): Promise<void> {
     const row = historyRow(surface, threadId);
@@ -136,14 +159,24 @@ async function deleteFromHistory(surface: Locator, threadId: string): Promise<vo
     await row.getByTestId("ask-dev-history-confirm-delete").click();
 }
 
-/** One answer ACR gave, held in the browser until `release` resolves, then handed to the page. */
+/**
+ * One answer ACR gave, held in the browser until `release` resolves, then handed to the page.
+ * `outcome` says what became of it: `delivered` (the page got it, late) or `aborted` (the page had
+ * cancelled the read itself, so the late answer could not reach it). A case must know which: a late
+ * answer that never reached the page proves nothing about what the page does with one.
+ */
 function holdAnswer(release: Promise<void>): {
     handler: (route: Route) => Promise<void>;
     fetched: Promise<string>;
+    outcome: Promise<string>;
 } {
     let fetchedBody: (body: string) => void = () => undefined;
     const fetched = new Promise<string>((resolve) => {
         fetchedBody = resolve;
+    });
+    let settle: (outcome: string) => void = () => undefined;
+    const outcome = new Promise<string>((resolve) => {
+        settle = resolve;
     });
     let held = false;
     const handler = async (route: Route) => {
@@ -157,9 +190,16 @@ function holdAnswer(release: Promise<void>): {
         const response = await route.fetch();
         fetchedBody(await response.text());
         await release;
-        await route.fulfill({ response });
+        try {
+            await route.fulfill({ response });
+            settle("delivered");
+        } catch (error: unknown) {
+            settle(
+                `aborted: ${error instanceof Error ? error.message.split("\n")[0]! : String(error)}`,
+            );
+        }
     };
-    return { handler, fetched };
+    return { handler, fetched, outcome };
 }
 
 test("AC-2: a hard reload, then back and forward, on /dev?thread draws the turns in order with no create; the panel goes on with the thread", async ({
@@ -311,7 +351,7 @@ test("AC-12: a delete in the panel takes the thread off /dev's History, and a de
         await ask(surface, question("histDelPanel"));
         await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
         const panelThread = threadOf(investigations(calls)[0]!);
-        await surface.getByTestId("ask-dev-history-toggle").click();
+        await showHistory(surface, true);
         await expect(historyRow(surface, panelThread)).toHaveCount(1, { timeout: 30_000 });
         await deleteFromHistory(surface, panelThread);
         await expect(historyRow(surface, panelThread)).toHaveCount(0, { timeout: 30_000 });
@@ -350,7 +390,7 @@ test("AC-12: a delete in the panel takes the thread off /dev's History, and a de
         await page.goto(from, { waitUntil: "commit" });
         await page.getByRole("button", { name: "Open Ask Dev" }).click({ timeout: 30_000 });
         const panelAgain = page.getByTestId("ask-dev-panel");
-        await panelAgain.getByTestId("ask-dev-history-toggle").click();
+        await showHistory(panelAgain, true);
         await expect
             .poll(lists, { message: "the panel read no History list" })
             .toBeGreaterThan(beforePanel);
@@ -384,10 +424,14 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
         await ask(surface, question("histLateList"));
         await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
         const listThread = threadOf(investigations(calls)[0]!);
-        const toggle = surface.getByTestId("ask-dev-history-toggle");
-        await toggle.click();
-        await expect(historyRow(surface, listThread)).toHaveCount(1, { timeout: 30_000 });
-        await toggle.click();
+        // A new conversation first: a delete of the CURRENT thread reads the list again, which
+        // aborts the held one (run 1), and a late answer that never arrives proves nothing.
+        await showHistory(surface, true);
+        await surface.getByTestId("ask-dev-history-new").click();
+        await expect(answers(surface)).toHaveCount(0, { timeout: 15_000 });
+        await showHistory(surface, true);
+        await expect(historyRow(surface, listThread)).toBeVisible({ timeout: 30_000 });
+        await showHistory(surface, false);
         let releaseList: () => void = () => undefined;
         const listReleased = new Promise<void>((resolve) => {
             releaseList = resolve;
@@ -396,8 +440,9 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
         const isList = (url: URL) => url.origin === ACR && url.pathname === THREADS_PATH;
         await page.route(isList, list.handler);
         const listsBefore = threadLists(calls).filter((call) => call.status === 200).length;
-        await toggle.click();
-        const lateList = await list.fetched;
+        await showHistory(surface, true);
+        const lateList = await within(list.fetched, 30_000, "showing History again read no list");
+        await expect(historyRow(surface, listThread)).toBeVisible();
         evidence.late_list_held_the_thread = lateList.includes(listThread);
         expect(
             evidence.late_list_held_the_thread,
@@ -408,11 +453,18 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
             .poll(() => threadDeletes(calls, listThread).map((call) => call.status ?? null))
             .toEqual([204]);
         releaseList();
-        await expect
-            .poll(() => threadLists(calls).filter((call) => call.status === 200).length, {
-                message: "the held list never reached the page",
-            })
-            .toBeGreaterThan(listsBefore);
+        evidence.late_list_outcome = await within(
+            list.outcome,
+            30_000,
+            "the held list was never handed over",
+        );
+        expect(
+            evidence.late_list_outcome,
+            "the held list did not reach the page: nothing late arrived",
+        ).toBe("delivered");
+        expect(threadLists(calls).filter((call) => call.status === 200).length).toBeGreaterThan(
+            listsBefore,
+        );
         await page.waitForTimeout(3_000);
         evidence.late_list_brought_back = await historyRow(surface, listThread).count();
         expect(
@@ -441,7 +493,7 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
             url.origin === ACR && url.pathname === `${THREADS_PATH}/${readThread}`;
         await page.route(isRead, read.handler);
         await historyRow(full, readThread).getByTestId("ask-dev-history-open").click();
-        const lateRead = await read.fetched;
+        const lateRead = await within(read.fetched, 30_000, "opening the row read no thread");
         evidence.late_read_held_the_turn = lateRead.includes(question("histLateRead"));
         expect(
             evidence.late_read_held_the_turn,
@@ -452,14 +504,13 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
             .poll(() => threadDeletes(calls, readThread).map((call) => call.status ?? null))
             .toEqual([204]);
         releaseRead();
-        await expect
-            .poll(
-                () => threadReads(calls, readThread).filter((call) => call.status === 200).length,
-                {
-                    message: "the held read never reached the page",
-                },
-            )
-            .toBeGreaterThanOrEqual(1);
+        // The opened thread is the selection: its delete resets it, and the store aborts its read
+        // (run 1). Either way the measurement happened, and the case records which.
+        evidence.late_read_outcome = await within(
+            read.outcome,
+            30_000,
+            "the held read was never handed over",
+        );
         await page.waitForTimeout(3_000);
         evidence.late_read_brought_back = {
             row: await historyRow(full, readThread).count(),
