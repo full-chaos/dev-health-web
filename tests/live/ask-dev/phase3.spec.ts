@@ -99,11 +99,14 @@ async function answerFor(
     baseURL: string | undefined,
     name: RichCase,
     replicate: Replicate,
+    // The width the panel opens at: a resize after the answer remounts the panel (CHAOS-12582).
+    viewport?: { width: number; height: number },
 ): Promise<Answer> {
     const context = await browser.newContext({
         baseURL: baseURL!,
         storageState: session,
         ignoreHTTPSErrors: true,
+        ...(viewport === undefined ? {} : { viewport }),
     });
     const page = await context.newPage();
     const results = await watchResults(page);
@@ -630,8 +633,10 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
         [1, 1280, "desktop"],
         [2, 390, "phone"],
     ] as const) {
-        const { page, answer, result } = await answerFor(browser, baseURL, "sankey", replicate);
-        await page.setViewportSize({ width, height: 844 });
+        const { page, answer, result } = await answerFor(browser, baseURL, "sankey", replicate, {
+            width,
+            height: 844,
+        });
         const [shape] = served(
             result,
             "investment_repository_flow",
