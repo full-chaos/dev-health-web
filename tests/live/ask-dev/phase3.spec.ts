@@ -630,7 +630,7 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     // The suite asks at desktop width (its sign-in opens History, which the phone layout hides), so
     // the one answer is checked at desktop width and again at phone width, in the panel and on
     // /dev, with a screenshot of each (the ticket's acceptance). A resize remounts the panel, so
-    // each width waits for the chart to draw again before it is checked.
+    // each width waits for the chart to draw and settle again before it is checked.
     const { page, answer, result } = await answerFor(browser, baseURL, "sankey", 1);
     const [shape] = served(
         result,
@@ -647,6 +647,35 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
         });
         await expectDrawnAsServed(figure, shape!);
         await figure.scrollIntoViewIfNeeded();
+        // The entry animation reveals the sankey from the left, and a resize redraws it a moment
+        // after the box changes, so a screenshot taken when the canvas first shows holds a narrow
+        // strip or the old width. Wait until the canvas fits its figure and two frames half a
+        // second apart are the same picture; a chart that never settles fails here.
+        const frame = () =>
+            figure.evaluate((node) => {
+                const canvas = node.querySelector("canvas");
+                if (!canvas) return "no canvas";
+                const fits = canvas.clientWidth <= Math.ceil(node.getBoundingClientRect().width);
+                return fits
+                    ? canvas.toDataURL()
+                    : `canvas ${canvas.clientWidth} px wider than figure`;
+            });
+        let last = await frame();
+        await expect
+            .poll(
+                async () => {
+                    const next = await frame();
+                    const settled = next === last && next.startsWith("data:");
+                    last = next;
+                    return settled;
+                },
+                {
+                    message: `the sankey settles at the figure's width (${where}, ${view})`,
+                    intervals: [500],
+                    timeout: 15_000,
+                },
+            )
+            .toBe(true);
         await page.screenshot({ path: testInfo.outputPath(`sankey-${where}-${view}.png`) });
     };
     await drawnIn(answer, "desktop", "panel");
