@@ -99,14 +99,15 @@ async function answerFor(
     baseURL: string | undefined,
     name: RichCase,
     replicate: Replicate,
-    // The width the panel opens at: a resize after the answer remounts the panel (CHAOS-12582).
-    viewport?: { width: number; height: number },
+    // "reduce" asks for reduced motion, so the charts draw with no entry animation and the
+    // first drawn frame is the final one (CHAOS-12582's screenshots).
+    reducedMotion?: "reduce",
 ): Promise<Answer> {
     const context = await browser.newContext({
         baseURL: baseURL!,
         storageState: session,
         ignoreHTTPSErrors: true,
-        ...(viewport === undefined ? {} : { viewport }),
+        ...(reducedMotion === undefined ? {} : { reducedMotion }),
     });
     const page = await context.newPage();
     const results = await watchResults(page);
@@ -631,7 +632,7 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     // the one answer is checked at desktop width and again at phone width, in the panel and on
     // /dev, with a screenshot of each (the ticket's acceptance). A resize remounts the panel, so
     // each width waits for the chart to draw and settle again before it is checked.
-    const { page, answer, result } = await answerFor(browser, baseURL, "sankey", 1);
+    const { page, answer, result } = await answerFor(browser, baseURL, "sankey", 1, "reduce");
     const [shape] = served(
         result,
         "investment_repository_flow",
@@ -647,10 +648,11 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
         });
         await expectDrawnAsServed(figure, shape!);
         await figure.scrollIntoViewIfNeeded();
-        // The entry animation reveals the sankey from the left, and a resize redraws it a moment
-        // after the box changes, so a screenshot taken when the canvas first shows holds a narrow
-        // strip or the old width. Wait until the canvas fits its figure and two frames half a
-        // second apart are the same picture; a chart that never settles fails here.
+        // The entry animation reveals the sankey from the left, so the case asks with reduced
+        // motion: with animation on, two equal frames were seen while the chart was still a
+        // narrow strip. A resize redraws the chart a moment after the box changes, so wait until
+        // the canvas fits its figure and two frames half a second apart are the same picture; a
+        // chart that never settles fails here.
         const frame = () =>
             figure.evaluate((node) => {
                 const canvas = node.querySelector("canvas");
