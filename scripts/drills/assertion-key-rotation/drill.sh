@@ -120,7 +120,7 @@ expect() { # <want accepted|refused> <kid>
 cells() {
     k port-forward pod/stack "$LOCAL_PORT:8080" >"$DRILL_DIR/port-forward.log" 2>&1 &
     local pf=$!
-    trap 'kill "$pf" 2>/dev/null || true' RETURN
+    trap 'kill "${pf:-}" 2>/dev/null || true; trap - RETURN' RETURN
     local i
     for i in $(seq 1 30); do
         curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$LOCAL_PORT/" && break
@@ -148,14 +148,26 @@ cells() {
 }
 
 teardown() {
-    kubectl delete ns "$DRILL_NS" --wait=true >/dev/null
+    kubectl delete ns "$DRILL_NS" --wait=true --ignore-not-found >/dev/null
     echo "ns=$DRILL_NS deleted"
+}
+
+# run = setup, cells, teardown. setup and cells are plain commands (never the left side of && or ||,
+# which turns set -e off inside them). An EXIT trap runs teardown on success, failure and signal,
+# and keeps the first non-zero status; a failed teardown after a pass also fails the run.
+run() {
+    local rc=0
+    trap 'rc=$?; trap - EXIT INT TERM; teardown || { echo "teardown failed" >&2; [ "$rc" -ne 0 ] || rc=1; }; exit "$rc"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    setup
+    cells
 }
 
 case "${1:-}" in
     setup) setup ;;
     cells) cells ;;
     teardown) teardown ;;
-    run) setup && cells ;;
+    run) run ;;
     *) echo "usage: drill.sh setup|cells|teardown|run" >&2; exit 2 ;;
 esac
