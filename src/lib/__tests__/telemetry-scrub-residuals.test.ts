@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createServerLogger } from "../logger";
-import { scrubTelemetryText, scrubTelemetryUrl } from "../sentry/scrubber-value";
+import {
+    scrubTelemetryPayload,
+    scrubTelemetryText,
+    scrubTelemetryUrl,
+} from "../sentry/scrubber-value";
 
 // CHAOS-10777: residual credential shapes after the first scrubber rules. Values are built at run time.
 function token(): string {
@@ -47,11 +51,31 @@ describe("residual: astral characters count as one toward the bounds (CHAOS-1268
     });
 
     it("keeps the 250 ms budget on 16 KB of astral characters", () => {
-        const text = `postgres://svc:${`${EMOJI} `.repeat(4_000)}@db.internal`.slice(0, 16_000);
+        const text = `postgres://svc:${`${EMOJI} `.repeat(6_000)}@db.internal`.slice(0, 16_000);
+        expect(text).toHaveLength(16_000);
         const start = performance.now();
         scrubTelemetryText(text);
         expect(performance.now() - start).toBeLessThan(250);
     });
+
+    it.each(["\u212A", "\u017F"])(
+        "scheme letters and the word boundary stay ASCII: U+%s before a scheme",
+        (fold) => {
+            const value = token();
+            const text = `${fold}a${"b".repeat(31)}://svc:${value} more@h`;
+            expect(scrubTelemetryText(text)).not.toContain(value);
+            expect(scrubTelemetryUrl(`https://example.com/${text}`)).not.toContain(value);
+            expect(Object.keys(scrubTelemetryPayload({ [text]: 1 }))[0]).not.toContain(value);
+        },
+    );
+
+    it.each(["\u212A", "\u017F"])(
+        "a fold character inside a scheme is not a scheme letter: %s",
+        (fold) => {
+            const key = `http${fold}://svc:${token()}@h`;
+            expect(Object.keys(scrubTelemetryPayload({ [key]: 1 }))[0]).not.toBe("[Filtered]");
+        },
+    );
 });
 
 describe("residual: scheme-less userinfo, host forms", () => {
