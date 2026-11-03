@@ -1,9 +1,9 @@
 {
-  "source_commit": "8e1208dc76181a0b0904df9b1fa70bf87b31e41a",
+  "source_commit": "7a9e803655a401ccf5e1bb567bd976e427bcb654",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "581d5ea2d1c5dc003d36304bcfa47be895fc6a0a7ad5ac3b0ecd683fbff13a00"
+      "sha256": "18425775447848b182f943ba764879b30a358e97e7dc856656186553dd1026e6"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
