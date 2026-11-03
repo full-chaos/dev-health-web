@@ -5,6 +5,7 @@ import {
     evidenceWindowText,
     expectedRows,
     headingMismatches,
+    landscapeGap,
     outcomeWordMismatches,
     servedShapes,
     tableMismatches,
@@ -251,19 +252,59 @@ describe("unitWordMismatches (AC-8)", () => {
         },
         { table: { measures: ["days"], measure_units: [] } },
     ];
-    const labels = { "measure_unit:ratio": "share", "measure_unit:count": "runs" };
+    const labels = {
+        "measure_unit:ratio": "share",
+        "measure_unit:count": "runs",
+        "fact_field:cumulative_share": "Share of runs finished",
+    };
+    const drawn = (...columns: Array<[string, string | null]>) =>
+        columns.map(([heading, unit]) => ({ heading, unit }));
 
-    it("finds nothing when the drawn unit words are exactly the served ones", () => {
-        expect(unitWordMismatches(claims, labels, ["share", "runs"])).toEqual([]);
+    it("finds nothing when each measure column carries its own served unit word", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(
+                    ["completion days", null],
+                    ["Share of runs finished", "share"],
+                    ["runs", "runs"],
+                ),
+            ),
+        ).toEqual([]);
     });
 
-    it("reports a served unit word the tables do not show, and a drawn unit ACR never served", () => {
-        expect(unitWordMismatches(claims, labels, ["share"])).toEqual([
-            'served unit word "runs" is not drawn',
+    it("reports units swapped between columns: the word must sit under its own measure (Codex r2 P3)", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "runs"], ["runs", "share"]),
+            ),
+        ).toEqual([
+            'column "Share of runs finished" draws unit "runs", served "share"',
+            'column "runs" draws unit "share", served "runs"',
         ]);
-        expect(unitWordMismatches(claims, labels, ["share", "runs", "hours"])).toEqual([
-            'drawn unit word "hours" is not a served unit of any claimed table',
-        ]);
+    });
+
+    it("reports a served unit not drawn, and a unit drawn where ACR served none", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", null]),
+            ),
+        ).toEqual(['column "runs" draws no unit, served "runs"']);
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", "runs"], ["days", "hours"]),
+            ),
+        ).toEqual(['column "days" draws unit "hours", served none']);
+        expect(
+            unitWordMismatches(claims, labels, drawn(["Share of runs finished", "share"])),
+        ).toEqual(['served unit "runs" for column "runs" is not drawn']);
     });
 
     it("states no unit for a measure declared twice, nor one with no served word", () => {
@@ -278,8 +319,44 @@ describe("unitWordMismatches (AC-8)", () => {
                 },
             },
         ];
-        expect(unitWordMismatches(twice, labels, [])).toEqual([]);
-        expect(unitWordMismatches(claims, {}, [])).toEqual([]);
+        expect(unitWordMismatches(twice, labels, drawn(["runs", null]))).toEqual([]);
+        expect(
+            unitWordMismatches(claims, {}, drawn(["cumulative share", null], ["runs", null])),
+        ).toEqual([]);
+    });
+
+    it("lets a column that is no claimed measure state only a served unit word", () => {
+        const both = drawn(["Share of runs finished", "share"], ["runs", "runs"]);
+        expect(
+            unitWordMismatches(claims, labels, [
+                ...both,
+                { heading: "Completion share", unit: "share" },
+            ]),
+        ).toEqual([]);
+        expect(
+            unitWordMismatches(claims, labels, [
+                ...both,
+                { heading: "Completion share", unit: "hours" },
+            ]),
+        ).toEqual([
+            'column "Completion share" draws unit "hours", not a served unit of any claimed table',
+        ]);
+    });
+
+    it("says it cannot check a heading that two claims serve with different units", () => {
+        const clash = [
+            ...claims,
+            { table: { measures: ["runs"], measure_units: [{ measure: "runs", unit: "ratio" }] } },
+        ];
+        expect(
+            unitWordMismatches(
+                clash,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", "runs"]),
+            ),
+        ).toEqual([
+            'column "runs": claims serve the units ["runs", "share"], so no one unit can be checked',
+        ]);
     });
 });
 
@@ -365,5 +442,173 @@ describe("headingMismatches (Codex r1 P3 on #1803)", () => {
         ).toEqual([
             "value columns headed [full-chaos/dev-health-ops, full-chaos/dev-health-acr], served series [full-chaos/dev-health-acr, full-chaos/dev-health-ops]",
         ]);
+    });
+});
+
+describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own cause)", () => {
+    type Answer = Parameters<typeof landscapeGap>[0];
+    type Claim = NonNullable<Answer["claimed_facts"]>[number];
+    const team = (id: string) => ({ kind: "team", canonical_id: `team:${id}` });
+    // The frame acr reads before any day: a quadrant in the plan, a landscape requirement, and
+    // two to 64 committed teams.
+    const answer = (claims: Claim[], frame: Partial<Answer> = {}): Answer => ({
+        answer_plan: { render_kinds: ["comparison_table", "quadrant"] },
+        interpretation: { fact_requirements: [{ kind: "landscape" }] },
+        subject_resolution: { committed: [team("a"), team("b")] },
+        claimed_facts: claims,
+        ...frame,
+    });
+    const side = (
+        team: string,
+        day: string,
+        options: { identities?: number; fact?: string; churn?: number; delivery?: number } = {},
+    ): Claim[] => {
+        const fact = options.fact ?? `fact_${team}`;
+        const churn = options.churn ?? 120;
+        const delivery = options.delivery ?? 7;
+        const table = {
+            field: "area_breakdown",
+            shape: "breakdown",
+            key: ["as_of_day"],
+            measures: ["churn_loc_30d", "delivery_units_30d"],
+        };
+        const rows = [
+            {
+                fields: {
+                    as_of_day: { string: day },
+                    identity_count: { integer: options.identities ?? 4 },
+                    churn_loc_30d: { integer: 120 },
+                    delivery_units_30d: { integer: 7 },
+                },
+            },
+        ];
+        const subject = { kind: "team", canonical_id: `team:${team}` };
+        return [
+            {
+                kind: "landscape",
+                subject,
+                field: "churn_loc_30d",
+                value: { integer: churn },
+                fact_id: fact,
+                table,
+                rows,
+            },
+            {
+                kind: "landscape",
+                subject,
+                field: "delivery_units_30d",
+                value: { integer: delivery },
+                fact_id: options.fact ?? fact,
+                table,
+                rows,
+            },
+        ];
+    };
+
+    it("holds when two placed teams speak for different days", () => {
+        expect(
+            landscapeGap(answer([...side("a", "2026-10-30"), ...side("b", "2026-11-01")])),
+        ).toEqual({
+            placed: [
+                { subject: "team:a", day: "2026-10-30" },
+                { subject: "team:b", day: "2026-11-01" },
+            ],
+            differ: true,
+        });
+    });
+
+    it("does not hold when the placed teams share one day: a missing quadrant is then a real failure", () => {
+        expect(
+            landscapeGap(answer([...side("a", "2026-11-01"), ...side("b", "2026-11-01")])).differ,
+        ).toBe(false);
+    });
+
+    it("does not hold when a side is refused by another rule, even with different days", () => {
+        // The person floor: one identity gives no point, so acr skips for fewer than two points.
+        expect(
+            landscapeGap(
+                answer([...side("a", "2026-10-30", { identities: 1 }), ...side("b", "2026-11-01")]),
+            ),
+        ).toEqual({
+            placed: [{ subject: "team:b", day: "2026-11-01" }],
+            differ: false,
+        });
+        // A measure claimed twice.
+        expect(
+            landscapeGap(
+                answer([
+                    ...side("a", "2026-10-30"),
+                    side("a", "2026-10-30")[0]!,
+                    ...side("b", "2026-11-01"),
+                ]),
+            ).differ,
+        ).toBe(false);
+        // The two measures from two facts.
+        const split = side("a", "2026-10-30");
+        split[1] = { ...split[1]!, fact_id: "fact_other" };
+        expect(landscapeGap(answer([...split, ...side("b", "2026-11-01")])).differ).toBe(false);
+        // A claim that does not state its row's own cell.
+        expect(
+            landscapeGap(
+                answer([...side("a", "2026-10-30", { churn: 121 }), ...side("b", "2026-11-01")]),
+            ).differ,
+        ).toBe(false);
+    });
+
+    it("does not hold when acr refuses the quadrant before it reads a day", () => {
+        const claims = [...side("a", "2026-10-30"), ...side("b", "2026-11-01")];
+        const refused = (frame: Partial<Answer>) => landscapeGap(answer(claims, frame));
+        expect(refused({ answer_plan: { render_kinds: ["comparison_table"] } })).toEqual({
+            placed: [],
+            differ: false,
+        });
+        expect(refused({ answer_plan: undefined }).differ).toBe(false);
+        expect(refused({ interpretation: { fact_requirements: [{ kind: "flow" }] } }).differ).toBe(
+            false,
+        );
+        expect(refused({ subject_resolution: { committed: [team("a")] } })).toEqual({
+            placed: [],
+            differ: false,
+        });
+        const many = Array.from({ length: 65 }, (_, index) =>
+            team(index === 0 ? "a" : index === 1 ? "b" : `t${String(index)}`),
+        );
+        expect(refused({ subject_resolution: { committed: many } }).differ).toBe(false);
+        // acr charts teams only: a committed side of another kind refuses the quadrant whole.
+        expect(
+            refused({
+                subject_resolution: {
+                    committed: [{ kind: "repository", canonical_id: "team:a" }, team("b")],
+                },
+            }).differ,
+        ).toBe(false);
+        // A team that holds claims but is not committed is no side.
+        expect(refused({ subject_resolution: { committed: [team("a"), team("c")] } })).toEqual({
+            placed: [{ subject: "team:a", day: "2026-10-30" }],
+            differ: false,
+        });
+    });
+
+    it("reads no day from a derived claim, a row that is not the one area_breakdown row, or a day that is not a string", () => {
+        const derived = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            derived_from: [{ claim_id: "x" }],
+        }));
+        expect(landscapeGap(answer([...derived, ...side("b", "2026-11-01")])).differ).toBe(false);
+        const twoRows = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            rows: [...claim.rows!, ...claim.rows!],
+        }));
+        expect(landscapeGap(answer([...twoRows, ...side("b", "2026-11-01")])).differ).toBe(false);
+        const otherKey = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            table: { ...claim.table!, key: ["day"] },
+        }));
+        expect(landscapeGap(answer([...otherKey, ...side("b", "2026-11-01")])).differ).toBe(false);
+        const numberDay = side("a", "2026-10-30").map((claim) => ({
+            ...claim,
+            rows: [{ fields: { ...claim.rows![0]!.fields, as_of_day: { integer: 20261030 } } }],
+        }));
+        expect(landscapeGap(answer([...numberDay, ...side("b", "2026-11-01")])).differ).toBe(false);
     });
 });

@@ -16,6 +16,7 @@ import {
     elapsedTimeMismatches,
     evidenceWindowText,
     headingMismatches,
+    landscapeGap,
     outcomeWordMismatches,
     servedShapes,
     tableMismatches,
@@ -212,8 +213,9 @@ async function expectDrawnAsServed(
 ): Promise<void> {
     await expect(figure, `no drawn view captions "${shape.title}"`).toHaveCount(1);
     await expect(figure.getByTestId("rich-shape-not-shown")).toHaveCount(0);
-    const table = figure.locator("table").first();
-    await expect(table).toHaveCount(1);
+    // Counted before use, never `.first()`: a figure holds exactly one value table.
+    const table = figure.locator("table");
+    await expect(table, `the view "${shape.title}" holds one value table`).toHaveCount(1);
     expect(tableMismatches(shape, await rowsOf(table), ranks), shape.title).toEqual([]);
     expect(headingMismatches(shape, await headingsOf(table)), shape.title).toEqual([]);
 }
@@ -285,8 +287,9 @@ async function expectWindowLine(page: Page, answer: Locator, result: Served): Pr
             ),
         isos,
     );
-    const line = answer.getByTestId("coverage-evidence-window").first();
-    await expect(line, "the answer states its evidence window").toHaveCount(1);
+    // Counted before any `.first()`: two window lines in one answer is a defect, not a pick.
+    const line = answer.getByTestId("coverage-evidence-window");
+    await expect(line, "the answer states its evidence window once").toHaveCount(1);
     expect((await line.textContent())?.trim()).toBe(
         evidenceWindowText(window, labelsOf(result), (iso) => days[iso] ?? iso),
     );
@@ -345,12 +348,29 @@ for (const replicate of REPLICATES) {
             expect(elapsedTimeMismatches(marks), trend.title).toEqual([]);
         }
         // AC-8: the claimed-fact table states units only as served, and the answer its window.
-        await expect(answer.locator("table.fact-table").first()).toHaveCount(1);
+        await expect
+            .poll(() => answer.locator("table.fact-table").count(), "a fact table is drawn")
+            .toBeGreaterThan(0);
         const claims = (result.claimed_facts as Parameters<typeof unitWordMismatches>[0]) ?? [];
-        const drawnUnits = await answer
-            .locator('table.fact-table thead [data-testid="measure-unit"]')
-            .allTextContents();
-        expect(unitWordMismatches(claims, labelsOf(result), drawnUnits)).toEqual([]);
+        // Each column heading with the unit word drawn under it (Codex r2 P3: per column, not a set).
+        const drawnColumns = await answer
+            .locator("table.fact-table thead th")
+            .evaluateAll((cells) =>
+                cells.map((cell) => {
+                    const copy = cell.cloneNode(true) as HTMLElement;
+                    const units = [...copy.querySelectorAll('[data-testid="measure-unit"]')];
+                    const unit = units.map((node) => (node.textContent ?? "").trim()).join(" ");
+                    for (const node of units) node.remove();
+                    return {
+                        heading: (copy.textContent ?? "").trim(),
+                        unit: units.length > 0 ? unit : null,
+                    };
+                }),
+            );
+        expect(unitWordMismatches(claims, labelsOf(result), drawnColumns)).toEqual([]);
+        const drawnUnits = drawnColumns
+            .filter((column) => column.unit !== null)
+            .map((column) => `${column.heading}: ${column.unit!}`);
         test.info().annotations.push({
             type: "AC-8",
             description: `unit words drawn [${drawnUnits.join(", ")}]; window ${JSON.stringify(result.effective_evidence_window ?? null)}`,
@@ -393,7 +413,8 @@ for (const replicate of REPLICATES) {
         await expect(answer.getByTestId("comparison-table-withheld")).toHaveCount(0);
         // The visible table may round; when it does, the exact values are in the fold beside it.
         const exact = section.getByTestId("comparison-table-exact");
-        const table = ((await exact.count()) > 0 ? exact : section).locator("table").first();
+        const table = ((await exact.count()) > 0 ? exact : section).locator("table");
+        await expect(table, "the comparison shows one exact table").toHaveCount(1);
         expect(tableMismatches(shape!, await rowsOf(table)), shape!.title).toEqual([]);
         expect(headingMismatches(shape!, await headingsOf(table)), shape!.title).toEqual([]);
         await expectLedger(answer, result);
@@ -434,13 +455,23 @@ for (const replicate of REPLICATES) {
         test.info().annotations.push({
             type: "KNOWN GAP",
             description:
-                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, read from acr's render-shape selection log, which the answer does not carry). Never a pass.",
+                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, the days read from the served claims, as acr places each team). Never a pass.",
         });
         const quadrant = answer.getByTestId("landscape-quadrant");
         const quadrantServed = servedShapes(result).some(
             (shape) => shape.selected_by === "landscape_position",
         );
         if (!quadrantServed) {
+            // The gap is expected only on its own cause, read from the served claims (Codex r1 and
+            // r2 found the same class: a KNOWN GAP must never absorb another failure). Without it, a
+            // missing quadrant is an ordinary failure.
+            const gap = landscapeGap(result as Parameters<typeof landscapeGap>[0]);
+            const days = gap.placed.map((side) => `${side.subject}=${side.day}`).join(", ");
+            expect(
+                gap.differ,
+                `no quadrant is served, and the claims do not show CHAOS-12676's cause (placed: [${days}])`,
+            ).toBe(true);
+            test.info().annotations.push({ type: "CHAOS-12676 days", description: days });
             // Expected to fail while the gap holds, on THE assertion that fails today: the quadrant
             // is drawn.
             test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");

@@ -207,6 +207,28 @@ describe("synthesis fallback marker", () => {
         expect(synthesisFallbackDetails(undefined)).toEqual([]);
     });
 
+    // Codex P2 on #1804 (executed): an answer over the request's byte bound comes back as
+    // context_fabric_answer_projection.v1, which has no `coverage`; its details are top-level
+    // `coverage_details`, with the same shape and codes.
+    it("finds the fallback details on a projected answer too", () => {
+        const projected = {
+            coverage_details: [
+                {
+                    source: "context-fabric:synthesis",
+                    code: "synthesis_model_failed",
+                    raw: "synthesis_model_failed:synthesis_rejected",
+                },
+            ],
+        };
+        expect(synthesisFallbackDetails(projected)).toHaveLength(1);
+        expect(() => expectSynthesized(projected, "cohort1")).toThrow(
+            "cohort1: the answer is acr's fallback, not a synthesized answer (synthesis_model_failed:synthesis_rejected)",
+        );
+        expect(
+            synthesisFallbackDetails({ coverage_details: [{ code: "fact_score_withheld" }] }),
+        ).toEqual([]);
+    });
+
     it("refuses a fallback where a synthesized answer is expected, naming the case and the detail", () => {
         expect(() => expectSynthesized(served([]), "cohort1")).not.toThrow();
         expect(() => expectSynthesized(served(["synthesis_model_failed"]), "cohort1")).toThrow(
