@@ -57,6 +57,10 @@ export const SERVER_ONLY_MODULES = [
     { file: "src/lib/acr/client.ts", markers: ["/api/v1/agent-context/capabilities"] },
     { file: "src/lib/acr/ops.ts", markers: ["/api/v1/licensing/entitlements/"] },
     { file: "src/lib/acr/service.ts", markers: ["Approval is unavailable while impersonating."] },
+    { file: "src/lib/acr/grantScopes.ts", markers: ["ACR_SCOPES_FROM_GRANTS"] },
+    { file: "src/lib/auth/authorize/client.ts", markers: ["/v1/authorize:batch"] },
+    { file: "src/lib/auth/authorize/decision.ts", markers: ["authorization_batch_response.v1"] },
+    { file: "src/lib/auth/authorize/request.ts", markers: ["authorization_request.v1"] },
 ];
 
 /**

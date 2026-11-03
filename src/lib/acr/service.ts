@@ -134,7 +134,7 @@ export async function listAuthorizedRepositories(orgId: string): Promise<readonl
         signal: new AbortController().signal,
         subject,
     });
-    return authorization.repositoryScopes;
+    return authorization.visibleRepositories ?? authorization.repositoryScopes;
 }
 
 export async function getExpandedEvidence(input: {
