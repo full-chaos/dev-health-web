@@ -32,6 +32,8 @@ type SunburstChartProps = {
     className?: string;
     style?: CSSProperties;
     useInputColors?: boolean;
+    /** `false` turns animation off, for a reader who asks for reduced motion. */
+    animation?: boolean;
     tooltipFormatterAction?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClickAction?: (node: {
         name: string;
@@ -55,6 +57,7 @@ export function SunburstChart({
     className,
     style,
     useInputColors = false,
+    animation,
     tooltipFormatterAction,
     onNodeClickAction,
 }: SunburstChartProps) {
@@ -135,6 +138,7 @@ export function SunburstChart({
 
     const option = useMemo(
         () => ({
+            ...(animation === undefined ? {} : { animation }),
             tooltip: {
                 confine: true,
                 backgroundColor: chartTheme.background,
@@ -241,7 +245,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [labelledData, totalValue, unit, chartTheme, tooltipFormatterAction],
+        [animation, labelledData, totalValue, unit, chartTheme, tooltipFormatterAction],
     );
 
     return (
