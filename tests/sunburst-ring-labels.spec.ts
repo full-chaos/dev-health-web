@@ -66,7 +66,9 @@ async function drawnLabels(figure: Locator, words: readonly string[]): Promise<B
             const isThemeLabel = (text: string) =>
                 themeWords.some((word) => {
                     const cut = cutOf(text);
-                    return text === word || (cut !== null && word.startsWith(cut.trimEnd()));
+                    // A cut keeps at least 2 characters of its word: a bare ellipsis is no label.
+                    const kept = cut?.trimEnd() ?? "";
+                    return text === word || (kept.length >= 2 && word.startsWith(kept));
                 });
             return chart
                 .getZr()
