@@ -652,8 +652,13 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     await drawnIn(answer, "desktop", "panel");
     await expectLedger(answer, result);
     await page.setViewportSize({ width: 390, height: 844 });
+    // At phone width the panel is a dialog; the side panel stays in the page, hidden, so the
+    // dialog is the one to read.
     await drawnIn(
-        page.getByTestId("ask-dev-panel").getByRole("article", { name: "Answer" }),
+        page
+            .getByRole("dialog")
+            .filter({ has: page.getByRole("heading", { name: "Ask Dev" }) })
+            .getByRole("article", { name: "Answer" }),
         "phone",
         "panel",
     );
