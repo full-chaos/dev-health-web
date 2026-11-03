@@ -74,7 +74,7 @@ describe("org member actions: refusal vocabulary", () => {
     });
 
     it("shows the unavailable text for org create, update and delete refusals", async () => {
-        vi.spyOn(global, "fetch").mockResolvedValue(
+        vi.spyOn(global, "fetch").mockImplementation(async () =>
             json({ detail: { message: "Authentication service unavailable" } }, 503),
         );
         expect((await createOrganization({ name: "x", slug: "x" } as never)).error).toBe(
