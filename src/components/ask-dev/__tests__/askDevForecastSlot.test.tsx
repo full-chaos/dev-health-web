@@ -144,6 +144,24 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
         expect(untargeted.markup).not.toContain("all 0 items");
     });
 
+    it("keeps a stored target of 0 as the page does: 0 is a value, not absence (CHAOS-12714)", async () => {
+        // acr serves a stored 0 as 0 (CHAOS-12708); the page keeps it, so the slot must too.
+        cleanup();
+        const { container } = render(<CompletionRange forecast={{ ...page, targetItems: 0 }} />);
+        const fromPage = { markup: container.innerHTML, chart: drawn(lastOption()) };
+        cleanup();
+        const fromSlot = await slotDrawing({
+            ...detail,
+            summary: { ...detail.summary, target_items: 0 },
+        });
+        expect(
+            forecastSlotInput({ ...detail, summary: { ...detail.summary, target_items: 0 } })
+                .targetItems,
+        ).toBe(0);
+        expect(fromSlot.markup).toBe(fromPage.markup);
+        expect(fromSlot.chart).toEqual(fromPage.chart);
+    });
+
     it("draws the same chart and the same words from the slot as from the page", async () => {
         const fromPage = pageDrawing();
         cleanup();
