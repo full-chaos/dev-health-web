@@ -19,6 +19,8 @@ export interface ShadowInput {
     sampleKey: string;
     impersonating: boolean;
     surfaceIds: readonly string[];
+    surfaces?: readonly Surface[];
+    includeImpersonating?: boolean;
 }
 
 export interface ShadowDeps {
@@ -51,10 +53,23 @@ function sampled(key: string, now: number): boolean {
 const newRequestId = (): string => `req_${randomBytes(20).toString("base64url").slice(0, 26)}`;
 
 export function shadowViewerFrom(session: Session): ShadowViewer {
-    return { isPlatformAdmin: session.user.is_superuser === true, role: session.user.role };
+    return {
+        isPlatformAdmin: session.user.is_superuser === true,
+        role: session.user.role,
+        isImpersonating: session.user.is_impersonating === true,
+    };
 }
 
-export function shadowInputFrom(session: Session, surfaceIds: readonly string[]): ShadowInput {
+export interface ShadowInputOptions {
+    surfaces?: readonly Surface[];
+    includeImpersonating?: boolean;
+}
+
+export function shadowInputFrom(
+    session: Session,
+    surfaceIds: readonly string[],
+    opts?: ShadowInputOptions,
+): ShadowInput {
     return {
         viewer: shadowViewerFrom(session),
         orgId: session.user.org_id,
@@ -62,6 +77,10 @@ export function shadowInputFrom(session: Session, surfaceIds: readonly string[])
         sampleKey: `${session.user.id}|${session.user.org_id ?? ""}|${surfaceIds.join(",")}`,
         impersonating: session.user.is_impersonating === true,
         surfaceIds,
+        ...(opts?.surfaces === undefined ? {} : { surfaces: opts.surfaces }),
+        ...(opts?.includeImpersonating === undefined
+            ? {}
+            : { includeImpersonating: opts.includeImpersonating }),
     };
 }
 
@@ -103,7 +122,9 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
     try {
         const { transport } = deps;
         if (!transport) return { status: "skipped", reason: "no_transport" };
-        if (input.impersonating) return { status: "skipped", reason: "impersonating" };
+        if (input.impersonating && input.includeImpersonating !== true) {
+            return { status: "skipped", reason: "impersonating" };
+        }
         if (!input.principalReference) {
             return { status: "skipped", reason: "no_scope" };
         }
@@ -115,7 +136,7 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
         const asked: Asked[] = [];
         const ids: string[] = [];
         for (const id of input.surfaceIds) {
-            const surface = surfaceById(id);
+            const surface = input.surfaces?.find((row) => row.id === id) ?? surfaceById(id);
             if (!surface) continue;
             ids.push(id);
             if (!surface.request) {

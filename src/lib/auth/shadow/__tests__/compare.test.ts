@@ -22,7 +22,10 @@ describe("shadow compare", () => {
     });
 
     it("pdp deny with a client deny is a match", async () => {
-        const { r } = await run({ viewer: { isPlatformAdmin: false, role: "viewer" } }, DENY);
+        const { r } = await run(
+            { viewer: { isPlatformAdmin: false, role: "viewer", isImpersonating: false } },
+            DENY,
+        );
         expect(r.status === "ran" && r.record.counts.match).toBe(1);
     });
 
@@ -42,12 +45,18 @@ describe("shadow compare", () => {
     });
 
     it("pdp allow against a client deny is a mismatch", async () => {
-        const { r } = await run({ viewer: { isPlatformAdmin: false, role: "member" } }, ALLOW);
+        const { r } = await run(
+            { viewer: { isPlatformAdmin: false, role: "member", isImpersonating: false } },
+            ALLOW,
+        );
         expect(r.status === "ran" && r.record.counts.mismatch).toBe(1);
     });
 
     it("a platform admin passes the client guard for any role", async () => {
-        const { r } = await run({ viewer: { isPlatformAdmin: true, role: "viewer" } }, DENY);
+        const { r } = await run(
+            { viewer: { isPlatformAdmin: true, role: "viewer", isImpersonating: false } },
+            DENY,
+        );
         expect(r.status === "ran" && r.record.mismatches[0].clientAllowed).toBe(true);
     });
 

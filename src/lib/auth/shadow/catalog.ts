@@ -9,6 +9,7 @@ import { isNavChildVisible, navAreas, type NavChildRoute } from "@/lib/navigatio
 export interface ShadowViewer {
     isPlatformAdmin: boolean;
     role: string | undefined;
+    isImpersonating: boolean;
 }
 
 export interface ShadowRequestSpec {

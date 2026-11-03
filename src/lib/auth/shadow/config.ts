@@ -1,9 +1,9 @@
 import "server-only";
 import type { Transport } from "../authorize/client";
 
-// The switch is off unless the value is exactly "on".
-export function shadowEnabled(value: string | undefined): boolean {
-    return value === "on";
+// The switch is off unless the value is exactly the on value ("on" by default).
+export function shadowEnabled(value: string | undefined, onValue = "on"): boolean {
+    return value === onValue;
 }
 
 // The seam for the real /v1/authorize transport (a workload credential exchange), which a

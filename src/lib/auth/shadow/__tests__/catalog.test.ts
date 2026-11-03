@@ -24,8 +24,12 @@ describe("shadow catalog census", () => {
 
     it("computes a nav row verdict with the same function the sidebar uses", () => {
         const row = surfaceById("nav:platform");
-        expect(row?.clientAllowed({ isPlatformAdmin: true, role: undefined })).toBe(true);
-        expect(row?.clientAllowed({ isPlatformAdmin: false, role: "owner" })).toBe(false);
+        expect(
+            row?.clientAllowed({ isPlatformAdmin: true, role: undefined, isImpersonating: false }),
+        ).toBe(true);
+        expect(
+            row?.clientAllowed({ isPlatformAdmin: false, role: "owner", isImpersonating: false }),
+        ).toBe(false);
     });
 
     it("has exactly one row per guard layout and the layouts name their role lists", () => {
@@ -62,15 +66,40 @@ describe("shadow catalog census", () => {
 
     it("mirrors the guards: superuser passes any role, an operator is not an org admin", () => {
         const orgAdmin = surfaceById("guard:/org/admin");
-        expect(orgAdmin?.clientAllowed({ isPlatformAdmin: false, role: "admin" })).toBe(true);
-        expect(orgAdmin?.clientAllowed({ isPlatformAdmin: false, role: "operator" })).toBe(false);
-        expect(orgAdmin?.clientAllowed({ isPlatformAdmin: true, role: undefined })).toBe(true);
+        expect(
+            orgAdmin?.clientAllowed({
+                isPlatformAdmin: false,
+                role: "admin",
+                isImpersonating: false,
+            }),
+        ).toBe(true);
+        expect(
+            orgAdmin?.clientAllowed({
+                isPlatformAdmin: false,
+                role: "operator",
+                isImpersonating: false,
+            }),
+        ).toBe(false);
+        expect(
+            orgAdmin?.clientAllowed({
+                isPlatformAdmin: true,
+                role: undefined,
+                isImpersonating: false,
+            }),
+        ).toBe(true);
         const health = surfaceById("guard:/data-health");
-        expect(health?.clientAllowed({ isPlatformAdmin: false, role: "operator" })).toBe(true);
+        expect(
+            health?.clientAllowed({
+                isPlatformAdmin: false,
+                role: "operator",
+                isImpersonating: false,
+            }),
+        ).toBe(true);
         expect(
             surfaceById("guard:/superadmin")?.clientAllowed({
                 isPlatformAdmin: false,
                 role: "owner",
+                isImpersonating: false,
             }),
         ).toBe(false);
     });

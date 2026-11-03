@@ -51,7 +51,11 @@ let counter = 0;
 export function input(over: Record<string, unknown> = {}) {
     counter += 1;
     return {
-        viewer: { isPlatformAdmin: false, role: "admin" as string | undefined },
+        viewer: {
+            isPlatformAdmin: false,
+            role: "admin" as string | undefined,
+            isImpersonating: false,
+        },
         orgId: ORG as string | undefined,
         principalReference: TOKEN as string | undefined,
         sampleKey: `${USER}|${ORG}|test-${counter}`,
