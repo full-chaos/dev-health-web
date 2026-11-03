@@ -107,6 +107,13 @@ type SankeyChartProps = {
      * labels would fall off the canvas (CHAOS-12581).
      */
     labelPositionByDepth?: ReadonlyArray<{ depth: number; position: "left" | "right" | "inside" }>;
+    /**
+     * Hides a label that would overlap another, with ECharts' own label layout: the label of the
+     * smaller node gives way. For a narrow host (Ask Dev's panel and phone width), where the
+     * labels of two columns meet in the middle (CHAOS-12872). A hidden label's node keeps its
+     * name in the tooltip.
+     */
+    hideOverlappingLabels?: boolean;
     onItemClickAction?: (item: {
         type: "node" | "link";
         name?: string;
@@ -181,6 +188,7 @@ export function SankeyChart({
     verbatimNodeNames = false,
     animation,
     labelPositionByDepth,
+    hideOverlappingLabels = false,
     onItemClickAction,
 }: SankeyChartProps) {
     const chartTheme = useChartTheme();
@@ -395,6 +403,7 @@ export function SankeyChart({
                         borderWidth: 1,
                     },
                     nodeGap: 14,
+                    ...(hideOverlappingLabels ? { labelLayout: { hideOverlap: true } } : {}),
                     ...(labelPositionByDepth === undefined
                         ? {}
                         : {
@@ -426,6 +435,7 @@ export function SankeyChart({
         displayNameForKey,
         animation,
         labelPositionByDepth,
+        hideOverlappingLabels,
     ]);
 
     // Memoize onEvents to prevent re-renders
