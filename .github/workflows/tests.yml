@@ -885,6 +885,11 @@ jobs:
             options: --ipc=host
         env:
             CI: "true"
+        # The caches are the job's own (`-container-` keys): a cache saved on the bare runner
+        # restores outside $HOME in the container, and the pnpm binary is then not found.
+        defaults:
+            run:
+                shell: bash
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Resolve pnpm version
@@ -896,7 +901,7 @@ jobs:
               uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ~/setup-pnpm
-                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+                  key: pnpm-bin-container-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
 
             - name: Setup pnpm
               if: steps.pnpm-bin.outputs.cache-hit != 'true'
@@ -908,7 +913,7 @@ jobs:
               uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ~/setup-pnpm
-                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+                  key: pnpm-bin-container-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
 
             - name: Use cached pnpm binary
               if: steps.pnpm-bin.outputs.cache-hit == 'true'
@@ -933,10 +938,10 @@ jobs:
               uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
-                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+                  key: pnpm-store-container-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
                   restore-keys: |
-                      pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-
-                      pnpm-store-${{ runner.os }}-
+                      pnpm-store-container-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-
+                      pnpm-store-container-${{ runner.os }}-
 
             - run: pnpm install --frozen-lockfile
               id: pnpm-install
@@ -945,14 +950,14 @@ jobs:
               uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
-                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+                  key: pnpm-store-container-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
             - name: Save partial pnpm store
               if: ${{ always() && (steps.pnpm-install.outcome == 'failure' || steps.pnpm-install.outcome == 'cancelled') }}
               uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
-                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+                  key: pnpm-store-container-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
             - name: Visual baselines
               run: pnpm exec playwright test -c playwright.visual.config.ts
             - name: Upload the visual report and diffs
