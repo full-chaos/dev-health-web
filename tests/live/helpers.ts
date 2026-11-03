@@ -180,37 +180,31 @@ export function envFault(reason: string): void {
 export type SetupUser = { readonly token: string; readonly steps: readonly string[] };
 
 /**
- * A code or detail this helper prints: words of letters only, joined by a space, `_` or `-`
- * (`access_token_expired`, `email not verified`), at most 80 characters. A digit or any other
- * symbol makes it "[redacted]": every token, key and id the backend issues carries one, as do an
- * email (`@`) and the journeys' password. Codex r2 on #1813: `Abc123` and `org-123` printed under
- * the earlier rule.
+ * What a setup step records about a response body: its kind only, never its text. "error" is a
+ * JSON object with `error`, `code` or `detail`; "json" is any other JSON; then "non-json" or
+ * "empty". No backend string is printed: Codex r2 and r3 on #1813 each showed a secret-shaped
+ * string (`Abc123`, then a letters-only `SecretToken`) passing a shape filter, so none is used.
  */
-const PRINTABLE_CODE = /^[A-Za-z]+(?:[ _-][A-Za-z]+)*$/u;
-
-/**
- * One response's error code, for a setup step: `error.code`, `code` or `detail`. A string is printed
- * only when PRINTABLE_CODE allows it, else "[redacted]"; an object or array (a validation error can
- * carry the input) is "[structured]". So no token, password, email or id reaches a log line.
- */
-async function errorCodeOf(res: { text: () => Promise<string> }): Promise<string> {
+async function bodyKindOf(res: { text: () => Promise<string> }): Promise<string> {
     const text = await res.text().catch(() => "");
+    if (text === "") return "empty";
     let body: unknown;
     try {
         body = JSON.parse(text);
     } catch {
-        return text === "" ? "-" : "non-json";
+        return "non-json";
     }
-    const record = (typeof body === "object" && body !== null ? body : {}) as Record<
-        string,
-        unknown
-    >;
-    const raw =
-        (record.error as { code?: unknown } | undefined)?.code ?? record.code ?? record.detail;
-    if (raw === undefined || raw === null) return "-";
-    if (typeof raw !== "string") return "[structured]";
-    return raw.length <= 80 && PRINTABLE_CODE.test(raw) ? raw : "[redacted]";
+    if (typeof body !== "object" || body === null || Array.isArray(body)) return "json";
+    const record = body as Record<string, unknown>;
+    return ["error", "code", "detail"].some(
+        (key) => record[key] !== undefined && record[key] !== null,
+    )
+        ? "error"
+        : "json";
 }
+
+/** The error names a thrown setup request is recorded by; any other name is recorded as "Error". */
+const THROWN_NAMES = new Set(["TimeoutError", "AbortError", "TypeError", "Error"]);
 
 /** A login answer's token: a non-empty string, or "" for anything else in `access_token`. */
 function tokenOf(body: unknown): string {
@@ -233,8 +227,7 @@ async function attempt(
     try {
         return await send();
     } catch (error) {
-        const kind =
-            error instanceof Error && PRINTABLE_CODE.test(error.name) ? error.name : "Error";
+        const kind = error instanceof Error && THROWN_NAMES.has(error.name) ? error.name : "Error";
         steps.push(`${name} threw ${kind}`);
         return undefined;
     }
@@ -242,7 +235,7 @@ async function attempt(
 
 /**
  * CHAOS-12865: registers, verifies and logs in a fresh journey user (and with `orgName` onboards it
- * and logs in again), recording each step's name, HTTP status and error code. A setup that gives
+ * and logs in again), recording each step's name, HTTP status and body kind. A setup that gives
  * no token is then named by `setupFault`, never "backend may be unavailable" (web #1804's CI
  * live-e2e failed twice on that message, and the step that failed was never known).
  */
@@ -258,7 +251,7 @@ export async function setupUser(
     const steps: string[] = [];
     const none = (): SetupUser => ({ token: "", steps });
     const step = async (name: string, res: { status: () => number; text: () => Promise<string> }) =>
-        steps.push(`${name} ${String(res.status())} code=${await errorCodeOf(res)}`);
+        steps.push(`${name} ${String(res.status())} body=${await bodyKindOf(res)}`);
 
     const register = await attempt(steps, "register", () =>
         request.post(`${liveBackendUrl}/api/v1/auth/register`, {
@@ -281,7 +274,7 @@ export async function setupUser(
     steps.push(
         suLogin.ok()
             ? `superuser-login ${String(suLogin.status())} token=${suToken ? "present" : "absent"}`
-            : `superuser-login ${String(suLogin.status())} code=${await errorCodeOf(suLogin)}`,
+            : `superuser-login ${String(suLogin.status())} body=${await bodyKindOf(suLogin)}`,
     );
     let userId = "";
     if (suToken) {
@@ -334,9 +327,9 @@ export async function setupUser(
         } catch {
             token = "";
         }
-        const code = await errorCodeOf({ text: async () => text });
+        const body = await bodyKindOf({ text: async () => text });
         steps.push(
-            `${name} ${String(res.status())} token=${token ? "present" : "absent"} code=${code}`,
+            `${name} ${String(res.status())} token=${token ? "present" : "absent"} body=${body}`,
         );
         return token;
     };
@@ -344,7 +337,9 @@ export async function setupUser(
     if (first === undefined || first === "") return none();
     if (user.orgName === undefined) return { token: first, steps };
 
-    // Onboard first so admin endpoints are accessible, then log in again for the org's token.
+    // Onboard first so admin endpoints are accessible, then log in again for the org's token. A
+    // refused onboard does not stop the setup, as before: in the default pass register already
+    // created the org, so onboard can answer 400 by design (the onboarding journey's own case).
     const orgName = user.orgName;
     const onboard = await attempt(steps, "onboard", () =>
         request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {

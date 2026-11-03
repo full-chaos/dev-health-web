@@ -6,56 +6,66 @@ import { setupFault, setupUser } from "../../tests/live/helpers";
 
 /**
  * CHAOS-12865: a live journey's setup user. When the setup gives no token, the failure names the
- * step that failed, with its HTTP status and error code, and never a token, password or email.
- * Before, each journey's beforeAll returned silently and its cases failed as "No token — backend
- * may be unavailable" (web #1804's CI live-e2e, twice), which named nothing.
+ * step that failed, with its HTTP status and its body's kind, and never a backend string, token,
+ * password or email. Before, each journey's beforeAll returned silently and its cases failed as
+ * "No token — backend may be unavailable" (web #1804's CI live-e2e, twice), which named nothing.
  */
 
 const EMAIL = "creds-1-abcde@example.com";
 const PASSWORD = "TestPass123!";
 const TOKEN = "eyJhbGciOiJIUzI1NiJ9.sentinel-access-token.do-not-print";
+const TOKEN2 = "eyJhbGciOiJIUzI1NiJ9.sentinel-relogin-token.do-not-print";
 const SU_TOKEN = "eyJhbGciOiJIUzI1NiJ9.sentinel-superuser-token.do-not-print";
 
-type Reply = { status: number; body?: unknown };
-type Route = (url: string, options: { data?: unknown }) => Reply;
+type Reply = { status: number; body?: unknown; raw?: string };
+type Options = { data?: unknown; headers?: Record<string, string> };
+type Route = (call: string, options: Options, url: string) => Reply;
+type Sent = { call: string; url: string; data?: unknown; headers?: Record<string, string> };
 
 /** A fake APIRequestContext: each call is answered by `route`, and every call is recorded. */
 function fakeRequest(route: Route) {
-    const calls: string[] = [];
+    const sent: Sent[] = [];
     const answer =
         (method: string) =>
-        async (url: string, options: { data?: unknown } = {}) => {
-            const path = new URL(url).pathname;
-            calls.push(`${method} ${path}`);
-            const reply = route(`${method} ${path}`, options);
+        async (url: string, options: Options = {}) => {
+            const call = `${method} ${new URL(url).pathname}`;
+            sent.push({ call, url, data: options.data, headers: options.headers });
+            const reply = route(call, options, url);
+            const text = reply.raw ?? (reply.body === undefined ? "" : JSON.stringify(reply.body));
             return {
                 status: () => reply.status,
                 ok: () => reply.status >= 200 && reply.status < 300,
-                text: async () => (reply.body === undefined ? "" : JSON.stringify(reply.body)),
-                json: async () => reply.body,
+                text: async () => text,
+                json: async () => JSON.parse(text) as unknown,
             };
         };
     return {
         request: { post: answer("POST"), get: answer("GET"), patch: answer("PATCH") } as never,
-        calls,
+        sent,
+        calls: () => sent.map((s) => s.call),
     };
 }
 
+const isUser = (options: Options) =>
+    (options.data as { email?: string } | undefined)?.email === EMAIL;
+
 /**
  * The healthy backend: every step answers as the live stack does. The user's own login gives a
- * token only once the user is verified, as the live backend's does.
+ * token only once the user is verified; the second user login (the relogin) gives TOKEN2.
  */
 function healthy(overrides: Partial<Record<string, Reply>> = {}): Route {
     let verified = false;
+    let userLogins = 0;
     return (call, options) => {
-        if (overrides[call] !== undefined) return overrides[call];
-        const data = options.data as { email?: string } | undefined;
+        const login = call === "POST /api/v1/auth/login";
+        const key = login ? `${call}#${isUser(options) ? "user" : "su"}` : call;
+        if (overrides[key] !== undefined) return overrides[key];
         if (call === "POST /api/v1/auth/register") return { status: 202, body: { message: "ok" } };
-        if (call === "POST /api/v1/auth/login") {
-            if (data?.email !== EMAIL) return { status: 200, body: { access_token: SU_TOKEN } };
-            return verified
-                ? { status: 200, body: { access_token: TOKEN } }
-                : { status: 200, body: { needs_verification: true } };
+        if (login && !isUser(options)) return { status: 200, body: { access_token: SU_TOKEN } };
+        if (login) {
+            if (!verified) return { status: 200, body: { needs_verification: true } };
+            userLogins += 1;
+            return { status: 200, body: { access_token: userLogins === 1 ? TOKEN : TOKEN2 } };
         }
         if (call === "GET /api/v1/admin/users") {
             return { status: 200, body: { items: [{ id: "user-1", email: EMAIL }] } };
@@ -70,22 +80,23 @@ function healthy(overrides: Partial<Record<string, Reply>> = {}): Route {
 }
 
 const user = { email: EMAIL, password: PASSWORD, fullName: "Creds User" };
+const withOrg = { ...user, orgName: "Creds Org" };
 
 describe("a live journey's setup user (CHAOS-12865)", () => {
-    it("gives the token and records every step, in order", async () => {
-        const { request, calls } = fakeRequest(healthy());
-        const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
-        expect(setup.token).toBe(TOKEN);
-        expect(setup.steps.map((step) => step.split(" ")[0])).toEqual([
-            "register",
-            "superuser-login",
-            "user-lookup",
-            "verify",
-            "login",
-            "onboard",
-            "relogin",
+    it("sends the same requests as before, in order, and gives the relogin's token", async () => {
+        const { request, sent, calls } = fakeRequest(healthy());
+        const setup = await setupUser(request, withOrg);
+        expect(setup.token).toBe(TOKEN2);
+        expect(setup.steps).toEqual([
+            "register 202 body=json",
+            "superuser-login 200 token=present",
+            "user-lookup 200 found",
+            "verify 200 body=json",
+            "login 200 token=present body=json",
+            "onboard 200 body=json",
+            "relogin 200 token=present body=json",
         ]);
-        expect(calls).toEqual([
+        expect(calls()).toEqual([
             "POST /api/v1/auth/register",
             "POST /api/v1/auth/login",
             "GET /api/v1/admin/users",
@@ -94,201 +105,173 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             "POST /api/v1/auth/onboard",
             "POST /api/v1/auth/login",
         ]);
+        const [register, , lookup, verify, , onboard] = sent;
+        expect(register?.data).toEqual({
+            email: EMAIL,
+            password: PASSWORD,
+            full_name: "Creds User",
+        });
+        expect(register?.headers?.Origin).toBeTruthy();
+        const query = new URL(lookup!.url).searchParams;
+        expect([query.get("q"), query.get("limit")]).toEqual([EMAIL, "5"]);
+        expect(lookup?.headers?.Authorization).toBe(`Bearer ${SU_TOKEN}`);
+        expect(verify?.data).toEqual({ is_verified: true });
+        expect(verify?.headers?.Authorization).toBe(`Bearer ${SU_TOKEN}`);
+        expect(onboard?.data).toEqual({ action: "create_org", org_name: "Creds Org" });
+        expect(onboard?.headers?.Authorization).toBe(`Bearer ${TOKEN}`);
         expect(setupFault(setup)).toBe("");
     });
 
     it("without an org, stops after the login", async () => {
-        const { request } = fakeRequest(healthy());
+        const { request, calls } = fakeRequest(healthy());
         const setup = await setupUser(request, user);
         expect(setup.token).toBe(TOKEN);
-        expect(setup.steps.at(-1)).toMatch(/^login 200 token=present/u);
+        expect(calls().at(-1)).toBe("POST /api/v1/auth/login");
+        expect(calls()).not.toContain("POST /api/v1/auth/onboard");
     });
 
-    for (const [label, call, reply, named] of [
-        [
-            "a refused register",
-            "POST /api/v1/auth/register",
-            { status: 429, body: { error: { code: "rate_limited" } } },
-            /register 429 code=rate_limited/u,
-        ],
+    it("stops after a refused register: nothing else is sent", async () => {
+        const { request, calls } = fakeRequest(
+            healthy({ "POST /api/v1/auth/register": { status: 429, body: { error: {} } } }),
+        );
+        const setup = await setupUser(request, withOrg);
+        expect(setupFault(setup)).toBe("setup gave no token: register 429 body=error");
+        expect(calls()).toEqual(["POST /api/v1/auth/register"]);
+    });
+
+    for (const [label, key, reply, named] of [
         [
             "a failed superuser login",
             "POST /api/v1/auth/login#su",
-            { status: 401, body: { detail: "invalid credentials" } },
-            /superuser-login 401 code=invalid credentials/u,
+            { status: 401, body: { detail: "x" } },
+            "superuser-login 401 body=error | user-lookup skipped (no superuser token) | verify skipped | login 200 token=absent body=json",
         ],
         [
             "a user the lookup cannot find",
             "GET /api/v1/admin/users",
             { status: 200, body: { items: [] } },
-            /user-lookup 200 not-found/u,
+            "user-lookup 200 not-found | verify skipped | login 200 token=absent body=json",
+        ],
+        [
+            "a refused lookup",
+            "GET /api/v1/admin/users",
+            { status: 403, body: { error: { code: "x" } } },
+            "user-lookup 403 body=error | verify skipped | login 200 token=absent body=json",
         ],
         [
             "a refused verify",
             "PATCH /api/v1/admin/users/user-1",
-            { status: 403, body: { error: { code: "forbidden" } } },
-            /verify 403 code=forbidden/u,
+            { status: 403, body: { error: { code: "x" } } },
+            "verify 403 body=error | login 200 token=absent body=json",
         ],
         [
             "a login with no token",
             "POST /api/v1/auth/login#user",
-            { status: 400, body: { detail: "email not verified" } },
-            /login 400 token=absent code=email not verified/u,
+            { status: 400, body: { detail: "x" } },
+            "login 400 token=absent body=error",
         ],
     ] as const) {
-        it(`names the step on ${label}`, async () => {
-            const route = healthy();
-            const { request } = fakeRequest((at, options) => {
-                const who = (options.data as { email?: string } | undefined)?.email;
-                const key =
-                    at === "POST /api/v1/auth/login"
-                        ? `${at}#${who === EMAIL ? "user" : "su"}`
-                        : at;
-                return key === call ? reply : route(at, options);
-            });
-            const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
+        it(`names the step on ${label}, and sends no onboard`, async () => {
+            const { request, calls } = fakeRequest(healthy({ [key]: reply }));
+            const setup = await setupUser(request, withOrg);
             expect(setup.token).toBe("");
-            const fault = setupFault(setup);
-            expect(fault).toMatch(named);
-            expect(fault).toMatch(/^setup gave no token: register /u);
+            expect(setupFault(setup)).toMatch(/^setup gave no token: register 202 body=json \| /u);
+            expect(setupFault(setup).endsWith(named)).toBe(true);
+            expect(calls()).not.toContain("POST /api/v1/auth/onboard");
+            expect(calls().filter((c) => c === "POST /api/v1/auth/login").length).toBe(2);
         });
     }
 
-    it("prints no token, password or email, even when the backend echoes them", async () => {
-        const { request } = fakeRequest(
-            healthy({
-                "POST /api/v1/auth/register": {
-                    status: 400,
-                    body: { detail: `${EMAIL} is taken; token ${TOKEN}; password ${PASSWORD}` },
-                },
-            }),
-        );
-        const setup = await setupUser(request, user);
-        const fault = setupFault(setup);
-        expect(fault).toMatch(/register 400 code=\[redacted\]/u);
-        for (const secret of [EMAIL, TOKEN, SU_TOKEN, PASSWORD])
-            expect(fault).not.toContain(secret);
-    });
-
-    // Codex r2 on #1813: a short secret or id printed under the earlier rule. A code prints only
-    // when it is letters joined by a space, `_` or `-`; a digit or any other symbol redacts it.
-    for (const [label, detail, printed] of [
-        ["a short mixed secret", "Abc123", "[redacted]"],
-        ["a short id", "org-123", "[redacted]"],
-        ["an email", "user creds@example.com exists", "[redacted]"],
-        ["an id", "org 550e8400-e29b-41d4-a716-446655440000 missing", "[redacted]"],
-        ["a digit run", "account 1234567 locked", "[redacted]"],
-        ["a mixed key", "key ab12cd34ef56gh78 rejected", "[redacted]"],
-        ["a character outside the plain set", "bad <input>", "[redacted]"],
-        ["more than 80 characters", "a".repeat(81), "[redacted]"],
-        ["a code that names a token", "access_token_expired", "access_token_expired"],
-        [
-            "a long plain code",
-            "organization_membership_required",
-            "organization_membership_required",
-        ],
-        ["a plain message", "email not verified", "email not verified"],
+    // Codex r2 and r3 on #1813: `Abc123`, `org-123` and then a letters-only `SecretToken` passed a
+    // shape filter. No backend string is printed at all: only the body's kind.
+    for (const [label, reply, kind] of [
+        ["a letters-only secret", { status: 400, body: { detail: "SecretToken" } }, "error"],
+        ["a short mixed secret", { status: 400, body: { error: { code: "Abc123" } } }, "error"],
+        ["an id", { status: 400, body: { code: "org-123" } }, "error"],
+        ["the email and a token", { status: 400, body: { detail: `${EMAIL} ${TOKEN}` } }, "error"],
+        ["a structured detail", { status: 422, body: { detail: [{ input: PASSWORD }] } }, "error"],
+        ["an object code", { status: 400, body: { error: { code: { value: TOKEN } } } }, "error"],
+        ["a JSON body with no error", { status: 400, body: { message: TOKEN } }, "json"],
+        ["a JSON array", { status: 400, body: [TOKEN] }, "json"],
+        ["a non-JSON body", { status: 502, raw: `<html>${EMAIL}</html>` }, "non-json"],
+        ["an empty body", { status: 503 }, "empty"],
     ] as const) {
-        it(`a register error with ${label} prints ${printed === "[redacted]" ? "[redacted]" : "the code"}`, async () => {
+        it(`prints only the body's kind for ${label}`, async () => {
             const { request } = fakeRequest(
-                healthy({ "POST /api/v1/auth/register": { status: 400, body: { detail } } }),
+                healthy({ "POST /api/v1/auth/register": reply as Reply }),
             );
             const fault = setupFault(await setupUser(request, user));
-            expect(fault).toBe(`setup gave no token: register 400 code=${printed}`);
+            expect(fault).toBe(
+                `setup gave no token: register ${String(reply.status)} body=${kind}`,
+            );
+            for (const secret of [EMAIL, TOKEN, PASSWORD, "SecretToken", "Abc123", "org-123"])
+                expect(fault).not.toContain(secret);
         });
     }
 
-    it("takes only a string superuser token: a numeric one is no token, and no lookup is sent", async () => {
-        const base = healthy();
-        const { request, calls } = fakeRequest((at, options) => {
-            const who = (options.data as { email?: string } | undefined)?.email;
-            return at === "POST /api/v1/auth/login" && who !== EMAIL
-                ? { status: 200, body: { access_token: 123 } }
-                : base(at, options);
-        });
+    it("takes only a string token, for the user and for the superuser", async () => {
+        for (const value of [false, 0]) {
+            const { request } = fakeRequest(
+                healthy({
+                    "POST /api/v1/auth/login#user": { status: 200, body: { access_token: value } },
+                }),
+            );
+            const setup = await setupUser(request, withOrg);
+            expect(setup.token).toBe("");
+            expect(setupFault(setup).endsWith("login 200 token=absent body=json")).toBe(true);
+        }
+        const { request, calls } = fakeRequest(
+            healthy({ "POST /api/v1/auth/login#su": { status: 200, body: { access_token: 123 } } }),
+        );
         const setup = await setupUser(request, user);
         expect(setup.steps).toContain("superuser-login 200 token=absent");
-        expect(calls).not.toContain("GET /api/v1/admin/users");
-        expect(setupFault(setup)).toMatch(/user-lookup skipped .* login 200 token=absent/u);
+        expect(calls()).not.toContain("GET /api/v1/admin/users");
     });
 
-    it("names a step whose request throws, by the error's name only", async () => {
-        for (const [method, step] of [
-            ["POST", "register"],
-            ["GET", "user-lookup"],
-            ["PATCH", "verify"],
-        ] as const) {
-            const base = healthy();
-            const { request } = fakeRequest(base);
-            const thrower = async () => {
-                const error = new Error(`connect ECONNREFUSED for ${EMAIL} with ${TOKEN}`);
-                error.name = "ConnectionRefused";
-                throw error;
-            };
-            const fault = setupFault(
-                await setupUser(
-                    {
-                        ...(request as object),
-                        [method.toLowerCase()]: thrower,
-                    } as never,
-                    user,
-                ),
-            );
-            expect(fault).toMatch(new RegExp(`${step} threw ConnectionRefused$`, "u"));
-            expect(fault).not.toContain(EMAIL);
-            expect(fault).not.toContain(TOKEN);
-        }
-    });
-
-    it("never prints a structured error: a validation error can carry the input", async () => {
-        const { request } = fakeRequest(
-            healthy({
-                "POST /api/v1/auth/register": {
-                    status: 422,
-                    body: { detail: [{ loc: ["body", "password"], input: PASSWORD }] },
-                },
-            }),
-        );
-        const fault = setupFault(await setupUser(request, user));
-        expect(fault).toBe("setup gave no token: register 422 code=[structured]");
-    });
-
-    it("takes only a string access_token: a false or numeric one is no token, and is named", async () => {
-        for (const value of [false, 0]) {
-            const base = healthy();
-            const { request } = fakeRequest((at, options) => {
-                const who = (options.data as { email?: string } | undefined)?.email;
-                return at === "POST /api/v1/auth/login" && who === EMAIL
-                    ? { status: 200, body: { access_token: value } }
-                    : base(at, options);
-            });
-            const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
-            expect(setup.token).toBe("");
-            expect(setupFault(setup)).toMatch(/login 200 token=absent/u);
-        }
-    });
-
-    it("stops after a login that gives no token: no onboard, no relogin", async () => {
-        const { request, calls } = fakeRequest(
-            healthy({ "PATCH /api/v1/admin/users/user-1": { status: 403, body: {} } }),
-        );
-        await setupUser(request, { ...user, orgName: "Creds Org" });
-        expect(calls.at(-1)).toBe("POST /api/v1/auth/login");
-        expect(calls).not.toContain("POST /api/v1/auth/onboard");
-    });
-
-    it("keeps the first token when the relogin gives none, and records the relogin", async () => {
+    it("keeps the first token when the relogin gives none, and records it", async () => {
         let logins = 0;
         const base = healthy();
-        const { request } = fakeRequest((at, options) => {
-            const who = (options.data as { email?: string } | undefined)?.email;
-            if (at === "POST /api/v1/auth/login" && who === EMAIL && ++logins === 2) {
+        const { request } = fakeRequest((call, options, url) => {
+            if (call === "POST /api/v1/auth/login" && isUser(options) && ++logins === 2) {
                 return { status: 200, body: {} };
             }
-            return base(at, options);
+            return base(call, options, url);
         });
-        const setup = await setupUser(request, { ...user, orgName: "Creds Org" });
+        const setup = await setupUser(request, withOrg);
         expect(setup.token).toBe(TOKEN);
-        expect(setup.steps.at(-1)).toMatch(/^relogin 200 token=absent/u);
+        expect(setup.steps.at(-1)).toBe("relogin 200 token=absent body=json");
+    });
+
+    it("goes on after a refused onboard, as before: register can have made the org already", async () => {
+        const { request, calls } = fakeRequest(
+            healthy({ "POST /api/v1/auth/onboard": { status: 400, body: { detail: "x" } } }),
+        );
+        const setup = await setupUser(request, withOrg);
+        expect(setup.token).toBe(TOKEN2);
+        expect(setup.steps).toContain("onboard 400 body=error");
+        expect(calls().at(-1)).toBe("POST /api/v1/auth/login");
+    });
+
+    it("names a step whose request throws, by a fixed error name, never its message", async () => {
+        for (const [method, step, name, recorded] of [
+            ["post", "register", "TimeoutError", "TimeoutError"],
+            ["get", "user-lookup", "SecretToken", "Error"],
+            ["patch", "verify", "TypeError", "TypeError"],
+        ] as const) {
+            const { request } = fakeRequest(healthy());
+            const thrower = async () => {
+                const error = new Error(`connect ECONNREFUSED for ${EMAIL} with ${TOKEN}`);
+                error.name = name;
+                throw error;
+            };
+            const setup = await setupUser(
+                { ...(request as object), [method]: thrower } as never,
+                user,
+            );
+            const fault = setupFault(setup);
+            expect(fault.endsWith(`${step} threw ${recorded}`)).toBe(true);
+            for (const secret of [EMAIL, TOKEN, "SecretToken", "ECONNREFUSED"])
+                expect(fault).not.toContain(secret);
+        }
     });
 });
