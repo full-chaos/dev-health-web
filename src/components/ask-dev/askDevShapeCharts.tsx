@@ -208,11 +208,18 @@ function AskDevSankey({
  * not finite, or fewer than 2 subcategories above 0.
  */
 function sunburstData(shape: RenderShape): SunburstNode | null {
-    // A malformed shape is refused here, never thrown on: ask-dev then shows its table.
+    // A malformed shape is refused here, never thrown on: ask-dev then shows its table. Every
+    // series and every point must be an object, and every series must hold a points array.
+    const isObject = (value: unknown): value is object =>
+        typeof value === "object" && value !== null;
     const series: readonly unknown[] = Array.isArray(shape.series) ? shape.series : [];
-    if (!series.every((entry) => Array.isArray((entry as { points?: unknown }).points))) {
-        return null;
-    }
+    const readable = series.every((entry) => {
+        const points: unknown = isObject(entry)
+            ? (entry as { points?: unknown }).points
+            : undefined;
+        return Array.isArray(points) && points.every(isObject);
+    });
+    if (!readable) return null;
     const [inner, ...rings] = series as RenderShape["series"];
     if (inner?.key !== SUNBURST_THEME_SERIES_KEY || rings.length === 0) return null;
     const ringByWord = new Map(rings.map((ring) => [ring.label, ring] as const));

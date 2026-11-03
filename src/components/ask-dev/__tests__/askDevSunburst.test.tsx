@@ -232,6 +232,15 @@ describe("the adapter never throws on a malformed sunburst (codex r1 on #1797)",
             "a ring with no points",
             changed((shape) => void delete (shape.series[1] as { points?: unknown }).points),
         ],
+        ["a null ring", changed((shape) => void ((shape.series as unknown[])[1] = null))],
+        [
+            "a null point",
+            changed((shape) => void ((shape.series[1]!.points as unknown[])[0] = null)),
+        ],
+        [
+            "a null inner point",
+            changed((shape) => void ((shape.series[0]!.points as unknown[])[0] = null)),
+        ],
     ])("%s", (_, shape) => {
         expect(() => askDevShapeChart(shape)).not.toThrow();
         expect(askDevShapeChart(shape)).toBeNull();
