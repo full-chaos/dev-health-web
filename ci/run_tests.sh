@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -421,6 +421,12 @@ run_e2e_onboarding() {
   run_isolated_e2e_suite onboarding test:e2e:onboarding
 }
 
+# CHAOS-12841/12871: the Ask Dev rich-view baselines. Only inside the mirrored Playwright image
+# (tests.yml `visual`): the image carries its own Chromium, so nothing is installed here.
+run_e2e_visual() {
+  run_pnpm_script test:e2e:visual
+}
+
 run_e2e_context_fabric() {
   run_isolated_e2e_suite context-fabric test:e2e:context-fabric
 }
@@ -465,6 +471,9 @@ case "${tier}" in
     ;;
   e2e-customer-push)
     run_e2e_customer_push
+    ;;
+  e2e-visual)
+    run_e2e_visual
     ;;
   e2e-navigation)
     run_e2e_navigation
