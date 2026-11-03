@@ -77,14 +77,34 @@ function formatErrorDetail(raw: unknown): string | undefined {
 // aborts (the server may have applied it), it is only logged when slow.
 const isRead = (options: RequestInit): boolean => (options.method ?? "GET").toUpperCase() === "GET";
 
-export async function request<T>(
+export function request<T>(
     path: string,
     options: RequestInit = {},
     accessToken?: string,
     orgId?: string,
 ): Promise<T> {
+    return requestUnder<T>("/api/v1/admin", path, options, accessToken, orgId);
+}
+
+/** The same request for the self-service routes under /api/v1 (e.g. /orgs/me): same errors, same deadline rules. */
+export function selfRequest<T>(
+    path: string,
+    options: RequestInit = {},
+    accessToken?: string,
+    orgId?: string,
+): Promise<T> {
+    return requestUnder<T>("/api/v1", path, options, accessToken, orgId);
+}
+
+async function requestUnder<T>(
+    prefix: string,
+    path: string,
+    options: RequestInit,
+    accessToken?: string,
+    orgId?: string,
+): Promise<T> {
     const baseUrl = getBackendUrl();
-    const url = `${baseUrl}/api/v1/admin${path}`;
+    const url = `${baseUrl}${prefix}${path}`;
 
     const headers: HeadersInit = {
         "Content-Type": "application/json",

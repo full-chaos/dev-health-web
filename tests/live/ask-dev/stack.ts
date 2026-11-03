@@ -8,7 +8,11 @@ import { type ScopedResult, terminalResultOf } from "./answer-scope";
  * CHAOS-11933: what the Ask Dev live suite needs from the deployed stack.
  *
  * A measurement that did not happen must FAIL (plan §4, Phase 1): with no ACR, no stream or no data
- * this suite goes red. It has no `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report.
+ * this suite goes red. It has no plain `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report:
+ * a skip fails the run unless the case's own title contains `[behind a flag]` and every skip reason
+ * starts with `NOT RUN` (a view behind a flag that is off, CHAOS-11946), and an expected failure fails
+ * it unless its own title contains `[KNOWN GAP` and every `test.fail` reason starts with `KNOWN GAP`.
+ * Neither is ever counted as a pass.
  *
  * - `ASK_DEV_LIVE_WEB`: web's origin, default `http://localhost:3000`.
  * - `ASK_DEV_LIVE_ACR`: ACR's issuer origin, default `https://acr.localhost:8443`.
