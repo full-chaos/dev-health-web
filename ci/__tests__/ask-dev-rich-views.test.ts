@@ -446,7 +446,18 @@ describe("headingMismatches (Codex r1 P3 on #1803)", () => {
 });
 
 describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own cause)", () => {
-    type Claim = Parameters<typeof landscapeGap>[0][number];
+    type Answer = Parameters<typeof landscapeGap>[0];
+    type Claim = NonNullable<Answer["claimed_facts"]>[number];
+    const team = (id: string) => ({ kind: "team", canonical_id: `team:${id}` });
+    // The frame acr reads before any day: a quadrant in the plan, a landscape requirement, and
+    // two to 64 committed teams.
+    const answer = (claims: Claim[], frame: Partial<Answer> = {}): Answer => ({
+        answer_plan: { render_kinds: ["comparison_table", "quadrant"] },
+        interpretation: { fact_requirements: [{ kind: "landscape" }] },
+        subject_resolution: { committed: [team("a"), team("b")] },
+        claimed_facts: claims,
+        ...frame,
+    });
     const side = (
         team: string,
         day: string,
@@ -495,7 +506,9 @@ describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own caus
     };
 
     it("holds when two placed teams speak for different days", () => {
-        expect(landscapeGap([...side("a", "2026-10-30"), ...side("b", "2026-11-01")])).toEqual({
+        expect(
+            landscapeGap(answer([...side("a", "2026-10-30"), ...side("b", "2026-11-01")])),
+        ).toEqual({
             placed: [
                 { subject: "team:a", day: "2026-10-30" },
                 { subject: "team:b", day: "2026-11-01" },
@@ -505,48 +518,73 @@ describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own caus
     });
 
     it("does not hold when the placed teams share one day: a missing quadrant is then a real failure", () => {
-        expect(landscapeGap([...side("a", "2026-11-01"), ...side("b", "2026-11-01")]).differ).toBe(
-            false,
-        );
+        expect(
+            landscapeGap(answer([...side("a", "2026-11-01"), ...side("b", "2026-11-01")])).differ,
+        ).toBe(false);
     });
 
     it("does not hold when a side is refused by another rule, even with different days", () => {
         // The person floor: one identity gives no point, so acr skips for fewer than two points.
         expect(
-            landscapeGap([
-                ...side("a", "2026-10-30", { identities: 1 }),
-                ...side("b", "2026-11-01"),
-            ]),
+            landscapeGap(
+                answer([...side("a", "2026-10-30", { identities: 1 }), ...side("b", "2026-11-01")]),
+            ),
         ).toEqual({
             placed: [{ subject: "team:b", day: "2026-11-01" }],
             differ: false,
         });
         // A measure claimed twice.
         expect(
-            landscapeGap([
-                ...side("a", "2026-10-30"),
-                side("a", "2026-10-30")[0]!,
-                ...side("b", "2026-11-01"),
-            ]).differ,
+            landscapeGap(
+                answer([
+                    ...side("a", "2026-10-30"),
+                    side("a", "2026-10-30")[0]!,
+                    ...side("b", "2026-11-01"),
+                ]),
+            ).differ,
         ).toBe(false);
         // The two measures from two facts.
         const split = side("a", "2026-10-30");
         split[1] = { ...split[1]!, fact_id: "fact_other" };
-        expect(landscapeGap([...split, ...side("b", "2026-11-01")]).differ).toBe(false);
+        expect(landscapeGap(answer([...split, ...side("b", "2026-11-01")])).differ).toBe(false);
         // A claim that does not state its row's own cell.
         expect(
-            landscapeGap([...side("a", "2026-10-30", { churn: 121 }), ...side("b", "2026-11-01")])
-                .differ,
+            landscapeGap(
+                answer([...side("a", "2026-10-30", { churn: 121 }), ...side("b", "2026-11-01")]),
+            ).differ,
         ).toBe(false);
     });
 
-    it("does not hold when a side is not a team: acr charts teams only", () => {
-        const repository = side("a", "2026-10-30").map((claim) => ({
-            ...claim,
-            subject: { kind: "repository", canonical_id: "team:a" },
-        }));
-        expect(landscapeGap([...repository, ...side("b", "2026-11-01")])).toEqual({
+    it("does not hold when acr refuses the quadrant before it reads a day", () => {
+        const claims = [...side("a", "2026-10-30"), ...side("b", "2026-11-01")];
+        const refused = (frame: Partial<Answer>) => landscapeGap(answer(claims, frame));
+        expect(refused({ answer_plan: { render_kinds: ["comparison_table"] } })).toEqual({
             placed: [],
+            differ: false,
+        });
+        expect(refused({ answer_plan: undefined }).differ).toBe(false);
+        expect(refused({ interpretation: { fact_requirements: [{ kind: "flow" }] } }).differ).toBe(
+            false,
+        );
+        expect(refused({ subject_resolution: { committed: [team("a")] } })).toEqual({
+            placed: [],
+            differ: false,
+        });
+        const many = Array.from({ length: 65 }, (_, index) =>
+            team(index === 0 ? "a" : index === 1 ? "b" : `t${String(index)}`),
+        );
+        expect(refused({ subject_resolution: { committed: many } }).differ).toBe(false);
+        // acr charts teams only: a committed side of another kind refuses the quadrant whole.
+        expect(
+            refused({
+                subject_resolution: {
+                    committed: [{ kind: "repository", canonical_id: "team:a" }, team("b")],
+                },
+            }).differ,
+        ).toBe(false);
+        // A team that holds claims but is not committed is no side.
+        expect(refused({ subject_resolution: { committed: [team("a"), team("c")] } })).toEqual({
+            placed: [{ subject: "team:a", day: "2026-10-30" }],
             differ: false,
         });
     });
@@ -556,21 +594,21 @@ describe("landscapeGap (CHAOS-12676: the quadrant gap holds only on its own caus
             ...claim,
             derived_from: [{ claim_id: "x" }],
         }));
-        expect(landscapeGap([...derived, ...side("b", "2026-11-01")]).differ).toBe(false);
+        expect(landscapeGap(answer([...derived, ...side("b", "2026-11-01")])).differ).toBe(false);
         const twoRows = side("a", "2026-10-30").map((claim) => ({
             ...claim,
             rows: [...claim.rows!, ...claim.rows!],
         }));
-        expect(landscapeGap([...twoRows, ...side("b", "2026-11-01")]).differ).toBe(false);
+        expect(landscapeGap(answer([...twoRows, ...side("b", "2026-11-01")])).differ).toBe(false);
         const otherKey = side("a", "2026-10-30").map((claim) => ({
             ...claim,
             table: { ...claim.table!, key: ["day"] },
         }));
-        expect(landscapeGap([...otherKey, ...side("b", "2026-11-01")]).differ).toBe(false);
+        expect(landscapeGap(answer([...otherKey, ...side("b", "2026-11-01")])).differ).toBe(false);
         const numberDay = side("a", "2026-10-30").map((claim) => ({
             ...claim,
             rows: [{ fields: { ...claim.rows![0]!.fields, as_of_day: { integer: 20261030 } } }],
         }));
-        expect(landscapeGap([...numberDay, ...side("b", "2026-11-01")]).differ).toBe(false);
+        expect(landscapeGap(answer([...numberDay, ...side("b", "2026-11-01")])).differ).toBe(false);
     });
 });

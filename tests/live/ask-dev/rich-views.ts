@@ -325,6 +325,14 @@ type ScalarCell = {
     null?: boolean;
 };
 
+type LandscapeAnswer = {
+    answer_plan?: { render_kinds?: readonly string[] } | undefined;
+    interpretation?: { fact_requirements?: ReadonlyArray<{ kind?: string }> } | undefined;
+    subject_resolution?:
+        { committed?: ReadonlyArray<{ kind?: string; canonical_id?: string }> } | undefined;
+    claimed_facts?: readonly LandscapeClaim[] | undefined;
+};
+
 type LandscapeClaim = {
     kind?: string;
     subject?: { kind?: string; canonical_id?: string };
@@ -346,6 +354,8 @@ const LANDSCAPE_Y = "delivery_units_30d";
 const LANDSCAPE_DAY = "as_of_day";
 const LANDSCAPE_IDENTITIES = "identity_count";
 const LANDSCAPE_MIN_IDENTITIES = 2;
+/** acr `ContextFabricRenderPointsMaxCount` (= `ContextFabricClaimedFactMaxRows`, 64). */
+const LANDSCAPE_MAX_SIDES = 64;
 
 /**
  * CHAOS-12676: whether the served answer itself shows the quadrant gap's cause. acr refuses a
@@ -354,24 +364,28 @@ const LANDSCAPE_MIN_IDENTITIES = 2;
  * team's point is placed by acr's own rules (`landscapeSideOf`, `landscapeRowOf`: one x and one y
  * claim, not derived, from one fact and one `area_breakdown` row keyed by `as_of_day`, at least
  * two identities, each claim stating its row's own cell), and the gap holds only when two or more
- * placed teams carry different days. Codex r1 and r2 on #1803 found the same class: a KNOWN GAP
+ * placed teams carry different days. acr's earlier refusals (no quadrant in the plan, no landscape
+ * requirement, fewer than two or more than 64 committed sides, a side that is not a team) are read
+ * from the answer first and never count as the gap. Codex r1 and r2 on #1803 found the same class: a KNOWN GAP
  * that absorbs another failure. A missing quadrant without this cause is a real failure.
  */
-export function landscapeGap(claims: readonly LandscapeClaim[]): {
+export function landscapeGap(answer: LandscapeAnswer): {
     placed: Array<{ subject: string; day: string }>;
     differ: boolean;
 } {
-    const landscape = claims.filter((claim) => claim.kind === "landscape");
-    const subjects = [
-        ...new Set(
-            landscape.map((claim) => claim.subject?.canonical_id ?? "").filter((id) => id !== ""),
-        ),
-    ];
-    // acr charts teams only: any other side refuses the quadrant before a day is read.
-    if (landscape.some((claim) => claim.subject?.kind !== "team"))
-        return { placed: [], differ: false };
+    const none = { placed: [], differ: false };
+    // acr's checks before any day, in its order (`landscapePositionShape`): a quadrant in the plan,
+    // a landscape requirement, two to 64 committed sides, every side a team.
+    if (answer.answer_plan?.render_kinds?.includes("quadrant") !== true) return none;
+    if (answer.interpretation?.fact_requirements?.some((r) => r.kind === "landscape") !== true) {
+        return none;
+    }
+    const sides = answer.subject_resolution?.committed ?? [];
+    if (sides.length < 2 || sides.length > LANDSCAPE_MAX_SIDES) return none;
+    if (sides.some((side) => side.kind !== "team")) return none;
+    const landscape = (answer.claimed_facts ?? []).filter((claim) => claim.kind === "landscape");
     const placed: Array<{ subject: string; day: string }> = [];
-    for (const subject of subjects) {
+    for (const subject of sides.map((side) => side.canonical_id ?? "")) {
         const own = landscape.filter(
             (claim) =>
                 claim.subject?.canonical_id === subject && (claim.derived_from?.length ?? 0) === 0,

@@ -465,9 +465,7 @@ for (const replicate of REPLICATES) {
             // The gap is expected only on its own cause, read from the served claims (Codex r1 and
             // r2 found the same class: a KNOWN GAP must never absorb another failure). Without it, a
             // missing quadrant is an ordinary failure.
-            const gap = landscapeGap(
-                (result.claimed_facts as Parameters<typeof landscapeGap>[0] | undefined) ?? [],
-            );
+            const gap = landscapeGap(result as Parameters<typeof landscapeGap>[0]);
             const days = gap.placed.map((side) => `${side.subject}=${side.day}`).join(", ");
             expect(
                 gap.differ,
