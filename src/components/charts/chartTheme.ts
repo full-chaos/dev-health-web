@@ -64,7 +64,7 @@ export const investmentThemeColor = (
 ): string => {
     switch (themeKey) {
         case "feature_delivery":
-            return tokens.themeRisk;
+            return tokens.themeFeature;
         case "quality":
             return tokens.themeQuality;
         case "risk":
