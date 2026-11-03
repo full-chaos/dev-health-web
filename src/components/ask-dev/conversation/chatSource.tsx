@@ -245,6 +245,9 @@ function outcomeOf(turn: StoreTurn, place?: BatchPlace): AssistantOutcome {
             );
         case "answered":
             return { kind: "answered", result: seamResult(outcome.result) };
+        case "bounded":
+            // CHAOS-12643: ACR's bounded answer, drawn by the render as itself.
+            return { kind: "bounded", projection: outcome.projection };
         case "refused":
             return { kind: "failed", failure: refusalFailure(outcome.refusal) };
         case "failed":
@@ -608,7 +611,8 @@ export function createChatSource({
             const turn = from.turns.find((candidate) => candidate.id === waiter.turnId);
             if (turn !== undefined && IN_FLIGHT.has(turn.outcome.kind)) continue;
             waiters.delete(waiter);
-            waiter.settle(turn?.outcome.kind === "answered");
+            // CHAOS-12643: a bounded answer is an answer too: the composer clears for it.
+            waiter.settle(turn?.outcome.kind === "answered" || turn?.outcome.kind === "bounded");
         }
     }
 
