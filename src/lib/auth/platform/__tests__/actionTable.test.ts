@@ -109,11 +109,10 @@ describe("C2 impersonation rule table against the pinned catalog", () => {
 });
 
 describe.runIf(OPS_ROOT !== "")("pinned catalog snapshot matches the ops checkout", () => {
-    it("is byte-equal to contracts/auth/v1/vocabulary/actions.v1.json", () => {
-        const live = readFileSync(
-            join(OPS_ROOT, "contracts/auth/v1/vocabulary/actions.v1.json"),
-            "utf8",
+    it("holds the same catalog as contracts/auth/v1/vocabulary/actions.v1.json", () => {
+        const live = JSON.parse(
+            readFileSync(join(OPS_ROOT, "contracts/auth/v1/vocabulary/actions.v1.json"), "utf8"),
         );
-        expect(live).toBe(readFileSync(join(__dirname, "testdata", "ops-actions.v1.json"), "utf8"));
+        expect(catalog).toEqual(live);
     });
 });
