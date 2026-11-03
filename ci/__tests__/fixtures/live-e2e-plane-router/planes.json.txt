@@ -192,7 +192,7 @@
     {"path": "/api/v1/product-telemetry/events$", "path_type": "ImplementationSpecific", "plane": "go-api"},
     {"path": "/api/v1/telemetry/opt-in$", "path_type": "ImplementationSpecific", "plane": "go-api"},
     {"path": "/api/v1/telemetry/opt-out$", "path_type": "ImplementationSpecific", "plane": "go-api"},
-    {"path": "/api/v1/telemetry/report$", "path_type": "ImplementationSpecific", "plane": "go-api"},
+    {"path": "/api/v1/telemetry/report$", "path_type": "ImplementationSpecific", "plane": "go-api"}
   ],
   "public_host_rules": [
     {"path": "/metrics", "path_type": "Exact", "plane": "go-api"},
