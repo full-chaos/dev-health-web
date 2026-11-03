@@ -17,6 +17,7 @@ import {
     INVESTIGATIONS_PATH,
     ORACLE,
     authorize,
+    expectAnswersSynthesized,
     investigations,
     secretsOf,
     signIn,
@@ -159,6 +160,7 @@ async function axeViolations(page: Page, selector: string): Promise<string[]> {
 test("P2-1: Expand mid-stream and after the answer, and back: one run, one POST", async ({
     page,
 }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panelOn(page, "/dashboard");
     await ask(surface, questionFor("expand", NONCE));
     await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
@@ -180,11 +182,13 @@ test("P2-1: Expand mid-stream and after the answer, and back: one run, one POST"
     expect(new URL(page.url()).searchParams.get("thread"), "the thread changed").toBe(thread);
     await expect(full.getByRole("article", { name: "Answer" })).toHaveCount(1);
     expect(investigations(calls).length, "a move sent the question again").toBe(1);
+    await expectAnswersSynthesized(results, "P2-1");
 });
 
 test("P2-2: a page's chip goes as a hint, and navigation changes only the proposal", async ({
     page,
 }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panelOn(page, ONE_REPOSITORY);
     await expect(chips(surface)).toHaveText([`Repository:${REPOSITORY}`]);
     expect(investigations(calls).length, "opening the panel sent a question").toBe(0);
@@ -211,9 +215,11 @@ test("P2-2: a page's chip goes as a hint, and navigation changes only the propos
     await expect(chips(surface)).toHaveCount(0);
     await expect(answer).toHaveCount(1);
     expect(investigations(calls).length, "navigating sent a question").toBe(1);
+    await expectAnswersSynthesized(results, "P2-2 hint");
 });
 
 test("P2-2: removing the chip changes the request", async ({ page }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panelOn(page, ONE_REPOSITORY);
     await surface.getByRole("button", { name: `Remove Repository ${REPOSITORY}` }).click();
     await expect(chips(surface)).toHaveCount(0);
@@ -224,11 +230,13 @@ test("P2-2: removing the chip changes the request", async ({ page }) => {
     await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
     expect(investigations(calls).length).toBe(1);
     expect(scopeOf(investigations(calls)[0]!)).toBeUndefined();
+    await expectAnswersSynthesized(results, "P2-2 chip removed");
 });
 
 test("P2-3: a tampered id gives a clarification or not-found, never the organization", async ({
     page,
 }) => {
+    const results = await watchResults(page);
     const { calls, surface } = await panelOn(page, ONE_REPOSITORY);
     await expect(chips(surface)).toHaveText([`Repository:${REPOSITORY}`]);
     // Another organization's id, with a name this one does not hold. With the page's own name left
@@ -252,6 +260,7 @@ test("P2-3: a tampered id gives a clarification or not-found, never the organiza
     await expect(answer).toHaveCount(1, { timeout: 90_000 });
     await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
     expect(investigations(calls).length).toBe(1);
+    await expectAnswersSynthesized(results, "P2-3");
 });
 
 // CHAOS-3598: the question chris saw answered as a readiness check at organization scope.
@@ -311,6 +320,7 @@ for (const [name, surface, replicate] of [
             // (c) A clarification or not-found, never an answer at organization scope.
             await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
         }
+        await expectAnswersSynthesized(results, `P2-4 ${where} ${String(replicate)}`);
     });
 }
 

@@ -385,4 +385,69 @@ describe("the live suite's result record (CHAOS-12637)", () => {
             warn.mockRestore();
         }
     });
+
+    // CHAOS-12844: a case whose stream is dropped draws its answer from a recovery read, so the
+    // record keeps those results too: the run lease's attach (a stream) and a replay by id (JSON).
+    const RESULT_ID = `result_${"a".repeat(32)}`;
+    const replayed = () => JSON.stringify(terminalResultOf(capture));
+
+    it("keeps the result of a run's events attach and of a replay by id", async () => {
+        for (const [url, body] of [
+            [`${STREAM_URL}/submissions/sub_1/events`, capture],
+            [`${STREAM_URL}/${RESULT_ID}`, replayed()],
+        ] as const) {
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                const response = await scope.fetch(url);
+                // The app's own read is untouched.
+                expect(await response.text()).toBe(body);
+                await vi.waitFor(() => expect(results).toHaveLength(1));
+                expect(results[0]?.status).toBe("complete");
+            } finally {
+                restore();
+            }
+        }
+    });
+
+    it("tees no other read: the submission status, a thread, feedback, another id shape, method or origin", async () => {
+        const { results, restore, scope } = await recorded(() => streamed(replayed()));
+        try {
+            for (const [url, method] of [
+                // The status record names a result_id and a state; it is not a result.
+                [`${STREAM_URL}/submissions/sub_1`, "GET"],
+                [`${ACR}/api/v1/context-fabric/threads/thr_1`, "GET"],
+                [`${STREAM_URL}/feedback/${RESULT_ID}`, "GET"],
+                [`${STREAM_URL}/result_abc`, "GET"],
+                [`${STREAM_URL}/${RESULT_ID}`, "POST"],
+                [`${STREAM_URL}/submissions/sub_1/events`, "POST"],
+                [`https://other.example/api/v1/context-fabric/investigations/${RESULT_ID}`, "GET"],
+            ] as const) {
+                const response = await scope.fetch(url, { method });
+                await response.text();
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            expect(results).toEqual([]);
+        } finally {
+            restore();
+        }
+    });
+
+    it("says so, and adds nothing, when a replay's body is not a result", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+        const { results, restore, scope } = await recorded(() =>
+            streamed('{"error":{"code":"not_found"}}'),
+        );
+        try {
+            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
+            await vi.waitFor(() =>
+                expect(warn).toHaveBeenCalledWith(
+                    "watchResults: a result read gave no result: its body is not a result",
+                ),
+            );
+            expect(results).toEqual([]);
+        } finally {
+            restore();
+            warn.mockRestore();
+        }
+    });
 });
