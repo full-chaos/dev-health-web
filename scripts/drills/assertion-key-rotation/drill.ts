@@ -112,6 +112,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-    process.stderr.write(`drill failed: ${error instanceof Error ? error.name : "error"}\n`);
+    const cause =
+        error instanceof Error ? (error.cause as { code?: string } | undefined)?.code : undefined;
+    process.stderr.write(
+        `drill failed: ${error instanceof Error ? error.name : "error"} cause=${cause ?? "-"}\n`,
+    );
     process.exit(1);
 });

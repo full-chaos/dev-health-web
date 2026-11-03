@@ -121,7 +121,11 @@ cells() {
     k port-forward pod/stack "$LOCAL_PORT:8080" >"$DRILL_DIR/port-forward.log" 2>&1 &
     local pf=$!
     trap 'kill "$pf" 2>/dev/null || true' RETURN
-    sleep 3
+    local i
+    for i in $(seq 1 30); do
+        curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$LOCAL_PORT/" && break
+        sleep 2
+    done
     echo "== C0 old key only"
     write_jwks "kid-old=$keys/kid-old.x"
     expect accepted kid-old
