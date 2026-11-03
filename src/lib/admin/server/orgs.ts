@@ -148,7 +148,7 @@ export async function startImpersonation(targetUserId: string): Promise<
 
 export async function stopImpersonation(): Promise<ActionResult<{ status: string }>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ allowImpersonating: true });
         return adminApi.impersonation.stop(token);
     }, "changes-impersonation");
 }
@@ -163,7 +163,7 @@ export async function getImpersonationStatus(): Promise<
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ allowImpersonating: true });
         return adminApi.impersonation.status(token);
     });
 }

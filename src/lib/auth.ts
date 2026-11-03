@@ -756,7 +756,7 @@ export async function requireRole(
 
 export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
-    if (session.user.is_superuser !== true) {
+    if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }
     return session;
