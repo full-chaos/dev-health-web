@@ -25,6 +25,7 @@ import {
     investigations,
     panel,
     secretsOf,
+    ownSession,
     signIn,
     watchAcr,
     watchResults,
@@ -238,6 +239,7 @@ async function signOutCase(
     ends: { readonly state: "abandoned" | "done"; readonly why: string },
 ) {
     test.setTimeout(240_000);
+    await ownSession(page);
     const { calls, surface } = await panel(page);
     const created = page.waitForResponse(
         (response) =>
