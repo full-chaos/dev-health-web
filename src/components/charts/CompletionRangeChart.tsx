@@ -8,7 +8,7 @@ import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
-import { labelRows, labelWidth } from "./completionRangeLabelRows";
+import { dayAxisStep, labelRows, labelWidth } from "./completionRangeLabelRows";
 import { echarts } from "@/lib/echartsInit";
 import { escapeHtml } from "./escapeHtml";
 
@@ -52,6 +52,11 @@ const RIGHT_LABEL_FROM = 0.85;
 /** The room of the plot inside the chart, left and right. */
 const GRID_LEFT = 56;
 const GRID_RIGHT = 24;
+/**
+ * The chart width assumed until it is measured: a phone's. The day axis then starts with few labels,
+ * so they never print on each other before the first measure (CHAOS-12707).
+ */
+const UNMEASURED_WIDTH = 320;
 
 /**
  * The "Completion range" curve of a capacity forecast (CHAOS-8477): the chance that the work is
@@ -66,6 +71,11 @@ const GRID_RIGHT = 24;
  * prototype draws them; labels that would touch (two percentiles on one day, or on near days) go
  * to different rows. The rows come from the measured width of the chart. Until the width is
  * known each label has its own row, so the labels never print on top of each other.
+ *
+ * The day axis runs to the last served day, which can be the horizon bin (day 365) while the
+ * curve settles in weeks. Its dates are labelled every `dayAxisStep` days, chosen from the
+ * measured width, so they never print on each other at phone width (CHAOS-12707). Every point,
+ * the horizon bin included, stays on the chart. Until the width is known a phone's is assumed.
  */
 export function CompletionRangeChart({
     points,
@@ -125,6 +135,13 @@ export function CompletionRangeChart({
         ).join(",");
     }, [axisMax, markers, width]);
 
+    // The step between two day labels, from the measured width (CHAOS-12707): the axis runs to the
+    // horizon bin, and at phone width ECharts' own ticks print the dates on each other.
+    const dayStep = useMemo(
+        () => dayAxisStep(axisMax, (width ?? UNMEASURED_WIDTH) - GRID_LEFT - GRID_RIGHT, dayLabel),
+        [axisMax, dayLabel, width],
+    );
+
     const option = useMemo((): EChartsOption => {
         const byDay = new Map(points.map((point) => [point.day, point]));
         const rows = rowsKey === "" ? [] : rowsKey.split(",").map(Number);
@@ -161,7 +178,9 @@ export function CompletionRangeChart({
                 // Day 0 is the day the forecast was computed.
                 min: 0,
                 max: axisMax,
-                minInterval: 1,
+                // A label every `dayStep` days (CHAOS-12707). ECharts drops the axis-end label
+                // when it would touch the last step's label.
+                interval: dayStep,
                 axisLine: { lineStyle: { color: chartTheme.grid } },
                 axisLabel: {
                     color: chartTheme.muted,
@@ -277,6 +296,7 @@ export function CompletionRangeChart({
         chanceAxisName,
         chartTheme,
         dayLabel,
+        dayStep,
         interpolation,
         markers,
         planningRange,

@@ -667,12 +667,23 @@ describe("CompletionRange — marker label rows", () => {
         expect(option().grid.top).toBe(24 + 3 * ROW);
     });
 
-    it("does not draw the chart again when a new width changes no row", () => {
+    it("does not draw the chart again when a new width changes no row and no day step", () => {
+        render(<CompletionRange forecast={spread()} />);
+        // Both widths label the day axis every 5 days (CHAOS-12707).
+        measure(1020);
+        const drawn = chartSpy.mock.calls.at(-1)?.[0] as { option: Option };
+        measure(1030);
+        expect((chartSpy.mock.calls.at(-1)?.[0] as { option: Option }).option).toBe(drawn.option);
+    });
+
+    it("draws the chart again when a new width changes the day step (CHAOS-12707)", () => {
         render(<CompletionRange forecast={spread()} />);
         measure(1000);
         const drawn = chartSpy.mock.calls.at(-1)?.[0] as { option: Option };
         measure(1010);
-        expect((chartSpy.mock.calls.at(-1)?.[0] as { option: Option }).option).toBe(drawn.option);
+        const redrawn = (chartSpy.mock.calls.at(-1)?.[0] as { option: Option }).option;
+        expect(redrawn).not.toBe(drawn.option);
+        expect(rows()).toEqual([0, 0, 0]);
     });
 
     it("does not take a width of zero as a measurement: the last measured width stays", () => {
