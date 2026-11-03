@@ -46,6 +46,34 @@ const question = (name: QuestionCase): string => questionFor(name, NONCE);
 
 const FEEDBACK_PATH = `${INVESTIGATIONS_PATH}/feedback/`;
 const TELEMETRY_PATH = "/api/v1/product-telemetry/events";
+const TELEMETRY_BINDING = "__askDevLiveTelemetry";
+
+/**
+ * Runs IN THE PAGE (`page.addInitScript`), before the app's scripts: wraps `navigator.sendBeacon`
+ * and `fetch` so that a send to the telemetry path also hands its body text to `binding`. The send
+ * itself goes on unchanged. A body that cannot be read as text is handed on as a marker, so the
+ * case fails on it rather than skip it.
+ */
+function teeTelemetry({ path, binding }: { path: string; binding: string }): void {
+    const hand = (data: unknown) => {
+        const send = (window as unknown as Record<string, (body: string) => void>)[binding]!;
+        if (typeof data === "string") send(data);
+        else if (data instanceof Blob) void data.text().then(send);
+        else send("[a telemetry body that is not text]");
+    };
+    const beacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = (url: string | URL, data?: BodyInit | null) => {
+        if (String(url).includes(path)) hand(data);
+        return beacon(url, data);
+    };
+    const original = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+            typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (url.includes(path)) hand(init?.body);
+        return original(input, init);
+    };
+}
 
 type Flag = "yes" | "no" | "unset";
 type Stored = { readonly correct: Flag; readonly useful: Flag };
@@ -377,7 +405,13 @@ test("AC-3 (INV-1): another principal of the organization can neither read nor s
     const owner = withBearer(calls);
 
     // The other principal, signed in and authorized in a context of its own.
-    const context = await browser.newContext({ baseURL: baseURL!, ignoreHTTPSErrors: true });
+    // An empty session on purpose: a context made in a test takes the test's `use` options, so it
+    // would hold the owner's storageState and land signed in as the owner (askdev-1, 2026-11-03).
+    const context = await browser.newContext({
+        baseURL: baseURL!,
+        ignoreHTTPSErrors: true,
+        storageState: { cookies: [], origins: [] },
+    });
     const api = await requestContext.newContext({ ignoreHTTPSErrors: true });
     try {
         const other = await context.newPage();
@@ -424,40 +458,49 @@ test("no free text in telemetry: feedback use sends no feedback event and no que
     page,
 }, testInfo) => {
     test.setTimeout(240_000);
-    // Every request the page sends, on any path and origin but ACR's (codex r1 P3): telemetry sent
-    // to another path is read too. `inUse` marks the ones sent during the feedback use.
-    const sent: { telemetry: boolean; window: boolean; body: string }[] = [];
+    // Every request the page sends, on any path and origin but ACR's (codex r1 P3): a request of
+    // the feedback use (`inUse`) on another path is read too.
+    const sent: { inUse: boolean; body: string }[] = [];
     let inUse = false;
     page.on("request", (request: Request) => {
-        const url = new URL(request.url());
-        if (url.origin === ACR) return;
-        sent.push({
-            telemetry: url.pathname === TELEMETRY_PATH,
-            window: inUse,
-            body: request.postData() ?? "",
-        });
+        if (new URL(request.url()).origin === ACR) return;
+        sent.push({ inUse, body: request.postData() ?? "" });
     });
+    // The telemetry bodies, read in the page: the sink sends a Blob by sendBeacon, and Playwright
+    // does not see a beacon's Blob body (askdev-1, 2026-11-03: every captured body was empty).
+    const telemetry: string[] = [];
+    await page.exposeBinding(TELEMETRY_BINDING, (_source, body: string) => {
+        telemetry.push(body);
+    });
+    await page.addInitScript(teeTelemetry, { path: TELEMETRY_PATH, binding: TELEMETRY_BINDING });
     const results = await watchResults(page);
     const { calls, surface } = await panel(page);
     await ask(surface, question("fbTelemetry"));
     await answered(surface, 1);
     await expectAnswersSynthesized(results, "fbTelemetry");
+    const mark = telemetry.length;
     inUse = true;
     const group = feedbackGroups(surface).first();
     await choose(page, calls, group, "correct", "yes");
     await choose(page, calls, group, "useful", "no");
     await choose(page, calls, group, "useful", "no");
-    // Leaving the page flushes the queue (pagehide), so every event of the feedback use is sent.
-    await page.goto("/dashboard", { waitUntil: "load" });
-    const telemetry = () => sent.filter((item) => item.window && item.telemetry);
+    // The page turns hidden: the provider flushes the queue, and the page is still there to tee it.
+    await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", {
+            configurable: true,
+            get: () => "hidden",
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+    });
     const eventsOf = (body: string): unknown[] => {
         const parsed = JSON.parse(body) as { events?: unknown };
         expect(Array.isArray(parsed.events), "a telemetry body is not the sink's JSON").toBe(true);
         return parsed.events as unknown[];
     };
+    const used = () => telemetry.slice(mark);
     // Discriminating: telemetry with events was really sent during the use, so the checks read it.
     await expect
-        .poll(() => telemetry().reduce((count, item) => count + eventsOf(item.body).length, 0), {
+        .poll(() => used().reduce((count, body) => count + eventsOf(body).length, 0), {
             message:
                 "no product telemetry event was sent during the feedback use: nothing measured",
             timeout: 30_000,
@@ -473,10 +516,10 @@ test("no free text in telemetry: feedback use sends no feedback event and no que
         answer.direct_judgment,
     ].filter((text): text is string => typeof text === "string" && text.length >= 6);
     expect(texts.length, "no question or answer text to look for").toBeGreaterThanOrEqual(2);
-    const events = telemetry().flatMap((item) => eventsOf(item.body));
+    const events = used().flatMap((body) => eventsOf(body));
     await testInfo.attach("telemetry", {
         body: JSON.stringify({
-            requests: telemetry().length,
+            requests: used().length,
             events: events.length,
             names: events.map((event) => (event as { name?: unknown }).name ?? null),
         }),
@@ -486,7 +529,7 @@ test("no free text in telemetry: feedback use sends no feedback event and no que
     expect(/feedback/iu.test(all), "a telemetry event names feedback").toBe(false);
     // Any request of the window, telemetry or not, on any path: no question or answer text.
     const bodies = sent
-        .filter((item) => item.window)
+        .filter((item) => item.inUse)
         .map((item) => item.body)
         .join("\n");
     for (const text of texts) {
