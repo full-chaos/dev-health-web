@@ -513,13 +513,17 @@ test("AC-12: a list or a read that ACR answered before a delete, and that arrive
             .poll(() => threadDeletes(calls, readThread).map((call) => call.status ?? null))
             .toEqual([204]);
         releaseRead();
-        // The opened thread is the selection: its delete resets it, and the store aborts its read
-        // (run 1). Either way the measurement happened, and the case records which.
+        // The late read must reach the page: a read the page cancelled proves nothing about what it
+        // does with a late one (Codex r1 P3 on #1823; lead's ruling). Run 7 delivered both.
         evidence.late_read_outcome = await within(
             read.outcome,
             30_000,
             "the held read was never handed over",
         );
+        expect(
+            evidence.late_read_outcome,
+            "the held read did not reach the page: nothing late arrived",
+        ).toBe("delivered");
         await page.waitForTimeout(3_000);
         evidence.late_read_brought_back = {
             row: await historyRow(full, readThread).count(),
