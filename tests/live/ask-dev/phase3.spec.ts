@@ -702,15 +702,94 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     await page.context().close();
 });
 
-test("sunburst [behind a flag]: the investment subcategories render from the served shape", () => {
+// The NOT RUN gate refuses a pass whose title still says "[behind a flag]", as for the sankey.
+test(`sunburst${SUNBURST ? "" : " [behind a flag]"}: the investment subcategories render from the served shape`, async ({
+    browser,
+    baseURL,
+}, testInfo) => {
     if (!SUNBURST) {
-        test.info().annotations.push({
+        // Listed as NOT RUN by ci/live-e2e-skip-gate.mjs, never as a pass or a plain skip.
+        testInfo.annotations.push({
             type: "NOT RUN",
             description:
-                "the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST); on with acr #2002 and web's ask-dev pin (#1797)",
+                "the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST); on with acr #2002 (CHAOS-12554)",
         });
     }
     test.skip(!SUNBURST, "NOT RUN: the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST)");
-    // Turned on with acr #2002 and web's ask-dev pin bump (#1797): the case is written then.
-    expect(SUNBURST, "NOT RUN: the sunburst case has no question yet").toBe(false);
+    // CHAOS-12554: one repository's investment by theme and subcategory, from the claimed
+    // subcategory_breakdown detail table. As for the sankey, the one answer is checked at desktop
+    // and phone width, in the panel and on /dev, with a screenshot of each, and each width waits for
+    // the chart to draw and settle again before it is checked.
+    const { page, answer, result } = await answerFor(browser, baseURL, "sunburst", 1, "reduce");
+    const [shape] = served(
+        result,
+        "investment_subcategory_share",
+        "the repository's subcategory_breakdown",
+    );
+    // The sunburst's inner ring is the theme split: when it is drawn, the treemap is not.
+    expect(
+        servedShapes(result)
+            .filter((candidate) => candidate.selected_by === "investment_theme_share")
+            .map((candidate) => candidate.title),
+        "a treemap served beside the sunburst",
+    ).toEqual([]);
+    const drawnIn = async (scope: Locator, view: string, where: string) => {
+        const figure = figureOf(scope, shape!);
+        await expect(
+            figure.locator("canvas").first(),
+            `the sunburst is drawn (${where}, ${view})`,
+        ).toBeVisible({
+            timeout: 30_000,
+        });
+        await expectDrawnAsServed(figure, shape!);
+        await figure.scrollIntoViewIfNeeded();
+        // Wait until the canvas fits its figure and two frames half a second apart are the same
+        // picture, as the sankey case does; a chart that never settles fails here.
+        const frame = () =>
+            figure.evaluate((node) => {
+                const canvas = node.querySelector("canvas");
+                if (!canvas) return "no canvas";
+                const fits = canvas.clientWidth <= Math.ceil(node.getBoundingClientRect().width);
+                return fits
+                    ? canvas.toDataURL()
+                    : `canvas ${canvas.clientWidth} px wider than figure`;
+            });
+        let last = await frame();
+        await expect
+            .poll(
+                async () => {
+                    const next = await frame();
+                    const settled = next === last && next.startsWith("data:");
+                    last = next;
+                    return settled;
+                },
+                {
+                    message: `the sunburst settles at the figure's width (${where}, ${view})`,
+                    intervals: [500],
+                    timeout: 15_000,
+                },
+            )
+            .toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`sunburst-${where}-${view}.png`) });
+    };
+    await drawnIn(answer, "desktop", "panel");
+    await expectLedger(answer, result);
+    await page.setViewportSize({ width: 390, height: 844 });
+    // At phone width the panel is a dialog; the side panel stays in the page, hidden, so the
+    // dialog is the one to read.
+    await drawnIn(
+        page
+            .getByRole("dialog")
+            .filter({ has: page.getByRole("heading", { name: "Ask Dev" }) })
+            .getByRole("article", { name: "Answer" }),
+        "phone",
+        "panel",
+    );
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await page.getByRole("button", { name: "Open full page" }).click();
+    await expect(page.getByTestId("ask-dev-page")).toBeVisible({ timeout: 30_000 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "desktop", "dev");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "phone", "dev");
+    await page.context().close();
 });

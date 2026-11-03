@@ -126,6 +126,9 @@ export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
  * - `sankey`: one team's effort across its repositories. The scope-anchor allocation route serves
  *   it from the team's own investment fact, and the claimed `repository_theme_breakdown` detail
  *   table draws the sankey (CHAOS-12582; NOT RUN while the stack's sankey flag is off).
+ * - `sunburst`: one repository's investment by theme and subcategory. The claimed
+ *   `subcategory_breakdown` detail table draws the sunburst, and the treemap is not drawn beside
+ *   it (CHAOS-12554; NOT RUN while the stack's sunburst flag is off).
  * - `window`: one team's open work over a stated date range. A non-current axis composes no
  *   effective window, so the answer must say its window was not reported (AC-7).
  */
@@ -139,6 +142,8 @@ const RICH_BASES = {
         "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
     cohort: "which teams are struggling and why over the last 30 days?",
     sankey: "how is the Fullchaos team's engineering effort split across its repositories over the last 30 days?",
+    sunburst:
+        "how is engineering effort in full-chaos/dev-health-acr split across themes and subcategories over the last 30 days?",
     window: "how was the Fullchaos team's open work between 2026-10-01 and 2026-10-15?",
 } as const;
 
