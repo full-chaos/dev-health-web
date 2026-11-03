@@ -140,6 +140,8 @@ export default defineConfig({
         "session-token-boundary.production.spec.ts",
         "admin-customer-push.spec.ts",
         "nav-reachability.spec.ts",
+        // CHAOS-12841: pixels hold only in the mirrored Playwright image (playwright.visual.config.ts).
+        "ask-dev-visual.spec.ts",
     ],
     outputDir: resultsDirectory,
     // Keep CI's test-mode fixture requests serial. Customer-push runs in its own
@@ -223,6 +225,7 @@ export default defineConfig({
                 /session-token-boundary\.production\.spec\.ts/,
                 /admin-customer-push\.spec\.ts/,
                 /nav-reachability\.spec\.ts/,
+                /ask-dev-visual\.spec\.ts/,
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
                 /acr-device-fresh-session\.spec\.ts/,
             ],

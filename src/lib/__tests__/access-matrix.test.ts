@@ -571,8 +571,8 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
      *   - Sets is_impersonating=true
      *   - DOES NOT change is_superuser (remains true)
      *
-     * This means requireRole passes due to is_superuser bypass, but
-     * tier gating uses the impersonated user's org entitlements.
+     * requireRole does not apply the is_superuser bypass while impersonating (the impersonated
+     * user's own role decides), and tier gating uses the impersonated user's org entitlements.
      */
 
     describe("superadmin impersonating community org member", () => {
@@ -595,12 +595,9 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             expect(result.user.org_id).toBe("community-org-1");
         });
 
-        it("passes requireRole for admin (is_superuser bypass)", async () => {
+        it("is refused by requireRole for admin (no is_superuser bypass while impersonating)", async () => {
             mockNextAuthAuth.mockResolvedValueOnce(impersonatedCommunityMember());
-            const result = await requireRole(["admin", "owner"]);
-            // Role is "member" but is_superuser bypass allows it
-            expect(result.user.role).toBe("member");
-            expect(result.user.is_superuser).toBe(true);
+            await expectRedirectTo(() => requireRole(["admin", "owner"]), "/dashboard");
         });
 
         it("tier gating blocks enterprise features for the impersonated org", () => {
@@ -668,26 +665,17 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             expect(result.user.org_id).toBe("");
         });
 
-        it("passes requireRole via superuser bypass", async () => {
+        it("is refused by requireRole (no superuser bypass while impersonating)", async () => {
             mockNextAuthAuth.mockResolvedValueOnce(impersonatedOrglessUser());
-            const result = await requireRole(["admin", "owner"]);
-            expect(result.user.org_id).toBe("");
-            expect(result.user.is_superuser).toBe(true);
+            await expectRedirectTo(() => requireRole(["admin", "owner"]), "/dashboard");
         });
 
-        it("admin layout redirects to /superadmin (orgless superuser check)", async () => {
+        it("admin layout redirects to /dashboard (no superuser bypass while impersonating)", async () => {
             mockNextAuthAuth.mockResolvedValueOnce(impersonatedOrglessUser());
-
-            async function simulateAdminLayout() {
-                const session = await requireRole(["admin", "owner"], "/org/admin");
-                if (session.user.is_superuser === true && !session.user.org_id) {
-                    const { redirect } = await import("next/navigation");
-                    redirect("/superadmin");
-                }
-                return session;
-            }
-
-            await expectRedirectTo(() => simulateAdminLayout(), "/superadmin");
+            await expectRedirectTo(
+                () => requireRole(["admin", "owner"], "/org/admin"),
+                "/dashboard",
+            );
         });
 
         it("falls back to community tier when org_id is empty", () => {

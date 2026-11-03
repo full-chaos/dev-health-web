@@ -2,12 +2,30 @@ import { inspect } from "node:util";
 
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@playwright/test", () => ({ expect: () => undefined }));
+// `expect.poll` reads once and does not wait: the waiting is Playwright's own; what is tested here is
+// what the case helpers check once the page has drawn its results (CHAOS-12844).
+vi.mock("@playwright/test", () => ({
+    expect: Object.assign(() => undefined, {
+        poll: (read: () => number, options?: { message?: string }) => ({
+            toBeGreaterThanOrEqual: async (least: number) => {
+                if (read() < least) throw new Error(options?.message);
+            },
+            toBeGreaterThan: async (least: number) => {
+                if (read() <= least) throw new Error(options?.message);
+            },
+        }),
+    }),
+}));
 
 import {
     ACR,
     CONNECT_WORDS,
+    expectAnswersFallback,
+    expectAnswersSynthesized,
+    expectFallback,
+    expectSynthesized,
     secretsOf,
+    synthesisFallbackDetails,
     watchAcr,
     watchAuthorization,
     watchPageLoad,
@@ -160,5 +178,117 @@ describe("what a page that never drew was waiting for (CHAOS-11940)", () => {
             failed: ["GET localhost:3000/_next/static/chunks/app.js"],
         });
         expect(text).not.toContain(BEARER);
+    });
+});
+
+/**
+ * CHAOS-11946 / CHAOS-12844: acr serves a facts-only fallback when synthesis fails, marked by a
+ * coverage detail from the synthesis step. A live case that expects an answer must reject that
+ * fallback; a case that expects the fallback by design must see the marker.
+ */
+describe("synthesis fallback marker", () => {
+    const served = (codes: string[]) => ({
+        coverage: {
+            details: codes.map((code) => ({
+                source: "context-fabric:synthesis",
+                code,
+                raw: `${code}:synthesis_rejected`,
+            })),
+        },
+    });
+
+    it("finds the fallback details, and nothing else", () => {
+        expect(synthesisFallbackDetails(served(["synthesis_model_failed"]))).toHaveLength(1);
+        expect(synthesisFallbackDetails(served(["synthesis_not_run"]))).toHaveLength(1);
+        expect(
+            synthesisFallbackDetails(served(["fact_score_withheld", "synthesis_input_bounded"])),
+        ).toEqual([]);
+        expect(synthesisFallbackDetails({})).toEqual([]);
+        expect(synthesisFallbackDetails(undefined)).toEqual([]);
+    });
+
+    // Codex P2 on #1804 (executed): an answer over the request's byte bound comes back as
+    // context_fabric_answer_projection.v1, which has no `coverage`; its details are top-level
+    // `coverage_details`, with the same shape and codes.
+    it("finds the fallback details on a projected answer too", () => {
+        const projected = {
+            coverage_details: [
+                {
+                    source: "context-fabric:synthesis",
+                    code: "synthesis_model_failed",
+                    raw: "synthesis_model_failed:synthesis_rejected",
+                },
+            ],
+        };
+        expect(synthesisFallbackDetails(projected)).toHaveLength(1);
+        expect(() => expectSynthesized(projected, "cohort1")).toThrow(
+            "cohort1: the answer is acr's fallback, not a synthesized answer (synthesis_model_failed:synthesis_rejected)",
+        );
+        expect(
+            synthesisFallbackDetails({ coverage_details: [{ code: "fact_score_withheld" }] }),
+        ).toEqual([]);
+    });
+
+    it("refuses a fallback where a synthesized answer is expected, naming the case and the detail", () => {
+        expect(() => expectSynthesized(served([]), "cohort1")).not.toThrow();
+        expect(() => expectSynthesized(served(["synthesis_model_failed"]), "cohort1")).toThrow(
+            "cohort1: the answer is acr's fallback, not a synthesized answer (synthesis_model_failed:synthesis_rejected)",
+        );
+    });
+
+    it("refuses a synthesized answer where the fallback is expected by design", () => {
+        expect(() => expectFallback(served(["synthesis_not_run"]), "model deadline")).not.toThrow();
+        expect(() => expectFallback(served([]), "model deadline")).toThrow(
+            "model deadline: the answer was expected to be acr's fallback, and it carries no synthesis failure",
+        );
+    });
+
+    // CHAOS-12844: the case helpers hold EVERY result a page drew, and fail on too few.
+    it("holds every result the page drew to the synthesized check, naming the one that failed", async () => {
+        await expect(
+            expectAnswersSynthesized([served([]), served([])], "thread header", 2),
+        ).resolves.toBeUndefined();
+        await expect(
+            expectAnswersSynthesized([served([]), served(["synthesis_not_run"])], "P1-5", 2),
+        ).rejects.toThrow(
+            "P1-5, result 2: the answer is acr's fallback, not a synthesized answer (synthesis_not_run:synthesis_rejected)",
+        );
+        // Every result is checked, not the first two: the thread-header case draws three.
+        await expect(
+            expectAnswersSynthesized(
+                [served([]), served([]), served(["synthesis_model_failed"])],
+                "thread header",
+                3,
+            ),
+        ).rejects.toThrow("thread header, result 3: the answer is acr's fallback");
+        // A fallback after the count is still a fallback the page drew.
+        await expect(
+            expectAnswersSynthesized([served([]), served(["synthesis_model_failed"])], "P1-1"),
+        ).rejects.toThrow("P1-1, result 2: the answer is acr's fallback");
+    });
+
+    it("fails when the page drew fewer results than the case needs: no result read is no pass", async () => {
+        await expect(expectAnswersSynthesized([], "P1-1")).rejects.toThrow(
+            "P1-1: no result captured: the page drew fewer than 1 results",
+        );
+        await expect(expectAnswersSynthesized([served([])], "P1-5", 2)).rejects.toThrow(
+            "P1-5: no result captured: the page drew fewer than 2 results",
+        );
+    });
+
+    it("holds a designed fallback's every result to the fallback check", async () => {
+        await expect(
+            expectAnswersFallback([served(["synthesis_not_run"])], "model deadline"),
+        ).resolves.toBeUndefined();
+        await expect(expectAnswersFallback([served([])], "model deadline")).rejects.toThrow(
+            "model deadline, result 1: the answer was expected to be acr's fallback",
+        );
+        await expect(expectAnswersFallback([], "model deadline")).rejects.toThrow(
+            "model deadline: no result captured",
+        );
+        // A second result that is synthesized fails the designed fallback too.
+        await expect(
+            expectAnswersFallback([served(["synthesis_not_run"]), served([])], "late synthesis"),
+        ).rejects.toThrow("late synthesis, result 2: the answer was expected to be acr's fallback");
     });
 });

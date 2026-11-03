@@ -430,6 +430,20 @@ const sampleCapacityForecast = {
     historyDays: 90,
     insufficientHistory: false,
     highVariance: false,
+    // CHAOS-12707: a stored distribution, so the page draws its curve. Its last bin is the horizon
+    // (day 365): the runs that did not finish, which stretch the day axis at phone width.
+    completionDistribution: {
+        horizonDays: 365,
+        runs: 10000,
+        unfinishedRuns: 500,
+        days: [
+            { value: 6, count: 1000, cumulativeShare: 0.1 },
+            { value: 12, count: 4000, cumulativeShare: 0.5 },
+            { value: 19, count: 3500, cumulativeShare: 0.85 },
+            { value: 27, count: 1000, cumulativeShare: 0.95 },
+            { value: 365, count: 500, cumulativeShare: 0.95 },
+        ],
+    },
 };
 
 function operatingReviewMetric(
@@ -3007,19 +3021,21 @@ export const handlers = [
                                 agent_context_runtime: true,
                                 ask_dev: true,
                             }
-                          : scenario === "investment-enabled"
-                            ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
-                            : scenario === "canonical-enabled"
-                              ? {
-                                    ...MOCK_ORG_ENTITLEMENTS.features,
-                                    canonical_incident_ingestion: true,
-                                }
-                              : scenario === "canonical-disabled"
+                          : scenario === "capacity-enabled"
+                            ? { ...MOCK_ORG_ENTITLEMENTS.features, capacity_forecast: true }
+                            : scenario === "investment-enabled"
+                              ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
+                              : scenario === "canonical-enabled"
                                 ? {
                                       ...MOCK_ORG_ENTITLEMENTS.features,
-                                      canonical_incident_ingestion: false,
+                                      canonical_incident_ingestion: true,
                                   }
-                                : MOCK_ORG_ENTITLEMENTS.features,
+                                : scenario === "canonical-disabled"
+                                  ? {
+                                        ...MOCK_ORG_ENTITLEMENTS.features,
+                                        canonical_incident_ingestion: false,
+                                    }
+                                  : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 

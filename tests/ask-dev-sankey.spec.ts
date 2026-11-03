@@ -21,6 +21,14 @@ const answer = JSON.parse(
 
 const TITLE = "Effort by repository and theme";
 
+type Flow = { series: { label: string; points: { label: string }[] }[]; kind: string };
+const flow = (answer.render_shapes as Flow[]).find((shape) => shape.kind === "sankey")!;
+/** Every node's served word: the themes and the repositories of the fixture's sankey. */
+const THEMES = flow.series.map((series) => series.label);
+const REPOSITORIES = [
+    ...new Set(flow.series.flatMap((series) => series.points.map((p) => p.label))),
+];
+
 async function seed(page: Page) {
     await page.addInitScript(
         ([key, value]) => {
@@ -30,13 +38,24 @@ async function seed(page: Page) {
     );
 }
 
-async function expectSankey(scope: Locator) {
+async function expectSankey(scope: Locator, narrow: boolean) {
     const figure = scope.locator("figure", { hasText: TITLE });
     await expect(figure.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
     await expect(figure.getByTestId("rich-shape-not-shown")).toHaveCount(0);
     // The value table stays the chart's accessible form, out of sight.
     await expect(figure.locator(".sr-only table")).toHaveCount(1);
-    await expect(figure.locator(".sr-only table")).toContainText("acme/web");
+    // At narrow width the chart hides a label that would overlap a larger node's (CHAOS-12872);
+    // the value table still names every node, so no word is lost to the reader.
+    for (const word of [...THEMES, ...REPOSITORIES]) {
+        await expect(figure.locator(".sr-only table")).toContainText(word);
+    }
+    if (narrow) {
+        const width = await figure
+            .locator("canvas")
+            .first()
+            .evaluate((c) => c.clientWidth);
+        expect(width, "the chart is drawn at panel or phone width").toBeLessThanOrEqual(330);
+    }
     return figure;
 }
 
@@ -59,7 +78,7 @@ test.describe("a served team repository flow draws as web's sankey (CHAOS-12581)
                 .getByRole("complementary", { name: "Ask Dev" })
                 .or(page.getByRole("dialog", { name: "Ask Dev" }));
             await expect(panel.getByRole("article", { name: "Answer" })).toBeVisible();
-            const inPanel = await expectSankey(panel);
+            const inPanel = await expectSankey(panel, name === "mobile");
             await inPanel.evaluate((node) => node.scrollIntoView({ block: "center" }));
             await page.waitForTimeout(900);
             await page.screenshot({ path: testInfo.outputPath(`sankey-panel-${name}.png`) });
@@ -68,7 +87,7 @@ test.describe("a served team repository flow draws as web's sankey (CHAOS-12581)
             await expect(page).toHaveURL(/\/dev/u);
             const article = page.getByRole("article", { name: "Answer" });
             await expect(article).toBeVisible();
-            const onPage = await expectSankey(article);
+            const onPage = await expectSankey(article, name === "mobile");
             await onPage.evaluate((node) => node.scrollIntoView({ block: "center" }));
             await page.waitForTimeout(900);
             await page.screenshot({ path: testInfo.outputPath(`sankey-dev-${name}.png`) });

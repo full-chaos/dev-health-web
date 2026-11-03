@@ -1,5 +1,6 @@
 import "server-only";
 import { parseStrictJson, StrictJsonError } from "../accesstoken/strictjson";
+import { isRepositoryKeyOrAll } from "./repositoryKey";
 
 // authorization_decision.v1 and authorization_batch_response.v1 client rules
 // (contracts/auth/v1/jsonschema, pinned from dev-health-ops). Pure: no I/O.
@@ -85,7 +86,6 @@ function isCalendarDay(year: number, month: number, day: number): boolean {
 }
 const DECISION_ID = /^dec_[A-Za-z0-9_-]{26}$/;
 const PRINCIPAL_ID = /^prn_[A-Za-z0-9_-]+$/;
-const REPO_KEY = /^([a-z0-9][a-z0-9._-]{0,99}\/[a-z0-9][a-z0-9._-]{0,99}|\*)$/;
 const EXPIRES_AT =
     /^([0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]{1,6})?(Z|[+-](0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])$/;
 const REDACTIONS: readonly string[] = ["personal_identifiers", "contact_details", "free_text"];
@@ -143,7 +143,7 @@ function parseObligations(v: unknown): Obligations {
         const a = v.repository_allowlist;
         if (!Array.isArray(a) || new Set(a).size !== a.length) refuse("bad_shape");
         for (const k of a as unknown[])
-            if (typeof k !== "string" || !REPO_KEY.test(k)) refuse("bad_shape");
+            if (typeof k !== "string" || !isRepositoryKeyOrAll(k)) refuse("bad_shape");
         out.repositoryAllowlist = a as string[];
     }
     if ("redaction" in v) {

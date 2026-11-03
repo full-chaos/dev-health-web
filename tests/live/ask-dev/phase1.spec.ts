@@ -18,6 +18,7 @@ import {
     investigations,
     openHistory,
     openStoredAnswer,
+    ownSession,
     panelChrome,
     references,
     secretsOf,
@@ -292,6 +293,7 @@ test.describe("the amendment's new cases that need no question", () => {
     });
 
     test("sign-out: the token that tab held is refused on its next call", async ({ page }) => {
+        await ownSession(page);
         const calls = await signedIn(page);
         await openStoredAnswer(page);
         // The token the tab holds now, not the History read's from before the full load of /dev.
