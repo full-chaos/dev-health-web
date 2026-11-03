@@ -32,7 +32,9 @@ beforeAll(async () => {
         GET: Route;
         POST: Route;
     });
-});
+    // The two dynamic imports load next-auth and the real auth module cold: at host load 60+
+    // that took more than the 10 s hook default. 120 s is a ceiling for real I/O, not a speed target.
+}, 120_000);
 
 afterAll(() => {
     vi.unstubAllGlobals();

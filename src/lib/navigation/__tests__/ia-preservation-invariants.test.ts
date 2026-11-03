@@ -752,5 +752,7 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
         for (const id of expectedPreviewIds) {
             expect(previewIds.has(id), `Improve hubItem ${id} must emit preview:true`).toBe(true);
         }
-    });
+        // The two dynamic imports above load the resolver's module graph cold: on a host at load
+        // 60+ that took more than the 5 s default. 120 s is a ceiling for real I/O, not a speed target.
+    }, 120_000);
 });
