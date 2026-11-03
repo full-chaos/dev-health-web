@@ -326,13 +326,15 @@ for (const replicate of REPLICATES) {
         // Expected to fail while the gap holds. The day a quadrant is served this reports "expected to
         // fail, but passed" (red), and the case must be flipped to an ordinary one.
         test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
+        // THE assertion that fails while the gap holds: the quadrant is drawn. Then it must state the
+        // served shape exactly, like every other view.
+        const quadrant = answer.getByTestId("landscape-quadrant");
+        await expect(quadrant, "KNOWN GAP CHAOS-12676: the quadrant is drawn").toHaveCount(1);
         const [shape] = served(
             result,
             "landscape_position",
             "both teams must hold landscape rows on one day (CHAOS-12676)",
         );
-        const quadrant = answer.getByTestId("landscape-quadrant");
-        await expect(quadrant).toHaveCount(1);
         await expectDrawnAsServed(figureOf(quadrant, shape!), shape!);
         await page.context().close();
     });
