@@ -38,9 +38,10 @@ vi.mock("next-auth/providers/google", () => ({ default: vi.fn() }));
 vi.mock("next-auth/providers/gitlab", () => ({ default: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 
-import { requireSuperuser } from "@/lib/auth";
+import { requireRole, requireSuperuser } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import SuperadminLayout from "@/app/(app)/superadmin/layout";
+import AdminLayout from "@/app/(app)/org/admin/layout";
 import {
     createPlatformUser,
     deleteOrganization,
@@ -155,11 +156,26 @@ describe("superadmin surfaces are denied while impersonating", () => {
         expect(r.error).toBeUndefined();
     });
 
+    it("requireRole: the superuser bypass does not apply while impersonating (member is refused)", async () => {
+        await expect(requireRole(["admin", "owner"])).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    });
+
+    it("requireRole: the impersonated user's real org role still decides", async () => {
+        const s = await sessionRead();
+        sessionRead.mockResolvedValue({ ...s, user: { ...s.user, role: "admin" } });
+        await expect(requireRole(["admin", "owner"])).resolves.toBeTruthy();
+    });
+
+    it("the /org/admin layout denies an impersonating session whose role is member", async () => {
+        await expect(AdminLayout({ children: null })).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    });
+
     it("a platform admin who is not impersonating still passes every guard", async () => {
         const s = await sessionRead();
         sessionRead.mockResolvedValue({ ...s, user: { ...s.user, is_impersonating: false } });
         await expect(requireSuperuser("/superadmin")).resolves.toBeTruthy();
         await expect(SuperadminLayout({ children: null })).resolves.toBeTruthy();
+        await expect(requireRole(["admin", "owner"])).resolves.toBeTruthy();
         const listed = await listOrganizations();
         expect(listed.error).toBeUndefined();
         expect(backendCalls).toEqual(["GET /api/v1/admin/orgs"]);
