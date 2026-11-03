@@ -865,8 +865,8 @@ jobs:
         # CHAOS-12841 (E8 AC-6): the Ask Dev rich views against their committed baselines
         # (tests/__visual__/). Pixels hold only in the image that made them, so this job runs the
         # visual spec, and only it, inside the mirrored Playwright image, never on the bare runner.
-        # The baselines are made in the same image (linux/amd64). It is NOT in the `test` aggregate:
-        # it becomes required only after its first green run on main.
+        # The baselines are made in the same image (linux/amd64). Required through the `test`
+        # aggregate (CHAOS-12871), after its first green run on main (9200a7ce).
         name: Visual baselines (Ask Dev rich views)
         needs: [changes, visual-image]
         if: needs.changes.outputs.e2e == 'true'
