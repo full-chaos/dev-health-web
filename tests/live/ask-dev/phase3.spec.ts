@@ -51,7 +51,9 @@ const WITHHELD = [
     "cohort-ranking-withheld",
 ].map((id) => `[data-testid="${id}"]`);
 
-test.describe.configure({ mode: "serial" });
+// Not serial: each case asks in its own panel, so one case that is NOT CAPTURED still lets every
+// other case report (one worker, so they run in order).
+test.describe.configure({ mode: "default" });
 
 type Session = Awaited<ReturnType<BrowserContext["storageState"]>>;
 type Served = Record<string, unknown> & {
@@ -100,12 +102,15 @@ async function answerFor(
     await expect(answer).toHaveCount(1, { timeout: 90_000 });
     await expect
         .poll(() => results.length, {
+            // The answer article is drawn while the run streams; its terminal result can come
+            // later (a fresh synthesis), so this waits as long as the answer itself may take.
             message: "the stream served no terminal result",
-            timeout: 30_000,
+            timeout: 90_000,
         })
         .toBeGreaterThan(0);
     const result = results.at(-1) as unknown as Served;
     // The run ids this case is evidence for (TEST-EVIDENCE).
+    console.log(`run ${name}${String(replicate)}: ${describeServed(result)}`);
     test.info().annotations.push({
         type: "run",
         description: `${name}${String(replicate)}: ${String(result.request_id)} → ${String(result.result_id)} (${String(result.status)}), ${String(servedShapes(result).length)} shapes`,
@@ -118,9 +123,33 @@ function served(result: Served, rule: string, why: string): ServedShape[] {
     const shapes = servedShapes(result).filter((shape) => shape.selected_by === rule);
     expect(
         shapes.length,
-        `NOT CAPTURED: the answer served no ${rule} shape (${why})`,
+        `NOT CAPTURED: the answer served no ${rule} shape (${why}). ${describeServed(result)}`,
     ).toBeGreaterThan(0);
     return shapes;
+}
+
+/** What the answer DID serve, for a NOT CAPTURED message: its ids, status, shapes, claims and fact sources. */
+function describeServed(result: Served): string {
+    const claims = (
+        (result.claimed_facts as { kind?: string; field?: string }[] | undefined) ?? []
+    ).map((claim) => `${String(claim.kind)}.${String(claim.field)}`);
+    const sources = (
+        ((result.coverage as { sources?: { source?: string; state?: string }[] } | undefined)
+            ?.sources ?? []) as { source?: string; state?: string }[]
+    )
+        .filter((source) => String(source.source).startsWith("canonical_fact:"))
+        .map(
+            (source) =>
+                `${String(source.source).slice("canonical_fact:".length)}=${String(source.state)}`,
+        );
+    return [
+        `result ${String(result.result_id)} (${String(result.request_id)}), status ${String(result.status)}`,
+        `shapes [${servedShapes(result)
+            .map((shape) => shape.selected_by)
+            .join(", ")}]`,
+        `claims [${claims.join(", ")}]`,
+        `fact sources [${sources.join(", ")}]`,
+    ].join("; ");
 }
 
 /** The rows of a value table, as the reader gets them: row header, then each cell. */
@@ -269,11 +298,28 @@ for (const replicate of REPLICATES) {
         await page.context().close();
     });
 
-    test(`quadrant ${String(replicate)}: the landscape position renders from the served shape`, async ({
+    test(`quadrant ${String(replicate)} [KNOWN GAP CHAOS-12676]: the landscape position renders from the served shape`, async ({
         browser,
         baseURL,
     }) => {
-        const { page, answer, result } = await answerFor(browser, baseURL, "comparison", replicate);
+        const { page, answer, result } = await answerFor(browser, baseURL, "landscape", replicate);
+        // The preconditions are ordinary assertions: a broken answer is red, never an expected failure.
+        const landscapeClaims = (
+            (result.claimed_facts as
+                { kind?: string; subject?: { canonical_id?: string } }[] | undefined) ?? []
+        ).filter((claim) => claim.kind === "landscape");
+        expect(
+            new Set(landscapeClaims.map((claim) => claim.subject?.canonical_id)).size,
+            "both teams' landscape claims are served",
+        ).toBe(2);
+        test.info().annotations.push({
+            type: "KNOWN GAP",
+            description:
+                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, read from acr's render-shape selection log, which the answer does not carry). Never a pass.",
+        });
+        // Expected to fail while the gap holds. The day a quadrant is served this reports "expected to
+        // fail, but passed" (red), and the case must be flipped to an ordinary one.
+        test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
         const [shape] = served(
             result,
             "landscape_position",

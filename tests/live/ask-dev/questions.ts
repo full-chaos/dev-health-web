@@ -81,8 +81,10 @@ export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
  *   dated trend and its claimed-fact table. `claim_first_only` claims the team's own scope: a
  *   claim over several scopes withholds the curve by design (CHAOS-4613, CHAOS-12809).
  * - `treemap`: one repository's investment. Its theme breakdown draws the treemap.
- * - `comparison`: two teams on churn and delivery units. Both sides' claims draw the side-by-side
- *   table, and the same answer is where a quadrant is drawn when both teams hold the same day.
+ * - `comparison`: two repositories on pull request delivery. Both sides' window measures draw the
+ *   side-by-side table (only `metrics` and `pull_requests` fields compare, CHAOS-12513).
+ * - `landscape`: two teams on churn and delivery units. Their landscape claims draw the quadrant,
+ *   but only when both teams hold the same newest day (CHAOS-4611 ruling 3, CHAOS-12676).
  * - `cohort`: the teams that are struggling, ranked with their drivers.
  */
 const RICH_BASES = {
@@ -90,6 +92,8 @@ const RICH_BASES = {
     treemap:
         "where is engineering effort going in full-chaos/dev-health-acr over the last 30 days?",
     comparison:
+        "compare full-chaos/dev-health-acr and full-chaos/dev-health-ops on pull request delivery over the last 30 days",
+    landscape:
         "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
     cohort: "which teams are struggling and why over the last 30 days?",
 } as const;

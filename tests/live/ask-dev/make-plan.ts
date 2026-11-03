@@ -136,6 +136,30 @@ const RICH_PLAN: Record<
         interpretation: {
             shape: "explicit_cohort",
             requested_judgment: "comparison",
+            subject_terms: ["full-chaos/dev-health-acr", "full-chaos/dev-health-ops"],
+            requested_subject_kind: "repository",
+            time_context: { axis: "current" },
+            fact_requirements: [{ kind: "metrics" }, { kind: "pull_requests" }],
+            clarification_needed: false,
+            comparison_terms: ["full-chaos/dev-health-acr", "full-chaos/dev-health-ops"],
+            question_frame: {
+                goals: ["compare"],
+                subject_expression: {
+                    kind: "explicit_set",
+                    operands: [
+                        named("full-chaos/dev-health-acr"),
+                        named("full-chaos/dev-health-ops"),
+                    ],
+                },
+                temporal: "current",
+            },
+        },
+        claims: { claim_fields: ["window_pr_cycle_hours_median", "window_pr_count"] },
+    },
+    landscape: {
+        interpretation: {
+            shape: "explicit_cohort",
+            requested_judgment: "comparison",
             subject_terms: ["Fullchaos", "Ops Team"],
             requested_subject_kind: "team",
             time_context: { axis: "current" },
