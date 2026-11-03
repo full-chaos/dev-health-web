@@ -144,7 +144,7 @@ describe("org member UI actions: org admin invite", () => {
     });
 
     it("fails when the session has no org", async () => {
-        mockAuth({ user: { id: "u-1", is_superuser: false } });
+        mockAuth({ user: { id: "u-1", org_id: "", is_superuser: false } });
         const spy = vi.spyOn(global, "fetch").mockResolvedValue(json({}));
         expect((await actions.inviteCurrentOrgMember("a@b.co", "member")).error).toBeDefined();
         expect(spy).not.toHaveBeenCalled();

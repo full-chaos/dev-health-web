@@ -4658,6 +4658,29 @@ export const handlers = [
         );
     }),
 
+    http.post("*/api/v1/admin/orgs/:orgId/invites", async ({ request, params }) => {
+        const body = (await request.json()) as { email?: string; role?: string };
+        if (body.email === "taken@example.com") {
+            return HttpResponse.json(
+                { detail: { error: "invite_pending", message: "internal words" } },
+                { status: 409 },
+            );
+        }
+        return HttpResponse.json(
+            {
+                id: "e2e-invite-new",
+                org_id: String(params.orgId),
+                email: body.email,
+                role: body.role,
+                invited_by_id: "e2e-user-1",
+                status: "pending",
+                expires_at: "2025-02-01T00:00:00Z",
+                accepted_at: null,
+            },
+            { status: 201 },
+        );
+    }),
+
     http.get("*/api/v1/admin/settings/categories", () =>
         HttpResponse.json(["general", "security"]),
     ),
