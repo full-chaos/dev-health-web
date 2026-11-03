@@ -79,6 +79,26 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         });
     });
 
+    test("gap-driven entry survives a click made before the page hydrates", async ({ page }) => {
+        let releaseScripts!: () => void;
+        const scriptsHeld = new Promise<void>((resolve) => {
+            releaseScripts = resolve;
+        });
+        await page.route(/\/_next\/static\/.*\.js/u, async (route) => {
+            await scriptsHeld;
+            await route.continue();
+        });
+        await page.goto(DETAIL_URL, { waitUntil: "commit" });
+        const gapButton = page.getByRole("button", { name: "Backfill this gap" }).first();
+        await gapButton.waitFor({ timeout: NAV_TIMEOUT });
+        await gapButton.click();
+        releaseScripts();
+
+        await page.getByRole("dialog").waitFor({ timeout: 8000 });
+        const fromValue = await page.getByLabel("Since (inclusive)", { exact: true }).inputValue();
+        expect(fromValue).not.toBe("");
+    });
+
     test("edit page no longer renders the backfill block", async ({ page }) => {
         await page.goto(EDIT_URL);
         await page
