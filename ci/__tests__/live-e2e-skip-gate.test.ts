@@ -129,12 +129,27 @@ describe("live-e2e-skip-gate", () => {
     });
 
     it("counts a KNOWN GAP that started to pass as failed, not as a gap, so the case is flipped", () => {
-        // Playwright marks it `unexpected` and exits non-zero (ci/run_tests.sh keeps that status).
-        const run = gate([pass, { ...knownGap, status: "unexpected" }]);
+        // Playwright marks it `unexpected`; the gate fails it too, with its own line.
+        const run = gate([pass, { ...knownGap, status: "unexpected", results: ["passed"] }]);
         expect(run.out).toContain(
             "passed 1 / failed 1 / skipped 0 / flaky 0 / not run 0 / known gap 0",
         );
         expect(run.out).not.toContain("- KNOWN GAP:");
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain("- EXPECTED FAILURE THAT PASSED:");
+    });
+
+    // Codex r2 on #1801 (P2, executed): with retries, a KNOWN GAP case that passed on one attempt
+    // and failed on another is `flaky`. It passed, so the gap no longer holds: it counts as failed.
+    it("counts a KNOWN GAP that passed on any attempt as failed, even when Playwright calls it flaky", () => {
+        const run = gate([pass, { ...knownGap, status: "flaky", results: ["passed", "failed"] }]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain(
+            "passed 1 / failed 1 / skipped 0 / flaky 0 / not run 0 / known gap 0",
+        );
+        expect(run.out).toContain(
+            "- EXPECTED FAILURE THAT PASSED: phase3.spec.ts > quadrant 1 [KNOWN GAP CHAOS-12676]",
+        );
     });
 
     it("still fails a plain skip: a skip with no NOT RUN annotation is an environment fault", () => {
