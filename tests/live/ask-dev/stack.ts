@@ -20,6 +20,8 @@ import { type ScopedResult, terminalResultOf } from "./answer-scope";
  * - `ASK_DEV_LIVE_THREAD`: a stored conversation of that user: two answers, one ref cited by both.
  * - `ASK_DEV_LIVE_PASSWORD_FILE`: a 0600 file with that user's password. Never an env value, never
  *   an argument, never a log line.
+ * - `ASK_DEV_LIVE_OTHER_EMAIL` and `ASK_DEV_LIVE_OTHER_PASSWORD_FILE` (CHAOS-12234, AC-3): a second
+ *   principal in the same organization, with the same grants. Only the cases that need one read them.
  */
 export const ACR = process.env.ASK_DEV_LIVE_ACR ?? "https://acr.localhost:8443";
 export const THREAD = process.env.ASK_DEV_LIVE_THREAD ?? "";
@@ -27,15 +29,20 @@ export const EMAIL = process.env.ASK_DEV_LIVE_EMAIL ?? "admin@test.com";
 export const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
 export const INVESTIGATIONS_PATH = "/api/v1/context-fabric/investigations";
 
-function password(): string {
-    const file = process.env.ASK_DEV_LIVE_PASSWORD_FILE;
+function passwordFrom(name: string): string {
+    const file = process.env[name];
     if (file === undefined || file === "") {
-        throw new Error("ASK_DEV_LIVE_PASSWORD_FILE is not set: the suite cannot sign in");
+        throw new Error(`${name} is not set: the suite cannot sign in`);
     }
     const value = readFileSync(file, "utf8").trim();
-    if (value === "") throw new Error("the password file is empty");
+    if (value === "") throw new Error(`the password file of ${name} is empty`);
     return value;
 }
+
+const password = (): string => passwordFrom("ASK_DEV_LIVE_PASSWORD_FILE");
+
+/** CHAOS-12234: the second principal (same organization, same grants). Empty: not configured. */
+export const OTHER_EMAIL = process.env.ASK_DEV_LIVE_OTHER_EMAIL ?? "";
 
 export type AcrCall = {
     readonly method: string;
@@ -309,11 +316,22 @@ async function hydrated(page: Page): Promise<void> {
 }
 
 export async function signIn(page: Page): Promise<void> {
+    await signInAs(page, EMAIL, password);
+}
+
+/** CHAOS-12234: signs this tab's context in as the second principal (`OTHER_EMAIL`). */
+export async function signInOther(page: Page): Promise<void> {
+    if (OTHER_EMAIL === "")
+        throw new Error("ASK_DEV_LIVE_OTHER_EMAIL is not set: no second principal");
+    await signInAs(page, OTHER_EMAIL, () => passwordFrom("ASK_DEV_LIVE_OTHER_PASSWORD_FILE"));
+}
+
+async function signInAs(page: Page, email: string, secret: () => string): Promise<void> {
     await page.goto("/auth/signin?callbackUrl=/dashboard", { waitUntil: "commit" });
     await expect(page.getByLabel(/email/iu)).toBeVisible({ timeout: 30_000 });
     await hydrated(page);
-    await page.getByLabel(/email/iu).fill(EMAIL);
-    await page.getByLabel(/password/iu).fill(password());
+    await page.getByLabel(/email/iu).fill(email);
+    await page.getByLabel(/password/iu).fill(secret());
     try {
         // A click before the form hydrates does nothing, so it is sent again.
         await expect(async () => {

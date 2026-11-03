@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { within } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, within } from "@testing-library/react";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 import type { SyncConfig } from "@/lib/admin/types";
 
@@ -69,6 +69,22 @@ function rowFor(text: string): HTMLElement {
 }
 
 describe("SyncConfigTable", () => {
+    beforeAll(() => {
+        mockUseSyncTrigger.mockImplementation(() => ({
+            liveStatus: null,
+            isSyncing: false,
+            trigger: mockTrigger,
+        }));
+        renderTable();
+        screen.getByRole("table");
+        screen.getAllByRole("columnheader");
+        screen.getAllByRole("row");
+        cleanup();
+        // The first render and role query load React, jsdom and the accessibility tree cold: at load
+        // 155 that took 0.2-1.0 s, against 15-170 ms warm, and a starved host pushed it past the 5 s
+        // test default. 120 s is a ceiling for real work, not a speed target.
+    }, 120_000);
+
     beforeEach(() => {
         mockRefresh.mockReset();
         mockDeleteSyncConfig.mockReset();
