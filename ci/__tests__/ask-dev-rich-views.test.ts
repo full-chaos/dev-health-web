@@ -251,19 +251,59 @@ describe("unitWordMismatches (AC-8)", () => {
         },
         { table: { measures: ["days"], measure_units: [] } },
     ];
-    const labels = { "measure_unit:ratio": "share", "measure_unit:count": "runs" };
+    const labels = {
+        "measure_unit:ratio": "share",
+        "measure_unit:count": "runs",
+        "fact_field:cumulative_share": "Share of runs finished",
+    };
+    const drawn = (...columns: Array<[string, string | null]>) =>
+        columns.map(([heading, unit]) => ({ heading, unit }));
 
-    it("finds nothing when the drawn unit words are exactly the served ones", () => {
-        expect(unitWordMismatches(claims, labels, ["share", "runs"])).toEqual([]);
+    it("finds nothing when each measure column carries its own served unit word", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(
+                    ["completion days", null],
+                    ["Share of runs finished", "share"],
+                    ["runs", "runs"],
+                ),
+            ),
+        ).toEqual([]);
     });
 
-    it("reports a served unit word the tables do not show, and a drawn unit ACR never served", () => {
-        expect(unitWordMismatches(claims, labels, ["share"])).toEqual([
-            'served unit word "runs" is not drawn',
+    it("reports units swapped between columns: the word must sit under its own measure (Codex r2 P3)", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "runs"], ["runs", "share"]),
+            ),
+        ).toEqual([
+            'column "Share of runs finished" draws unit "runs", served "share"',
+            'column "runs" draws unit "share", served "runs"',
         ]);
-        expect(unitWordMismatches(claims, labels, ["share", "runs", "hours"])).toEqual([
-            'drawn unit word "hours" is not a served unit of any claimed table',
-        ]);
+    });
+
+    it("reports a served unit not drawn, and a unit drawn where ACR served none", () => {
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", null]),
+            ),
+        ).toEqual(['column "runs" draws no unit, served "runs"']);
+        expect(
+            unitWordMismatches(
+                claims,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", "runs"], ["days", "hours"]),
+            ),
+        ).toEqual(['column "days" draws unit "hours", served none']);
+        expect(
+            unitWordMismatches(claims, labels, drawn(["Share of runs finished", "share"])),
+        ).toEqual(['served unit "runs" for column "runs" is not drawn']);
     });
 
     it("states no unit for a measure declared twice, nor one with no served word", () => {
@@ -278,8 +318,44 @@ describe("unitWordMismatches (AC-8)", () => {
                 },
             },
         ];
-        expect(unitWordMismatches(twice, labels, [])).toEqual([]);
-        expect(unitWordMismatches(claims, {}, [])).toEqual([]);
+        expect(unitWordMismatches(twice, labels, drawn(["runs", null]))).toEqual([]);
+        expect(
+            unitWordMismatches(claims, {}, drawn(["cumulative share", null], ["runs", null])),
+        ).toEqual([]);
+    });
+
+    it("lets a column that is no claimed measure state only a served unit word", () => {
+        const both = drawn(["Share of runs finished", "share"], ["runs", "runs"]);
+        expect(
+            unitWordMismatches(claims, labels, [
+                ...both,
+                { heading: "Completion share", unit: "share" },
+            ]),
+        ).toEqual([]);
+        expect(
+            unitWordMismatches(claims, labels, [
+                ...both,
+                { heading: "Completion share", unit: "hours" },
+            ]),
+        ).toEqual([
+            'column "Completion share" draws unit "hours", not a served unit of any claimed table',
+        ]);
+    });
+
+    it("says it cannot check a heading that two claims serve with different units", () => {
+        const clash = [
+            ...claims,
+            { table: { measures: ["runs"], measure_units: [{ measure: "runs", unit: "ratio" }] } },
+        ];
+        expect(
+            unitWordMismatches(
+                clash,
+                labels,
+                drawn(["Share of runs finished", "share"], ["runs", "runs"]),
+            ),
+        ).toEqual([
+            'column "runs": claims serve the units ["runs", "share"], so no one unit can be checked',
+        ]);
     });
 });
 

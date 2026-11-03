@@ -7,7 +7,7 @@
  * comparison is a string comparison and needs no tolerance. A point ACR did not serve is a gap
  * ("—"), never a zero (check 12).
  *
- * Pure TypeScript with no Playwright import, so `__tests__/rich-views.test.ts` can plant mismatches
+ * Pure TypeScript with no Playwright import, so `ci/__tests__/ask-dev-rich-views.test.ts` can plant mismatches
  * and prove each one is reported.
  */
 
@@ -185,37 +185,76 @@ type ClaimedTable = {
     measure_units?: ReadonlyArray<{ measure: string; unit: string }>;
 };
 
+/** One drawn column heading: its words without the unit, and the unit word drawn under it. */
+export type DrawnHeading = { heading: string; unit: string | null };
+
 /**
- * AC-8: units only as served. Every unit a claimed table declares for one of its measures (exactly
- * one entry), in its served word, must be drawn; and no drawn unit word may be one ACR never
- * served for a claimed table.
+ * AC-8: units only as served, column by column (Codex r2 P3: a set of words passed with the units
+ * swapped between columns). A claimed measure's column (its served `fact_field` word) states the
+ * served word of the one unit its table declares, or no unit when it declares none or has no word;
+ * a served unit whose column is not drawn is reported. A column that is no claimed measure (a
+ * visible value table under a series label) may only state a word ACR served for a claimed
+ * measure. Claims that serve one heading different units cannot be placed, and say so.
  */
 export function unitWordMismatches(
     claims: ReadonlyArray<{ table?: ClaimedTable }>,
     labels: Readonly<Record<string, string>> | undefined,
-    drawn: readonly string[],
+    drawn: readonly DrawnHeading[],
 ): string[] {
-    const served = new Set<string>();
+    // Heading → the served unit words for it, "" where the measure states none.
+    const expected = new Map<string, Set<string>>();
     // A claimed-fact table draws the claim's `table` only (ask-dev `FactRowsPanel`).
     for (const { table } of claims) {
         for (const measure of table?.measures ?? []) {
             const entries = (table?.measure_units ?? []).filter(
                 (entry) => entry.measure === measure,
             );
-            if (entries.length !== 1) continue;
-            const word = labels?.[`measure_unit:${entries[0]!.unit}`]?.trim();
-            if (word !== undefined && word !== "") served.add(word);
+            const word =
+                entries.length === 1
+                    ? (labels?.[`measure_unit:${entries[0]!.unit}`]?.trim() ?? "")
+                    : "";
+            const heading = servedWordOr(labels, "fact_field", measure);
+            expected.set(heading, (expected.get(heading) ?? new Set<string>()).add(word));
         }
     }
-    const shown = new Set(drawn.map((word) => word.trim()));
-    return [
-        ...[...served]
-            .filter((word) => !shown.has(word))
-            .map((word) => `served unit word "${word}" is not drawn`),
-        ...[...shown]
-            .filter((word) => !served.has(word))
-            .map((word) => `drawn unit word "${word}" is not a served unit of any claimed table`),
-    ];
+    const mismatches: string[] = [];
+    const placed = new Map<string, string>();
+    for (const [heading, words] of expected) {
+        if (words.size === 1) {
+            placed.set(heading, [...words][0]!);
+            continue;
+        }
+        const listed = [...words].map((word) => (word === "" ? "none" : `"${word}"`));
+        mismatches.push(
+            `column "${heading}": claims serve the units [${listed.join(", ")}], so no one unit can be checked`,
+        );
+    }
+    const servedWords = new Set([...placed.values()].filter((word) => word !== ""));
+    for (const column of drawn) {
+        const heading = column.heading.trim();
+        const unit = column.unit?.trim() ?? "";
+        if (!expected.has(heading)) {
+            if (unit !== "" && !servedWords.has(unit)) {
+                mismatches.push(
+                    `column "${heading}" draws unit "${unit}", not a served unit of any claimed table`,
+                );
+            }
+            continue;
+        }
+        const served = placed.get(heading);
+        if (served === undefined || unit === served) continue;
+        if (unit === "") mismatches.push(`column "${heading}" draws no unit, served "${served}"`);
+        else if (served === "")
+            mismatches.push(`column "${heading}" draws unit "${unit}", served none`);
+        else mismatches.push(`column "${heading}" draws unit "${unit}", served "${served}"`);
+    }
+    const drawnHeadings = new Set(drawn.map((column) => column.heading.trim()));
+    for (const [heading, served] of placed) {
+        if (served !== "" && !drawnHeadings.has(heading)) {
+            mismatches.push(`served unit "${served}" for column "${heading}" is not drawn`);
+        }
+    }
+    return mismatches;
 }
 
 /**
