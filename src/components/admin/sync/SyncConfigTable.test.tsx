@@ -104,7 +104,10 @@ describe("SyncConfigTable", () => {
         expect(screen.getAllByRole("row")).toHaveLength(3);
         expect(screen.getByText("GitHub")).toBeInTheDocument();
         expect(screen.getByText("Linear")).toBeInTheDocument();
-    });
+        // This is the file's first render: it pays the cold React/jsdom/role-query cost (measured
+        // 0.2-1.2 s at load 155, vs 15-170 ms for a warm test) inside the 5 s default. 120 s is a
+        // ceiling for real work, not a speed target.
+    }, 120_000);
 
     it("CHAOS-4318: fetches on mount only and refreshes solely via the explicit Refresh control", async () => {
         renderTable();
