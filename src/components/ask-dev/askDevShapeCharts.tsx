@@ -208,7 +208,12 @@ function AskDevSankey({
  * not finite, or fewer than 2 subcategories above 0.
  */
 function sunburstData(shape: RenderShape): SunburstNode | null {
-    const [inner, ...rings] = shape.series;
+    // A malformed shape is refused here, never thrown on: ask-dev then shows its table.
+    const series: readonly unknown[] = Array.isArray(shape.series) ? shape.series : [];
+    if (!series.every((entry) => Array.isArray((entry as { points?: unknown }).points))) {
+        return null;
+    }
+    const [inner, ...rings] = series as RenderShape["series"];
     if (inner?.key !== SUNBURST_THEME_SERIES_KEY || rings.length === 0) return null;
     const ringByWord = new Map(rings.map((ring) => [ring.label, ring] as const));
     if (ringByWord.size !== rings.length || inner.points.length !== rings.length) return null;

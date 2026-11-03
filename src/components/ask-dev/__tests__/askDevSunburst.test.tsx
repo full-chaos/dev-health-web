@@ -218,6 +218,26 @@ describe("the adapter returns null when it cannot draw a sunburst (CHAOS-12538)"
     });
 });
 
+describe("the adapter never throws on a malformed sunburst (codex r1 on #1797)", () => {
+    it.each<[string, RenderShape]>([
+        [
+            "no series at all",
+            changed((shape) => void delete (shape as { series?: unknown }).series),
+        ],
+        [
+            "an inner ring with no points",
+            changed((shape) => void delete (shape.series[0] as { points?: unknown }).points),
+        ],
+        [
+            "a ring with no points",
+            changed((shape) => void delete (shape.series[1] as { points?: unknown }).points),
+        ],
+    ])("%s", (_, shape) => {
+        expect(() => askDevShapeChart(shape)).not.toThrow();
+        expect(askDevShapeChart(shape)).toBeNull();
+    });
+});
+
 describe("the sunburst loads on demand (CHAOS-12813)", () => {
     it("loads the sunburst module only when a sunburst draws", async () => {
         // A fresh module graph, as for the treemap and the sankey: the renders above already loaded
