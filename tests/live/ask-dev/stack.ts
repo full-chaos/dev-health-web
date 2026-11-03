@@ -179,6 +179,13 @@ export function teeInvestigationStreams(options: {
     };
 }
 
+/**
+ * What a read by id serves (acr-v1 `GET …/investigations/{result_id}`): an investigation result, or
+ * with `view=projection` the bounded answer projection. Anything else (an error envelope, a status
+ * record) is not a result, whatever fields it has.
+ */
+const RESULT_SCHEMA = /^context_fabric_(?:investigation_result\.v\d+|answer_projection\.v1)$/u;
+
 /** A result read by its id (`application/json`): the result itself, or undefined when it is not one. */
 function resultOfJson(body: string): ScopedResult | undefined {
     let value: unknown;
@@ -187,9 +194,11 @@ function resultOfJson(body: string): ScopedResult | undefined {
     } catch {
         return undefined;
     }
+    const schema = (value as { schema_version?: unknown } | null)?.schema_version;
     return typeof value === "object" &&
         value !== null &&
-        typeof (value as { status?: unknown }).status === "string"
+        typeof schema === "string" &&
+        RESULT_SCHEMA.test(schema)
         ? (value as ScopedResult)
         : undefined;
 }
@@ -478,8 +487,11 @@ export function expectFallback(result: unknown, label: string): void {
 
 /**
  * CHAOS-12844: a case that expects answers holds EVERY result its page drew (`watchResults`) to
- * `expectSynthesized`, once the page has drawn at least `count`: an answer can show before its
- * terminal result arrives. Fewer than `count` fails: a result that was never read is not a pass.
+ * `expectSynthesized`, once the page has drawn at least `count` results: an answer can show before
+ * its terminal result arrives. `count` counts READS, not distinct ids: a reused answer keeps the
+ * stored `result_id`, so its first read and its recovered read share one id and are both checked.
+ * Fewer than `count` fails as "no result captured", a different failure from a fallback: a result
+ * that was never read is not a pass.
  */
 export async function expectAnswersSynthesized(
     results: readonly unknown[],
@@ -488,7 +500,7 @@ export async function expectAnswersSynthesized(
 ): Promise<void> {
     await expect
         .poll(() => results.length, {
-            message: `${label}: the page drew fewer than ${String(count)} results`,
+            message: `${label}: no result captured: the page drew fewer than ${String(count)} results`,
             timeout: 30_000,
         })
         .toBeGreaterThanOrEqual(count);
@@ -504,7 +516,7 @@ export async function expectAnswersFallback(
 ): Promise<void> {
     await expect
         .poll(() => results.length, {
-            message: `${label}: the page drew no result`,
+            message: `${label}: no result captured`,
             timeout: 30_000,
         })
         .toBeGreaterThan(0);

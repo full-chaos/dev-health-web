@@ -433,21 +433,65 @@ describe("the live suite's result record (CHAOS-12637)", () => {
     });
 
     it("says so, and adds nothing, when a replay's body is not a result", async () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-        const { results, restore, scope } = await recorded(() =>
-            streamed('{"error":{"code":"not_found"}}'),
+        // An error envelope; a status record or an error with a status string (no result schema);
+        // a result-like object with another schema; JSON null; a bare string.
+        for (const body of [
+            '{"error":{"code":"not_found"}}',
+            '{"state":"done","status":"done","result_id":"result_x"}',
+            '{"schema_version":"error.v1","status":"failed"}',
+            '{"schema_version":"context_fabric_submission_status.v1","status":"complete"}',
+            "null",
+            '"complete"',
+        ]) {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
+                await vi.waitFor(() =>
+                    expect(warn).toHaveBeenCalledWith(
+                        "watchResults: a result read gave no result: its body is not a result",
+                    ),
+                );
+                expect(results, body).toEqual([]);
+            } finally {
+                restore();
+                warn.mockRestore();
+            }
+        }
+    });
+
+    it("keeps a replay served as the bounded answer projection (view=projection)", async () => {
+        const projection = readFileSync(
+            join(process.cwd(), "tests/fixtures/ask-dev/bounded-answers/bounded-answer.json"),
+            "utf8",
         );
+        const { results, restore, scope } = await recorded(() => streamed(projection));
         try {
-            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
-            await vi.waitFor(() =>
-                expect(warn).toHaveBeenCalledWith(
-                    "watchResults: a result read gave no result: its body is not a result",
-                ),
+            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}?view=projection`)).text();
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect((results[0] as unknown as { schema_version: string }).schema_version).toBe(
+                "context_fabric_answer_projection.v1",
             );
-            expect(results).toEqual([]);
         } finally {
             restore();
-            warn.mockRestore();
+        }
+    });
+
+    it("tees no near miss of a recovery read: a longer path is another route", async () => {
+        for (const [url, body] of [
+            [`${STREAM_URL}/submissions/sub_1/events/more`, capture],
+            [`${STREAM_URL}/submissions/sub_1/eventsx`, capture],
+            [`${STREAM_URL}/${RESULT_ID}/more`, replayed()],
+            [`${STREAM_URL}/${RESULT_ID}0`, replayed()],
+        ] as const) {
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                await (await scope.fetch(url)).text();
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                expect(results, url).toEqual([]);
+            } finally {
+                restore();
+            }
         }
     });
 });
