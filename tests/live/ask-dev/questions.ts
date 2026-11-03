@@ -79,6 +79,12 @@ export const CASES = {
     attStop: "Long: what is the status of full-chaos/dev-health-web?",
     attLong: "Long: what is the status of full-chaos/dev-health-web?",
     attPodLoss: "Long: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12883 (`other-principal.spec.ts`): INV-1 with a second principal. The `Own` cases are the
+    // second principal's positive controls; the `Hold` cases keep a run in flight while it is probed.
+    peerThreadOwner: "What is the status of full-chaos/dev-health-web?",
+    peerThreadOwn: "What is the status of full-chaos/dev-health-web?",
+    peerRunOwner: "Hold: what is the status of full-chaos/dev-health-web?",
+    peerRunOwn: "Hold: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
