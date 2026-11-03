@@ -26,7 +26,19 @@ type Case = {
     status: "expected" | "unexpected" | "flaky" | "skipped";
     expectedStatus?: "passed" | "failed" | "skipped";
     annotations?: Annotation[];
+    /** Each attempt's status; by default one attempt that matches `status`. */
+    results?: string[];
 };
+
+const attemptsOf = (item: Case): string[] =>
+    item.results ??
+    (item.status === "skipped"
+        ? ["skipped"]
+        : item.status === "flaky"
+          ? ["failed", "passed"]
+          : item.status === "expected" && (item.expectedStatus ?? "passed") === "passed"
+            ? ["passed"]
+            : ["failed"]);
 
 function gate(cases: Case[]): { code: number | null; out: string } {
     const dir = mkdtempSync(join(tmpdir(), "live-gate-"));
@@ -44,6 +56,7 @@ function gate(cases: Case[]): { code: number | null; out: string } {
                                 status: item.status,
                                 expectedStatus: item.expectedStatus ?? "passed",
                                 annotations: item.annotations ?? [],
+                                results: attemptsOf(item).map((status) => ({ status })),
                             },
                         ],
                     })),
@@ -142,6 +155,120 @@ describe("live-e2e-skip-gate", () => {
         ]);
         expect(run.code).not.toBe(0);
         expect(run.out).toContain("names no KNOWN GAP");
+    });
+
+    // Codex r1 on #1801 (P2, executed): Playwright copies describe- and file-level annotations onto
+    // every case, so a NOT RUN or KNOWN GAP note alone can be inherited. Only the case's OWN skip or
+    // fail reason makes it NOT RUN or a KNOWN GAP.
+    it("does not excuse a skip whose own reason is not NOT RUN, even with an inherited NOT RUN note", () => {
+        const run = gate([
+            pass,
+            {
+                title: "flagged view > measures the backend response",
+                status: "skipped",
+                expectedStatus: "failed",
+                annotations: [
+                    { type: "NOT RUN", description: "feature flag is off" },
+                    { type: "fail" },
+                    { type: "skip", description: "the backend is unreachable" },
+                ],
+            },
+        ]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain(
+            "- SKIPPED: phase3.spec.ts > flagged view > measures the backend response",
+        );
+        const ownReason = gate([
+            pass,
+            {
+                title: "flagged view",
+                status: "skipped",
+                expectedStatus: "skipped",
+                annotations: [
+                    { type: "NOT RUN", description: "feature flag is off" },
+                    { type: "skip", description: "the backend is unreachable" },
+                ],
+            },
+        ]);
+        expect(ownReason.code).not.toBe(0);
+        expect(ownReason.out).toContain("- SKIPPED: phase3.spec.ts > flagged view");
+    });
+
+    it("needs EVERY skip reason of the case to say NOT RUN: an inherited NOT RUN skip excuses no other", () => {
+        const run = gate([
+            pass,
+            {
+                title: "two reasons",
+                status: "skipped",
+                expectedStatus: "skipped",
+                annotations: [
+                    { type: "NOT RUN", description: "feature flag is off" },
+                    { type: "skip", description: "NOT RUN: inherited from the describe block" },
+                    { type: "skip", description: "the backend is unreachable" },
+                ],
+            },
+        ]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > two reasons");
+    });
+
+    it("takes NOT RUN only from a case expected to skip, never from a skipped test.fail case", () => {
+        const run = gate([
+            pass,
+            {
+                title: "fail then skip",
+                status: "skipped",
+                expectedStatus: "failed",
+                annotations: [
+                    { type: "NOT RUN", description: "feature flag is off" },
+                    { type: "fail", description: "KNOWN GAP: something" },
+                    { type: "skip", description: "NOT RUN: the flag is off" },
+                ],
+            },
+        ]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain("- SKIPPED: phase3.spec.ts > fail then skip");
+    });
+
+    it("does not excuse an expected failure whose own reason is not KNOWN GAP, even with an inherited note", () => {
+        const run = gate([
+            pass,
+            {
+                title: "quadrant 1",
+                status: "expected",
+                expectedStatus: "failed",
+                annotations: [
+                    { type: "KNOWN GAP", description: "inherited from the describe block" },
+                    { type: "fail", description: "this case is broken" },
+                ],
+            },
+        ]);
+        expect(run.code).not.toBe(0);
+        expect(run.out).toContain("names no KNOWN GAP");
+    });
+
+    // Codex r1 on #1801 (P2, executed): with retries, a case can fail and then skip; Playwright
+    // calls it flaky. No attempt passed, so it is a skip, never evidence that a case passed.
+    it("counts a flaky case whose last attempt skipped as a skip, not as a pass", () => {
+        const flakySkip: Case = {
+            title: "retried",
+            status: "flaky",
+            expectedStatus: "skipped",
+            results: ["failed", "skipped"],
+            annotations: [{ type: "skip", description: "the backend is unreachable" }],
+        };
+        const alone = gate([flakySkip]);
+        expect(alone.code).not.toBe(0);
+        expect(alone.out).toContain("passed 0 / failed 0 / skipped 1 / flaky 0");
+        const beside = gate([pass, flakySkip]);
+        expect(beside.code).not.toBe(0);
+        expect(beside.out).toContain("- SKIPPED: phase3.spec.ts > retried");
+    });
+
+    it("takes a flaky case with a passing attempt as evidence that a case passed", () => {
+        const run = gate([{ title: "retried", status: "flaky" }]);
+        expect(run.code).toBe(0);
+        expect(run.out).toContain("passed 0 / failed 0 / skipped 0 / flaky 1");
     });
 
     it("fails a run where only NOT RUN and KNOWN GAP cases ran: nothing was measured", () => {
