@@ -6,8 +6,8 @@
  * The check is static and fails closed: no `src` dir is a failure, never a pass.
  *
  * Findings (each printed as `FAIL <file>:<line> <key>`):
- * - a mutating call (POST/PATCH/PUT/DELETE) to an identity route (/orgs..., /users...) made through
- *   the admin client (`request(` / `selfRequest(`) whose `METHOD /path` key has no row for that file;
+ * - a mutating call (POST/PATCH/PUT/DELETE) made through the admin client (`request(` /
+ *   `selfRequest(`, in any src file) whose `METHOD /path` key has no row for that file;
  * - a raw mutating `fetch` to /api/v1/admin/*, /api/v1/orgs/* or accept-invite whose key has no row
  *   for that file (this covers POST /admin/users from a component);
  * - an `/orgs/<id>/(members|transfer-ownership|invites)` literal outside src/lib/admin/api/orgs.ts;
@@ -70,7 +70,7 @@ export function findSites(rel, text) {
     const add = (index, key) => sites.push({ file: rel, line: lineOf(text, index), key });
     for (const match of text.matchAll(CLIENT_CALL)) {
         const p = normalizePath(match[1]);
-        if (!/^\/(orgs|users)(\/|$)/u.test(p)) continue;
+        if (p.startsWith("/api/")) continue; // another helper, not the admin client (its paths are relative)
         const next = text.indexOf("request", match.index + match[0].length);
         const method = methodAfter(
             text,

@@ -136,6 +136,32 @@ describe("check-org-provisioning-calls", () => {
         ]);
     });
 
+    it("fails a non-identity admin write (sync) from a component", () => {
+        const text = 'fetch(`${base}/api/v1/admin/sync-configs`, { method: "POST" });';
+        expect(failures({ "src/components/S.tsx": text })).toEqual([
+            "FAIL src/components/S.tsx:1 POST /admin/sync-configs",
+        ]);
+    });
+
+    it("fails an unlisted write in a non-identity admin client file, passes once listed", () => {
+        const file = "src/lib/admin/api/sync.ts";
+        const text =
+            'export const t = (id: string) =>\n    request(`/sync-configs/${id}/trigger`, { method: "POST" });';
+        expect(failures({ [file]: text })).toEqual([
+            `FAIL ${file}:2 POST /sync-configs/{}/trigger`,
+        ]);
+        expect(
+            failures({ [file]: text }, `POST /sync-configs/{}/trigger\t${file}\tsync\n`),
+        ).toEqual([]);
+    });
+
+    it("reads a request( write in a component as a client write", () => {
+        const text = 'request(`/sync-configs/${id}`, { method: "DELETE" });';
+        expect(failures({ "src/components/R.tsx": text })).toEqual([
+            "FAIL src/components/R.tsx:1 DELETE /sync-configs/{}",
+        ]);
+    });
+
     it("the CLI exits 1 on a finding and 0 on a clean tree", () => {
         const bad = tree({
             "src/c/U.tsx": 'fetch(`${b}/api/v1/admin/users`, { method: "POST" });',
