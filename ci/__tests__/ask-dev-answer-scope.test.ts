@@ -385,4 +385,136 @@ describe("the live suite's result record (CHAOS-12637)", () => {
             warn.mockRestore();
         }
     });
+
+    // CHAOS-12844: a case whose stream is dropped draws its answer from a recovery read, so the
+    // record keeps those results too: the run lease's attach (a stream) and a replay by id (JSON).
+    const RESULT_ID = `result_${"a".repeat(32)}`;
+    const replayed = () => JSON.stringify(terminalResultOf(capture));
+
+    it("keeps the result of a run's events attach and of a replay by id", async () => {
+        for (const [url, body] of [
+            [`${STREAM_URL}/submissions/sub_1/events`, capture],
+            [`${STREAM_URL}/${RESULT_ID}`, replayed()],
+        ] as const) {
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                const response = await scope.fetch(url);
+                // The app's own read is untouched.
+                expect(await response.text()).toBe(body);
+                await vi.waitFor(() => expect(results).toHaveLength(1));
+                expect(results[0]?.status).toBe("complete");
+            } finally {
+                restore();
+            }
+        }
+    });
+
+    it("tees no other read: the submission status, a thread, feedback, another id shape, method or origin", async () => {
+        const { results, restore, scope } = await recorded(() => streamed(replayed()));
+        try {
+            for (const [url, method] of [
+                // The status record names a result_id and a state; it is not a result.
+                [`${STREAM_URL}/submissions/sub_1`, "GET"],
+                [`${ACR}/api/v1/context-fabric/threads/thr_1`, "GET"],
+                [`${STREAM_URL}/feedback/${RESULT_ID}`, "GET"],
+                [`${STREAM_URL}/result_abc`, "GET"],
+                [`${STREAM_URL}/${RESULT_ID}`, "POST"],
+                [`${STREAM_URL}/submissions/sub_1/events`, "POST"],
+                [`https://other.example/api/v1/context-fabric/investigations/${RESULT_ID}`, "GET"],
+            ] as const) {
+                const response = await scope.fetch(url, { method });
+                await response.text();
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            expect(results).toEqual([]);
+        } finally {
+            restore();
+        }
+    });
+
+    it("says so, and adds nothing, when a replay's body is not a result", async () => {
+        // An error envelope; a status record or an error with a status string (no result schema);
+        // a result-like object with another schema; JSON null; a bare string.
+        for (const body of [
+            '{"error":{"code":"not_found"}}',
+            '{"state":"done","status":"done","result_id":"result_x"}',
+            '{"schema_version":"error.v1","status":"failed"}',
+            '{"schema_version":"context_fabric_submission_status.v1","status":"complete"}',
+            "null",
+            '"complete"',
+        ]) {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
+                await vi.waitFor(() =>
+                    expect(warn).toHaveBeenCalledWith(
+                        "watchResults: a result read gave no result: its body is not a result",
+                    ),
+                );
+                expect(results, body).toEqual([]);
+            } finally {
+                restore();
+                warn.mockRestore();
+            }
+        }
+    });
+
+    it("keeps a replay served as the bounded answer projection (view=projection)", async () => {
+        const projection = readFileSync(
+            join(process.cwd(), "tests/fixtures/ask-dev/bounded-answers/bounded-answer.json"),
+            "utf8",
+        );
+        const { results, restore, scope } = await recorded(() => streamed(projection));
+        try {
+            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}?view=projection`)).text();
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect((results[0] as unknown as { schema_version: string }).schema_version).toBe(
+                "context_fabric_answer_projection.v1",
+            );
+        } finally {
+            restore();
+        }
+    });
+
+    it("keeps a replay of a v2 result (acr's encoder, captured on askdev-1)", async () => {
+        const event = JSON.parse(
+            readFileSync(
+                join(
+                    process.cwd(),
+                    "tests/fixtures/ask-dev/captures/acr_encoder_anchor_v2_clarification.event.json",
+                ),
+                "utf8",
+            ),
+        ) as { result: { schema_version: string } };
+        expect(event.result.schema_version).toBe("context_fabric_investigation_result.v2");
+        const { results, restore, scope } = await recorded(() =>
+            streamed(JSON.stringify(event.result)),
+        );
+        try {
+            await (await scope.fetch(`${STREAM_URL}/${RESULT_ID}`)).text();
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect(results[0]?.status).toBe("clarification_required");
+        } finally {
+            restore();
+        }
+    });
+
+    it("tees no near miss of a recovery read: a longer path is another route", async () => {
+        for (const [url, body] of [
+            [`${STREAM_URL}/submissions/sub_1/events/more`, capture],
+            [`${STREAM_URL}/submissions/sub_1/eventsx`, capture],
+            [`${STREAM_URL}/${RESULT_ID}/more`, replayed()],
+            [`${STREAM_URL}/${RESULT_ID}0`, replayed()],
+        ] as const) {
+            const { results, restore, scope } = await recorded(() => streamed(body));
+            try {
+                await (await scope.fetch(url)).text();
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                expect(results, url).toEqual([]);
+            } finally {
+                restore();
+            }
+        }
+    });
 });

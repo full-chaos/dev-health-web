@@ -1,0 +1,56 @@
+{
+    "backlogSize": 40,
+    "completionDistribution": {
+        "days": [
+            {
+                "count": 1000,
+                "cumulativeShare": 0.1,
+                "value": 9
+            },
+            {
+                "count": 2500,
+                "cumulativeShare": 0.35,
+                "value": 12
+            },
+            {
+                "count": 3000,
+                "cumulativeShare": 0.65,
+                "value": 15
+            },
+            {
+                "count": 2000,
+                "cumulativeShare": 0.85,
+                "value": 21
+            },
+            {
+                "count": 1000,
+                "cumulativeShare": 0.95,
+                "value": 30
+            },
+            {
+                "count": 500,
+                "cumulativeShare": 0.95,
+                "value": 365
+            }
+        ],
+        "horizonDays": 365,
+        "runs": 10000,
+        "unfinishedRuns": 500
+    },
+    "computedAt": "2026-11-02T04:00:00+00:00",
+    "forecastId": "forecast-chaos-0001",
+    "highVariance": false,
+    "historyDays": 90,
+    "insufficientHistory": false,
+    "p50Date": "2026-11-17",
+    "p50Days": 15,
+    "p85Date": "2026-11-23",
+    "p85Days": 21,
+    "p95Date": "2026-12-02",
+    "p95Days": 30,
+    "targetItems": 40,
+    "teamId": "chaos",
+    "throughputMean": 3.25,
+    "throughputStddev": 1.1,
+    "workScopeId": "linear:CHAOS"
+}

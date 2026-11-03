@@ -5603,6 +5603,7 @@ export type ClaimedFact = {
     time_series_rows?: ClaimedFactRow[];
     time_series_table?: ClaimedFactTable1;
     investment_mix?: ClaimedInvestmentMix;
+    completion_forecast?: ClaimedCompletionForecast;
 };
 export type ScalarValue = {
     string?: string;
@@ -8316,6 +8317,52 @@ export type TimeContext1 =
  */
 export type WindowConfirmationMode = "" | "headless" | "nudge";
 /**
+ * CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.
+ */
+export type RenderShape = {
+    [k: string]: unknown | undefined;
+} & {
+    shape_id: string;
+    kind: RenderKind;
+    presentation?: RenderPresentation;
+    selected_by: RenderShapeRule;
+    title: string;
+    axis_kind: RenderAxisKind;
+    axis_label: string;
+    value_label: string;
+    value_unit?: RenderValueUnit;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    series:
+        | [RenderSeries]
+        | [RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
+        | [
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+          ]
+        | [
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+              RenderSeries,
+          ];
+};
+/**
  * CHAOS-4415: the visual encoding of a "series" shape. Kind names the DATA shape, presentation names the drawing -- a bar chart and a line chart carry identical payloads, so bars are not their own kind.
  */
 export type RenderPresentation = "bars" | "stacked_bars" | "line";
@@ -8329,6 +8376,8 @@ export type RenderShapeRule =
     | "investment_theme_share"
     | "comparison_side_by_side"
     | "investment_subcategory_share"
+    | "completion_forecast"
+    | "completion_forecast_percentiles"
     | "investment_repository_flow"
     | "landscape_position";
 /**
@@ -9196,6 +9245,24 @@ export interface ClaimedFactTable {
      * CHAOS-11985: the expected spacing of a `time_series` table's rows, stated only on a `time_series` table whose rows keep it. `day` is one row per UTC calendar day: every key value is a date written YYYY-MM-DD, and no day repeats. A day with no row between two served rows has no stored row; it is not a zero. Absent means no cadence is stated. Set by the server from the producer's declaration; never model-authored.
      */
     cadence?: "day";
+    /**
+     * CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.
+     */
+    column_vocabularies?: {
+        /**
+         * `investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.
+         */
+        [k: string]: "investment_theme" | "subcategory" | undefined;
+    };
+    /**
+     * CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.
+     */
+    word_columns?: {
+        /**
+         * Another name in `observations`: the column that carries the id's served word.
+         */
+        [k: string]: string | undefined;
+    };
 }
 /**
  * CHAOS-4682 (§5.1 P2), additive and OPTIONAL: declares what `time_series_rows` IS, the same way `table` declares `rows`. Its shape is ALWAYS time_series when present -- that is the entire reason this pair exists, distinct from `table`, whose shape is never time_series whenever this pair is populated.
@@ -9261,6 +9328,24 @@ export interface ClaimedFactTable1 {
      * CHAOS-11985: the expected spacing of a `time_series` table's rows, stated only on a `time_series` table whose rows keep it. `day` is one row per UTC calendar day: every key value is a date written YYYY-MM-DD, and no day repeats. A day with no row between two served rows has no stored row; it is not a zero. Absent means no cadence is stated. Set by the server from the producer's declaration; never model-authored.
      */
     cadence?: "day";
+    /**
+     * CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.
+     */
+    column_vocabularies?: {
+        /**
+         * `investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.
+         */
+        [k: string]: "investment_theme" | "subcategory" | undefined;
+    };
+    /**
+     * CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.
+     */
+    word_columns?: {
+        /**
+         * Another name in `observations`: the column that carries the id's served word.
+         */
+        [k: string]: string | undefined;
+    };
 }
 /**
  * Additive (CHAOS-12160): which attribution produced an investment claim's value about a project, and over how many work units in the read window. owning_team_rollup is the owning teams' roll-up, served because the project has no measurable work of its own in the window (project_own_work_unit_count says how many own units it has); project_native is the project's own work. Set by the server from the claim's grounding fact, never model-authored, and only on an investment claim.
@@ -9273,6 +9358,31 @@ export interface ClaimedInvestmentMix {
     rollup_basis: string;
     work_unit_count: number;
     project_own_work_unit_count: number;
+}
+/**
+ * Additive (CHAOS-12608): the completion forecast of a team workload claim's grounding fact, the same stored forecast row the claim is grounded on. Set by the server from the claim's grounding fact, never model-authored, only on a team workload claim, and only when the deployment serves the forecast's distribution. A completion forecast or forecast percentiles shape cites its numbers (claimed_fact_forecast_summary). An absent percentile, date or count is not 0.
+ */
+export interface ClaimedCompletionForecast {
+    work_scope_id?: string;
+    state:
+        | "available"
+        | "not_stored"
+        | "no_run_within_horizon"
+        | "over_limit"
+        | "malformed"
+        | "scope_ambiguous"
+        | "unmatched";
+    computed_at: string;
+    simulation_count?: number;
+    horizon_days?: number;
+    unfinished_runs?: number;
+    target_items?: number;
+    forecast_p50_days?: number;
+    forecast_p85_days?: number;
+    forecast_p95_days?: number;
+    forecast_p50_date?: string;
+    forecast_p85_date?: string;
+    forecast_p95_date?: string;
 }
 export interface CohortExclusion {
     subject: SubjectRef;
@@ -9518,50 +9628,6 @@ export interface RelationshipEdge {
     evidence_ref_ids: [string, ...string[]];
 }
 /**
- * CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.
- */
-export interface RenderShape {
-    shape_id: string;
-    kind: RenderKind;
-    presentation?: RenderPresentation;
-    selected_by: RenderShapeRule;
-    title: string;
-    axis_kind: RenderAxisKind;
-    axis_label: string;
-    value_label: string;
-    value_unit?: RenderValueUnit;
-    /**
-     * @minItems 1
-     * @maxItems 8
-     */
-    series:
-        | [RenderSeries]
-        | [RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries, RenderSeries]
-        | [
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-          ]
-        | [
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-              RenderSeries,
-          ];
-}
-/**
  * CHAOS-4415: one named line/bar family within a shape. A series with no point for a label has a genuine gap there -- never a zero.
  */
 export interface RenderSeries {
@@ -9569,7 +9635,7 @@ export interface RenderSeries {
     label: string;
     /**
      * @minItems 1
-     * @maxItems 64
+     * @maxItems 366
      */
     points: [RenderPoint, ...RenderPoint[]];
 }
@@ -9589,7 +9655,9 @@ export interface RenderPointSource {
         | "cohort_member_score"
         | "cohort_driver_weight_contributed"
         | "claimed_fact_row"
-        | "claimed_fact_value";
+        | "claimed_fact_value"
+        | "claimed_fact_table_row"
+        | "claimed_fact_forecast_summary";
     subject_canonical_id?: string;
     signal?: string;
     claim_id?: string;

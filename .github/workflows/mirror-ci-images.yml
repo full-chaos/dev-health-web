@@ -1,4 +1,4 @@
-# Mirror the Docker Hub images web CI needs to ghcr.io/full-chaos/dev-health-web/ (CHAOS-9065).
+# Mirror the images web CI needs to ghcr.io/full-chaos/dev-health-web/ (CHAOS-9065).
 #
 # WHY: web CI pulled node and traefik from Docker Hub (buildkit now comes from the ops org mirror) without a login and hit the
 # anonymous pull rate limit (429). Consumers now pull from this mirror with GITHUB_TOKEN.
@@ -10,6 +10,8 @@
 # SOURCES are mirror.gcr.io (Google's pull-through cache of Docker Hub, as ops uses for base images):
 # it serves the digest-pinned content without Docker Hub, so an outage or rate limit there does not
 # block the mirror. The verify step proves the digests equal the Docker Hub ones pinned below.
+# Playwright's image is published on mcr.microsoft.com only, so its entry names that registry as its
+# own source (CHAOS-12841); it is digest-pinned and verified the same way, and no Docker Hub is used.
 #
 # NO setup-buildx and NO Docker Hub login, on purpose: setup-buildx would itself pull
 # moby/buildkit from Docker Hub. `imagetools` needs no builder.
@@ -62,7 +64,7 @@ jobs:
                   set -euo pipefail
                   {
                     echo 'IMAGES<<EOF_IMAGES'
-                    for name in node traefik; do
+                    for name in node traefik playwright; do
                       echo "$(node scripts/bump-ci-images.mjs --ref "${name}" source) $(node scripts/bump-ci-images.mjs --ref "${name}" mirror)"
                     done
                     echo 'EOF_IMAGES'

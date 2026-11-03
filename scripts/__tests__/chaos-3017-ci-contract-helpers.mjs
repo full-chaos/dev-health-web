@@ -10,7 +10,7 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 export const NON_SUCCESS_RESULTS = ["failure", "cancelled", "skipped"];
 export const REQUIRED_STAGE_GROUPS = [
     ["general", "Check general test stages", ["format", "quality", "build", "unit"]],
-    ["E2E", "Check E2E test stages", ["e2e-default", "e2e-onboarding"]],
+    ["E2E", "Check E2E test stages", ["e2e-default", "e2e-onboarding", "visual"]],
 ];
 const execFileAsync = promisify(execFile);
 const PLAYWRIGHT_CLI = path.join(ROOT, "node_modules/@playwright/test/cli.js");

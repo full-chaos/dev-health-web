@@ -10,7 +10,9 @@ export type EntitlementScenario =
     | "ask-dev-enabled"
     | "ask-dev-off"
     // CHAOS-11938: the Ask Dev panel (as `provisioned`) on an organization with Investment.
-    | "provisioned-investment";
+    | "provisioned-investment"
+    // CHAOS-12707: an organization with the capacity forecast, so the capacity page draws its figure.
+    | "capacity-enabled";
 
 let currentEntitlementScenario: EntitlementScenario = "unprovisioned";
 
@@ -27,6 +29,7 @@ export function setEntitlementScenario(scenario: string): boolean {
         case "ask-dev-enabled":
         case "ask-dev-off":
         case "provisioned-investment":
+        case "capacity-enabled":
             currentEntitlementScenario = scenario;
             return true;
         default:

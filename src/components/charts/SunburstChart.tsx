@@ -11,6 +11,14 @@ import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { depthOpacity, tileLabelStyle } from "@/lib/chartLabelColor";
 
+import { fittedRingLabel } from "./sunburstRingLabels";
+
+// The first ring runs from 15% to 40% of half the shorter side of the chart (levels below). Its
+// labels fit their arcs by the one sunburst rule (`sunburstRingLabels`, CHAOS-12820): two small
+// segments side by side never print their labels over each other.
+const RING1_INNER = 0.15;
+const RING1_OUTER = 0.4;
+
 echarts.use([EChartsSunburstChart]);
 
 export type SunburstNode = {
@@ -32,6 +40,8 @@ type SunburstChartProps = {
     className?: string;
     style?: CSSProperties;
     useInputColors?: boolean;
+    /** `false` turns animation off, for a reader who asks for reduced motion. */
+    animation?: boolean;
     tooltipFormatterAction?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClickAction?: (node: {
         name: string;
@@ -55,12 +65,16 @@ export function SunburstChart({
     className,
     style,
     useInputColors = false,
+    animation,
     tooltipFormatterAction,
     onNodeClickAction,
 }: SunburstChartProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
     const mergedStyle: CSSProperties = { height, width, ...style };
+    // Half the shorter side of the chart box. The width is a percentage by default and wider than the
+    // height in its hosts, so the numeric height decides; 400 is the default height.
+    const halfSidePx = (typeof height === "number" ? height : 400) / 2;
 
     const totalValue = data.value || 0;
 
@@ -96,6 +110,7 @@ export function SunburstChart({
         const walk = (
             node: SunburstNode,
             inherited?: { color: string; opacity?: number },
+            depth = 0,
         ): SunburstNode => {
             const color = node.itemStyle?.color ?? inherited?.color;
             const opacity = node.itemStyle?.opacity ?? inherited?.opacity;
@@ -103,16 +118,26 @@ export function SunburstChart({
             const ink = color
                 ? tileLabelStyle(color, opacity, chartTheme.background)
                 : { color: chartTheme.text, textBorderWidth: 0 };
+            // The first ring's label fits its arc, or is hidden; deeper rings keep their level rule.
+            const fit =
+                depth === 0
+                    ? fittedRingLabel(
+                          halfSidePx,
+                          totalValue > 0 ? node.value / totalValue : 0,
+                          RING1_INNER,
+                          RING1_OUTER,
+                      )
+                    : {};
             return {
                 ...node,
-                label: ink,
+                label: { ...ink, ...fit },
                 children: node.children?.map((child) =>
-                    walk(child, color ? { color, opacity } : undefined),
+                    walk(child, color ? { color, opacity } : undefined, depth + 1),
                 ),
             };
         };
         return (coloredData.children ?? []).map((child) => walk(child));
-    }, [coloredData, chartTheme.background, chartTheme.text]);
+    }, [coloredData, chartTheme.background, chartTheme.text, halfSidePx, totalValue]);
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -135,6 +160,7 @@ export function SunburstChart({
 
     const option = useMemo(
         () => ({
+            ...(animation === undefined ? {} : { animation }),
             tooltip: {
                 confine: true,
                 backgroundColor: chartTheme.background,
@@ -241,7 +267,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [labelledData, totalValue, unit, chartTheme, tooltipFormatterAction],
+        [animation, labelledData, totalValue, unit, chartTheme, tooltipFormatterAction],
     );
 
     return (

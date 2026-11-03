@@ -8,7 +8,16 @@ import type {
     ContextFabricSubmissionStatusV1,
 } from "@/lib/acr/generated";
 
+import type { AnswerProjection } from "@full-chaos/ask-dev/render";
+
 import type { TranscriptResult } from "@/lib/ask-dev/transcript";
+
+/**
+ * What a `result` event or a result read carries: a whole result, or ACR's bounded answer
+ * (`context_fabric_answer_projection.v1`, CHAOS-12643), which ACR serves when the whole result is
+ * over the caller's byte option. The store tells them apart (`resultOutcome`).
+ */
+export type StreamResult = TranscriptResult | AnswerProjection;
 
 /**
  * The one seam between the Ask Dev conversation store (CHAOS-11928) and ACR. The browser calls ACR
@@ -42,7 +51,7 @@ export {
 } from "@full-chaos/ask-dev/acr-client";
 
 /** One parsed `context_fabric_investigation_event.v1` event, as the store reads it. */
-export type InvestigationEvent = AcrInvestigationEvent<TranscriptResult>;
+export type InvestigationEvent = AcrInvestigationEvent<StreamResult>;
 
 export type InvestigateCall = {
     /** The wire request, built by `buildInvestigationRequest`; sent byte for byte. */
@@ -163,7 +172,7 @@ export type AskDevTransport = {
      * `GET …/investigations/{result_id}`: replays a stored result, which ACR authorizes again. ACR's
      * 404 (not the caller's, or not served now) throws a `TransportRefusal` with status 404.
      */
-    readonly readResult: (resultId: string, signal: AbortSignal) => Promise<TranscriptResult>;
+    readonly readResult: (resultId: string, signal: AbortSignal) => Promise<StreamResult>;
     /**
      * `GET /api/v1/context-fabric/threads?limit&cursor` (CHAOS-11956): one page of the caller's
      * conversations. The body is checked with `parseThreadList` before it is mapped; a body that

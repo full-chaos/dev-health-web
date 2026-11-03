@@ -5,10 +5,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import GitLab from "next-auth/providers/gitlab";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
@@ -25,6 +27,15 @@ import {
 import { ssoEnabled, type SsoSession } from "@/lib/authSso";
 
 const authLogger = logger.child({ module: "auth" });
+
+// No request reaches the jwt callback: read the incoming headers; outside a request scope send none.
+async function refreshClientIp(): Promise<string | undefined> {
+    try {
+        return getClientIpFromEnv({ headers: await headers() });
+    } catch {
+        return undefined;
+    }
+}
 
 /**
  * Custom error thrown when login fails because the user's email
@@ -68,6 +79,19 @@ function setServiceToken(
     token.act_sub = value.actor;
 }
 
+// next-auth debug metadata has no fixed shape (provider config, tokens, profile, urls). Only key names and
+// number or boolean values are logged: no string and no nested value.
+function debugMetadataShape(metadata: unknown): Record<string, unknown> | undefined {
+    if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
+        return undefined;
+    }
+    const shape: Record<string, unknown> = { keys: Object.keys(metadata) };
+    for (const [key, value] of Object.entries(metadata)) {
+        if (typeof value === "number" || typeof value === "boolean") shape[key] = value;
+    }
+    return shape;
+}
+
 const nextAuth = NextAuth({
     trustHost: true,
     logger: {
@@ -78,7 +102,7 @@ const nextAuth = NextAuth({
             authLogger.warn({ code }, "next-auth warning");
         },
         debug: (message: string, metadata?: unknown) => {
-            authLogger.debug({ metadata }, message);
+            authLogger.debug({ metadata: debugMetadataShape(metadata) }, message);
         },
     },
     providers: [
@@ -89,7 +113,7 @@ const nextAuth = NextAuth({
                 password: { label: "Password", type: "password" },
                 org_id: { label: "Organization ID", type: "text" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, request) {
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
@@ -106,6 +130,7 @@ const nextAuth = NextAuth({
                         tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                         issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                         backendUrl: getBackendUrl(),
+                        clientIp: request ? getClientIpFromEnv(request) : undefined,
                     },
                 );
                 switch (login.kind) {
@@ -377,6 +402,7 @@ const nextAuth = NextAuth({
                     tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                     issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                     backendUrl: getBackendUrl(),
+                    clientIp: await refreshClientIp(),
                 });
                 if (refreshed.kind === "rotated") {
                     // Single-use rotation: only the credential this answer carries is kept.
@@ -818,7 +844,9 @@ export async function requireRole(
 ): Promise<Session> {
     const session = await requireSession(callbackUrl);
     const roleList = Array.isArray(roles) ? roles : [roles];
-    if (!session.user.is_superuser && !roleList.includes(session.user.role || "")) {
+    const superuserBypass =
+        session.user.is_superuser === true && session.user.is_impersonating !== true;
+    if (!superuserBypass && !roleList.includes(session.user.role || "")) {
         redirect("/dashboard");
     }
     return session;
@@ -826,7 +854,7 @@ export async function requireRole(
 
 export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
-    if (session.user.is_superuser !== true) {
+    if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }
     return session;
