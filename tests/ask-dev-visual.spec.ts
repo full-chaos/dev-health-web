@@ -36,12 +36,14 @@ const hostChart = (name: string): View => ({
     drawn: (view) => view.locator("canvas").first(),
 });
 
-/** ask-dev's own SVG chart: the answer's first figure that draws a named SVG. */
+/** ask-dev's own SVG chart: the answer's first figure whose SVG draws this mark. */
 const svgChart = (name: string, mark: string): View => ({
     name,
     locate: (answer) =>
         answer
-            .locator("figure.render-shape", { has: answer.page().locator("svg[role='img']") })
+            .locator("figure.render-shape", {
+                has: answer.page().locator(`svg[role='img'] ${mark}`),
+            })
             .first(),
     drawn: (view) => view.locator(`svg[role='img'] ${mark}`).first(),
 });
@@ -65,7 +67,7 @@ const SCENARIOS: readonly { readonly fixture: string; readonly views: readonly V
     },
     {
         fixture: "category-order",
-        views: [svgChart("category-bars", "rect")],
+        views: [svgChart("category-bars", "g.fact-chart__mark-group path")],
     },
 ];
 
