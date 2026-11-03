@@ -834,6 +834,75 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 90
 
+    visual-image:
+        # CHAOS-12841: the image the `visual` job runs in, read from ci/ci-images.json (the one source
+        # of its digest) and waited for in the ghcr.io mirror. Never a Docker Hub or MCR pull here.
+        name: Visual image (mirrored Playwright)
+        needs: [changes]
+        if: needs.changes.outputs.e2e == 'true'
+        runs-on: ubuntu-latest
+        timeout-minutes: 12
+        permissions:
+            contents: read
+            packages: read
+        outputs:
+            ref: ${{ steps.ref.outputs.ref }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+            - name: Read the mirrored Playwright ref
+              id: ref
+              run: echo "ref=$(node scripts/bump-ci-images.mjs --ref playwright mirror)" >> "$GITHUB_OUTPUT"
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Wait for the mirror
+              run: bash .github/scripts/wait-for-ci-images.sh playwright
+
+    visual:
+        # CHAOS-12841 (E8 AC-6): the Ask Dev rich views against their committed baselines
+        # (tests/__visual__/). Pixels hold only in the image that made them, so this job runs the
+        # visual spec, and only it, inside the mirrored Playwright image, never on the bare runner.
+        # The baselines are made in the same image (linux/amd64). It is NOT in the `test` aggregate:
+        # it becomes required only after its first green run on main.
+        name: Visual baselines (Ask Dev rich views)
+        needs: [changes, visual-image]
+        if: needs.changes.outputs.e2e == 'true'
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        permissions:
+            contents: read
+            packages: read
+        container:
+            image: ${{ needs.visual-image.outputs.ref }}
+            # The runner pulls a job container BEFORE the first step: credentials go on the
+            # declaration. GITHUB_TOKEN reads the mirror.
+            credentials:
+                username: ${{ github.actor }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+            options: --ipc=host
+        env:
+            CI: "true"
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+            - name: Install pnpm
+              run: npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")"
+            - run: pnpm install --frozen-lockfile
+            - name: Visual baselines
+              run: pnpm exec playwright test -c playwright.visual.config.ts
+            - name: Upload the visual report and diffs
+              if: always()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+              with:
+                  name: playwright-visual-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: |
+                      test-results/playwright-html/visual/
+                      test-results/playwright/visual/
+                  if-no-files-found: warn
+                  retention-days: 90
+
     design-lint:
         name: Design lint
         needs: [changes]
