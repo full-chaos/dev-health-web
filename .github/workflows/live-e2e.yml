@@ -52,7 +52,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
-        timeout-minutes: 15
+        timeout-minutes: 25
         # Service images and the traefik image come from the ghcr.io mirror.
         permissions:
             contents: read
@@ -284,6 +284,23 @@ jobs:
                   test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')${pad}" | wc -c)" -ge 32
                   echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
+            - name: Start the auth-service stack (dev-health-ops live e2e auth stack)
+              # go-api issues every session through auth-service with the workload credential, as prod does: auth-service signs EdDSA
+              # with its own key, and the ops script below builds it, prepares the auth schema, creates the api workload credential and
+              # starts it. The flags are ops ci/live_e2e_auth_flags.tsv (prod's set, three named deltas). JWT_SECRET_KEY is the value go-api
+              # runs with (the next step).
+              env:
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
+                  JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
+                  DHO_BIN: /tmp/dho
+                  LIVE_E2E_AUTH_VALKEY_URI: redis://127.0.0.1:6379/1
+              run: bash ci/live_e2e_auth_stack.sh up "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
             - name: Start dev-health-ops go-api and query-api
               # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
               # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
@@ -350,13 +367,17 @@ jobs:
                   GO_API_WORK_UNIT_EXPLAIN_ENABLED: "true"
                   GO_API_INVESTMENT_EXPLAIN_ENABLED: "true"
               run: |
-                  nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
+                  # with-env adds the auth flags, the issuer and the CA of the auth stack to each process only (SSL_CERT_FILE
+                  # replaces the system roots, so it is never exported for the whole job).
+                  nohup bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- \
+                    /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
                   # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
                   # with one flag changed (see "Restart go-api for the guided-onboarding pass").
                   cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
-                  nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
+                  nohup bash ci/live_e2e_auth_stack.sh with-env query-api "${RUNNER_TEMP}/live-e2e-auth" -- \
+                    /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
                   echo $! >/tmp/dev-health-query-api.pid
 
@@ -405,6 +426,25 @@ jobs:
                   bash .github/scripts/wait-for-ci-images.sh traefik
                   traefik_image="$(node scripts/bump-ci-images.mjs --ref traefik mirror)"
                   mkdir -p /tmp/traefik-dynamic
+                  # The https front of auth-service: go-api, query-api and the web server read the issuer's discovery and key set over https
+                  # (certificate: the job-local CA of the auth stack, localhost).
+                  printf '%s\n' \
+                    'http:' \
+                    '  routers:' \
+                    '    auth-issuer:' \
+                    '      rule: "Host(`localhost`)"' \
+                    '      entryPoints: [authtls]' \
+                    '      service: auth-issuer' \
+                    '      priority: 1000' \
+                    '      tls: {}' \
+                    '  services:' \
+                    '    auth-issuer:' \
+                    '      loadBalancer:' \
+                    '        servers: [{url: "http://127.0.0.1:8095"}]' \
+                    'tls:' \
+                    '  certificates:' \
+                    '    - certFile: /certs/tls.crt' \
+                    '      keyFile: /certs/tls.key' > /tmp/traefik-dynamic/auth-issuer.yml
                   node ci/generate-live-e2e-plane-router.mjs \
                     dev-health-ops/contracts/ingress/v1/planes.json \
                     dev-health-ops/ci/go_served_paths.tsv \
@@ -415,10 +455,12 @@ jobs:
 
                   docker run -d --name live-e2e-traefik --network host \
                     -v /tmp/traefik-dynamic:/etc/traefik/dynamic:ro \
+                    -v "${RUNNER_TEMP}/live-e2e-auth/tls:/certs:ro" \
                     "${traefik_image}" \
                     --providers.file.directory=/etc/traefik/dynamic \
                     --providers.file.watch=false \
                     --entrypoints.web.address=:8099 \
+                    --entrypoints.authtls.address=127.0.0.1:8443 \
                     --log.level=INFO
 
                   for i in {1..30}; do
@@ -429,6 +471,22 @@ jobs:
                   done
                   echo "traefik router failed health check startup window (via catch-all -> api)"
                   docker logs live-e2e-traefik || true
+                  exit 1
+
+            - name: Check the auth-service issuer over https
+              run: |
+                  set -euo pipefail
+                  issuer="https://localhost:8443"
+                  for i in {1..30}; do
+                    doc="$(curl -fsS --max-time 5 --cacert "${RUNNER_TEMP}/live-e2e-auth/tls/ca.pem" "${issuer}/.well-known/openid-configuration" 2>/dev/null || true)"
+                    if [ -n "${doc}" ]; then
+                      test "$(jq -r '.issuer' <<<"${doc}")" = "${issuer}" || { echo "::error::discovery issuer is not ${issuer}"; exit 1; }
+                      echo "auth-service discovery answers over https for ${issuer}"
+                      exit 0
+                    fi
+                    sleep 1
+                  done
+                  echo "::error::auth-service discovery is not served over https"
                   exit 1
 
             - name: Seed test superuser
@@ -543,6 +601,46 @@ jobs:
                     exit 1
                   fi
 
+            - name: Assert the login token is EdDSA from auth-service, and a delegated session issue used the workload credential
+              # The seeded superuser's login answer (/tmp/login.json): alg EdDSA, kid, iss, aud dev-health-api. Then a throwaway user changes
+              # its password once: that is a go-api sign-in flow that calls auth-service's session issue route, and the audit rows must
+              # name the workload credential (workload_jti) and no service credential.
+              env:
+                  BACKEND_URL: http://127.0.0.1:8099
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
+              run: |
+                  set -euo pipefail
+                  go run -trimpath ./cmd/cigate live-e2e assert-login-token /tmp/login.json https://localhost:8443 e2e-auth
+                  email="audit-${GITHUB_RUN_ID}-${RANDOM}@example.com"
+                  password="Audit-${RANDOM}-${RANDOM}-Aa1!x"
+                  new_password="Audit-${RANDOM}-${RANDOM}-Bb2?y"
+                  status=$(jq -n --arg e "${email}" --arg p "${password}" '{email:$e,password:$p,full_name:"Audit User"}' |
+                    curl -s -o /dev/null -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/register" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" --data-binary @-)
+                  case "${status}" in 201|202) ;; *) echo "::error::audit user register status ${status}"; exit 1 ;; esac
+                  psql -v ON_ERROR_STOP=1 -v email="${email}" <<'SQL'
+                  SELECT format('UPDATE users SET %I = true WHERE email = %L', column_name, :'email')
+                    FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = 'users' AND column_name IN ('is_verified', 'email_verified', 'is_active')
+                  \gexec
+                  SQL
+                  login_status=$(jq -n --arg e "${email}" --arg p "${password}" '{email:$e,password:$p}' |
+                    curl -s -o /tmp/audit-login.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/login" \
+                      -H 'Content-Type: application/json' --data-binary @-)
+                  test "${login_status}" = "200" || { echo "::error::audit user login status ${login_status}"; exit 1; }
+                  token="$(jq -r '.access_token // empty' /tmp/audit-login.json)"
+                  test -n "${token}" || { echo "::error::audit login carries no access token"; exit 1; }
+                  cp_status=$(jq -n --arg c "${password}" --arg n "${new_password}" '{current_password:$c,new_password:$n}' |
+                    curl -s -o /dev/null -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/change-password" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${token}" --data-binary @-)
+                  echo "change-password status=${cp_status}"
+                  bash ci/live_e2e_auth_stack.sh assert-audit "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
             - name: Run live backend e2e tier
               env:
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
@@ -555,7 +653,11 @@ jobs:
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
               # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
               # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
-              run: bash ci/run_tests.sh live-e2e-two-pass
+              run: |
+                  # The web server pins the issuer and trusts the job-local CA (ops print-env web).
+                  while IFS= read -r line; do export "${line%%=*}=${line#*=}"; done \
+                    < <(bash dev-health-ops/ci/live_e2e_auth_stack.sh print-env web "${RUNNER_TEMP}/live-e2e-auth")
+                  bash ci/run_tests.sh live-e2e-two-pass
 
             - name: Upload Playwright report
               if: always()
@@ -572,6 +674,7 @@ jobs:
                   path: |
                       /tmp/dev-health-go-api.log
                       /tmp/dev-health-query-api.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/auth-service.log
 
             - name: Stop dev-health-ops API
               if: always()
@@ -582,4 +685,5 @@ jobs:
                   if [ -f /tmp/dev-health-query-api.pid ]; then
                     kill "$(cat /tmp/dev-health-query-api.pid)" || true
                   fi
+                  bash dev-health-ops/ci/live_e2e_auth_stack.sh down "${RUNNER_TEMP}/live-e2e-auth" || true
                   docker rm -f live-e2e-traefik >/dev/null 2>&1 || true
