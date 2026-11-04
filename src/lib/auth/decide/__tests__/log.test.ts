@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Transport } from "../../authorize/client";
 import { decideGuard } from "../decide";
 import { ALLOW, DENY, ORG, TOKEN, USER, answering, session } from "./helpers";
 
@@ -12,7 +13,7 @@ const CLOSED = [
     "request_id",
 ] as const;
 
-async function logged(transport: Parameters<typeof decideGuard>[2]["transport"]) {
+async function logged(transport: Transport | undefined) {
     const info = vi.fn();
     await decideGuard(session({ role: "owner", is_superuser: true }), "org.integrations.write", {
         enforced: true,

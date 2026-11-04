@@ -106,7 +106,7 @@ describe("A2 the unmapped guard is used only where listed", () => {
     const used = new Map<string, number>();
     for (const file of files) {
         if (file.startsWith("src/lib/auth/decide/")) continue;
-        const hits = read(file).match(/guard: "superuser\.unmapped"/g)?.length ?? 0;
+        const hits = read(file).match(/guard: "unmapped"/g)?.length ?? 0;
         if (hits > 0) used.set(file, hits);
     }
 
