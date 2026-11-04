@@ -285,6 +285,7 @@ describe("check-org-provisioning-calls: r1f findings", () => {
         "POST /admin/users",
         "POST /orgs/{}/members",
         "member route literal",
+        "member route literal",
         "export createUser",
         "call adminApi.users.create",
     ];

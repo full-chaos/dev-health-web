@@ -28,7 +28,15 @@ export const CLIENT_FILE = "src/lib/admin/api/orgs.ts";
 const MUTATING = "POST|PATCH|PUT|DELETE";
 const RAW_PATH = /\/api\/v1(\/(?:admin|orgs)\/[A-Za-z0-9_\-/{}$.]*|\/auth\/accept-invite)/gu;
 const MEMBER_LITERAL =
-    /\/orgs\/(?:\$\{[^}]*\}|[^/"'`\s]+)\/(?:members|transfer-ownership|invites)/u;
+    /\/orgs\/(?:\$\{[^}]*\}|[^/"'`\s]+)\/(?:members|transfer-ownership|invites)/gu;
+const SOURCE_EXT = "ts|tsx|js|jsx|mjs|cjs|mts|cts";
+const SCRIPT_KINDS = {
+    tsx: ts.ScriptKind.TSX,
+    jsx: ts.ScriptKind.JSX,
+    js: ts.ScriptKind.JS,
+    mjs: ts.ScriptKind.JS,
+    cjs: ts.ScriptKind.JS,
+};
 
 export function normalizePath(literal) {
     return literal
@@ -45,8 +53,8 @@ function walk(dir, out) {
             if (entry.name === "__tests__" || entry.name === "node_modules") continue;
             walk(full, out);
         } else if (
-            /\.(ts|tsx)$/u.test(entry.name) &&
-            !/\.(?:test|spec)\.(ts|tsx)$/u.test(entry.name)
+            new RegExp(`\\.(?:${SOURCE_EXT})$`, "u").test(entry.name) &&
+            !new RegExp(`\\.(?:test|spec)\\.(?:${SOURCE_EXT})$`, "u").test(entry.name)
         ) {
             out.push(full);
         }
@@ -54,11 +62,6 @@ function walk(dir, out) {
 }
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;
-
-function isComment(text, index) {
-    const start = text.lastIndexOf("\n", index) + 1;
-    return /^\s*(\/\/|\*|\/\*)/u.test(text.slice(start, index + 1));
-}
 
 const hasModifier = (node, kind) => node.modifiers?.some((m) => m.kind === kind) ?? false;
 const literalText = (node) =>
@@ -138,8 +141,9 @@ export function findSites(rel, text) {
         text,
         ts.ScriptTarget.Latest,
         true,
-        rel.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+        SCRIPT_KINDS[rel.slice(rel.lastIndexOf(".") + 1)] ?? ts.ScriptKind.TS,
     );
+    const memberAt = new Set();
     const add = (index, key) => sites.push({ file: rel, line: lineOf(text, index), key });
     const visit = (node) => {
         if (ts.isCallExpression(node)) {
@@ -162,6 +166,13 @@ export function findSites(rel, text) {
             ts.isTemplateExpression(node)
         ) {
             const source = node.getText(sf);
+            if (rel !== CLIENT_FILE)
+                for (const match of source.matchAll(MEMBER_LITERAL)) {
+                    const at = node.getStart(sf) + match.index;
+                    if (memberAt.has(at)) continue;
+                    memberAt.add(at);
+                    add(at, "member route literal");
+                }
             for (const match of source.matchAll(RAW_PATH)) {
                 const call = owningCall(node);
                 const method = call && callMethod(call);
@@ -173,10 +184,6 @@ export function findSites(rel, text) {
         ts.forEachChild(node, visit);
     };
     visit(sf);
-    if (rel !== CLIENT_FILE) {
-        const hit = MEMBER_LITERAL.exec(text);
-        if (hit && !isComment(text, hit.index)) add(hit.index, "member route literal");
-    }
     return sites.sort((x, y) => x.line - y.line);
 }
 
