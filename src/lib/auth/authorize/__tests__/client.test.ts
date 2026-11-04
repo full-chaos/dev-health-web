@@ -149,8 +149,8 @@ const single: FailureRow[] = [
         name: "unknown reason",
         reason: "unknown_reason",
         ...bodyRow(
-            JSON.stringify(decision({ reason_code: "impersonation_denied" })),
-            batchBody([item(0), item(1, { reason_code: "impersonation_denied" })]),
+            JSON.stringify(decision({ reason_code: "not_a_wire_reason" })),
+            batchBody([item(0), item(1, { reason_code: "not_a_wire_reason" })]),
         ),
     },
 ];

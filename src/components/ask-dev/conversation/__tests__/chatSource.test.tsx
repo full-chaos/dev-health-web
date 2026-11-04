@@ -37,6 +37,7 @@ import type { InvestigationEvent, InvestigationStage } from "../transport";
 import {
     accepted,
     acrError,
+    boundedFixture,
     captureResult,
     deferred,
     errorEvent,
@@ -55,6 +56,7 @@ import {
  */
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
+const BOUNDED = boundedFixture("bounded-answer");
 const CLARIFICATION = captureResult("kiac_project_status_clarification.event.json");
 const ORG_A = "org-a\u0000user-1\u0000";
 const ORG_B = "org-b\u0000user-1\u0000";
@@ -269,6 +271,15 @@ const CASES: Record<TurnOutcome["kind"], Case> = {
         },
         expected: { kind: "answered", result: PARTIAL as never },
     },
+    // CHAOS-12643: ACR's bounded answer reaches the render as itself.
+    bounded: {
+        drive: async (s) => {
+            transport.scripts.push([accepted(), resultEvent(BOUNDED)]);
+            s.submit(QUESTION);
+            await reaches(s, "bounded");
+        },
+        expected: { kind: "bounded", projection: BOUNDED },
+    },
     refused: {
         drive: async (s) => {
             transport.scripts.push([
@@ -433,8 +444,8 @@ const CASES: Record<TurnOutcome["kind"], Case> = {
 };
 
 describe("every TurnOutcome kind maps onto the seam (the real store reaches each one)", () => {
-    it("names 26 kinds", () => {
-        expect(Object.keys(CASES)).toHaveLength(26);
+    it("names 27 kinds", () => {
+        expect(Object.keys(CASES)).toHaveLength(27);
     });
 
     it.each(Object.entries(CASES))("%s", async (_, { drive, expected }) => {
@@ -501,6 +512,7 @@ type WebStatusKinds = Exclude<
     | "restoring"
     | "canceling"
     | "answered"
+    | "bounded"
     | "refused"
     // CHAOS-12474: drawn with the render's own kinds, and `connect` is never sent.
     | "authorization_failed"

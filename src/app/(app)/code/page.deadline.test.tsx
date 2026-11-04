@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { advance, releaseDeadlineClock, useDeadlineClock } from "@/test/deadlineClock";
 import { resolveServerTree } from "@/test/resolveServerTree";
 import { track } from "@/test/stallFetch";
 
@@ -16,6 +17,14 @@ vi.mock("@/lib/logger", () => {
     return { logger: l };
 });
 vi.mock("@/lib/auth", () => ({ auth: vi.fn().mockResolvedValue(null) }));
+// The real session read imports the auth module lazily. The page starts several reads at once,
+// and concurrent lazy imports settle on a real macrotask the host decides: a slow host held one
+// past its 60 ms deadline and wrote a second deadline line. The clock here is fake, so the
+// session read calls the mocked auth() directly.
+vi.mock("@/lib/serverSession.server", async () => {
+    const { auth } = await import("@/lib/auth");
+    return { readServerSession: async () => auth() };
+});
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/shell/PageHeader", () => ({ PageHeader: () => null }));
 vi.mock("@/components/evidence/PageFactsEvidenceAction", () => ({
@@ -32,13 +41,13 @@ vi.mock("@/components/charts/QuadrantPanel", () => ({
 import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 import CodePage from "./page";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 beforeEach(() => {
     warn.mockClear();
+    useDeadlineClock();
     overrideDeadlinesForTests({ read: 60, health: 60, auth: 60, outerMargin: 1_500 });
 });
 afterEach(() => {
+    releaseDeadlineClock();
     overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
 });
@@ -64,11 +73,12 @@ describe("/code with one call that never answers", () => {
             }),
         );
         const state = track(CodePage({ searchParams: Promise.resolve({}) }));
-        for (let i = 0; i < 1_500 && !state.settled; i += 1) await sleep(10);
+        for (let i = 0; i < 1_500 && !state.settled; i += 1) await advance(10);
         expect(state.settled).toBe(true);
-        const html = renderToStaticMarkup(
-            (await resolveServerTree(state.value)) as React.ReactElement,
-        );
+        const tree = track(resolveServerTree(state.value));
+        for (let i = 0; i < 1_500 && !tree.settled; i += 1) await advance(10);
+        expect(tree.settled).toBe(true);
+        const html = renderToStaticMarkup(tree.value as React.ReactElement);
         expect(html).toContain("quadrant-no-data");
         const lines = warn.mock.calls.filter(([, m]) => m === "server fetch deadline exceeded");
         expect(lines).toHaveLength(1);

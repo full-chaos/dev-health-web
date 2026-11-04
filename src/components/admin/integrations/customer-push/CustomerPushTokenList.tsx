@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { rotateCustomerPushToken, revokeCustomerPushToken } from "@/lib/admin/server";
 import { TokenRevealPanel } from "./TokenRevealPanel";
+import { CredentialKindBadge } from "../CredentialKindBadge";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     deriveTokenStatus,
@@ -96,6 +97,7 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
             <div>
                 <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-(--text-primary)">{token.name}</h3>
+                    <CredentialKindBadge kind="external_push" />
                     <TokenStatusBadge status={status} />
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1.5">

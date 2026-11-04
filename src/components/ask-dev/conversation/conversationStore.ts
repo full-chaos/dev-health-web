@@ -18,6 +18,9 @@ import {
 } from "@/lib/ask-dev/request-builder";
 import { logger } from "@/lib/logger";
 
+import type { AnswerProjection } from "@full-chaos/ask-dev/render";
+
+import { budgetIsConsistent, isAnswerProjection } from "@/lib/ask-dev/projectionBudget";
 import type { RefusalEvent, TranscriptResult } from "@/lib/ask-dev/transcript";
 import { isCorrelationId, newSubmissionId, newThreadId, partitionTag } from "./keys";
 import {
@@ -28,6 +31,7 @@ import {
     type EvidenceView,
     type InvestigationEvent,
     type InvestigationStage,
+    type StreamResult,
     type ThreadSummaryView,
     type ThreadTurnView,
     type ThreadView,
@@ -123,6 +127,11 @@ export type TurnOutcome =
     /** The stream dropped; the store is polling the submission status. */
     | { readonly kind: "recovering"; readonly startedAt: number }
     | { readonly kind: "answered"; readonly result: TranscriptResult }
+    /**
+     * CHAOS-12643: ACR served its bounded answer (`context_fabric_answer_projection.v1`): the
+     * whole result was over the caller's byte option. The render draws it as itself.
+     */
+    | { readonly kind: "bounded"; readonly projection: AnswerProjection }
     /** ACR ended the stream with a budget refusal (`AskDevRefusal` renders it). */
     | { readonly kind: "refused"; readonly refusal: RefusalEvent }
     /**
@@ -668,9 +677,11 @@ function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
             outcome:
                 turn.outcome.kind === "answered"
                     ? { kind: "answered", result: turn.outcome.result }
-                    : IN_FLIGHT.has(turn.outcome.kind)
-                      ? { kind: "pending" }
-                      : { kind: "failed" },
+                    : turn.outcome.kind === "bounded"
+                      ? { kind: "bounded", projection: turn.outcome.projection }
+                      : IN_FLIGHT.has(turn.outcome.kind)
+                        ? { kind: "pending" }
+                        : { kind: "failed" },
         },
     ]);
 }
@@ -1712,7 +1723,7 @@ export class ConversationStore {
         counted: boolean,
         onSettled?: () => boolean,
     ): Promise<void> {
-        let result: TranscriptResult;
+        let result: StreamResult;
         try {
             result = await this.transport.readResult(resultId, signal);
         } catch (error) {
@@ -1752,8 +1763,13 @@ export class ConversationStore {
         if (!this.ownsSelection(selection, "replay")) return;
         this.replaying.delete(submissionId);
         if (onSettled !== undefined && !onSettled()) return;
-        this.updateRestored(submissionId, { kind: "answered", result });
-        if (counted) this.restoreCounted(selection, "answered");
+        const restored = resultOutcome(result);
+        this.updateRestored(submissionId, restored);
+        if (counted)
+            this.restoreCounted(
+                selection,
+                restored.kind === "unreadable" ? "unavailable" : "answered",
+            );
     }
 
     private restoreCounted(selection: number, how: "answered" | "unavailable" | "failed"): void {
@@ -2408,7 +2424,7 @@ export class ConversationStore {
             case "heartbeat":
                 return false;
             case "result":
-                this.settle(run, { kind: "answered", result: event.result });
+                this.settle(run, resultOutcome(event.result, this.reference(run)));
                 return true;
             case "error": {
                 const code = event.error.error.code;
@@ -2721,7 +2737,7 @@ export class ConversationStore {
     }
 
     private async replay(run: ActiveRun, resultId: string, submissionId: string): Promise<void> {
-        let result: TranscriptResult;
+        let result: StreamResult;
         try {
             result = await this.transport.readResult(resultId, run.controller.signal);
         } catch (error) {
@@ -2751,6 +2767,19 @@ export class ConversationStore {
             return;
         }
         if (!this.owns(run)) return;
-        this.settle(run, { kind: "answered", result });
+        this.settle(run, resultOutcome(result, this.reference(run)));
     }
+}
+
+/**
+ * The outcome a result payload settles (CHAOS-12643). A whole result is an answer. ACR's bounded
+ * answer is drawn as itself when its budget keeps ACR's rule (the stream gate already checked it
+ * against the pinned schema); one that breaks the rule is a contract refusal, `unreadable`, as
+ * any answer this page's contract refuses: asking again gives the same result.
+ */
+function resultOutcome(result: StreamResult, reference?: string): TurnOutcome {
+    if (!isAnswerProjection(result)) return { kind: "answered", result };
+    if (budgetIsConsistent(result.projection_budget))
+        return { kind: "bounded", projection: result };
+    return { kind: "unreadable", ...(reference === undefined ? {} : { reference }) };
 }

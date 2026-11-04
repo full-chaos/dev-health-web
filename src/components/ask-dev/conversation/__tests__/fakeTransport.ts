@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
+import type { AnswerProjection } from "@full-chaos/ask-dev/render";
+
 import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { TransportRefusal } from "../transport";
 import type {
@@ -13,6 +15,7 @@ import type {
     FeedbackView,
     InvestigateCall,
     InvestigationEvent,
+    StreamResult,
     ThreadListView,
     ThreadSummaryView,
     ThreadTurnView,
@@ -20,6 +23,18 @@ import type {
 } from "../transport";
 
 const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
+
+/**
+ * ACR's bounded answers (`context_fabric_answer_projection.v1`, CHAOS-12643): ACR's real projector
+ * output, copied unchanged from ask-dev f59c00f9 (see `tests/fixtures/ask-dev/boundedFixtures.ts`).
+ */
+const BOUNDED = join(process.cwd(), "tests/fixtures/ask-dev/bounded-answers");
+
+export function boundedFixture(
+    name: "bounded-answer" | "bounded-no-match" | "bounded-partial-table",
+): AnswerProjection {
+    return JSON.parse(readFileSync(join(BOUNDED, `${name}.json`), "utf8")) as AnswerProjection;
+}
 
 /** A real (scrubbed) ACR result from the capture set. */
 export function captureResult(file: string): TranscriptResult {
@@ -49,7 +64,7 @@ export const accepted = (reserved = "result_reserved_0001"): InvestigationEvent 
     started_at: "2026-10-30T00:00:00Z",
     budget_seconds: 110,
 });
-export const resultEvent = (result: TranscriptResult): InvestigationEvent => ({
+export const resultEvent = (result: StreamResult): InvestigationEvent => ({
     ...base(),
     type: "result",
     result,
@@ -188,7 +203,7 @@ export class FakeTransport implements AskDevTransport {
     statusHangs = false;
     readHangs = false;
     readonly statusCalls: string[] = [];
-    readonly results = new Map<string, TranscriptResult>();
+    readonly results = new Map<string, StreamResult>();
     readonly readCalls: string[] = [];
     /** A replay that throws this (for example a 404 `TransportRefusal`). */
     readonly readErrors = new Map<string, unknown>();
@@ -274,7 +289,7 @@ export class FakeTransport implements AskDevTransport {
         return next ?? null;
     };
 
-    readonly readResult = async (resultId: string): Promise<TranscriptResult> => {
+    readonly readResult = async (resultId: string): Promise<StreamResult> => {
         this.readCalls.push(resultId);
         if (this.readHangs) return new Promise<never>(() => undefined);
         const gate = this.readGates.get(resultId);

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { advance, releaseDeadlineClock, useDeadlineClock } from "@/test/deadlineClock";
 import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
 // CHAOS-9114: a server-side fetch that is accepted and never answered must settle at its
-// deadline. Real timers, deadlines shrunk through the env override, so every test asserts
+// deadline. Deadlines shrunk through the env override, so every test asserts
 // the MECHANISM (the deadline log line with its deadline_ms), not only that a promise ended.
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
@@ -13,6 +14,13 @@ vi.mock("@/lib/logger", () => {
     return { logger: l };
 });
 vi.mock("@/lib/auth", () => ({ auth: vi.fn().mockResolvedValue(null) }));
+// The real session read imports the auth module lazily. Two concurrent lazy imports settle on a
+// real macrotask the host decides, which the fake clock cannot wait for; the step under test is
+// the session read's own wait, so it calls the mocked auth() directly.
+vi.mock("@/lib/serverSession.server", async () => {
+    const { auth } = await import("@/lib/auth");
+    return { readServerSession: async () => auth() };
+});
 
 import { checkApiHealth } from "@/lib/api/system";
 import { apiClient } from "@/lib/apiClient";
@@ -28,26 +36,27 @@ const shrink = (read = SHORT) =>
     overrideDeadlinesForTests({
         read,
         health: SHORT,
-        // the auth step of the first call loads a module: a longer wait than the fetches
         auth: 500,
         entitlements: SHORT,
         outerMargin: MARGIN,
         slow: 5_000,
     });
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-/** Poll until every tracked promise settled (up to 15 s): robust on a loaded host. */
+const sleep = advance;
+/** Move the fake clock until every tracked promise settled (up to 15 s of fake time). */
 const allSettled = async (...states: Array<{ settled: boolean }>) => {
-    for (let i = 0; i < 1_500 && !states.every((s) => s.settled); i += 1) await sleep(10);
+    for (let i = 0; i < 1_500 && !states.every((s) => s.settled); i += 1) await advance(10);
 };
 const deadlineLines = () =>
     warn.mock.calls.filter(([, msg]) => msg === "server fetch deadline exceeded");
 
 beforeEach(() => {
     warn.mockClear();
+    useDeadlineClock();
     shrink();
 });
 afterEach(() => {
+    releaseDeadlineClock();
     overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
 });
@@ -147,8 +156,7 @@ describe("writes are not aborted", () => {
 });
 
 describe("shared in-flight GET map (apiClient): a stalled owner releases every waiter", () => {
-    // A longer deadline than the other tests: the waiters must join the owner before it ends,
-    // also on a loaded host.
+    // A longer deadline than the other tests: the waiters join the owner before it ends.
     beforeEach(() => {
         shrink(1_000);
     });
