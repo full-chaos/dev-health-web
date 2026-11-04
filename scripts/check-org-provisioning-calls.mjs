@@ -22,11 +22,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 export const CLIENT_FILE = "src/lib/admin/api/orgs.ts";
 const MUTATING = "POST|PATCH|PUT|DELETE";
-const METHOD_RE = new RegExp(`method:\\s*["'\`](${MUTATING})["'\`]`, "u");
-const CLIENT_CALL = /\b(?:selfRequest|request)\s*(?:<[^>()]*>)?\(\s*(`[^`]*`|"[^"]*"|'[^']*')/gu;
 const RAW_PATH = /\/api\/v1(\/(?:admin|orgs)\/[A-Za-z0-9_\-/{}$.]*|\/auth\/accept-invite)/gu;
 const MEMBER_LITERAL =
     /\/orgs\/(?:\$\{[^}]*\}|[^/"'`\s]+)\/(?:members|transfer-ownership|invites)/u;
@@ -45,7 +44,10 @@ function walk(dir, out) {
         if (entry.isDirectory()) {
             if (entry.name === "__tests__" || entry.name === "node_modules") continue;
             walk(full, out);
-        } else if (/\.(ts|tsx)$/u.test(entry.name) && !/\.test\.(ts|tsx)$/u.test(entry.name)) {
+        } else if (
+            /\.(ts|tsx)$/u.test(entry.name) &&
+            !/\.(?:test|spec)\.(ts|tsx)$/u.test(entry.name)
+        ) {
             out.push(full);
         }
     }
@@ -58,45 +60,110 @@ function isComment(text, index) {
     return /^\s*(\/\/|\*|\/\*)/u.test(text.slice(start, index + 1));
 }
 
-// The method of the call that starts at `from`, looked up before the next call or 400 chars on.
-function methodAfter(text, from, stop) {
-    const end = Math.min(stop ?? text.length, from + 400);
-    const hit = METHOD_RE.exec(text.slice(from, end));
-    return hit ? hit[1] : null;
+const hasModifier = (node, kind) => node.modifiers?.some((m) => m.kind === kind) ?? false;
+const literalText = (node) =>
+    node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+        ? node.text
+        : null;
+
+// Method of one call, read from its own options object (2nd argument) only.
+function callMethod(call) {
+    const options = call.arguments[1];
+    if (!options || !ts.isObjectLiteralExpression(options)) return null;
+    for (const prop of options.properties) {
+        if (!ts.isPropertyAssignment(prop)) continue;
+        const name = ts.isIdentifier(prop.name) ? prop.name.text : literalText(prop.name);
+        if (name !== "method") continue;
+        const value = literalText(prop.initializer)?.toUpperCase();
+        return value && MUTATING.split("|").includes(value) ? value : null;
+    }
+    return null;
+}
+
+// First path argument of a call as source text, `${...}` kept so normalizePath can fold it.
+const pathArg = (call) => {
+    const arg = call.arguments[0];
+    if (!arg) return null;
+    return ts.isStringLiteral(arg) ||
+        ts.isNoSubstitutionTemplateLiteral(arg) ||
+        ts.isTemplateExpression(arg)
+        ? arg.getText()
+        : null;
+};
+
+function exportsCreateUser(node) {
+    if (ts.isFunctionDeclaration(node) && hasModifier(node, ts.SyntaxKind.ExportKeyword))
+        return node.name?.text === "createUser";
+    if (ts.isVariableStatement(node) && hasModifier(node, ts.SyntaxKind.ExportKeyword))
+        return node.declarationList.declarations.some(
+            (d) => ts.isIdentifier(d.name) && d.name.text === "createUser",
+        );
+    if (ts.isExportAssignment(node))
+        return ts.isIdentifier(node.expression) && node.expression.text === "createUser";
+    if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause))
+        return node.exportClause.elements.some(
+            (e) => e.name.text === "createUser" || e.propertyName?.text === "createUser",
+        );
+    return false;
+}
+
+// The call that holds `node` as (part of) one of its arguments.
+function owningCall(node) {
+    for (let at = node; at.parent; at = at.parent) {
+        const up = at.parent;
+        if (ts.isCallExpression(up) && up.arguments.includes(at)) return up;
+        if (ts.isBlock(up) || ts.isSourceFile(up)) return null;
+    }
+    return null;
 }
 
 export function findSites(rel, text) {
     const sites = [];
+    const sf = ts.createSourceFile(
+        rel,
+        text,
+        ts.ScriptTarget.Latest,
+        true,
+        rel.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    );
     const add = (index, key) => sites.push({ file: rel, line: lineOf(text, index), key });
-    for (const match of text.matchAll(CLIENT_CALL)) {
-        const p = normalizePath(match[1]);
-        if (p.startsWith("/api/")) continue; // another helper, not the admin client (its paths are relative)
-        const next = text.indexOf("request", match.index + match[0].length);
-        const method = methodAfter(
-            text,
-            match.index + match[0].length,
-            next < 0 ? undefined : next,
-        );
-        if (method) add(match.index, `${method} ${p}`);
-    }
-    const raws = [...text.matchAll(RAW_PATH)];
-    raws.forEach((match, i) => {
-        if (isComment(text, match.index)) return;
-        const next = raws[i + 1]?.index;
-        const method = methodAfter(text, match.index, next);
-        if (method) add(match.index, `${method} ${normalizePath(match[1])}`);
-    });
-    for (const match of text.matchAll(/export\s+(?:async\s+)?function\s+createUser\b/gu)) {
-        add(match.index, "export createUser");
-    }
-    for (const match of text.matchAll(/\badminApi\.users\.create\(/gu)) {
-        add(match.index, "call adminApi.users.create");
-    }
+    const visit = (node) => {
+        if (ts.isCallExpression(node)) {
+            const callee = node.expression;
+            if (ts.isIdentifier(callee) && /^(?:selfRequest|request)$/u.test(callee.text)) {
+                const arg = pathArg(node);
+                const p = arg && normalizePath(arg);
+                const method = callMethod(node);
+                if (p && !p.startsWith("/api/") && method) add(node.getStart(sf), `${method} ${p}`);
+            }
+            if (
+                ts.isPropertyAccessExpression(callee) &&
+                callee.getText(sf) === "adminApi.users.create"
+            )
+                add(node.getStart(sf), "call adminApi.users.create");
+        }
+        if (
+            ts.isStringLiteral(node) ||
+            ts.isNoSubstitutionTemplateLiteral(node) ||
+            ts.isTemplateExpression(node)
+        ) {
+            const source = node.getText(sf);
+            for (const match of source.matchAll(RAW_PATH)) {
+                const call = owningCall(node);
+                const method = call && callMethod(call);
+                if (method)
+                    add(node.getStart(sf) + match.index, `${method} ${normalizePath(match[1])}`);
+            }
+        }
+        if (exportsCreateUser(node)) add(node.getStart(sf), "export createUser");
+        ts.forEachChild(node, visit);
+    };
+    visit(sf);
     if (rel !== CLIENT_FILE) {
         const hit = MEMBER_LITERAL.exec(text);
         if (hit && !isComment(text, hit.index)) add(hit.index, "member route literal");
     }
-    return sites;
+    return sites.sort((x, y) => x.line - y.line);
 }
 
 export function parseAllowlist(text) {
