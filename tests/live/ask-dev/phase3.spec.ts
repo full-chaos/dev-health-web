@@ -442,12 +442,11 @@ for (const replicate of REPLICATES) {
         await page.context().close();
     });
 
-    test(`quadrant ${String(replicate)} [KNOWN GAP CHAOS-12676]: the landscape position renders from the served shape`, async ({
+    test(`quadrant ${String(replicate)}: the landscape position renders from the served shape`, async ({
         browser,
         baseURL,
     }) => {
         const { page, answer, result } = await answerFor(browser, baseURL, "landscape", replicate);
-        // The preconditions are ordinary assertions: a broken answer is red, never an expected failure.
         const landscapeClaims = (
             (result.claimed_facts as
                 { kind?: string; subject?: { canonical_id?: string } }[] | undefined) ?? []
@@ -456,44 +455,25 @@ for (const replicate of REPLICATES) {
             new Set(landscapeClaims.map((claim) => claim.subject?.canonical_id)).size,
             "both teams' landscape claims are served",
         ).toBe(2);
-        test.info().annotations.push({
-            type: "KNOWN GAP",
-            description:
-                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, the days read from the served claims, as acr places each team). Never a pass.",
-        });
-        const quadrant = answer.getByTestId("landscape-quadrant");
-        const quadrantServed = servedShapes(result).some(
-            (shape) => shape.selected_by === "landscape_position",
-        );
-        if (!quadrantServed) {
-            // The gap is expected only on its own cause, read from the served claims (Codex r1 and
-            // r2 found the same class: a KNOWN GAP must never absorb another failure). Without it, a
-            // missing quadrant is an ordinary failure.
+        // The question states a range that ends on a day both teams hold rows (CHAOS-12676): a
+        // quadrant that is not served here is a failure, with the days acr placed the teams on.
+        if (!servedShapes(result).some((shape) => shape.selected_by === "landscape_position")) {
             const gap = landscapeGap(result as Parameters<typeof landscapeGap>[0]);
             const days = gap.placed.map((side) => `${side.subject}=${side.day}`).join(", ");
-            expect(
-                gap.differ,
-                `no quadrant is served, and the claims do not show CHAOS-12676's cause (placed: [${days}])`,
-            ).toBe(true);
-            test.info().annotations.push({ type: "CHAOS-12676 days", description: days });
-            // Expected to fail while the gap holds, on THE assertion that fails today: the quadrant
-            // is drawn.
-            test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
-            await expect(quadrant, "KNOWN GAP CHAOS-12676: the quadrant is drawn").toHaveCount(1);
+            expect
+                .soft(gap.differ, `the teams' landscape days differ (placed: [${days}])`)
+                .toBe(false);
         }
-        // Served: it must be drawn as served (a real failure if not), and then the case fails loudly,
-        // because CHAOS-12676 no longer holds and this case must become an ordinary one.
         const [shape] = served(
             result,
             "landscape_position",
-            "both teams must hold landscape rows on one day (CHAOS-12676)",
+            "both teams hold landscape rows on the range's last shared day (CHAOS-12676)",
         );
+        const quadrant = answer.getByTestId("landscape-quadrant");
         await expect(quadrant).toHaveCount(1);
         await expectDrawnAsServed(figureOf(quadrant, shape!), shape!);
-        expect(
-            quadrantServed,
-            "CHAOS-12676 no longer holds: the quadrant is served and drawn; flip this case to an ordinary one",
-        ).toBe(false);
+        await expectWindowLine(page, answer, result);
+        await expectLedger(answer, result);
         await page.context().close();
     });
 
