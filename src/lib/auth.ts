@@ -197,6 +197,7 @@ const nextAuth = NextAuth({
                   GitHub({
                       clientId: authEnv.AUTH_GITHUB_ID,
                       clientSecret: authEnv.AUTH_GITHUB_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
@@ -205,6 +206,7 @@ const nextAuth = NextAuth({
                   Google({
                       clientId: authEnv.AUTH_GOOGLE_ID,
                       clientSecret: authEnv.AUTH_GOOGLE_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
@@ -213,6 +215,7 @@ const nextAuth = NextAuth({
                   GitLab({
                       clientId: authEnv.AUTH_GITLAB_ID,
                       clientSecret: authEnv.AUTH_GITLAB_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
