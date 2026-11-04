@@ -271,3 +271,88 @@ describe("check-org-provisioning-calls: wrapped options", () => {
         expect(keys("src/lib/admin/api/new.ts", text)).toEqual([]);
     });
 });
+
+describe("check-org-provisioning-calls: r1f findings", () => {
+    const keys = (file, text) => findSites(file, text).map((site) => site.key);
+    const write = [
+        'fetch(`/api/v1/admin/users`, { method: "POST" });',
+        'request(`/orgs/${orgId}/members`, { method: "POST" });',
+        "const memberRoute = `/orgs/${orgId}/members`;",
+        "export function createUser() {}",
+        "adminApi.users.create(data, token, orgId);",
+    ].join("\n");
+    const writeKeys = [
+        "POST /admin/users",
+        "POST /orgs/{}/members",
+        "member route literal",
+        "export createUser",
+        "call adminApi.users.create",
+    ];
+    const member = "`/orgs/${orgId}/members`";
+
+    it.each(["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"])(
+        "scans a .%s source file for every write form",
+        (ext) => {
+            const out = failures({ [`src/w.${ext}`]: write }).map((line) =>
+                line.split(" ").slice(2),
+            );
+            expect(out.map((parts) => parts.join(" ")).sort()).toEqual([...writeKeys].sort());
+        },
+    );
+
+    it("reads JSX syntax in .jsx and .tsx files", () => {
+        const text =
+            'const a = <b onClick={() => fetch("/api/v1/admin/users", { method: "POST" })} />;';
+        expect(keys("src/c.jsx", text)).toEqual(["POST /admin/users"]);
+        expect(keys("src/c.tsx", text)).toEqual(["POST /admin/users"]);
+    });
+
+    it.each(["js", "jsx", "mjs", "cjs", "mts", "cts"])(
+        "skips .test.%s and .spec.%s files",
+        (ext) => {
+            expect(
+                failures({ [`src/w.test.${ext}`]: write, [`src/w.spec.${ext}`]: write }),
+            ).toEqual([]);
+        },
+    );
+
+    it("refuses a route literal that follows a comment with the same text", () => {
+        const text = `// example path: /orgs/\${orgId}/members\nconst memberRoute = ${member};`;
+        expect(keys("src/example.ts", text)).toEqual(["member route literal"]);
+        expect(findSites("src/example.ts", text)[0].line).toBe(2);
+    });
+
+    it("refuses every member route literal in a file, one finding each", () => {
+        const text = `const a = ${member};\nconst b = ${member};\nconst c = 1;\nconst d = ${member};`;
+        expect(findSites("src/example.ts", text).map((site) => site.line)).toEqual([1, 2, 4]);
+    });
+
+    it("passes an inline comment after code that holds no route literal", () => {
+        expect(
+            keys("src/example.ts", `const label = 1; // docs route /orgs/\${orgId}/members`),
+        ).toEqual([]);
+    });
+
+    it("passes route text in a block comment, a JSDoc line and a trailing block comment", () => {
+        const text = [
+            "/* /orgs/${orgId}/members */",
+            "/**",
+            " * see /orgs/${orgId}/invites",
+            " */",
+            "const x = 1; /* /orgs/${orgId}/transfer-ownership */",
+        ].join("\n");
+        expect(keys("src/example.ts", text)).toEqual([]);
+    });
+
+    it("refuses a route literal that follows a block comment on the same line", () => {
+        const text = `/* note */ const r = ${member};`;
+        expect(keys("src/example.ts", text)).toEqual(["member route literal"]);
+    });
+
+    it("refuses a route literal in a plain string and passes the client file", () => {
+        expect(keys("src/example.ts", 'const r = "/orgs/abc/invites";')).toEqual([
+            "member route literal",
+        ]);
+        expect(keys("src/lib/admin/api/orgs.ts", `const r = ${member};`)).toEqual([]);
+    });
+});
