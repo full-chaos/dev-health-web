@@ -36,7 +36,10 @@ vi.mock("next-auth", () => ({
 }));
 vi.mock("next-auth/providers/credentials", () => ({
     default: vi.fn((options: Captured["credentials"]) => {
-        captured.credentials = options;
+        // auth.ts registers more than one CredentialsProvider (password, sso): keep the password one.
+        if (options && (options.id === undefined || options.id === "credentials")) {
+            captured.credentials = options;
+        }
         return options;
     }),
 }));
