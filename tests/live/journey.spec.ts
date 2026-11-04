@@ -19,7 +19,6 @@ import {
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
-    REGISTER_ACCEPTED_STATUS,
     setupFault,
     setupUser,
     testEmail,
@@ -77,7 +76,8 @@ test("POST /register \u2192 accepted (202)", async ({ request }) => {
     expectRegisterAccepted(res);
 
     // The answer is one message with no ids, and a taken address gets the same status and body.
-    const data = (await res.json()) as Record<string, unknown>;
+    const firstText = await res.text();
+    const data = JSON.parse(firstText) as Record<string, unknown>;
     expect(typeof data.message).toBe("string");
     expect(data.user_id).toBeUndefined();
     expect(data.org_id).toBeUndefined();
@@ -86,10 +86,8 @@ test("POST /register \u2192 accepted (202)", async ({ request }) => {
         data: { email, password: "TestPass123!", full_name: "Reg User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (again.status() !== 429) {
-        expect(again.status()).toBe(REGISTER_ACCEPTED_STATUS);
-        expect(await again.text()).toBe(JSON.stringify(data));
-    }
+    expectRegisterAccepted(again);
+    expect(await again.text()).toBe(firstText);
 });
 
 test("POST /login after fresh registration \u2192 needs_onboarding true @guided", async ({
