@@ -16,6 +16,6 @@ describe("platform admin gate on the server (CHAOS-8966)", () => {
     it("renders the page for a platform admin", async () => {
         requireSuperuser.mockResolvedValueOnce({});
         await expect(SuperadminLayout({ children: <p>page</p> })).resolves.toBeTruthy();
-        expect(requireSuperuser).toHaveBeenCalledWith("/superadmin");
+        expect(requireSuperuser).toHaveBeenCalledWith("/superadmin", "page:/superadmin");
     });
 });

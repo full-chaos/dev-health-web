@@ -15,6 +15,12 @@ const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock, shellS
 
 const shadow = vi.hoisted(() => ({
     scheduleShadow: vi.fn(),
+    schedulePlatformShadow: vi.fn(),
+}));
+vi.mock("@/lib/auth/platform/shadow", () => ({
+    schedulePlatformShadow: (...args: unknown[]) => {
+        shadow.schedulePlatformShadow(...args);
+    },
 }));
 vi.mock("@/lib/auth/shadow", () => ({
     scheduleShadow: (...args: unknown[]) => {
@@ -97,16 +103,22 @@ vi.mock("sonner", () => ({ Toaster: () => null }));
 describe("AppLayout shadow wiring is advisory", () => {
     beforeEach(() => {
         shadow.scheduleShadow.mockClear();
+        shadow.schedulePlatformShadow.mockClear();
         getOrgEntitlementsMock.mockResolvedValue({
             data: { features: {}, is_valid: true, limits: {}, tier: "community" },
         });
         requireSessionMock.mockResolvedValue({ user: { id: "user-1", org_id: "org-1" } });
     });
 
-    it("schedules the nav surfaces once, from the session", async () => {
+    it("schedules the nav surfaces once per switch, from the session", async () => {
         render(await AppLayout({ children: <span>page</span> }));
         expect(shadow.scheduleShadow).toHaveBeenCalledOnce();
         expect(shadow.scheduleShadow.mock.calls[0][1]).toEqual([
+            "nav:platform",
+            "nav:platform-billing",
+        ]);
+        expect(shadow.schedulePlatformShadow).toHaveBeenCalledOnce();
+        expect(shadow.schedulePlatformShadow.mock.calls[0][1]).toEqual([
             "nav:platform",
             "nav:platform-billing",
         ]);
@@ -117,6 +129,7 @@ describe("AppLayout shadow wiring is advisory", () => {
         const offHtml = off.container.innerHTML;
         off.unmount();
         shadow.scheduleShadow.mockClear();
+        shadow.schedulePlatformShadow.mockClear();
         const again = render(await AppLayout({ children: <span>page</span> }));
         expect(again.container.innerHTML).toBe(offHtml);
     });

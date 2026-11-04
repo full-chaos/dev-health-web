@@ -19,6 +19,7 @@ vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({
 vi.mock("@/lib/api/visuals", () => ({ getFlame: mocks.getFlame }));
 vi.mock("@/lib/auth", () => ({
     requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
+    requireSuperuser: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
 }));
 vi.mock("@/components/charts/FlameDiagram", () => ({ FlameDiagram: () => null }));
 vi.mock("@/components/shell/PageHeader", () => ({ PageHeader: () => null }));

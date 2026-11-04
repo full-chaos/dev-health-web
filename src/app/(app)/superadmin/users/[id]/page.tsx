@@ -6,6 +6,9 @@ import { UserSetPasswordForm } from "@/components/superadmin/UserSetPasswordForm
 import { UserDeleteSection } from "@/components/superadmin/UserDeleteSection";
 import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserButton";
 import { getUser } from "@/lib/admin/server";
+import { requireSuperuser } from "@/lib/auth";
+import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
+import { appPath } from "@/lib/navigation/appPath";
 
 type PageProps = {
     params: Promise<{ id: string }>;
@@ -13,6 +16,11 @@ type PageProps = {
 
 export default async function UserDetailPage({ params }: PageProps) {
     const { id } = await params;
+    const session = await requireSuperuser(
+        appPath("/superadmin/users/[id]", { id }),
+        "page:/superadmin/users/[id]",
+    );
+    schedulePlatformShadow(session, ["control:ImpersonateUserButton"]);
     const { data: user, error } = await getUser(id);
 
     if (error || !user) {

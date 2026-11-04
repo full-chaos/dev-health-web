@@ -48,34 +48,38 @@ beforeEach(() => {
 describe("A3 switch off: today's behavior", () => {
     it("no token is 401", async () => {
         mocks.session = session({ is_superuser: true }, null);
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(401);
     });
 
     it("a non-superuser is 403 Superuser access required", async () => {
         mocks.session = session({ is_superuser: false, role: "owner" });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(403);
         expect(e.detail).toBe("Superuser access required");
     });
 
     it("a superuser gets the token", async () => {
         mocks.session = session({ is_superuser: true });
-        await expect(requireSuperuserToken()).resolves.toBe(TOKEN);
+        await expect(requireSuperuserToken({ action: "admin.orgs" })).resolves.toBe(TOKEN);
     });
 
     it("an impersonating superuser is 403, unless allowImpersonating", async () => {
         mocks.session = session({ is_superuser: true, is_impersonating: true });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.detail).toBe("Not available while impersonating");
-        await expect(requireSuperuserToken({ allowImpersonating: true })).resolves.toBe(TOKEN);
+        await expect(
+            requireSuperuserToken({ action: "admin.impersonate", allowImpersonating: true }),
+        ).resolves.toBe(TOKEN);
     });
 
     it("asks nothing even if a transport exists", async () => {
         const { transport, calls } = answering(DENY);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true });
-        await expect(requireSuperuserToken({ guard: "platform.users" })).resolves.toBe(TOKEN);
+        await expect(
+            requireSuperuserToken({ action: "admin.users", guard: "platform.users" }),
+        ).resolves.toBe(TOKEN);
         expect(calls).toHaveLength(0);
     });
 });
@@ -93,7 +97,9 @@ describe("A3 switch on: the decision point decides", () => {
         const { transport, calls } = answering(ALLOW);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: false, role: "member" });
-        await expect(requireSuperuserToken(guard ? { guard } : undefined)).resolves.toBe(TOKEN);
+        await expect(
+            requireSuperuserToken({ action: "admin.orgs", ...(guard ? { guard } : {}) }),
+        ).resolves.toBe(TOKEN);
         expect(calls).toHaveLength(1);
         expect(JSON.parse(calls[0]?.body ?? "{}").action).toBe(action);
     });
@@ -101,7 +107,7 @@ describe("A3 switch on: the decision point decides", () => {
     it("a superuser the decision point denies is 403 with a safe sentence", async () => {
         mocks.transport = answering(DENY).transport;
         mocks.session = session({ is_superuser: true });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(403);
         expect(e.detail).toBe("You do not have access to this.");
         expect(e.detail).not.toMatch(/role_lacks_action|dec_/);
@@ -109,7 +115,7 @@ describe("A3 switch on: the decision point decides", () => {
 
     it("no transport is a deny and the superuser flag does not rescue it", async () => {
         mocks.session = session({ is_superuser: true });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(403);
     });
 
@@ -118,7 +124,9 @@ describe("A3 switch on: the decision point decides", () => {
             throw new Error("down");
         }).transport;
         mocks.session = session({ is_superuser: true });
-        const e = await refusal(requireSuperuserToken({ guard: "platform.users" }));
+        const e = await refusal(
+            requireSuperuserToken({ action: "admin.users", guard: "platform.users" }),
+        );
         expect(e.status).toBe(403);
     });
 
@@ -126,9 +134,13 @@ describe("A3 switch on: the decision point decides", () => {
         const { transport, calls } = answering(DENY);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true });
-        await expect(requireSuperuserToken({ guard: "unmapped" })).resolves.toBe(TOKEN);
+        await expect(
+            requireSuperuserToken({ action: "admin.impersonate", guard: "unmapped" }),
+        ).resolves.toBe(TOKEN);
         mocks.session = session({ is_superuser: false });
-        const e = await refusal(requireSuperuserToken({ guard: "unmapped" }));
+        const e = await refusal(
+            requireSuperuserToken({ action: "admin.impersonate", guard: "unmapped" }),
+        );
         expect(e.status).toBe(403);
         expect(calls).toHaveLength(0);
     });
@@ -143,7 +155,7 @@ describe("order: token 401, then impersonating 403, then the decision", () => {
         const { transport, calls } = answering(ALLOW);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true, is_impersonating: true }, null);
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(401);
         expect(calls).toHaveLength(0);
     });
@@ -152,7 +164,7 @@ describe("order: token 401, then impersonating 403, then the decision", () => {
         const { transport, calls } = answering(ALLOW);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true, is_impersonating: true });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(403);
         expect(e.detail).toBe("Not available while impersonating");
         expect(calls).toHaveLength(0);
@@ -162,7 +174,7 @@ describe("order: token 401, then impersonating 403, then the decision", () => {
         const { transport, calls } = answering(ALLOW);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: false, role: "admin", is_impersonating: true });
-        const e = await refusal(requireSuperuserToken());
+        const e = await refusal(requireSuperuserToken({ action: "admin.orgs" }));
         expect(e.status).toBe(403);
         expect(e.detail).toBe("Not available while impersonating");
         expect(calls).toHaveLength(0);
@@ -173,7 +185,11 @@ describe("order: token 401, then impersonating 403, then the decision", () => {
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true, is_impersonating: true });
         await expect(
-            requireSuperuserToken({ allowImpersonating: true, guard: "platform.orgs" }),
+            requireSuperuserToken({
+                action: "admin.orgs",
+                allowImpersonating: true,
+                guard: "platform.orgs",
+            }),
         ).resolves.toBe(TOKEN);
         expect(calls).toHaveLength(1);
     });
@@ -182,7 +198,7 @@ describe("order: token 401, then impersonating 403, then the decision", () => {
         const { transport, calls } = answering(ALLOW);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true });
-        await requireSuperuserToken();
+        await requireSuperuserToken({ action: "admin.orgs" });
         expect(calls).toHaveLength(1);
     });
 });
