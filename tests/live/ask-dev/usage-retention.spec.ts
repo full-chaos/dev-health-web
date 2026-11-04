@@ -23,28 +23,30 @@ import {
 } from "./stack";
 
 /**
- * CHAOS-11960, E6 AC-6 (plan N1): "usage survives retention". The monthly usage is a content-free
- * (organization, month) aggregate written in the admission transaction and outside retention, so
- * purging a conversation does not give the allowance back. Two windows, run by the stack owner in
- * order (lead ruling 2026-11-04: the owner sets the allowance to the current count for the run,
- * restores 5000 and reads it back, and runs the purge):
+ * CHAOS-11960, E6 AC-6 (plan N1): "usage survives retention", and the retention purge that precedes
+ * it. Two windows, run by the stack owner in order (lead ruling 2026-11-04):
  *
- * - `ac6_prepare` (allowance untouched): one retention-0 turn is made and its conversation is read
- *   back, and the test prints the conversation's id. This is the data the purge will remove, and
- *   one admitted turn the usage counts.
- * - the owner then sets the allowance to the usage count, back-dates that conversation and runs the
- *   retention purge (acr's own job), and gives the test the id.
- * - `ac6_after` (`ASK_DEV_LIVE_AC6_THREAD` = that id): the conversation is gone (404, absent from the
- *   list), and a new submit is still refused with 429 `allowance_exhausted`: the purge did not
- *   return the month's allowance.
+ * - `ac6_prepare`: one retention-0 turn is made and its conversation is read back; the test prints
+ *   the conversation's id. This is the data the purge removes.
+ * - the owner back-dates that ONE conversation (a scoped UPDATE, rowcount 1 checked) and acr's own
+ *   retention sweep removes it; the owner gives the test the id.
+ * - `ac6_after` (`ASK_DEV_LIVE_AC6_THREAD` = that id): the conversation is gone (404, absent from
+ *   the list). That is the live half, proven on askdev-1 on 2026-11-04 (acr's sweep line
+ *   `context fabric retention sweep outcome=removed`, then the thread read `not_found`).
  *
- * ACR's own proof of the same rule is `TestTheUsageAggregateGatesAndOutlivesItsRecords`
- * (pginvestigation, real Postgres); this is the deployed stack's.
+ * The usage half (a new submit is still refused 429 `allowance_exhausted` after the purge) runs only
+ * with `ASK_DEV_LIVE_ALLOWANCE_GATED=1`, for a stack whose runs the monthly allowance counts: the
+ * platform model's. On askdev-1 org 70d529e0, which its own BYO model answers, it did NOT hold: with
+ * the allowance at the usage count (1773 == 1773) a new submit was admitted and answered, because a
+ * BYO-served run is not a `platform_runs` and is not gated. So that half is not asserted live there;
+ * acr's own proof is `TestTheUsageAggregateGatesAndOutlivesItsRecords` (pginvestigation, real
+ * Postgres).
  */
 const NONCE = process.env.ASK_DEV_LIVE_NONCE ?? "";
 const question = (name: QuestionCase): string => questionFor(name, NONCE);
 const WINDOW = process.env.ASK_DEV_LIVE_WINDOW ?? "";
 const PURGED_THREAD = process.env.ASK_DEV_LIVE_AC6_THREAD ?? "";
+const ALLOWANCE_GATED = process.env.ASK_DEV_LIVE_ALLOWANCE_GATED === "1";
 
 type Session = Awaited<ReturnType<BrowserContext["storageState"]>>;
 let session: Session;
@@ -111,7 +113,7 @@ test("window ac6_prepare: a retention-0 turn is admitted and its conversation is
     console.log(`AC6_THREAD=${thread}`);
 });
 
-test("window ac6_after: the purged conversation is gone, and the exhausted allowance still refuses", async ({
+test("window ac6_after: the purged conversation is gone, and with a gated allowance a submit still refuses", async ({
     page,
 }, testInfo) => {
     expect(PURGED_THREAD, "ASK_DEV_LIVE_AC6_THREAD is not set: the prepare window's id").toMatch(
@@ -137,6 +139,24 @@ test("window ac6_after: the purged conversation is gone, and the exhausted allow
     }
     expect(listed, "the purged conversation is still listed").not.toContain(PURGED_THREAD);
 
+    if (!ALLOWANCE_GATED) {
+        await testInfo.attach("ac6-after-evidence", {
+            body: JSON.stringify(
+                {
+                    purged_thread_read_status: gone.status,
+                    purged_thread_listed: false,
+                    allowance_checked: false,
+                },
+                null,
+                2,
+            ),
+            contentType: "application/json",
+        });
+        console.log(
+            `AC6_AFTER purged_thread_read_status=${String(gone.status)} allowance_checked=false`,
+        );
+        return;
+    }
     const created = page.waitForResponse(
         (response) =>
             response.request().method() === "POST" &&
