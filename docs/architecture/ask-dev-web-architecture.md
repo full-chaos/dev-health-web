@@ -5,20 +5,20 @@ This page describes what is built on web main (`fd309c90`), ask-dev as web fd309
 ## Status
 
 - **Built** on web main. The askdev-1 stack is set up for it (deploy values files, below); this page did not re-test askdev-1.
-- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set and the web origin (`AUTH_URL` or `NEXTAUTH_URL`) is set (`src/lib/acr/config.ts:164-169`; with the issuer alone the public config is empty); the code comments state that prod sets it only in the T13 roll (`src/lib/ask-dev/acr-browser-config.ts:23`, `src/lib/ask-dev/acr-transport/index.ts:32`), With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
+- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set and the web origin (`AUTH_URL` or `NEXTAUTH_URL`) is set (`src/lib/acr/config.ts:164-169`; with the issuer alone the public config is empty); the code comments state that prod sets it only in the T13 roll (`src/lib/ask-dev/acr-browser-config.ts:21-22` at fd309c90 (this branch adds a comment line, which moves it to 23-24), `src/lib/ask-dev/acr-transport/index.ts:32`), With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
 - The askdev-1 values files in the deploy repo (`kiac/askdev-1/values/values.askdev-web-acr.yaml`) cite older pins than web main, so askdev-1 can lag what this page describes.
 
 ## Data path
 
 The browser calls ACR directly with an ACR OAuth credential (`fcacr_` token). Web serves no data route for Ask Dev.
 
-| Step                                                                                     | Where                                                                                                                                      |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Web mounts the one render, `AskDevChat`, from `@full-chaos/ask-dev/render` (CHAOS-12378) | `src/components/ask-dev/AskDevRender.tsx`, `AskDevPanel.tsx`, `AskDevFullPage.tsx`                                                         |
-| The host seam: conversation store and transport                                          | `src/components/ask-dev/conversation/chatSource.tsx`, `src/lib/ask-dev/acr-transport/browserTransport.ts`                                  |
-| Silent authorization gets the token                                                      | `src/lib/ask-dev/acr-auth.ts`; the only web route is `POST /api/ask-dev/authorize` (`src/app/api/ask-dev/authorize/route.ts`, CHAOS-12474) |
-| The page may call ACR's issuer origin                                                    | CSP `connect-src` gains exactly that origin, and only when `ACR_OAUTH_ISSUER` is set (`src/proxy.ts:200-210`)                              |
-| The authorize route is rate-limited per user: 6 per window, fail closed                  | `src/lib/acr/service.ts:41-43`                                                                                                             |
+| Step                                                                                     | Where                                                                                                                                            |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Web mounts the one render, `AskDevChat`, from `@full-chaos/ask-dev/render` (CHAOS-12378) | `src/components/ask-dev/AskDevRender.tsx:4,23`, `AskDevPanel.tsx:73`, `AskDevFullPage.tsx:126`                                                   |
+| The host seam: conversation store and transport                                          | `src/components/ask-dev/conversation/chatSource.tsx:478`, `src/lib/ask-dev/acr-transport/browserTransport.ts:43`                                 |
+| Silent authorization gets the token                                                      | `src/lib/ask-dev/acr-auth.ts:16`; the only web route is `POST /api/ask-dev/authorize` (`src/app/api/ask-dev/authorize/route.ts:64`, CHAOS-12474) |
+| The page may call ACR's issuer origin                                                    | CSP `connect-src` gains exactly that origin, and only when `ACR_OAUTH_ISSUER` is set (`src/proxy.ts:200-210`)                                    |
+| The authorize route is rate-limited per user: 6 per window, fail closed                  | `src/lib/acr/service.ts:41-43`                                                                                                                   |
 
 Built: the Ops token is removed from browser session responses and a copy under another key fails closed (T19; `src/lib/authBrowserSession.ts:75-89,109-123`). Not found built: removing the web authorize route (T17).
 
@@ -26,19 +26,20 @@ Built: the Ops token is removed from browser session responses and a copy under 
 
 Constants live in ask-dev `src/acr-client/deadline.ts`:
 
-| Constant                      | Value                                                | Line             |
-| ----------------------------- | ---------------------------------------------------- | ---------------- |
-| `RUN_TIMEOUT_DEFAULT_MS`      | 120 s, how long the browser waits on one run         | `deadline.ts:4`  |
-| `WAIT_BUDGET_HEADROOM_MS`     | 5 s kept back for ACR to compose a degraded answer   | `deadline.ts:7`  |
-| `ACR_MIN_WAIT_BUDGET_SECONDS` | 10 s, the smallest budget ACR honours                | `deadline.ts:9`  |
-| `HEADER_WAIT_MAX_MS`          | 15 s to wait for response headers (admission)        | `deadline.ts:12` |
-| `STALL_MS`                    | 30 s with no bytes on an open stream means `stalled` | `deadline.ts:15` |
+| Constant                                | Value                                                                                | Line                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------- |
+| `RUN_TIMEOUT_DEFAULT_MS`                | 120 s, how long the browser waits on one run                                         | `deadline.ts:4`                        |
+| `WAIT_BUDGET_HEADROOM_MS`               | 5 s kept back for ACR to compose a degraded answer                                   | `deadline.ts:7`                        |
+| `ACR_MIN_WAIT_BUDGET_SECONDS`           | 10 s, the smallest budget ACR honours                                                | `deadline.ts:9`                        |
+| `HEADER_WAIT_MAX_MS`                    | 15 s to wait for response headers (admission)                                        | `deadline.ts:12`                       |
+| `STALL_MS`                              | 30 s with no bytes on an open stream means `stalled`                                 | `deadline.ts:15`                       |
+| `OBSERVATION_CAP_MS` (web, not ask-dev) | 10 minutes: how long a restored running turn is observed when no run budget is known | `conversationStore.ts:70-74,1842-1849` |
 
 How they combine (`src/acr-client/transport.ts`): the transport sends the budget in `X-ACR-Wait-Budget-Seconds` (`:466`), computed from the deadline minus the headroom. A budget under 10 s is not sent at all: the call fails as `budget_exhausted` (`:446-473`). A stalled stream ends as `stalled` (`:638`). The web store adds `BUDGET_GRACE_MS` = 30 s, because ACR ends a run at its budget plus 30 s (`conversationStore.ts:85-86`).
 
 ACR keeps the stream open with heartbeat and keepalive events at `ContextFabricInvestigationEventHeartbeatInterval` (acr `internal/api/context_fabric_event_stream.go:112-116`, `context_fabric_run_lease.go:83-87`). This page does not state that interval in seconds, because it was not checked.
 
-Not found: a web-side keepalive timer, and a web outer deadline read from an environment variable. The 120 s is a constant in ask-dev.
+Not found: a web-side keepalive timer, and a web outer deadline read from an environment variable. The 120 s is a constant in ask-dev. A turn restored after a reload, with no `accepted` seen in this tab, uses the 10-minute observation cap instead.
 
 ## Run lifecycle
 
@@ -106,7 +107,7 @@ ACR database migrations roll back with the ACR release, not with these flags. Th
 
 ## Environment
 
-Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `ACR_API_ORIGIN`, `ACR_WEB_ASSERTION_AUDIENCE`, `ACR_WEB_ASSERTION_ISSUER`, `ACR_WEB_ASSERTION_KEY_FILE`, `ACR_WEB_ASSERTION_KID` (required by the authorize route, `src/lib/acr/config.ts:100-105`), `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL`, `ACR_ASK_DEV_MAX_RUNNING_PER_ORG`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
+Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `AUTH_URL` or `NEXTAUTH_URL` (the web origin the browser client needs, `src/lib/acr/config.ts:164-169`), `ACR_API_ORIGIN`, `ACR_WEB_ASSERTION_AUDIENCE`, `ACR_WEB_ASSERTION_ISSUER`, `ACR_WEB_ASSERTION_KEY_FILE`, `ACR_WEB_ASSERTION_KID` (required by the authorize route, `src/lib/acr/config.ts:100-105`), `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL`, `ACR_ASK_DEV_MAX_RUNNING_PER_ORG`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
 
 ## Not built
 
