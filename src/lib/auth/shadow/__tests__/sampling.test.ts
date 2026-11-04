@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SAMPLE_WINDOW_MS } from "../config";
 import { shadowDecide, shadowInputFrom, type ShadowInput } from "../run";
 import type { Surface } from "../catalog";
-import { ALLOW, DENY, input, ORG, recordingTransport } from "./helpers";
+import { ALLOW, DENY, input, ORG, recordingTransport, TOKEN } from "./helpers";
 
 const extraRow: Surface = {
     id: "extra:ui",
@@ -12,7 +12,7 @@ const extraRow: Surface = {
 };
 
 const session = (id: string) =>
-    ({ user: { id, org_id: ORG, role: "admin" }, access_token: "tok-s" }) as Session;
+    ({ user: { id, org_id: ORG, role: "admin" }, access_token: TOKEN }) as Session;
 
 describe("shadow sampling slot", () => {
     it("takes one slot per session for two actionable surface sets", async () => {
@@ -29,8 +29,9 @@ describe("shadow sampling slot", () => {
     it("does not burn the slot on a call with nothing actionable", async () => {
         const { transport, calls } = recordingTransport([ALLOW]);
         const now = () => 5_100_000_000_000;
-        const none = shadowInputFrom(session("idle-user"), ["nav:platform"]);
-        const real = shadowInputFrom(session("idle-user"), ["guard:/org/admin"]);
+        const idleRow: Surface = { ...extraRow, request: null };
+        const none = shadowInputFrom(session("idle-user"), ["extra:ui"], { surfaces: [idleRow] });
+        const real = shadowInputFrom(session("idle-user"), ["extra:ui"], { surfaces: [extraRow] });
         await shadowDecide(none, { transport, log: { info: vi.fn() }, nowMs: now });
         const ran = await shadowDecide(real, { transport, log: { info: vi.fn() }, nowMs: now });
         expect(ran.status).toBe("ran");
@@ -66,7 +67,7 @@ describe("shadow sampling slot", () => {
     });
 
     it("never logs the decision id", async () => {
-        const principalLike = "prn_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const principalLike = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const transport = async () => ({
             status: 200,
             body: JSON.stringify({
@@ -76,7 +77,7 @@ describe("shadow sampling slot", () => {
                         index: 0,
                         decision: {
                             schema_version: "authorization_decision.v1",
-                            decision_id: principalLike,
+                            decision_id: `dec_${principalLike}`,
                             allowed: DENY.allowed,
                             reason_code: DENY.reason,
                             principal_id: "prn_EXAMPLE0000000000000001",
