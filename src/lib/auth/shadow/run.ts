@@ -6,7 +6,7 @@ import { authorizeBatch, type AuthzOutcome, type Transport } from "../authorize/
 import type { AuthorizeRequest } from "../authorize/request";
 import { SAMPLE_WINDOW_MS, SHADOW_TIMEOUT_MS } from "./config";
 import { surfaceById, type ShadowRequestSpec, type ShadowViewer, type Surface } from "./catalog";
-import { logRun, type MismatchRecord, type RunRecord, type ShadowLogger } from "./log";
+import { logRun, logSkip, type MismatchRecord, type RunRecord, type ShadowLogger } from "./log";
 
 // Advisory shadow of the policy decision point. It compares the verdicts the UI already acts on
 // with the batch decisions and logs the difference. It returns a record for tests and callers
@@ -35,6 +35,9 @@ export type ShadowResult =
           reason: "no_transport" | "impersonating" | "no_scope" | "sampled" | "error";
       }
     | { status: "ran"; record: RunRecord };
+
+const surfaceSet = (surfaceIds: readonly string[]): string =>
+    [...new Set(surfaceIds)].sort().join(",");
 
 const sampleMemo = processMemo<number>("authzShadowSample");
 const SAMPLE_MEMO_MAX = 1000;
@@ -79,7 +82,7 @@ export function shadowInputFrom(
         viewer: shadowViewerFrom(session),
         orgId: session.user.org_id,
         principalReference: session.access_token,
-        sampleKey: `${session.user.id}|${session.user.org_id ?? ""}`,
+        sampleKey: `${session.user.id}|${session.user.org_id ?? ""}|${surfaceSet(surfaceIds)}`,
         impersonating: session.user.is_impersonating === true,
         surfaceIds,
         ...(opts?.surfaces === undefined ? {} : { surfaces: opts.surfaces }),
@@ -134,7 +137,10 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
             return { status: "skipped", reason: "no_scope" };
         }
         const now = (deps.nowMs ?? Date.now)();
-        if (slotHeld(input.sampleKey, now)) return { status: "skipped", reason: "sampled" };
+        if (slotHeld(input.sampleKey, now)) {
+            logSkip(surfaceSet(input.surfaceIds), "sampled", deps.log);
+            return { status: "skipped", reason: "sampled" };
+        }
 
         const counts = { match: 0, mismatch: 0, unavailable: 0, no_action: 0 };
         const asked: Asked[] = [];
@@ -161,7 +167,10 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
 
         const mismatches: MismatchRecord[] = [];
         if (asked.length > 0) {
-            if (!takeSlot(input.sampleKey, now)) return { status: "skipped", reason: "sampled" };
+            if (!takeSlot(input.sampleKey, now)) {
+                logSkip(surfaceSet(input.surfaceIds), "sampled", deps.log);
+                return { status: "skipped", reason: "sampled" };
+            }
             const outcomes = await authorizeBatch(
                 asked.map((a) => a.request),
                 { transport, timeoutMs: SHADOW_TIMEOUT_MS, nowMs: deps.nowMs },
