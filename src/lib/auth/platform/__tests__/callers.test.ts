@@ -99,8 +99,7 @@ describe("C4b every table row is hooked or listed", () => {
     });
 });
 
-// Page rows with no guard call of their own: the superadmin layout guards them (page:/superadmin).
-const PAGES_UNDER_LAYOUT_ONLY = "no per-page guard call; the superadmin layout guards them";
+// Page rows that no requireSuperuser call hooks, each with its reason.
 const NOT_HOOKED_ROWS = new Map<string, string>([
     ["page:/superadmin/settings", "settings.write is an org action, not a platform action"],
     ["page:/superadmin/context-fabric/validation", "unmapped: ACR own authorization"],
@@ -135,28 +134,32 @@ describe("C4b page, nav and control rows", () => {
         }
     });
 
-    it("every page row is guarded by name, listed, or covered by the layout", () => {
+    it("every page row is guarded by name or listed with a reason", () => {
         const pageRows = PLATFORM_SURFACES.filter((r) => r.kind === "page");
-        const reasons = pageRows
-            .filter((r) => !guarded.has(r.id))
-            .map((r) => NOT_HOOKED_ROWS.get(r.id) ?? PAGES_UNDER_LAYOUT_ONLY);
-        expect(reasons.every((r) => r.length > 0)).toBe(true);
-        for (const id of NOT_HOOKED_ROWS.keys()) {
+        const missing = pageRows
+            .filter((r) => !guarded.has(r.id) && !NOT_HOOKED_ROWS.has(r.id))
+            .map((r) => r.id);
+        expect(missing).toEqual([]);
+        for (const [id, reason] of NOT_HOOKED_ROWS) {
+            expect(reason.length).toBeGreaterThan(0);
             expect(PLATFORM_SURFACES.some((r) => r.id === id)).toBe(true);
             expect(guarded.has(id)).toBe(false);
         }
     });
 
-    it("the layout, the billing pages, the nav rows and the control are hooked", () => {
-        expect([...guarded.keys()].sort()).toEqual(
-            [
-                "page:/superadmin",
-                "page:/superadmin/billing/invoices",
-                "page:/superadmin/billing/plans",
-                "page:/superadmin/billing/refunds",
-                "page:/superadmin/billing/subscriptions",
-            ].sort(),
-        );
+    it("each guarded page names the row of its own route", () => {
+        for (const [id, file] of guarded) {
+            const route = id.replace(/^page:/, "");
+            const dir = file.replace(/^src\/app\/\(app\)/, "").replace(/\/(page|layout)\.tsx$/, "");
+            expect(dir).toBe(route === "/superadmin" ? "/superadmin" : route);
+        }
+    });
+
+    it("the guarded pages are every page row but the listed ones; the nav rows and the control are hooked", () => {
+        const expected = PLATFORM_SURFACES.filter(
+            (r) => r.kind === "page" && !NOT_HOOKED_ROWS.has(r.id),
+        ).map((r) => r.id);
+        expect([...guarded.keys()].sort()).toEqual(expected.sort());
         const control = read("src/app/(app)/superadmin/users/[id]/page.tsx");
         expect(control).toContain('"control:ImpersonateUserButton"');
         const nav = read("src/app/(app)/layout.tsx");

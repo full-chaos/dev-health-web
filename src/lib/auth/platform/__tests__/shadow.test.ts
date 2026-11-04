@@ -188,6 +188,41 @@ describe("C4 shadow", () => {
         await expect(flush()).resolves.toBeUndefined();
     });
 
+    it("C4e: nav rows, a page row and an fn row of one render are one batch, asked once", async () => {
+        const { transport, calls } = recordingTransport([ALLOW, ALLOW, ALLOW, ALLOW]);
+        mocks.transport = transport;
+        const s = session();
+        schedulePlatformShadow(s, NAV);
+        schedulePlatformShadow(s, ["page:/superadmin"]);
+        scheduleFnShadow(s, "admin.stats", false);
+        expect(mocks.callbacks).toHaveLength(1);
+        await flush();
+        expect(calls).toHaveLength(1);
+        expect(wire(calls).map((i) => i.action)).toEqual([
+            "admin.stats",
+            "admin.billing",
+            "admin.stats",
+            "admin.stats",
+        ]);
+    });
+
+    it("C4e: a later render of the same user starts a new batch, another user never joins one", async () => {
+        const { transport, calls } = recordingTransport([ALLOW, ALLOW, ALLOW]);
+        mocks.transport = transport;
+        const a = session();
+        const b = session();
+        schedulePlatformShadow(a, ["nav:platform"]);
+        schedulePlatformShadow(b, ["nav:platform"]);
+        expect(mocks.callbacks).toHaveLength(2);
+        await flush();
+        expect(calls).toHaveLength(2);
+        mocks.callbacks.length = 0;
+        schedulePlatformShadow(a, ["nav:platform-billing"]);
+        expect(mocks.callbacks).toHaveLength(1);
+        await flush();
+        expect(calls).toHaveLength(3);
+    });
+
     it("C4c: one batch for all surfaces of one render, and one audit window per user and surfaces", async () => {
         const { transport, calls } = recordingTransport([ALLOW, ALLOW]);
         mocks.transport = transport;
