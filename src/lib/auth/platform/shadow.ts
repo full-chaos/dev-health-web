@@ -64,6 +64,10 @@ export function scheduleFnShadow(
     action: PlatformAction,
     allowImpersonating: boolean,
 ): void {
-    const surface = fnSurface(action, allowImpersonating);
-    schedulePlatformShadow(session, [surface.id], [surface]);
+    try {
+        const surface = fnSurface(action, allowImpersonating);
+        schedulePlatformShadow(session, [surface.id], [surface]);
+    } catch {
+        // advisory only: a shadow failure never changes the enforced verdict
+    }
 }
