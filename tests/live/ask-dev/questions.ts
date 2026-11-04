@@ -70,6 +70,15 @@ export const CASES = {
     histDelDev: "What is the status of full-chaos/dev-health-web?",
     histLateList: "What is the status of full-chaos/dev-health-web?",
     histLateRead: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12233 (`reattach.spec.ts`): reattach and cancel through the browser transport.
+    att1: "What is the status of full-chaos/dev-health-web?",
+    att2: "What is the status of full-chaos/dev-health-web?",
+    att3: "What is the status of full-chaos/dev-health-web?",
+    attCursor: "What is the status of full-chaos/dev-health-web?",
+    attKept: "What is the status of full-chaos/dev-health-web?",
+    attStop: "Long: what is the status of full-chaos/dev-health-web?",
+    attLong: "Long: what is the status of full-chaos/dev-health-web?",
+    attPodLoss: "Long: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
