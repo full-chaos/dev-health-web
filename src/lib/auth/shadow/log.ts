@@ -1,13 +1,14 @@
 import "server-only";
 import { logger as defaultLogger } from "@/lib/logger";
 
-// One line per run and one per mismatch. The field set is closed: no token, no principal
+// One line per run and one per mismatch, and one Debug line per sampled skip. The field set is closed: no token, no principal
 // reference, no user id, no organization id.
 
 export type ShadowOutcome = "match" | "mismatch" | "unavailable" | "no_action";
 
 export interface ShadowLogger {
     info(fields: Record<string, unknown>, message: string): void;
+    debug?(fields: Record<string, unknown>, message: string): void;
 }
 
 export interface MismatchRecord {
@@ -27,6 +28,15 @@ export interface RunRecord {
 
 export const RUN_MESSAGE = "authz_shadow_decide";
 export const MISMATCH_MESSAGE = "authz_shadow_mismatch";
+export const SKIP_MESSAGE = "authz_shadow_skip";
+
+export function logSkip(
+    surfaces: string,
+    reason: "sampled",
+    log: ShadowLogger = defaultLogger,
+): void {
+    log.debug?.({ surfaces, reason }, SKIP_MESSAGE);
+}
 
 export function logRun(record: RunRecord, log: ShadowLogger = defaultLogger): void {
     log.info(

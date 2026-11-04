@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { logSkip } from "../log";
 import { shadowDecide, type ShadowInput } from "../run";
 import { DENY, input, recordingTransport, ORG, TOKEN, USER } from "./helpers";
 
@@ -27,6 +28,13 @@ describe("shadow log", () => {
         for (const secret of [TOKEN, USER, ORG, "principal_reference", "access_token"]) {
             expect(text).not.toContain(secret);
         }
+    });
+
+    it("writes a closed Debug field set for a skip", () => {
+        const debug = vi.fn();
+        logSkip("guard:/org/admin", "sampled", { info: vi.fn(), debug });
+        expect(debug).toHaveBeenCalledTimes(1);
+        expect(Object.keys(debug.mock.calls[0][0]).sort()).toEqual(["reason", "surfaces"]);
     });
 
     it("writes one line for a run with no mismatch", async () => {

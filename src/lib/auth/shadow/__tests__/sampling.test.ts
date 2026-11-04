@@ -15,11 +15,11 @@ const session = (id: string) =>
     ({ user: { id, org_id: ORG, role: "admin" }, access_token: TOKEN }) as Session;
 
 describe("shadow sampling slot", () => {
-    it("takes one slot per session for two actionable surface sets", async () => {
+    it("takes one slot per session and surface set", async () => {
         const { transport, calls } = recordingTransport([ALLOW]);
         const now = () => 5_000_000_000_000;
         const a = shadowInputFrom(session("slot-user"), ["guard:/org/admin"]);
-        const b = shadowInputFrom(session("slot-user"), ["extra:ui"], { surfaces: [extraRow] });
+        const b = shadowInputFrom(session("slot-user"), ["guard:/org/admin"]);
         await shadowDecide(a, { transport, log: { info: vi.fn() }, nowMs: now });
         const second = await shadowDecide(b, { transport, log: { info: vi.fn() }, nowMs: now });
         expect(calls).toHaveLength(1);

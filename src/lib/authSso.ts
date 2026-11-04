@@ -247,6 +247,11 @@ async function complete(
     if (!ssoEnabled()) return { kind: "disabled" };
     if (!PROVIDER_ID.test(providerId))
         return { kind: "refused", code: "sso_failed", clearCookies: [] };
+    // hs256_compat reads the access token without a signature check: SSO trusts only eddsa.
+    if (resolveTokenClass(cfg.tokenClassRaw) !== "eddsa") {
+        logSessionBranch({ operation: "sso_login", branch: "sso_token_class_refused" });
+        return { kind: "refused", code: "sso_unavailable", clearCookies: [] };
+    }
     if (!wireConfigUsable(cfg, "sso_login")) {
         return { kind: "refused", code: "sso_unavailable", clearCookies: [] };
     }

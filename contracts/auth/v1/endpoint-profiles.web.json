@@ -3671,6 +3671,238 @@
             }
         },
         {
+            "id": "server_action:src/lib/admin/server/orgs.ts#removeOrgMember",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/orgs.ts",
+                "line": 317
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:26-35) throws AdminApiError(401,'Unauthorized') if no session, AdminApiError(403,'Forbidden') if session.user.is_superuser is not true.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 39,
+                    "line_end": 46
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "cross_org_superuser_only",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "requireSuperuserToken() is the first call in the action body (CHAOS-8994); action/resource_resolver not independently re-derived beyond the function signature.",
+                "action: searched the source from src/lib/admin/server/orgs.ts:317 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/orgs.ts:317 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/orgs.ts:317 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/orgs.ts#transferOrgOwnership",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/orgs.ts",
+                "line": 329
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:26-35) throws AdminApiError(401,'Unauthorized') if no session, AdminApiError(403,'Forbidden') if session.user.is_superuser is not true.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 39,
+                    "line_end": 46
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "cross_org_superuser_only",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "requireSuperuserToken() is the first call in the action body (CHAOS-8994); action/resource_resolver not independently re-derived beyond the function signature.",
+                "action: searched the source from src/lib/admin/server/orgs.ts:329 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/orgs.ts:329 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/orgs.ts:329 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/orgs.ts#inviteOrgMember",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/orgs.ts",
+                "line": 358
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:26-35) throws AdminApiError(401,'Unauthorized') if no session, AdminApiError(403,'Forbidden') if session.user.is_superuser is not true.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 39,
+                    "line_end": 46
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "cross_org_superuser_only",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "requireSuperuserToken() is the first call in the action body (CHAOS-8994); action/resource_resolver not independently re-derived beyond the function signature.",
+                "action: searched the source from src/lib/admin/server/orgs.ts:358 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/orgs.ts:358 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/orgs.ts:358 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/orgs.ts#inviteCurrentOrgMember",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/orgs.ts",
+                "line": 376
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 11,
+                    "line_end": 20
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/orgs.ts:372, added with CHAOS-12789. action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
+                "action: searched the source from src/lib/admin/server/orgs.ts:376 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/orgs.ts:376 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/orgs.ts:376 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
             "id": "server_action:src/lib/admin/server/orgs.ts#listOrganizations",
             "surface_kind": "server_action",
             "method": null,
@@ -8371,7 +8603,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/users.ts",
-                "line": 66
+                "line": 59
             },
             "classification": "protected",
             "public_rationale": null,
@@ -8421,64 +8653,6 @@
             }
         },
         {
-            "id": "server_action:src/lib/admin/server/users.ts#createUser",
-            "surface_kind": "server_action",
-            "method": null,
-            "route": null,
-            "graphql_field_name": null,
-            "service": "dev-health-web",
-            "source": {
-                "file": "src/lib/admin/server/users.ts",
-                "line": 29
-            },
-            "classification": "protected",
-            "public_rationale": null,
-            "accepted_credential_classes": ["auth_js_browser_session"],
-            "primary_validator": {
-                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
-                "anchor": {
-                    "path": "src/lib/admin/server/_shared.ts",
-                    "line": 12,
-                    "line_end": 21
-                }
-            },
-            "token_shape": {
-                "token_type": "auth_js_browser_session",
-                "issuer": null,
-                "audience": null,
-                "algorithm": null
-            },
-            "reachable_validators": [
-                {
-                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
-                    "anchor": {
-                        "path": "src/proxy.ts",
-                        "line": 354,
-                        "line_end": 372
-                    },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
-                }
-            ],
-            "action": null,
-            "resource_resolver": null,
-            "tenant_requirement": "org_scoped",
-            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
-            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
-            "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/users.ts:31, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
-                "action: searched the source from src/lib/admin/server/users.ts:29 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/users.ts:29 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/users.ts:29 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
-            ],
-            "exposure": {
-                "reachability": "public_via_edge",
-                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
-            }
-        },
-        {
             "id": "server_action:src/lib/admin/server/users.ts#deleteUser",
             "surface_kind": "server_action",
             "method": null,
@@ -8487,7 +8661,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/users.ts",
-                "line": 43
+                "line": 36
             },
             "classification": "protected",
             "public_rationale": null,
@@ -8719,7 +8893,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/users.ts",
-                "line": 50
+                "line": 43
             },
             "classification": "protected",
             "public_rationale": null,
@@ -8777,7 +8951,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/users.ts",
-                "line": 36
+                "line": 29
             },
             "classification": "protected",
             "public_rationale": null,

@@ -107,6 +107,9 @@ export const PLATFORM_SURFACES: readonly PlatformSurface[] = [
     row("fn:listOrgMembers", "fn", ORGS, "admin.orgs", { symbol: "listOrgMembers" }),
     row("fn:addOrgMemberByEmail", "fn", ORGS, "admin.orgs", { symbol: "addOrgMemberByEmail" }),
     row("fn:changeOrgMemberRole", "fn", ORGS, "admin.orgs", { symbol: "changeOrgMemberRole" }),
+    row("fn:removeOrgMember", "fn", ORGS, "admin.orgs", { symbol: "removeOrgMember" }),
+    row("fn:transferOrgOwnership", "fn", ORGS, "admin.orgs", { symbol: "transferOrgOwnership" }),
+    row("fn:inviteOrgMember", "fn", ORGS, "admin.orgs", { symbol: "inviteOrgMember" }),
     row("page:/superadmin/users", "page", `${SA}/users/page.tsx`, "admin.users", {
         serverMapped: false,
     }),

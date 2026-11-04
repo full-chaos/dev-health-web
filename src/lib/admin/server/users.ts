@@ -26,13 +26,6 @@ export async function getUser(userId: string): Promise<ActionResult<User>> {
     });
 }
 
-export async function createUser(data: UserCreate): Promise<ActionResult<User>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext({ write: "members.invite" });
-        return adminApi.users.create(data, token, orgId);
-    });
-}
-
 export async function updateUser(userId: string, data: UserUpdate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext({ write: "members.update" });

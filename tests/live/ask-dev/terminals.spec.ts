@@ -15,6 +15,7 @@ import {
     ACR,
     INVESTIGATIONS_PATH,
     ORACLE,
+    acrCallAs,
     ask,
     expectAnswersFallback,
     expectAnswersSynthesized,
@@ -959,26 +960,6 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
         expect(afterRevoke, "the revoked device credential still answers").toBe(401);
     });
 });
-
-/** ACR's own call with the panel's create headers (bearer, resource, client version): never logged. */
-async function acrCallAs(create: AcrCall, method: "GET" | "POST", path: string) {
-    const from = secretsOf(create).headers;
-    const response = await fetch(`${ACR}${path}`, {
-        method,
-        headers: {
-            authorization: from.authorization!,
-            "x-acr-resource": from["x-acr-resource"]!,
-            "x-acr-client-version": from["x-acr-client-version"]!,
-            accept: "application/json",
-        },
-    });
-    const text = await response.text();
-    try {
-        return { status: response.status, body: JSON.parse(text) as unknown };
-    } catch {
-        return { status: response.status, body: null };
-    }
-}
 
 test.describe("the transport's terminals when the run has ended (AC2, run lease on)", () => {
     test("stalled, and the run ended: the turn shows its end, not an answer", async ({

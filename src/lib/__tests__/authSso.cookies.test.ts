@@ -16,6 +16,11 @@ const cfg: WireConfig = {
     issuer: undefined,
     backendUrl: "http://auth.test",
 };
+const eddsaCfg: WireConfig = {
+    ...cfg,
+    tokenClassRaw: "eddsa",
+    issuer: "https://auth.example.test",
+};
 const fetchMock = vi.fn();
 const OIDC = `dho_oidc_login_nonce_abc=n1; Path=/api/v1/auth/oidc/${PROVIDER}/callback; Max-Age=600; HttpOnly; Secure; SameSite=Lax`;
 const SAML = `dho_saml_login_nonce_def=n2; Path=/api/v1/auth/saml/${PROVIDER}/acs; Max-Age=600; HttpOnly; Secure; SameSite=None`;
@@ -108,7 +113,7 @@ describe("what the calls send and return", () => {
                 state: "s",
                 cookies: "authjs.session-token=SECRET; dho_oidc_login_nonce_abc=n1",
             },
-            cfg,
+            eddsaCfg,
         );
         const init = fetchMock.mock.calls[0][1] as RequestInit;
         expect((init.headers as Record<string, string>).Cookie).toBe("dho_oidc_login_nonce_abc=n1");
@@ -121,7 +126,10 @@ describe("what the calls send and return", () => {
 
     it("sends no Cookie header when the request had no nonce cookie", async () => {
         fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: "x" }), { status: 400 }));
-        await completeOidc({ providerId: PROVIDER, code: "c", state: "s", cookies: "a=b" }, cfg);
+        await completeOidc(
+            { providerId: PROVIDER, code: "c", state: "s", cookies: "a=b" },
+            eddsaCfg,
+        );
         const init = fetchMock.mock.calls[0][1] as RequestInit;
         expect((init.headers as Record<string, string>).Cookie).toBeUndefined();
     });

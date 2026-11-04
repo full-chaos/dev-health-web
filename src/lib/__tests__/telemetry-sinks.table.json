@@ -208,7 +208,7 @@
         "sentry": 0
     },
     "src/lib/auth/shadow/log.ts": {
-        "log": 2,
+        "log": 3,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {
@@ -216,7 +216,7 @@
         "sentry": 0
     },
     "src/lib/authSessionLog.ts": {
-        "log": 1,
+        "log": 2,
         "sentry": 0
     },
     "src/lib/billing/actions/subscription.ts": {

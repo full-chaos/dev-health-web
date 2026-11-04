@@ -41,11 +41,11 @@ import { requireSuperuser } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import SuperadminLayout from "@/app/(app)/superadmin/layout";
 import {
-    createUser,
     deleteCurrentOrg,
     deleteUser,
     getCurrentOrg,
     getImpersonationStatus,
+    inviteCurrentOrgMember,
     listUsers,
     setUserPassword,
     stopImpersonation,
@@ -72,7 +72,10 @@ const ORG_WRITES: ReadonlyArray<[string, () => Promise<ActionResult<unknown>>]> 
     ["updateCurrentOrg (org.write)", () => updateCurrentOrg({ name: "x" } as never)],
     ["updateOrgProfile (org.write)", () => updateOrgProfile({ name: "x" })],
     ["deleteCurrentOrg (org.delete)", () => deleteCurrentOrg()],
-    ["createUser (members.invite)", () => createUser({ email: "n@example.test" } as never)],
+    [
+        "inviteCurrentOrgMember (members.invite)",
+        () => inviteCurrentOrgMember("n@example.test", "member"),
+    ],
     ["updateUser (members.update)", () => updateUser("u-2", { role: "admin" } as never)],
     ["deleteUser (members.manage)", () => deleteUser("u-2")],
     ["setUserPassword (members.manage)", () => setUserPassword("u-2", "p1", "p0")],
