@@ -12,6 +12,7 @@ import { SignupCompletedEmitter } from "@/components/telemetry/SignupCompletedEm
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
 import { requireSession } from "@/lib/auth";
+import { scheduleShadow } from "@/lib/auth/shadow";
 import { GraphQLProvider } from "@/lib/graphql/provider";
 import { boundedRead, withDeadline } from "@/lib/serverDeadline";
 
@@ -27,6 +28,7 @@ export default async function AppLayout({
         kind: "auth",
         op: "step layout session",
     });
+    scheduleShadow(session, ["nav:platform", "nav:platform-billing"]);
     const entitlementResult = session.user.org_id
         ? await boundedRead(getOrgEntitlements(session.user.org_id), "step layout entitlements")
         : undefined;

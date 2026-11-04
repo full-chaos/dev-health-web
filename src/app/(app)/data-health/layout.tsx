@@ -1,9 +1,12 @@
 import { requireRole } from "@/lib/auth";
+import { scheduleShadow } from "@/lib/auth/shadow";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { getOrgEntitlements } from "@/lib/admin/server";
 
 export default async function DataHealthLayout({ children }: { children: React.ReactNode }) {
     const session = await requireRole(["admin", "owner", "operator"], "/data-health");
+
+    scheduleShadow(session, ["guard:/data-health"]);
 
     const orgId = session.user.org_id;
     const entitlements = orgId ? await getOrgEntitlements(orgId) : null;
