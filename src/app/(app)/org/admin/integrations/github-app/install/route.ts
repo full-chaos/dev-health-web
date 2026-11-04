@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     // deny keeps this handler's consistent ?github_app=error UX (do NOT call requireRole: it
     // redirects to /dashboard).
     const verdict = await decideGuard(session, "org.integrations.write");
-    if (!verdict.allowed) {
+    if (!verdict.allowed || (await refuseOrgWrite(session, "integrations.write"))) {
         return errorRedirect(request);
     }
 
@@ -140,3 +140,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(parsed.toString());
 }
+
+// Below the anchored lines on purpose (auth-profile gate). With AUTHZ_PLATFORM_UI=enforce an
+// impersonating session is refused here, the superuser rule of the decision included.
+import { refuseOrgWrite } from "@/lib/auth/platform/limits";

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { deleteCurrentOrg, dryRunDeleteCurrentOrg } from "@/lib/admin/server";
@@ -20,6 +21,7 @@ export function DangerZone({ orgName }: DangerZoneProps) {
     const [showConfirm, setShowConfirm] = useState(false);
     const [confirmText, setConfirmText] = useState("");
     const [plan, setPlan] = useState<DeletionResult | null>(null);
+    const { impersonationLimited } = useAdminNav();
 
     const handleStartDelete = () => {
         startTransition(async () => {
@@ -46,6 +48,8 @@ export function DangerZone({ orgName }: DangerZoneProps) {
             }
         });
     };
+
+    if (impersonationLimited) return null;
 
     return (
         <SettingsSection
