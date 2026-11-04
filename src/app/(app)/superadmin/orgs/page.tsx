@@ -5,8 +5,10 @@ import { OrgTable } from "@/components/superadmin/OrgTable";
 import { listOrganizations } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Notice } from "@/components/ui/Notice";
+import { requireSuperuser } from "@/lib/auth";
 
 export default async function OrganizationsPage() {
+    await requireSuperuser("/superadmin/orgs", "page:/superadmin/orgs");
     const { data: orgs, error } = await listOrganizations();
 
     if (error) {

@@ -5,12 +5,14 @@ import { UserTable } from "@/components/superadmin/UserTable";
 import { listPlatformUsers } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Notice } from "@/components/ui/Notice";
+import { requireSuperuser } from "@/lib/auth";
 
 type UsersPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
+    await requireSuperuser("/superadmin/users", "page:/superadmin/users");
     const params = (await searchParams) ?? {};
     const queryParam = Array.isArray(params.q) ? params.q[0] : params.q;
     const query = typeof queryParam === "string" ? queryParam.trim() : "";

@@ -126,14 +126,21 @@ export async function startImpersonation(targetUserId: string): Promise<
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken({ guard: "unmapped" });
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            guard: "unmapped",
+        });
         return adminApi.impersonation.start(targetUserId, token);
     }, "changes-impersonation");
 }
 
 export async function stopImpersonation(): Promise<ActionResult<{ status: string }>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken({ allowImpersonating: true, guard: "unmapped" });
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            allowImpersonating: true,
+            guard: "unmapped",
+        });
         return adminApi.impersonation.stop(token);
     }, "changes-impersonation");
 }
@@ -148,7 +155,11 @@ export async function getImpersonationStatus(): Promise<
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken({ allowImpersonating: true, guard: "unmapped" });
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            allowImpersonating: true,
+            guard: "unmapped",
+        });
         return adminApi.impersonation.status(token);
     });
 }
@@ -157,14 +168,14 @@ export async function getImpersonationStatus(): Promise<
 
 export async function listOrganizations(): Promise<ActionResult<Organization[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.list(token);
     });
 }
 
 export async function getOrganization(orgId: string): Promise<ActionResult<Organization>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.get(orgId, token);
     });
 }
@@ -174,7 +185,7 @@ export async function createOrganization(
 ): Promise<ActionResult<Organization>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
             return adminApi.orgs.create(data, token);
         }),
     );
@@ -186,7 +197,7 @@ export async function updateOrganization(
 ): Promise<ActionResult<Organization>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
             return adminApi.orgs.update(orgId, data, token);
         }),
     );
@@ -195,7 +206,7 @@ export async function updateOrganization(
 export async function deleteOrganization(orgId: string): Promise<ActionResult<void>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
             return adminApi.orgs.delete(orgId, token);
         }),
     );
@@ -203,14 +214,14 @@ export async function deleteOrganization(orgId: string): Promise<ActionResult<vo
 
 export async function dryRunDeleteOrganization(orgId: string): Promise<ActionResult<DeletionPlan>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.dryRunDelete(orgId, token);
     });
 }
 
 export async function listOrgMembers(orgId: string): Promise<ActionResult<Membership[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.members.list(orgId, token);
     });
 }
@@ -230,7 +241,7 @@ export async function addOrgMemberByEmail(
 ): Promise<ActionResult<Membership>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
             const memberRole = requireMemberRole(role);
             const wanted = email.trim().toLowerCase();
             if (!wanted) {
@@ -253,7 +264,7 @@ export async function changeOrgMemberRole(
 ): Promise<ActionResult<Membership>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const token = await requireSuperuserToken();
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
             const memberRole = requireMemberRole(role);
             return adminApi.orgs.members.updateRole(orgId, userId, { role: memberRole }, token);
         }),
@@ -262,7 +273,7 @@ export async function changeOrgMemberRole(
 
 export async function getPlatformStats(): Promise<ActionResult<PlatformStats>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.stats" });
         return adminApi.platform.stats(token);
     });
 }
@@ -275,7 +286,7 @@ export async function listPlatformAuditLogs(
     offset?: number,
 ): Promise<ActionResult<AuditLogListResponse>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.audit" });
         return adminApi.platformAudit.list(filters, limit, offset, token);
     });
 }
@@ -307,7 +318,7 @@ export async function removeOrgMember(orgId: string, userId: string): Promise<Ac
     return withErrorHandling(() =>
         withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.members.remove(orgId, userId, token);
             },
             { closed: true },
@@ -322,7 +333,7 @@ export async function transferOrgOwnership(
     return withErrorHandling(() =>
         withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.members.transferOwnership(orgId, newOwnerUserId, token);
             },
             { closed: true },
@@ -353,7 +364,7 @@ export async function inviteOrgMember(
         const body = inviteBody(email, role);
         return withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.invites.create(orgId, body, token);
             },
             { closed: true },

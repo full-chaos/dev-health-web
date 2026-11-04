@@ -79,6 +79,12 @@ export const CASES = {
     attStop: "Long: what is the status of full-chaos/dev-health-web?",
     attLong: "Long: what is the status of full-chaos/dev-health-web?",
     attPodLoss: "Long: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12883 (`other-principal.spec.ts`): INV-1 with a second principal. The `Own` cases are the
+    // second principal's positive controls; the `Hold` cases keep a run in flight while it is probed.
+    peerThreadOwner: "What is the status of full-chaos/dev-health-web?",
+    peerThreadOwn: "What is the status of full-chaos/dev-health-web?",
+    peerRunOwner: "Hold: what is the status of full-chaos/dev-health-web?",
+    peerRunOwn: "Hold: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
@@ -129,8 +135,10 @@ export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
  * - `treemap`: one repository's investment. Its theme breakdown draws the treemap.
  * - `comparison`: two repositories on pull request delivery. Both sides' window measures draw the
  *   side-by-side table (only `metrics` and `pull_requests` fields compare, CHAOS-12513).
- * - `landscape`: two teams on churn and delivery units. Their landscape claims draw the quadrant,
- *   but only when both teams hold the same newest day (CHAOS-4611 ruling 3, CHAOS-12676).
+ * - `landscape`: two teams on churn and delivery units over a stated range that ends on a day both
+ *   teams hold landscape rows. Their landscape claims draw the quadrant, which acr serves only when
+ *   both teams speak for one day (CHAOS-4611 ruling 3). A current-axis question reads each team at
+ *   its own newest day, which can differ (CHAOS-12676), so this case states the range.
  * - `cohort`: the teams that are struggling, ranked with their drivers.
  * - `sankey`: one team's effort across its repositories. The scope-anchor allocation route serves
  *   it from the team's own investment fact, and the claimed `repository_theme_breakdown` detail
@@ -148,7 +156,7 @@ const RICH_BASES = {
     comparison:
         "compare full-chaos/dev-health-acr and full-chaos/dev-health-ops on pull request delivery over the last 30 days",
     landscape:
-        "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
+        "how do Fullchaos and Ops Team compare on churn and delivery units between 2026-09-07 and 2026-10-07?",
     cohort: "which teams are struggling and why over the last 30 days?",
     sankey: "how is the Fullchaos team's engineering effort split across its repositories over the last 30 days?",
     sunburst:

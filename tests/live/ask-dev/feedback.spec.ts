@@ -19,11 +19,13 @@ import {
     authorize,
     expectAnswersSynthesized,
     panel,
+    orgOf,
     secretsOf,
     signIn,
     signInOther,
     watchAcr,
     watchResults,
+    withBearer,
     type AcrCall,
 } from "./stack";
 
@@ -207,25 +209,6 @@ async function storedAt(api: APIRequestContext, like: AcrCall, resultId: string)
     const body = (await response.json()) as Stored;
     return { correct: body.correct, useful: body.useful };
 }
-
-/** A call this page made with a bearer that ACR took (200): a live, working authorization. */
-const withBearer = (calls: readonly AcrCall[]): AcrCall => {
-    const call = calls.findLast((item) => item.hasBearer && item.status === 200);
-    expect(call, "the page made no ACR call that ACR took with a bearer").toBeDefined();
-    return call!;
-};
-
-/**
- * The signed-in user's active organization and role, from web's own session. Only those two fields
- * leave the page: the session also holds tokens.
- */
-const orgOf = (page: Page): Promise<{ org: string | null; role: string | null }> =>
-    page.evaluate(async () => {
-        const session = (await (await fetch("/api/auth/session")).json()) as {
-            user?: { org_id?: string; role?: string };
-        } | null;
-        return { org: session?.user?.org_id ?? null, role: session?.user?.role ?? null };
-    });
 
 async function answered(surface: Locator, count: number): Promise<void> {
     await expect(surface.getByRole("article", { name: "Answer" })).toHaveCount(count, {

@@ -101,6 +101,68 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
     return calls;
 }
 
+/** A call this page made with a bearer that ACR took (200): a live, working authorization. */
+export const withBearer = (calls: readonly AcrCall[]): AcrCall => {
+    const call = calls.findLast((item) => item.hasBearer && item.status === 200);
+    expect(call, "the page made no ACR call that ACR took with a bearer").toBeDefined();
+    return call!;
+};
+
+/**
+ * The signed-in user's active organization and role, from web's own session. Only those two fields
+ * leave the page: the session also holds tokens.
+ */
+export const orgOf = (page: Page): Promise<{ org: string | null; role: string | null }> =>
+    page.evaluate(async () => {
+        const session = (await (await fetch("/api/auth/session")).json()) as {
+            user?: { org_id?: string; role?: string };
+        } | null;
+        return { org: session?.user?.org_id ?? null, role: session?.user?.role ?? null };
+    });
+
+/**
+ * ACR's own call with the panel's create headers (bearer, resource, client version): never logged.
+ * `headersOnly` stops at the response headers and aborts the body: an attach to a live run is a
+ * stream that would not end. `requestId` is ACR's `x-request-id`, the evidence a case records.
+ */
+export async function acrCallAs(
+    create: AcrCall,
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    options: { readonly headersOnly?: boolean } = {},
+): Promise<{ status: number; body: unknown; requestId: string | null }> {
+    const from = secretsOf(create).headers;
+    const abort = new AbortController();
+    const response = await fetch(`${ACR}${path}`, {
+        method,
+        signal: abort.signal,
+        headers: {
+            authorization: from.authorization!,
+            "x-acr-resource": from["x-acr-resource"]!,
+            "x-acr-client-version": from["x-acr-client-version"]!,
+            accept: options.headersOnly === true ? "text/event-stream" : "application/json",
+        },
+    });
+    const requestId = response.headers.get("x-request-id");
+    if (options.headersOnly === true && response.status === 200) {
+        abort.abort();
+        return { status: response.status, body: null, requestId };
+    }
+    const text = await response.text();
+    try {
+        return { status: response.status, body: JSON.parse(text) as unknown, requestId };
+    } catch {
+        return { status: response.status, body: null, requestId };
+    }
+}
+
+/** The create's thread id: a prefixed 32-hex id. */
+export function threadOf(call: AcrCall): string {
+    const value = secretsOf(call).headers["x-acr-thread-id"];
+    expect(value, "the create sent no x-acr-thread-id").toMatch(/^[a-z]+_[0-9a-f]{32}$/u);
+    return value!;
+}
+
 /** The page binding the in-page tee sends each investigation stream's text to. */
 const RESULT_BINDING = "__askDevLiveStream";
 

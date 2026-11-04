@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 
 /**
  * CHAOS-12820: in the shared `SunburstChart`, two small themes side by side printed their inner-ring
@@ -22,6 +22,10 @@ const answer = JSON.parse(
     ),
 ) as { render_shapes: Array<{ series: Array<{ key: string; points: Array<{ label: string }> }> }> };
 const THEME_WORDS = answer.render_shapes[0]!.series[0]!.points.map((point) => point.label);
+// Every theme and every subcategory the served shape names (CHAOS-12912).
+const ALL_WORDS = answer.render_shapes[0]!.series.flatMap((series) =>
+    series.points.map((point) => point.label),
+);
 const TITLE = "Effort share by theme and subcategory";
 
 type Corner = { readonly x: number; readonly y: number };
@@ -130,14 +134,78 @@ function expectNoOverlap(labels: Box[] | null) {
     }
 }
 
-async function seed(page: Page) {
+// The same served shape with the case CHAOS-12912 saw live: several small subcategories side by side
+// (Maintenance's Debt/Refactor/Upgrade, Feature Delivery's Customer/Enablement/Roadmap, Risk's three).
+const SMALL_SUBCATEGORIES: Record<string, number[]> = {
+    feature_delivery: [0.2, 0.08, 0.12],
+    maintenance: [0.04, 0.03, 0.03],
+    operational: [0.1, 0.05, 0.05],
+    quality: [0.12, 0.06, 0.07],
+    risk: [0.02, 0.02, 0.01],
+};
+// The shape is checked against the fact's own rows, so the rows carry the same shares (15 rows, three
+// subcategories per theme, in series order).
+const smallArcsAnswer = (() => {
+    const copy = structuredClone(answer) as typeof answer & {
+        claimed_facts: Array<{ rows: Array<{ fields: { share: { number: number } } }> }>;
+    };
+    const themeKeys = Object.keys(SMALL_SUBCATEGORIES);
+    for (const series of copy.render_shapes[0]!.series) {
+        const values = SMALL_SUBCATEGORIES[series.key];
+        if (!values) continue;
+        series.points.forEach((point, i) => {
+            (point as unknown as { value: number }).value = values[i]!;
+            copy.claimed_facts[0]!.rows[
+                themeKeys.indexOf(series.key) * 3 + i
+            ]!.fields.share.number = values[i]!;
+        });
+    }
+    return copy;
+})();
+
+async function seed(page: Page, served: unknown = answer) {
     await page.addInitScript(
         ([key, value]) => {
             window.sessionStorage.setItem(key, value);
         },
-        ["ask-dev:test-mode-answer", JSON.stringify(answer)] as const,
+        ["ask-dev:test-mode-answer", JSON.stringify(served)] as const,
     );
 }
+
+test.describe("the sunburst's labels never overlap, and its table names every node (CHAOS-12912)", () => {
+    test.beforeEach(async ({ request }) => {
+        await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "provisioned" } });
+    });
+
+    for (const [name, width, height] of [
+        ["panel", 1280, 900],
+        ["phone", 390, 844],
+    ] as const) {
+        test(`theme and subcategory labels, and the value table (${name})`, async ({
+            page,
+        }, testInfo) => {
+            await page.setViewportSize({ width, height });
+            await page.emulateMedia({ reducedMotion: "reduce" });
+            await seed(page, smallArcsAnswer);
+            await page.goto("/dashboard");
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const panel = page
+                .getByRole("complementary", { name: "Ask Dev" })
+                .or(page.getByRole("dialog", { name: "Ask Dev" }));
+            const figure = panel.locator("figure", { hasText: TITLE });
+            const labels = await drawnLabels(figure, ALL_WORDS);
+            await figure.evaluate((node) => node.scrollIntoView({ block: "center" }));
+            await page.waitForTimeout(400);
+            await page.screenshot({ path: testInfo.outputPath(`ring-labels-all-${name}.png`) });
+            expectNoOverlap(labels);
+            // A hidden label loses nothing: the value table names every theme and subcategory.
+            const table = figure.locator(".sr-only table");
+            for (const word of ALL_WORDS) {
+                await expect(table, `the table names "${word}"`).toContainText(word);
+            }
+        });
+    }
+});
 
 test.describe("the sunburst's inner-ring labels never overlap (CHAOS-12820)", () => {
     test.beforeEach(async ({ request }) => {
