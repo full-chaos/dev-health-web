@@ -1,5 +1,7 @@
 import { failureFromError } from "@/lib/actionFailure";
 import { auth, forgetOwnImpersonationStatus } from "@/lib/auth";
+import { scheduleFnShadow } from "@/lib/auth/platform/shadow";
+import type { PlatformAction } from "@/lib/auth/platform/actionTable";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
 
@@ -29,11 +31,15 @@ export async function getToken(): Promise<string> {
  * not run as the impersonated user. Only the end and the status read of an impersonation pass
  * `allowImpersonating`.
  */
-export async function requireSuperuserToken(opts?: { allowImpersonating?: true }): Promise<string> {
+export async function requireSuperuserToken(opts: {
+    action: PlatformAction;
+    allowImpersonating?: true;
+}): Promise<string> {
     const session = await auth();
     if (!session?.access_token) {
         throw new AdminApiError(401, "Unauthorized", "No access token");
     }
+    scheduleFnShadow(session, opts.action, opts.allowImpersonating === true);
     if (!session.user?.is_superuser) {
         throw new AdminApiError(403, "Forbidden", "Superuser access required");
     }

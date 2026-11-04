@@ -2,7 +2,7 @@ import { requireSuperuser } from "@/lib/auth";
 import { scheduleShadow } from "@/lib/auth/shadow";
 
 export default async function SuperadminLayout({ children }: { children: React.ReactNode }) {
-    const session = await requireSuperuser("/superadmin");
+    const session = await requireSuperuser("/superadmin", "page:/superadmin");
     scheduleShadow(session, ["guard:/superadmin"]);
 
     // Rendered inside the shared app shell (CHAOS-7967): the shell owns the navigation (Admin →

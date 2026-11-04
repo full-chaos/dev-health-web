@@ -103,13 +103,17 @@ describe("AppLayout shadow wiring is advisory", () => {
         requireSessionMock.mockResolvedValue({ user: { id: "user-1", org_id: "org-1" } });
     });
 
-    it("schedules the nav surfaces once, from the session", async () => {
+    it("schedules the nav surfaces once per switch, from the session", async () => {
         render(await AppLayout({ children: <span>page</span> }));
-        expect(shadow.scheduleShadow).toHaveBeenCalledOnce();
-        expect(shadow.scheduleShadow.mock.calls[0][1]).toEqual([
-            "nav:platform",
-            "nav:platform-billing",
-        ]);
+        expect(shadow.scheduleShadow).toHaveBeenCalledTimes(2);
+        for (const call of shadow.scheduleShadow.mock.calls) {
+            expect(call[1]).toEqual(["nav:platform", "nav:platform-billing"]);
+        }
+        expect(shadow.scheduleShadow.mock.calls[0][2]).toBeUndefined();
+        expect(shadow.scheduleShadow.mock.calls[1][2]).toMatchObject({
+            includeImpersonating: true,
+            switch: { name: "AUTHZ_PLATFORM_UI", onValue: "shadow" },
+        });
     });
 
     it("renders the same output whether or not the shadow call runs", async () => {

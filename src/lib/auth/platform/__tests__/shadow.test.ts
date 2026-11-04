@@ -23,12 +23,7 @@ vi.mock("@/lib/auth/shadow/config", async (orig) => ({
 }));
 
 import { MISMATCH_MESSAGE, RUN_MESSAGE } from "@/lib/auth/shadow/log";
-import {
-    ALLOW,
-    DENY,
-    TOKEN,
-    recordingTransport,
-} from "@/lib/auth/shadow/__tests__/helpers";
+import { ALLOW, DENY, TOKEN, recordingTransport } from "@/lib/auth/shadow/__tests__/helpers";
 import { PLATFORM_ACTIONS, PLATFORM_SURFACES } from "../actionTable";
 import { PLATFORM_SHADOW_ROWS, scheduleFnShadow, schedulePlatformShadow } from "../shadow";
 
@@ -158,7 +153,11 @@ describe("C4 shadow", () => {
             mocks.info.mockReset();
             scheduleFnShadow(impersonating(), action, false);
             await flush();
-            expect(mismatchLines().every((l) => (l as { client_allowed: boolean }).client_allowed === false)).toBe(true);
+            expect(
+                mismatchLines().every(
+                    (l) => (l as { client_allowed: boolean }).client_allowed === false,
+                ),
+            ).toBe(true);
         }
     });
 
