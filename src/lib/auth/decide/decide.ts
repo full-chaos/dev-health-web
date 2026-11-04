@@ -52,14 +52,9 @@ export async function decideGuard(
             message: reasonToState(code).message,
         });
         const requestId = newRequestId();
-        const record = (
-            allowed: boolean,
-            source: "pdp" | "client",
-            reasonCode: string,
-            decisionId?: string,
-        ) =>
+        const record = (allowed: boolean, source: "pdp" | "client", reasonCode: string) =>
             logDecision(
-                { guard: guardId, action, allowed, source, reasonCode, decisionId, requestId },
+                { guard: guardId, action, allowed, source, reasonCode, requestId },
                 deps.log,
             );
 
@@ -84,11 +79,11 @@ export async function decideGuard(
             nowMs: deps.nowMs,
         });
         if (outcome.allowed) {
-            record(true, "pdp", outcome.decision.reasonCode, outcome.decision.decisionId);
+            record(true, "pdp", outcome.decision.reasonCode);
             return { allowed: true };
         }
         if (outcome.source === "pdp") {
-            record(false, "pdp", outcome.decision.reasonCode, outcome.decision.decisionId);
+            record(false, "pdp", outcome.decision.reasonCode);
             return deny(outcome.decision.reasonCode);
         }
         record(false, "client", outcome.reason);
