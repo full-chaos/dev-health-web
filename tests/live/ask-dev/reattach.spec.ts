@@ -16,6 +16,7 @@ import {
     ACR,
     INVESTIGATIONS_PATH,
     ORACLE,
+    acrCallAs,
     ask,
     investigations,
     panel,
@@ -126,26 +127,6 @@ async function divertCreates(page: Page, proxy: FaultProxy): Promise<void> {
         if (route.request().method() !== "POST") return route.fallback();
         return route.continue({ url: `${proxy.origin}${INVESTIGATIONS_PATH}` });
     });
-}
-
-/** ACR's own call with the panel's create headers (bearer, resource, client version): never logged. */
-async function acrCallAs(create: AcrCall, method: "GET" | "POST", path: string) {
-    const from = secretsOf(create).headers;
-    const response = await fetch(`${ACR}${path}`, {
-        method,
-        headers: {
-            authorization: from.authorization!,
-            "x-acr-resource": from["x-acr-resource"]!,
-            "x-acr-client-version": from["x-acr-client-version"]!,
-            accept: "application/json",
-        },
-    });
-    const text = await response.text();
-    try {
-        return { status: response.status, body: JSON.parse(text) as unknown };
-    } catch {
-        return { status: response.status, body: null };
-    }
 }
 
 type OracleCounts = { started?: number; answered?: number; cancelled?: number };

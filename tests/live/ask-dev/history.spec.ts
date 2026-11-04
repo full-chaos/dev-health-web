@@ -24,8 +24,8 @@ import {
     ask,
     investigations,
     panel,
-    secretsOf,
     signIn,
+    threadOf,
     type AcrCall,
 } from "./stack";
 
@@ -43,8 +43,7 @@ import {
  *   it, does not bring the thread back: the case holds that answer in the browser (`page.route`)
  *   until the delete's 204.
  *
- * AC-3 (another principal of the same org) needs a second user: it is not here (CHAOS-12234's
- * `signInOther` owns that sign-in).
+ * AC-3 (another principal of the same org) is `other-principal.spec.ts` (CHAOS-12883).
  */
 
 const NONCE = process.env.ASK_DEV_LIVE_NONCE ?? "";
@@ -87,13 +86,6 @@ const activeStage = (surface: Locator) => surface.locator('li.chat__stage[data-s
 const conversation = (surface: Locator) => surface.getByRole("log", { name: "Conversation" });
 const historyRow = (surface: Locator, threadId: string) =>
     surface.locator(`[data-testid="ask-dev-history-row"][data-thread-id="${threadId}"]`);
-
-/** The create's thread id: a prefixed 32-hex id. */
-function threadOf(call: AcrCall): string {
-    const value = secretsOf(call).headers["x-acr-thread-id"];
-    expect(value, "the create sent no x-acr-thread-id").toMatch(/^[a-z]+_[0-9a-f]{32}$/u);
-    return value!;
-}
 
 /** ACR's request id of each thread call and create, by method and path: the evidence the AC names. */
 function watchRequestIds(
