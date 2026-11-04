@@ -1,11 +1,11 @@
 # Ask Dev in web: architecture and runbook
 
-This page describes what is built on web main (`fd309c90`), ask-dev main (`6124ba5`), acr main (`b164f9792`) and ops main (`6a9c19282b`). It covers the data path, the deadline chain, the run lifecycle, the partition, the admission states, the gates, and the order to turn it on and off. Sibling pages: [Ask Dev in web](../ask-dev.md) (what the user sees) and [the thread seam](ask-dev-thread-seam.md) (the conversation store).
+This page describes what is built on web main (`fd309c90`), ask-dev as web pins it (`6124ba52`, `package.json:56`; every ask-dev path below was read at that commit), acr main (`b164f9792`) and ops main (`6a9c19282b`) when it was written. It covers the data path, the deadline chain, the run lifecycle, the partition, the admission states, the gates, and the order to turn it on and off. Sibling pages: [Ask Dev in web](../ask-dev.md) (what the user sees) and [the thread seam](ask-dev-thread-seam.md) (the conversation store).
 
 ## Status
 
-- **Live** on web main and on the local askdev-1 stack.
-- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set, and prod does not set it (`src/lib/ask-dev/acr-transport/index.ts:32`, `src/lib/acr/config.ts:161`). With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
+- **Built** on web main. The askdev-1 stack is set up for it (deploy values files, below); this page did not re-test askdev-1.
+- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set; the code comments state that prod sets it only in the T13 roll (`src/lib/ask-dev/acr-browser-config.ts:21`, `src/lib/ask-dev/acr-transport/index.ts:32`), and the check is `src/lib/acr/config.ts:161`. With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
 - The askdev-1 values files in the deploy repo (`kiac/askdev-1/values/values.askdev-web-acr.yaml`) cite older pins than web main, so askdev-1 can lag what this page describes.
 
 ## Data path
@@ -20,7 +20,7 @@ The browser calls ACR directly with an ACR OAuth credential (`fcacr_` token). We
 | The page may call ACR's issuer origin                                                    | CSP `connect-src` gains exactly that origin, and only when `ACR_OAUTH_ISSUER` is set (`src/proxy.ts:200-210`)                              |
 | The authorize route is rate-limited per user: 6 per window, fail closed                  | `src/lib/acr/service.ts:41-43`                                                                                                             |
 
-Not built: removing the web server route (T17) and stopping the Ops token from reaching page JS (T19). Both are plan items; no code for them is on main.
+Built: the Ops token is removed from browser session responses and a copy under another key fails closed (T19; `src/lib/authBrowserSession.ts:75-89,109-123`). Not found built: removing the web authorize route (T17).
 
 ## Deadline chain
 
@@ -50,7 +50,7 @@ Not found: a web-side keepalive timer, and a web outer deadline read from an env
 
 ## Partition
 
-One conversation exists per (organization, user, impersonated user). The key is built in `partitionKey()` (`src/components/ask-dev/conversation/AskDevConversationContext.tsx:122`). A partition change clears the store (`conversationStore.ts:45`, `setPartition` at `:889`). Sign-out cancels and clears (`src/lib/ask-dev/acr-sign-out.ts`, `signOutCancel.ts`). Ask Dev is hidden while a user impersonates (`src/components/ask-dev/useAskDevAvailability.ts`).
+One conversation exists per (organization, user, impersonated user). The key is built in `partitionKey()` (`src/components/ask-dev/conversation/AskDevConversationContext.tsx:122`). A partition change clears the store (`conversationStore.ts:45`, `setPartition` at `:889`). Sign-out cancels and clears (`src/lib/ask-dev/acr-sign-out.ts`, `signOutCancel.ts`). Ask Dev is hidden while a user impersonates, but only when the browser ACR client is on: with the client off the hook returns `on` before it checks impersonation (`src/components/ask-dev/useAskDevAvailability.ts:36-38`).
 
 Not built: revoking the previous session's ACR token when the user switches organization (T3b).
 
@@ -58,15 +58,26 @@ Not built: revoking the previous session's ACR token when the user switches orga
 
 A submission is `running`, `done`, `done_unsaved` or `abandoned` (`conversationStore.ts:749-752`). ACR refusals the page can show (acr `internal/contextfabric/submission_limits.go:86-90`, `internal/api/context_fabric_submission.go`):
 
-| Code                       | Meaning                                                                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `409 submission_mismatch`  | The key was reused for another request. A defect.                                                                                            |
-| `409 submission_abandoned` | This key's run ended with no answer.                                                                                                         |
-| `409 no_repository`        | The organization has no repository the caller may use.                                                                                       |
-| `429 concurrency_limited`  | A per-principal or per-organization concurrency limit. `ACR_PER_ORG_CONCURRENCY` is the organization limit (`internal/config/limits.go:82`). |
-| `429 allowance_exhausted`  | The monthly platform run allowance. Default 1000, set by `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE` (`config.go:334`).                              |
+| Code                       | Meaning                                                                                                                                                                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `409 submission_mismatch`  | The key was reused for another request. A defect.                                                                                                                                                                                       |
+| `409 submission_abandoned` | This key's run ended with no answer.                                                                                                                                                                                                    |
+| `409 no_repository`        | The organization has no repository the caller may use.                                                                                                                                                                                  |
+| `429 concurrency_limited`  | A per-principal or per-organization running-run limit: `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL` (default 2, at most 16) and `ACR_ASK_DEV_MAX_RUNNING_PER_ORG` (default 4, at most 64) (acr `internal/config/config.go:329-334,590-594`). |
+| `429 allowance_exhausted`  | The monthly platform run allowance. Default 1000, set by `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE` (`config.go:334`).                                                                                                                         |
 
-Web adds its own limit on the authorize route (see Data path). A USD cost ceiling is not found in code.
+Refusals before a run are mapped to a reason in the store (`conversationStore.ts:243-276`):
+
+| Reason           | ACR code it comes from                      | Same-key retry offered |
+| ---------------- | ------------------------------------------- | ---------------------- |
+| `access_denied`  | `access_denied`                             | no                     |
+| `no_repository`  | `no_repository`                             | no                     |
+| `not_entitled`   | `feature_not_enabled`, `insufficient_scope` | no                     |
+| `repo_forbidden` | `repo_forbidden`                            | no                     |
+| `budget_refusal` | `budget_refusal`                            | no                     |
+| `rate_limited`   | `rate_limited`                              | yes                    |
+
+The store also handles `submission_unsaved`, `submission_required`, `budget_exhausted` and `thread_closed` (`conversationStore.ts:2483-2521`). Web adds its own limit on the authorize route (see Data path). A USD cost ceiling is not found in code.
 
 ## Gates: who sees Ask Dev
 
@@ -82,7 +93,7 @@ ACR checks access on every call; the web gate only decides whether to draw the b
 
 ## Turn it on and off
 
-Order to enable (the plan's rollback section, 2.10): the ACR event-stream flag, then the organization flags (`ask_dev`, `agent_context_runtime`), then `ask_dev_contextual_entrypoints`. Disable in the reverse order.
+Order to enable (plan of record section 2.10 in Linear; no code enforces this order): the ACR event-stream flag, then the organization flags (`ask_dev`, `agent_context_runtime`), then `ask_dev_contextual_entrypoints`. Disable in the reverse order.
 
 | Step turned off                     | What the user sees                                                 |
 | ----------------------------------- | ------------------------------------------------------------------ |
@@ -95,8 +106,8 @@ ACR database migrations roll back with the ACR release, not with these flags. Th
 
 ## Environment
 
-Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `ACR_API_ORIGIN`, `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_PER_ORG_CONCURRENCY`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
+Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `ACR_API_ORIGIN`, `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL`, `ACR_ASK_DEV_MAX_RUNNING_PER_ORG`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
 
 ## Not built
 
-T17 (remove the web server route), T19 (stop serving the Ops token to page JS), T3b (revoke the previous session on organization switch), a USD cost ceiling, a web-side keepalive timer. The 0-day and 30-day retention behaviour beyond the flag was not traced here.
+T17 (remove the web authorize route), T3b (revoke the previous session on organization switch), a USD cost ceiling, a web-side keepalive timer. The 0-day and 30-day retention behaviour beyond the flag was not traced here.
