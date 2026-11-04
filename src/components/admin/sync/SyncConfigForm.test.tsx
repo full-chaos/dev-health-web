@@ -607,8 +607,13 @@ describe("SyncConfigForm", () => {
                 expect(mockCreateSyncConfig).toHaveBeenCalled();
                 expect(screen.getByText("Duplicate name")).toBeInTheDocument();
             });
+            // The review step re-renders the button after the toast; wait for it (bounded).
             expect(
-                screen.getByRole("button", { name: "Create Configuration" }),
+                await screen.findByRole(
+                    "button",
+                    { name: "Create Configuration" },
+                    { timeout: 3000 },
+                ),
             ).toBeInTheDocument();
         });
 
