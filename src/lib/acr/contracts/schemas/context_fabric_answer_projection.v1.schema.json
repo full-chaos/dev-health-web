@@ -883,6 +883,129 @@
       "description": "A claimed fact a retained driver cites, carried at value level so a consumer can show the canonical observation behind a judgment rather than only prose about it.",
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "CHAOS-12607 row bound, default clause: rows of a table in no row bound class, and rows with no declaration, keep 64.",
+          "$comment": "row-bound-class: default",
+          "if": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "table": {
+                      "properties": {
+                        "shape": {
+                          "const": "distribution"
+                        }
+                      },
+                      "required": [
+                        "shape"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "table"
+                  ]
+                },
+                {
+                  "properties": {
+                    "table": {
+                      "properties": {
+                        "shape": {
+                          "const": "breakdown"
+                        },
+                        "key": {
+                          "const": [
+                            "repository",
+                            "theme"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "shape",
+                        "key"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "table"
+                  ]
+                }
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "maxItems": 64
+              }
+            }
+          }
+        },
+        {
+          "description": "CHAOS-12607 row bound, class distribution: a `distribution` table holds every distinct completion day to the 365-day horizon, whole.",
+          "$comment": "row-bound-class: distribution",
+          "if": {
+            "properties": {
+              "table": {
+                "properties": {
+                  "shape": {
+                    "const": "distribution"
+                  }
+                },
+                "required": [
+                  "shape"
+                ]
+              }
+            },
+            "required": [
+              "table"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "maxItems": 366
+              }
+            }
+          }
+        },
+        {
+          "description": "CHAOS-12580 row bound, class repository_flow: a breakdown keyed by (repository, theme), a team's repository_theme_breakdown, holds every link of up to 64 repositories over the 5 canonical themes.",
+          "$comment": "row-bound-class: repository_flow",
+          "if": {
+            "properties": {
+              "table": {
+                "properties": {
+                  "shape": {
+                    "const": "breakdown"
+                  },
+                  "key": {
+                    "const": [
+                      "repository",
+                      "theme"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape",
+                  "key"
+                ]
+              }
+            },
+            "required": [
+              "table"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rows": {
+                "maxItems": 320
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "claim_id": {
           "type": "string",
@@ -935,7 +1058,7 @@
         "rows": {
           "description": "CHAOS-4347, additive: a renderable table for a fact whose evidence is genuinely a set of rows (e.g. a project's per-team metrics rollup) rather than one scalar. Optional; a claim carries `field`/`value` as its primary scalar either way.",
           "type": "array",
-          "maxItems": 64,
+          "maxItems": 366,
           "items": {
             "$ref": "#/$defs/ProjectedFactRow"
           }
@@ -958,6 +1081,9 @@
         },
         "investment_mix": {
           "$ref": "#/$defs/ProjectedInvestmentMix"
+        },
+        "completion_forecast": {
+          "$ref": "#/$defs/ProjectedCompletionForecast"
         }
       },
       "required": [
@@ -2351,7 +2477,10 @@
         "investment_theme_share",
         "comparison_side_by_side",
         "investment_subcategory_share",
-        "investment_repository_flow"
+        "completion_forecast",
+        "completion_forecast_percentiles",
+        "investment_repository_flow",
+        "landscape_position"
       ]
     },
     "RenderValueUnit": {
@@ -2372,7 +2501,9 @@
             "cohort_member_score",
             "cohort_driver_weight_contributed",
             "claimed_fact_row",
-            "claimed_fact_value"
+            "claimed_fact_value",
+            "claimed_fact_table_row",
+            "claimed_fact_forecast_summary"
           ]
         },
         "subject_canonical_id": {
@@ -2445,7 +2576,7 @@
         "points": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 64,
+          "maxItems": 366,
           "items": {
             "$ref": "#/$defs/RenderPoint"
           }
@@ -2461,6 +2592,68 @@
       "description": "CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.",
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "render-point-bound-kind: default",
+          "description": "CHAOS-12608 point bound, default clause: a series of a shape of any kind not listed keeps 64 points.",
+          "if": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "forecast"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "series": {
+                "items": {
+                  "properties": {
+                    "points": {
+                      "maxItems": 64
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "render-point-bound-kind: forecast",
+          "description": "CHAOS-12608 point bound, kind forecast: a forecast plots every row of its completion distribution, up to 366.",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "forecast"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "series": {
+                "items": {
+                  "properties": {
+                    "points": {
+                      "maxItems": 366
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "shape_id": {
           "type": "string",
@@ -2723,12 +2916,13 @@
           "maxLength": 128
         },
         "shape": {
-          "description": "What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names.",
+          "description": "What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names. `distribution` (CHAOS-12607) is one entity's outcomes over an ordered numeric axis: exactly one integer key column, strictly ascending, never cut, up to 366 rows.",
           "type": "string",
           "enum": [
             "time_series",
             "breakdown",
-            "ranking"
+            "ranking",
+            "distribution"
           ]
         },
         "key": {
@@ -2807,6 +3001,30 @@
           "enum": [
             "day"
           ]
+        },
+        "column_vocabularies": {
+          "description": "CHAOS-12639: maps each key or observation column whose values are tokens of a closed vocabulary to that vocabulary. A consumer reads each cell's served word from `vocabulary_labels` under `<vocabulary>:<value>` and keeps no word table of its own. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`.",
+          "type": "object",
+          "maxProperties": 40,
+          "additionalProperties": {
+            "description": "`investment_theme` is a canonical investment theme; `subcategory` is a canonical investment subcategory.",
+            "type": "string",
+            "enum": [
+              "investment_theme",
+              "subcategory"
+            ]
+          }
+        },
+        "word_columns": {
+          "description": "CHAOS-12639: maps each id column to the observation column of the same row that carries its served word (a repository's handle beside its canonical id). A consumer shows the word and keeps the id out of sight. Set by the server from the producer's declaration; never model-authored. Each key is a name in `key` or `observations`: the id column.",
+          "type": "object",
+          "maxProperties": 40,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Another name in `observations`: the column that carries the id's served word."
+          }
         }
       },
       "required": [
@@ -3252,6 +3470,83 @@
         "project_own_work_unit_count": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "ProjectedCompletionForecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Additive (CHAOS-12608): the completion forecast of a team workload claim's grounding fact, the same stored forecast row the claim is grounded on. Set by the server from the claim's grounding fact, never model-authored, only on a team workload claim, and only when the deployment serves the forecast's distribution. A completion forecast or forecast percentiles shape cites its numbers (claimed_fact_forecast_summary). An absent percentile, date or count is not 0.",
+      "required": [
+        "state",
+        "computed_at"
+      ],
+      "properties": {
+        "work_scope_id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "available",
+            "not_stored",
+            "no_run_within_horizon",
+            "over_limit",
+            "malformed",
+            "scope_ambiguous",
+            "unmatched"
+          ]
+        },
+        "computed_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+        },
+        "simulation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "horizon_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unfinished_runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "forecast_p50_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "forecast_p85_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "forecast_p95_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "forecast_p50_date": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "forecast_p85_date": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "forecast_p95_date": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
         }
       }
     }

@@ -4,6 +4,7 @@ import type { ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { logger } from "@/lib/logger";
+import { isAnswerProjection } from "@/lib/ask-dev/projectionBudget";
 
 import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 
@@ -157,7 +158,11 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 function checkedEvent(event: InvestigationEvent): InvestigationEvent {
-    if (event.type === "result" && asTranscriptResult(event.result) === null) {
+    if (
+        event.type === "result" &&
+        !isAnswerProjection(event.result) &&
+        asTranscriptResult(event.result) === null
+    ) {
         throw new Error("test-mode result event is not a result");
     }
     return event;

@@ -22,6 +22,8 @@ const serverEnvSchema = z.object({
     AUTH_ACCESS_TOKEN_CLASS: z.string().optional(),
     /** Issuer of the access tokens, checked under class `eddsa`. */
     AUTH_ACCESS_TOKEN_ISSUER: z.string().optional(),
+    /** "true" or "1" turns on enterprise SSO sign-in (OIDC, SAML); unset = off. */
+    AUTH_SSO_ENABLED: z.string().optional(),
     AUTH_GITHUB_ID: z.string().optional(),
     AUTH_GITHUB_SECRET: z.string().optional(),
     AUTH_GOOGLE_ID: z.string().optional(),

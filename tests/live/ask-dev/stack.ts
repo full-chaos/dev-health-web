@@ -2,11 +2,17 @@ import { readFileSync } from "node:fs";
 
 import { expect, type Locator, type Page, type Request } from "@playwright/test";
 
+import { type ScopedResult, terminalResultOf } from "./answer-scope";
+
 /**
  * CHAOS-11933: what the Ask Dev live suite needs from the deployed stack.
  *
  * A measurement that did not happen must FAIL (plan §4, Phase 1): with no ACR, no stream or no data
- * this suite goes red. It has no `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report.
+ * this suite goes red. It has no plain `test.skip`, and `ci/live-e2e-skip-gate.mjs` reads its report:
+ * a skip fails the run unless the case's own title contains `[behind a flag]` and every skip reason
+ * starts with `NOT RUN` (a view behind a flag that is off, CHAOS-11946), and an expected failure fails
+ * it unless its own title contains `[KNOWN GAP` and every `test.fail` reason starts with `KNOWN GAP`.
+ * Neither is ever counted as a pass.
  *
  * - `ASK_DEV_LIVE_WEB`: web's origin, default `http://localhost:3000`.
  * - `ASK_DEV_LIVE_ACR`: ACR's issuer origin, default `https://acr.localhost:8443`.
@@ -14,6 +20,8 @@ import { expect, type Locator, type Page, type Request } from "@playwright/test"
  * - `ASK_DEV_LIVE_THREAD`: a stored conversation of that user: two answers, one ref cited by both.
  * - `ASK_DEV_LIVE_PASSWORD_FILE`: a 0600 file with that user's password. Never an env value, never
  *   an argument, never a log line.
+ * - `ASK_DEV_LIVE_OTHER_EMAIL` and `ASK_DEV_LIVE_OTHER_PASSWORD_FILE` (CHAOS-12234, AC-3): a second
+ *   principal in the same organization, with the same grants. Only the cases that need one read them.
  */
 export const ACR = process.env.ASK_DEV_LIVE_ACR ?? "https://acr.localhost:8443";
 export const THREAD = process.env.ASK_DEV_LIVE_THREAD ?? "";
@@ -21,15 +29,20 @@ export const EMAIL = process.env.ASK_DEV_LIVE_EMAIL ?? "admin@test.com";
 export const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
 export const INVESTIGATIONS_PATH = "/api/v1/context-fabric/investigations";
 
-function password(): string {
-    const file = process.env.ASK_DEV_LIVE_PASSWORD_FILE;
+function passwordFrom(name: string): string {
+    const file = process.env[name];
     if (file === undefined || file === "") {
-        throw new Error("ASK_DEV_LIVE_PASSWORD_FILE is not set: the suite cannot sign in");
+        throw new Error(`${name} is not set: the suite cannot sign in`);
     }
     const value = readFileSync(file, "utf8").trim();
-    if (value === "") throw new Error("the password file is empty");
+    if (value === "") throw new Error(`the password file of ${name} is empty`);
     return value;
 }
+
+const password = (): string => passwordFrom("ASK_DEV_LIVE_PASSWORD_FILE");
+
+/** CHAOS-12234: the second principal (same organization, same grants). Empty: not configured. */
+export const OTHER_EMAIL = process.env.ASK_DEV_LIVE_OTHER_EMAIL ?? "";
 
 export type AcrCall = {
     readonly method: string;
@@ -86,6 +99,158 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
         call.status = response.status();
     });
     return calls;
+}
+
+/** The page binding the in-page tee sends each investigation stream's text to. */
+const RESULT_BINDING = "__askDevLiveStream";
+
+/**
+ * CHAOS-12637: runs IN THE PAGE (`page.addInitScript`), before the app's own scripts. It wraps
+ * `fetch` so that each POST to ACR's investigations route also sends a CLONE of its response body,
+ * once the stream ends, to `binding`. The app reads the original stream as it always does, so the
+ * page streams as before. Nothing else is read: no request, no header, no bearer. A body that
+ * cannot be read is sent as `{ error }`, so the test says why it has no result.
+ *
+ * CHAOS-12844: the two reads an answer is RECOVERED by are teed the same way, because a case whose
+ * stream is dropped draws its answer from them: a GET of a run's events (`…/submissions/{id}/events`,
+ * the run lease's attach, a stream) and a GET of a result by its id (`…/result_<32 hex>`, the replay
+ * of a final id, JSON). No other route is teed: not the submission status, a thread or feedback.
+ *
+ * Why in the page: Chromium does not keep the body of a streamed `fetch` for the DevTools protocol,
+ * so `response.text()` on Playwright's side fails with "No data found for resource with given
+ * identifier" (askdev-1, 2026-11-02). Self-contained: Playwright sends its source to the page.
+ */
+export function teeInvestigationStreams(options: {
+    readonly origin: string;
+    readonly path: string;
+    readonly binding: string;
+}): void {
+    const scope = globalThis as unknown as Record<string, unknown> & { fetch: typeof fetch };
+    const original = scope.fetch.bind(globalThis);
+    scope.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const response = await original(input, init);
+        try {
+            const request = input instanceof Request ? input : undefined;
+            const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+            const href =
+                typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+            const base = (globalThis as { location?: { href: string } }).location?.href;
+            const url = new URL(href, base ?? options.origin);
+            const send = scope[options.binding];
+            const tail = url.pathname.startsWith(`${options.path}/`)
+                ? url.pathname.slice(options.path.length + 1)
+                : "";
+            let kind: "stream" | "json" | undefined;
+            if (url.origin !== options.origin) kind = undefined;
+            else if (method === "POST" && url.pathname === options.path) kind = "stream";
+            else if (method === "GET" && /^submissions\/[^/]+\/events$/u.test(tail))
+                kind = "stream";
+            else if (method === "GET" && /^result_[0-9a-f]{32}$/u.test(tail)) kind = "json";
+            if (kind !== undefined && typeof send === "function") {
+                const clone = response.clone();
+                void (async () => {
+                    const post = send as (message: {
+                        body?: string;
+                        error?: string;
+                        kind: "stream" | "json";
+                    }) => unknown;
+                    const reader = clone.body?.getReader();
+                    if (reader === undefined) {
+                        post({ error: "the response has no body", kind });
+                        return;
+                    }
+                    const decoder = new TextDecoder();
+                    let body = "";
+                    try {
+                        for (;;) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            body += decoder.decode(value, { stream: true });
+                        }
+                        post({ body, kind });
+                    } catch (error: unknown) {
+                        // Ask Dev's client aborts its own fetch once it holds the terminal event,
+                        // which aborts this clone too: what arrived before the abort is kept.
+                        post({
+                            body,
+                            error: error instanceof Error ? error.message : String(error),
+                            kind,
+                        });
+                    }
+                })();
+            }
+        } catch {
+            // The page's own fetch is never broken by the test's tee.
+        }
+        return response;
+    };
+}
+
+/**
+ * What a read by id serves (acr-v1 `GET …/investigations/{result_id}`): an investigation result, or
+ * with `view=projection` the bounded answer projection. Anything else (an error envelope, a status
+ * record) is not a result, whatever fields it has.
+ */
+const RESULT_SCHEMA = /^context_fabric_(?:investigation_result\.v\d+|answer_projection\.v1)$/u;
+
+/** A result read by its id (`application/json`): the result itself, or undefined when it is not one. */
+function resultOfJson(body: string): ScopedResult | undefined {
+    let value: unknown;
+    try {
+        value = JSON.parse(body);
+    } catch {
+        return undefined;
+    }
+    const schema = (value as { schema_version?: unknown } | null)?.schema_version;
+    return typeof value === "object" &&
+        value !== null &&
+        typeof schema === "string" &&
+        RESULT_SCHEMA.test(schema)
+        ? (value as ScopedResult)
+        : undefined;
+}
+
+/**
+ * CHAOS-12637: the terminal result of every investigation this page asks, in order, read from a
+ * clone of its event stream inside the page (`teeInvestigationStreams`). Only the result is kept: no
+ * header, no bearer. A stream with no readable body adds nothing and says so on the console, so a
+ * case that needs a result fails on its absence. Call it before the page's first navigation.
+ *
+ * CHAOS-12844: a result the page RECOVERS (an attach to a run's events, a replay by id) is kept
+ * too, in the order it arrives: every result the page draws an answer from.
+ */
+export async function watchResults(
+    page: Pick<Page, "exposeBinding" | "addInitScript">,
+): Promise<ScopedResult[]> {
+    const results: ScopedResult[] = [];
+    await page.exposeBinding(
+        RESULT_BINDING,
+        (_source, message: { body?: string; error?: string; kind?: "stream" | "json" }) => {
+            // A body cut by the client's own abort still holds the frames that came before it.
+            const result =
+                typeof message.body !== "string"
+                    ? undefined
+                    : message.kind === "json"
+                      ? resultOfJson(message.body)
+                      : terminalResultOf(message.body);
+            if (result !== undefined) {
+                results.push(result);
+                return;
+            }
+            // Loud, not silent: the case then fails on "no terminal result", and this says why.
+            console.warn(
+                message.kind === "json"
+                    ? `watchResults: a result read gave no result: ${message.error ?? "its body is not a result"}`
+                    : `watchResults: an investigation stream gave no result: ${message.error ?? "it ended with no result event"}`,
+            );
+        },
+    );
+    await page.addInitScript(teeInvestigationStreams, {
+        origin: ACR,
+        path: INVESTIGATIONS_PATH,
+        binding: RESULT_BINDING,
+    });
+    return results;
 }
 
 /** Web's route that starts an authorization: same origin, so `watchAcr` cannot see it. */
@@ -151,11 +316,22 @@ async function hydrated(page: Page): Promise<void> {
 }
 
 export async function signIn(page: Page): Promise<void> {
+    await signInAs(page, EMAIL, password);
+}
+
+/** CHAOS-12234: signs this tab's context in as the second principal (`OTHER_EMAIL`). */
+export async function signInOther(page: Page): Promise<void> {
+    if (OTHER_EMAIL === "")
+        throw new Error("ASK_DEV_LIVE_OTHER_EMAIL is not set: no second principal");
+    await signInAs(page, OTHER_EMAIL, () => passwordFrom("ASK_DEV_LIVE_OTHER_PASSWORD_FILE"));
+}
+
+async function signInAs(page: Page, email: string, secret: () => string): Promise<void> {
     await page.goto("/auth/signin?callbackUrl=/dashboard", { waitUntil: "commit" });
     await expect(page.getByLabel(/email/iu)).toBeVisible({ timeout: 30_000 });
     await hydrated(page);
-    await page.getByLabel(/email/iu).fill(EMAIL);
-    await page.getByLabel(/password/iu).fill(password());
+    await page.getByLabel(/email/iu).fill(email);
+    await page.getByLabel(/password/iu).fill(secret());
     try {
         // A click before the form hydrates does nothing, so it is sent again.
         await expect(async () => {
@@ -167,6 +343,16 @@ export async function signIn(page: Page): Promise<void> {
         await page.getByLabel(/password/iu).clear();
         throw error;
     }
+}
+
+/**
+ * CHAOS-12864: a case that signs out signs in first, in its own context, so its sign-out ends a
+ * session of its own. The cases of a file share one session through the `beforeAll` storageState;
+ * signing that one out left every later case on `/dashboard` with no session and no launcher.
+ */
+export async function ownSession(page: Page): Promise<void> {
+    await page.context().clearCookies();
+    await signIn(page);
 }
 
 /** This tab's ACR token family. It holds a refresh token, so only its random id leaves the page. */
@@ -275,3 +461,94 @@ export const closeEvidence = (page: Page) =>
         .getByRole("dialog", { name: "Evidence & Context" })
         .getByRole("button", { name: "Close" })
         .click();
+
+/** A coverage detail as served; only the fields the fallback check reads. */
+export type CoverageDetail = { source?: string; code?: string; raw?: string };
+
+/** The codes acr's synthesis step files when it serves a facts-only fallback (CHAOS-11946). */
+const SYNTHESIS_FALLBACK_CODES = new Set(["synthesis_model_failed", "synthesis_not_run"]);
+
+/**
+ * The served result's coverage details that say the answer is acr's facts-only fallback: the model
+ * call failed or was not run (acr `synthesis_model_failure.go`). Pure, for any served result.
+ */
+export function synthesisFallbackDetails(result: unknown): CoverageDetail[] {
+    // A full result carries `coverage.details`; a projected one (an answer over the request's byte
+    // bound, context_fabric_answer_projection.v1) has no `coverage` and carries top-level
+    // `coverage_details` with the same shape (Codex P2 on #1804).
+    const served = result as
+        { coverage?: { details?: unknown }; coverage_details?: unknown } | null | undefined;
+    return [served?.coverage?.details, served?.coverage_details].flatMap((details) =>
+        Array.isArray(details)
+            ? (details as CoverageDetail[]).filter((detail) =>
+                  SYNTHESIS_FALLBACK_CODES.has(String(detail?.code)),
+              )
+            : [],
+    );
+}
+
+const describeDetails = (details: CoverageDetail[]): string =>
+    details.map((detail) => detail.raw ?? detail.code).join(", ");
+
+/**
+ * A case that expects an answer asserts the MECHANISM (AGENTS rule 4): the answer was synthesized.
+ * A view drawn on acr's fallback is not a pass (CHAOS-11946 cohort finding, CHAOS-12844). Throws,
+ * so it fails a Playwright case and can be tested without Playwright.
+ */
+export function expectSynthesized(result: unknown, label: string): void {
+    const details = synthesisFallbackDetails(result);
+    if (details.length > 0) {
+        throw new Error(
+            `${label}: the answer is acr's fallback, not a synthesized answer (${describeDetails(details)})`,
+        );
+    }
+}
+
+/** A case that expects acr's fallback by design (a synthesis out of time) asserts it got one. */
+export function expectFallback(result: unknown, label: string): void {
+    if (synthesisFallbackDetails(result).length === 0) {
+        throw new Error(
+            `${label}: the answer was expected to be acr's fallback, and it carries no synthesis failure`,
+        );
+    }
+}
+
+/**
+ * CHAOS-12844: a case that expects answers holds EVERY result its page drew (`watchResults`) to
+ * `expectSynthesized`, once the page has drawn at least `count` results: an answer can show before
+ * its terminal result arrives. `count` counts READS, not distinct ids: a reused answer keeps the
+ * stored `result_id`, so its first read and its recovered read share one id and are both checked.
+ * Fewer than `count` fails as "no result captured", a different failure from a fallback: a result
+ * that was never read is not a pass.
+ */
+export async function expectAnswersSynthesized(
+    results: readonly unknown[],
+    label: string,
+    count = 1,
+): Promise<void> {
+    await expect
+        .poll(() => results.length, {
+            message: `${label}: no result captured: the page drew fewer than ${String(count)} results`,
+            timeout: 30_000,
+        })
+        .toBeGreaterThanOrEqual(count);
+    results.forEach((result, index) =>
+        expectSynthesized(result, `${label}, result ${String(index + 1)}`),
+    );
+}
+
+/** CHAOS-12844: a case that expects acr's fallback by design holds every result it drew to `expectFallback`. */
+export async function expectAnswersFallback(
+    results: readonly unknown[],
+    label: string,
+): Promise<void> {
+    await expect
+        .poll(() => results.length, {
+            message: `${label}: no result captured`,
+            timeout: 30_000,
+        })
+        .toBeGreaterThan(0);
+    results.forEach((result, index) =>
+        expectFallback(result, `${label}, result ${String(index + 1)}`),
+    );
+}

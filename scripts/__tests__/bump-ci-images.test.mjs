@@ -25,6 +25,13 @@ const PINS = JSON.stringify({
     images: {
         node: { repo: "library/node", dest: "node", tag: "25-alpine", digest: D1 },
         buildkit: { repo: "moby/buildkit", dest: "moby/buildkit", tag: "x", digest: D2 },
+        playwright: {
+            repo: "playwright",
+            dest: "playwright",
+            tag: "v1-noble",
+            digest: D4,
+            sourceRegistry: "mcr.example",
+        },
     },
 });
 const DOCKERFILE = `# c\nARG NODE_IMAGE=node:25-alpine@${D1}\n\nFROM \${NODE_IMAGE} AS deps\n`;
@@ -35,6 +42,12 @@ describe("refs", () => {
         expect(sourceRef(pins, "node")).toBe(`mirror.example/library/node:25-alpine@${D1}`);
         expect(mirrorRef(pins, "buildkit")).toBe(`ghcr.io/o/p/moby/buildkit:x@${D2}`);
         expect(upstreamRef(pins, "node")).toBe(`node:25-alpine@${D1}`);
+    });
+    it("copies an image from its own registry when it names one (CHAOS-12841)", () => {
+        expect(sourceRef(pins, "playwright")).toBe(`mcr.example/playwright:v1-noble@${D4}`);
+        expect(mirrorRef(pins, "playwright")).toBe(`ghcr.io/o/p/playwright:v1-noble@${D4}`);
+        expect(sourceRef(pins, "buildkit")).toBe(`mirror.example/moby/buildkit:x@${D2}`);
+        expect(upstreamRef(pins, "playwright")).toBe(`mcr.example/playwright:v1-noble@${D4}`);
     });
     it("rejects a bad digest or a missing field", () => {
         expect(() => parsePins(PINS.replace(D1, "sha256:zz"))).toThrow(/digest/);
@@ -61,7 +74,7 @@ describe("edit of both files", () => {
 describe("report and exit codes", () => {
     const pins = parsePins(PINS);
     it("0 when current", () => {
-        const rows = compare(pins, { node: D1, buildkit: D2 });
+        const rows = compare(pins, { node: D1, buildkit: D2, playwright: D4 });
         expect(exitCode(rows, false)).toBe(0);
     });
     it("1 when behind, and prints name current -> upstream", () => {
@@ -84,6 +97,19 @@ describe("lookupDigest", () => {
     });
     it("reads the digest header", async () => {
         expect(await lookupDigest(pins, "node", ok(D3))).toBe(D3);
+    });
+    it("asks the image's own registry when it names one (CHAOS-12841)", async () => {
+        const urls = [];
+        const record = async (url) => {
+            urls.push(url);
+            return ok(D3)();
+        };
+        await lookupDigest(pins, "playwright", record);
+        await lookupDigest(pins, "node", record);
+        expect(urls).toEqual([
+            "https://mcr.example/v2/playwright/manifests/v1-noble",
+            "https://mirror.example/v2/library/node/manifests/25-alpine",
+        ]);
     });
     it("throws on HTTP error or a missing header", async () => {
         await expect(
