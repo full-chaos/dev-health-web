@@ -220,3 +220,32 @@ describe("the Ask Dev forecast slot draws a stored forecast as the capacity page
         expect(slot(shape, { ...detail, rows: [] })).toBeNull();
     });
 });
+
+describe("a forecast names its work scope when the team has several (CHAOS-12726)", () => {
+    const withScopes = (scopeCount?: number, atLeast?: boolean): ForecastShapeDetail => ({
+        ...detail,
+        summary: {
+            ...detail.summary,
+            ...(scopeCount === undefined ? {} : { scope_count: scopeCount }),
+            ...(atLeast === undefined ? {} : { scope_count_at_least: atLeast }),
+        },
+    });
+
+    it("says which scope is drawn and how many the team has", async () => {
+        const { markup } = await slotDrawing(withScopes(14));
+        expect(markup).toContain("Work scope linear:CHAOS. The team has 14 work scopes.");
+    });
+
+    it("words a floor as at least", async () => {
+        const { markup } = await slotDrawing(withScopes(14, true));
+        expect(markup).toContain("The team has at least 14 work scopes.");
+    });
+
+    it("says nothing for a team with one scope, or when no count is served", async () => {
+        for (const served of [withScopes(1), withScopes(undefined)]) {
+            cleanup();
+            const { markup } = await slotDrawing(served);
+            expect(markup).not.toContain("forecast-scope-note");
+        }
+    });
+});
