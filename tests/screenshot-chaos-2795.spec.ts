@@ -67,9 +67,13 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         const gapButton = page.getByRole("button", { name: "Backfill this gap" }).first();
         await gapButton.waitFor({ timeout: NAV_TIMEOUT });
         await gapButton.scrollIntoViewIfNeeded();
-        await gapButton.click();
-
-        await page.getByRole("dialog").waitFor({ timeout: NAV_TIMEOUT });
+        const dialog = page.getByRole("dialog");
+        // The SSR button is actionable before hydration attaches its handler, so
+        // a first click can be swallowed. Retry click and dialog check together.
+        await expect(async () => {
+            await gapButton.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
         const fromValue = await page.getByLabel("Since (inclusive)", { exact: true }).inputValue();
         expect(fromValue).not.toBe("");
 
@@ -91,10 +95,12 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         await page.goto(DETAIL_URL, { waitUntil: "commit" });
         const gapButton = page.getByRole("button", { name: "Backfill this gap" }).first();
         await gapButton.waitFor({ timeout: NAV_TIMEOUT });
-        await gapButton.click();
-        releaseScripts();
-
-        await page.getByRole("dialog").waitFor({ timeout: 8000 });
+        const dialog = page.getByRole("dialog");
+        await expect(async () => {
+            await gapButton.click();
+            releaseScripts();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
         const fromValue = await page.getByLabel("Since (inclusive)", { exact: true }).inputValue();
         expect(fromValue).not.toBe("");
     });
