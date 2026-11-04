@@ -318,7 +318,7 @@ export async function removeOrgMember(orgId: string, userId: string): Promise<Ac
     return withErrorHandling(() =>
         withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.members.remove(orgId, userId, token);
             },
             { closed: true },
@@ -333,7 +333,7 @@ export async function transferOrgOwnership(
     return withErrorHandling(() =>
         withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.members.transferOwnership(orgId, newOwnerUserId, token);
             },
             { closed: true },
@@ -364,7 +364,7 @@ export async function inviteOrgMember(
         const body = inviteBody(email, role);
         return withOrgMemberRefusals(
             async () => {
-                const token = await requireSuperuserToken();
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
                 return adminApi.orgs.invites.create(orgId, body, token);
             },
             { closed: true },
