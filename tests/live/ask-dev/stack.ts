@@ -1,7 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { expect, type Locator, type Page, type Request } from "@playwright/test";
+import {
+    expect,
+    type APIRequestContext,
+    type Locator,
+    type Page,
+    type Request,
+} from "@playwright/test";
 
 import { type ScopedResult, terminalResultOf } from "./answer-scope";
 
@@ -534,6 +540,26 @@ export const panelChrome = (panel: Locator): Promise<string> =>
 
 /** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
 export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";
+
+/**
+ * `ASK_DEV_LIVE_REAL_MODEL=1` (CHAOS-11960, lead ruling 2026-11-04): the stack's organization is
+ * answered by the BYO model, so a question costs a real call. A spec that may run so says it
+ * here; its turns stay at the minimum the case needs. Without the oracle and without this flag
+ * no question is sent.
+ */
+export const REAL_MODEL = process.env.ASK_DEV_LIVE_REAL_MODEL === "1";
+
+/** The guard of a spec that asks: the oracle answers, or the run says it uses the real model. */
+export async function expectAModelPath(oracle: APIRequestContext): Promise<void> {
+    if (ORACLE !== "") {
+        expect((await oracle.get(`${ORACLE}/health`)).status(), "the oracle is not up").toBe(204);
+        return;
+    }
+    expect(
+        REAL_MODEL,
+        "neither ASK_DEV_LIVE_ORACLE nor ASK_DEV_LIVE_REAL_MODEL=1 is set: no question may be sent",
+    ).toBe(true);
+}
 
 /**
  * The surface a case asks from: the panel, authorized, with an empty composer. Shared by the

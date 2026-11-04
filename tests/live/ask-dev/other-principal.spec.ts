@@ -15,7 +15,7 @@ import { THREADS_PATH, threadDeletes, threadLists, threadReads } from "./history
 import { questionFor, type QuestionCase } from "./questions";
 import {
     INVESTIGATIONS_PATH,
-    ORACLE,
+    expectAModelPath,
     OTHER_EMAIL,
     acrCallAs,
     acrInvestigateAs,
@@ -56,7 +56,6 @@ type Session = Awaited<ReturnType<BrowserContext["storageState"]>>;
 let session: Session;
 
 test.beforeAll(async ({ browser, baseURL }) => {
-    expect(ORACLE, "ASK_DEV_LIVE_ORACLE is not set: no question may be sent").not.toBe("");
     expect(NONCE, "ASK_DEV_LIVE_NONCE is not set: run make-plan.ts for this run").not.toBe("");
     expect(
         OTHER_EMAIL,
@@ -64,7 +63,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
     ).not.toBe("");
     const oracle = await requestContext.newContext();
     try {
-        expect((await oracle.get(`${ORACLE}/health`)).status(), "the oracle is not up").toBe(204);
+        await expectAModelPath(oracle);
     } finally {
         await oracle.dispose();
     }
