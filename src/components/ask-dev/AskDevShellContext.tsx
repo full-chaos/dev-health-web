@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 import { ASK_DEV_FULL_PAGE_PATH, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { emitAskDevInteraction } from "@/lib/telemetry/emitters";
 import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 type AskDevShellValue = {
@@ -94,6 +95,12 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
     useRightDrawerClaim("ask-dev", open, closeFromPeer);
 
     const setOpen = useCallback((next: boolean) => setOpenState(next), []);
+    // CHAOS-11961: one event per opening of the panel (the flag turning on), never per render.
+    const wasOpen = useRef(false);
+    useEffect(() => {
+        if (open && !wasOpen.current) emitAskDevInteraction({ action: "open" });
+        wasOpen.current = open;
+    }, [open]);
     const close = useCallback(() => {
         setOpen(false);
         // After the panel unmounts: its own focus is gone, the launcher is the way back.
@@ -130,6 +137,7 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
 
     const expand = useCallback(() => {
         returnTo.current = `${window.location.pathname}${window.location.search}`;
+        emitAskDevInteraction({ action: "expand" });
         setOpen(false);
         router.push(ASK_DEV_FULL_PAGE_PATH);
     }, [router, setOpen]);
