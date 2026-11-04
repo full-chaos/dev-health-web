@@ -15,12 +15,16 @@ import { expect, test } from "@playwright/test";
 import {
     authHeaders,
     envFault,
+    expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
+    setupFault,
+    setupUser,
     testEmail,
     userIdByEmail,
     verifyUser,
+    type SetupUser,
 } from "./helpers";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -63,34 +67,27 @@ async function listCredentialIds(
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
+test("POST /register \u2192 accepted (202)", async ({ request }) => {
     const email = testEmail("reg");
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: "TestPass123!", full_name: "Reg User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (res.status() === 429) {
-        envFault("Register rate-limited (429)");
-        return;
-    }
-    expect([201, 202]).toContain(res.status());
+    expectRegisterAccepted(res);
 
-    // From 202 on, the answer is one message with no ids, and a taken address gets the same status and body.
-    if (res.status() === 202) {
-        const data = (await res.json()) as Record<string, unknown>;
-        expect(typeof data.message).toBe("string");
-        expect(data.user_id).toBeUndefined();
-        expect(data.org_id).toBeUndefined();
+    // The answer is one message with no ids, and a taken address gets the same status and body.
+    const firstText = await res.text();
+    const data = JSON.parse(firstText) as Record<string, unknown>;
+    expect(typeof data.message).toBe("string");
+    expect(data.user_id).toBeUndefined();
+    expect(data.org_id).toBeUndefined();
 
-        const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password: "TestPass123!", full_name: "Reg User" },
-            headers: { Origin: liveBackendUrl },
-        });
-        if (again.status() !== 429) {
-            expect(again.status()).toBe(202);
-            expect(await again.text()).toBe(JSON.stringify(data));
-        }
-    }
+    const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+        data: { email, password: "TestPass123!", full_name: "Reg User" },
+        headers: { Origin: liveBackendUrl },
+    });
+    expectRegisterAccepted(again);
+    expect(await again.text()).toBe(firstText);
 });
 
 test("POST /login after fresh registration \u2192 needs_onboarding true @guided", async ({
@@ -105,10 +102,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true @guided"
         data: { email, password: "TestPass123!", full_name: "Login User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (!regRes.ok()) {
-        envFault("Registration failed \u2014 backend may be unavailable");
-        return;
-    }
+    expectRegisterAccepted(regRes);
 
     // Verify the user's email via superuser so login returns tokens
     const suToken = await getSuperuserToken(request);
@@ -141,26 +135,17 @@ test.describe("onboarding journey @guided", () => {
     const email = testEmail("onboard");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Onboard User" },
-            headers: { Origin: liveBackendUrl },
-        });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, { email, password, fullName: "Onboard User" });
+        token = setup.token;
     });
 
     test("POST /onboard with org_name → success, returns org_id", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -178,7 +163,7 @@ test.describe("onboarding journey @guided", () => {
 
     test("re-login after onboarding → needs_onboarding false", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -190,7 +175,7 @@ test.describe("onboarding journey @guided", () => {
 
     test("second POST /onboard → 400 (already onboarded)", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -212,40 +197,23 @@ test.describe("credentials journey", () => {
     const email = testEmail("creds");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
     let credentialId = "";
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Creds User" },
-            headers: { Origin: liveBackendUrl },
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, {
+            email,
+            password,
+            fullName: "Creds User",
+            orgName: "Creds Org",
         });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
-        if (!token) return;
-
-        // Onboard first so admin endpoints are accessible
-        await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
-            headers: authHeaders(token),
-            data: { action: "create_org", org_name: "Creds Org" },
-        });
-
-        // Re-login to get updated token after onboarding
-        const reloginData = (await loginUser(request, email, password)) as {
-            access_token?: string;
-        };
-        token = reloginData.access_token ?? token;
+        token = setup.token;
     });
 
     test("POST /credentials → created credential", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -284,7 +252,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials/test → success false (fake token expected)", async ({ request }) => {
         if (!token || !credentialId) {
-            envFault("No token or credential — skipping test check");
+            envFault(setupFault(setup) || "No credential: the create case gave none");
             return;
         }
 
@@ -319,7 +287,7 @@ test.describe("credentials journey", () => {
 
     test("GET /credentials → array includes the created credential", async ({ request }) => {
         if (!token || !credentialId) {
-            envFault("No token or credential — skipping list check");
+            envFault(setupFault(setup) || "No credential: the create case gave none");
             return;
         }
 
@@ -349,40 +317,23 @@ test.describe("sync journey", () => {
     const email = testEmail("sync");
     const password = "TestPass123!";
     let token = "";
+    let setup: SetupUser = { token: "", steps: [] };
     let syncConfigId = "";
 
     test.beforeAll(async ({ request }) => {
-        const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-            data: { email, password, full_name: "Sync User" },
-            headers: { Origin: liveBackendUrl },
+        // CHAOS-12865: every setup step is recorded, so a missing token names the step that failed.
+        setup = await setupUser(request, {
+            email,
+            password,
+            fullName: "Sync User",
+            orgName: "Sync Org",
         });
-        if (!regRes.ok()) return;
-
-        // Verify the user's email so login returns tokens
-        const suToken = await getSuperuserToken(request);
-        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
-        if (suToken && userId) await verifyUser(request, userId, suToken);
-
-        const loginData = (await loginUser(request, email, password)) as { access_token?: string };
-        token = loginData.access_token ?? "";
-        if (!token) return;
-
-        // Onboard first so admin endpoints are accessible
-        await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
-            headers: authHeaders(token),
-            data: { action: "create_org", org_name: "Sync Org" },
-        });
-
-        // Re-login to get updated token after onboarding
-        const reloginData = (await loginUser(request, email, password)) as {
-            access_token?: string;
-        };
-        token = reloginData.access_token ?? token;
+        token = setup.token;
     });
 
     test("POST /sync-configs → created; POST trigger → 202", async ({ request }) => {
         if (!token) {
-            envFault("No token — backend may be unavailable");
+            envFault(setupFault(setup));
             return;
         }
 
@@ -424,7 +375,7 @@ test.describe("sync journey", () => {
 
     test("GET /sync-configs/:id/jobs → returns array", async ({ request }) => {
         if (!token || !syncConfigId) {
-            envFault("No token or sync config — skipping jobs check");
+            envFault(setupFault(setup) || "No sync config: the create case gave none");
             return;
         }
 

@@ -67,11 +67,17 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         const gapButton = page.getByRole("button", { name: "Backfill this gap" }).first();
         await gapButton.waitFor({ timeout: NAV_TIMEOUT });
         await gapButton.scrollIntoViewIfNeeded();
-        await gapButton.click();
 
-        await page.getByRole("dialog").waitFor({ timeout: NAV_TIMEOUT });
-        const fromValue = await page.getByLabel("Since (inclusive)", { exact: true }).inputValue();
-        expect(fromValue).not.toBe("");
+        // The button is server-rendered: under load a click before React hydrates
+        // is lost. The dialog mounting is the proof the handler ran, so retry the
+        // click together with that result instead of waiting on a fixed timeout.
+        const dialog = page.getByRole("dialog");
+        await expect(async () => {
+            await gapButton.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: NAV_TIMEOUT, intervals: [300, 700, 1500] });
+
+        await expect(page.getByLabel("Since (inclusive)", { exact: true })).not.toHaveValue("");
 
         await page.screenshot({
             path: "output/chaos-2795/chaos-2796-wizard-gap-prefill-after.png",

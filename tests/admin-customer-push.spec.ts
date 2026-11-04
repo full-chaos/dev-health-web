@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 
 // Seeded in tests/mocks/handlers.ts MOCK_CUSTOMER_PUSH_SOURCES/_TOKENS/_BATCHES.
@@ -108,17 +110,37 @@ test.describe("Create customer-push source", () => {
 });
 
 test.describe("Credential creation — one-time token display (D9)", () => {
+    // The mock keeps tokens for the whole run and has no delete route, so the name is unique per attempt
+    // (a retry never sees the rows of an earlier attempt) and afterEach revokes the attempt's rows.
+    let tokenName = "";
+
+    test.afterEach(async ({ page }) => {
+        if (!tokenName) return;
+        const listResp = await page.request.get(
+            `/api/v1/admin/customer-push/sources/${SEEDED_SOURCE_ID}/tokens`,
+        );
+        expect(listResp.ok()).toBe(true);
+        const rows = (await listResp.json()) as Array<{ id: string; name: string }>;
+        for (const row of rows.filter((r) => r.name === tokenName)) {
+            const revokeResp = await page.request.post(
+                `/api/v1/admin/customer-push/tokens/${row.id}/revoke`,
+            );
+            expect(revokeResp.ok()).toBe(true);
+        }
+    });
+
     test("create token flow: one-time panel renders, then the plaintext is never shown again", async ({
         page,
-    }) => {
+    }, testInfo) => {
+        tokenName = `e2e runner token ${testInfo.retry}-${randomUUID().slice(0, 8)}`;
         await page.goto(
             `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/credentials/new`,
         );
 
-        await page.locator("#customer-push-token-name").fill("e2e runner token");
+        await page.locator("#customer-push-token-name").fill(tokenName);
         await page.getByRole("button", { name: "Create credential" }).click();
 
-        await expect(page.getByText("e2e runner token — token created")).toBeVisible();
+        await expect(page.getByText(`${tokenName} — token created`)).toBeVisible();
         const tokenCode = page.locator("code");
         await expect(tokenCode).toContainText("fcpush_");
         const tokenText = (await tokenCode.textContent())?.trim() ?? "";
@@ -131,7 +153,7 @@ test.describe("Credential creation — one-time token display (D9)", () => {
         await page.goto(
             `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/credentials`,
         );
-        await expect(page.getByText("e2e runner token", { exact: true })).toBeVisible();
+        await expect(page.getByText(tokenName, { exact: true })).toBeVisible();
         await expect(page.getByText(tokenText)).toHaveCount(0);
 
         // Contract-level guard (adversarial-review finding): the token-LIST
