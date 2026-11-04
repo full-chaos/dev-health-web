@@ -18307,6 +18307,8 @@ const schema90 = {
         horizon_days: { type: "integer", minimum: 0 },
         unfinished_runs: { type: "integer", minimum: 0 },
         target_items: { type: "integer", minimum: 0 },
+        scope_count: { type: "integer", minimum: 1 },
+        scope_count_at_least: { type: "boolean" },
         forecast_p50_days: { type: "integer", minimum: 0 },
         forecast_p85_days: { type: "integer", minimum: 0 },
         forecast_p95_days: { type: "integer", minimum: 0 },
@@ -18326,6 +18328,11 @@ const schema90 = {
             pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
         },
     },
+    if: {
+        properties: { scope_count_at_least: { const: true } },
+        required: ["scope_count_at_least"],
+    },
+    then: { required: ["scope_count"] },
 };
 const schema85 = {
     description:
@@ -22913,45 +22920,55 @@ function validate67(
         }
         if (data.completion_forecast !== undefined) {
             let data82 = data.completion_forecast;
+            const _errs213 = errors;
+            let valid67 = true;
+            const _errs214 = errors;
             if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
-                if (data82.state === undefined) {
-                    const err214 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
+                let missing12;
+                if (
+                    data82.scope_count_at_least === undefined &&
+                    (missing12 = "scope_count_at_least")
+                ) {
+                    const err214 = {};
                     if (vErrors === null) {
                         vErrors = [err214];
                     } else {
                         vErrors.push(err214);
                     }
                     errors++;
-                }
-                if (data82.computed_at === undefined) {
-                    const err215 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err215];
-                    } else {
-                        vErrors.push(err215);
+                } else {
+                    if (data82.scope_count_at_least !== undefined) {
+                        if (true !== data82.scope_count_at_least) {
+                            const err215 = {};
+                            if (vErrors === null) {
+                                vErrors = [err215];
+                            } else {
+                                vErrors.push(err215);
+                            }
+                            errors++;
+                        }
                     }
-                    errors++;
                 }
-                for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+            }
+            var _valid9 = _errs214 === errors;
+            errors = _errs213;
+            if (vErrors !== null) {
+                if (_errs213) {
+                    vErrors.length = _errs213;
+                } else {
+                    vErrors = null;
+                }
+            }
+            if (_valid9) {
+                const _errs216 = errors;
+                if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                    if (data82.scope_count === undefined) {
                         const err216 = {
                             instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key13 },
-                            message: "must NOT have additional properties",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/then/required",
+                            keyword: "required",
+                            params: { missingProperty: "scope_count" },
+                            message: "must have required property '" + "scope_count" + "'",
                         };
                         if (vErrors === null) {
                             vErrors = [err216];
@@ -22961,74 +22978,63 @@ function validate67(
                         errors++;
                     }
                 }
-                if (data82.work_scope_id !== undefined) {
-                    let data83 = data82.work_scope_id;
-                    if (typeof data83 === "string") {
-                        if (func2(data83) > 128) {
-                            const err217 = {
-                                instancePath: instancePath + "/completion_forecast/work_scope_id",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err217];
-                            } else {
-                                vErrors.push(err217);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err218 = {
-                            instancePath: instancePath + "/completion_forecast/work_scope_id",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err218];
-                        } else {
-                            vErrors.push(err218);
-                        }
-                        errors++;
-                    }
+                var _valid9 = _errs216 === errors;
+                valid67 = _valid9;
+            }
+            if (!valid67) {
+                const err217 = {
+                    instancePath: instancePath + "/completion_forecast",
+                    schemaPath: "#/$defs/ClaimedCompletionForecast/if",
+                    keyword: "if",
+                    params: { failingKeyword: "then" },
+                    message: 'must match "then" schema',
+                };
+                if (vErrors === null) {
+                    vErrors = [err217];
+                } else {
+                    vErrors.push(err217);
                 }
-                if (data82.state !== undefined) {
-                    let data84 = data82.state;
-                    if (typeof data84 !== "string") {
-                        const err219 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err219];
-                        } else {
-                            vErrors.push(err219);
-                        }
-                        errors++;
+                errors++;
+            }
+            if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                if (data82.state === undefined) {
+                    const err218 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err218];
+                    } else {
+                        vErrors.push(err218);
                     }
-                    if (!(
-                        data84 === "available" ||
-                        data84 === "not_stored" ||
-                        data84 === "no_run_within_horizon" ||
-                        data84 === "over_limit" ||
-                        data84 === "malformed" ||
-                        data84 === "scope_ambiguous" ||
-                        data84 === "unmatched"
-                    )) {
+                    errors++;
+                }
+                if (data82.computed_at === undefined) {
+                    const err219 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err219];
+                    } else {
+                        vErrors.push(err219);
+                    }
+                    errors++;
+                }
+                for (const key13 in data82) {
+                    if (!func1.call(schema90.properties, key13)) {
                         const err220 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
-                            message: "must be equal to one of the allowed values",
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
                             vErrors = [err220];
@@ -23038,14 +23044,14 @@ function validate67(
                         errors++;
                     }
                 }
-                if (data82.computed_at !== undefined) {
-                    let data85 = data82.computed_at;
-                    if (typeof data85 === "string") {
-                        if (func2(data85) > 128) {
+                if (data82.work_scope_id !== undefined) {
+                    let data84 = data82.work_scope_id;
+                    if (typeof data84 === "string") {
+                        if (func2(data84) > 128) {
                             const err221 = {
-                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
                                 keyword: "maxLength",
                                 params: { limit: 128 },
                                 message: "must NOT have more than 128 characters",
@@ -23057,8 +23063,85 @@ function validate67(
                             }
                             errors++;
                         }
-                        if (func2(data85) < 1) {
-                            const err222 = {
+                    } else {
+                        const err222 = {
+                            instancePath: instancePath + "/completion_forecast/work_scope_id",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err222];
+                        } else {
+                            vErrors.push(err222);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.state !== undefined) {
+                    let data85 = data82.state;
+                    if (typeof data85 !== "string") {
+                        const err223 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err223];
+                        } else {
+                            vErrors.push(err223);
+                        }
+                        errors++;
+                    }
+                    if (!(
+                        data85 === "available" ||
+                        data85 === "not_stored" ||
+                        data85 === "no_run_within_horizon" ||
+                        data85 === "over_limit" ||
+                        data85 === "malformed" ||
+                        data85 === "scope_ambiguous" ||
+                        data85 === "unmatched"
+                    )) {
+                        const err224 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema90.properties.state.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err224];
+                        } else {
+                            vErrors.push(err224);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.computed_at !== undefined) {
+                    let data86 = data82.computed_at;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err225 = {
+                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err225];
+                            } else {
+                                vErrors.push(err225);
+                            }
+                            errors++;
+                        }
+                        if (func2(data86) < 1) {
+                            const err226 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -23067,14 +23150,14 @@ function validate67(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err222];
+                                vErrors = [err226];
                             } else {
-                                vErrors.push(err222);
+                                vErrors.push(err226);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data85)) {
-                            const err223 = {
+                        if (!pattern13.test(data86)) {
+                            const err227 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -23089,14 +23172,14 @@ function validate67(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err223];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err223);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data85)) {
-                            const err224 = {
+                        if (!formats0.validate(data86)) {
+                            const err228 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -23105,14 +23188,14 @@ function validate67(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err228];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err228);
                             }
                             errors++;
                         }
                     } else {
-                        const err225 = {
+                        const err229 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -23121,110 +23204,25 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err225];
+                            vErrors = [err229];
                         } else {
-                            vErrors.push(err225);
+                            vErrors.push(err229);
                         }
                         errors++;
                     }
                 }
                 if (data82.simulation_count !== undefined) {
-                    let data86 = data82.simulation_count;
-                    if (!(
-                        typeof data86 == "number" &&
-                        !(data86 % 1) &&
-                        !isNaN(data86) &&
-                        isFinite(data86)
-                    )) {
-                        const err226 = {
-                            instancePath: instancePath + "/completion_forecast/simulation_count",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err226];
-                        } else {
-                            vErrors.push(err226);
-                        }
-                        errors++;
-                    }
-                    if (typeof data86 == "number" && isFinite(data86)) {
-                        if (data86 < 0 || isNaN(data86)) {
-                            const err227 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/simulation_count",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err227];
-                            } else {
-                                vErrors.push(err227);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.horizon_days !== undefined) {
-                    let data87 = data82.horizon_days;
+                    let data87 = data82.simulation_count;
                     if (!(
                         typeof data87 == "number" &&
                         !(data87 % 1) &&
                         !isNaN(data87) &&
                         isFinite(data87)
                     )) {
-                        const err228 = {
-                            instancePath: instancePath + "/completion_forecast/horizon_days",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err228];
-                        } else {
-                            vErrors.push(err228);
-                        }
-                        errors++;
-                    }
-                    if (typeof data87 == "number" && isFinite(data87)) {
-                        if (data87 < 0 || isNaN(data87)) {
-                            const err229 = {
-                                instancePath: instancePath + "/completion_forecast/horizon_days",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err229];
-                            } else {
-                                vErrors.push(err229);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.unfinished_runs !== undefined) {
-                    let data88 = data82.unfinished_runs;
-                    if (!(
-                        typeof data88 == "number" &&
-                        !(data88 % 1) &&
-                        !isNaN(data88) &&
-                        isFinite(data88)
-                    )) {
                         const err230 = {
-                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                            instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -23236,12 +23234,13 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data88 == "number" && isFinite(data88)) {
-                        if (data88 < 0 || isNaN(data88)) {
+                    if (typeof data87 == "number" && isFinite(data87)) {
+                        if (data87 < 0 || isNaN(data87)) {
                             const err231 = {
-                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                                instancePath:
+                                    instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -23255,18 +23254,18 @@ function validate67(
                         }
                     }
                 }
-                if (data82.target_items !== undefined) {
-                    let data89 = data82.target_items;
+                if (data82.horizon_days !== undefined) {
+                    let data88 = data82.horizon_days;
                     if (!(
-                        typeof data89 == "number" &&
-                        !(data89 % 1) &&
-                        !isNaN(data89) &&
-                        isFinite(data89)
+                        typeof data88 == "number" &&
+                        !(data88 % 1) &&
+                        !isNaN(data88) &&
+                        isFinite(data88)
                     )) {
                         const err232 = {
-                            instancePath: instancePath + "/completion_forecast/target_items",
+                            instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -23278,12 +23277,12 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data89 == "number" && isFinite(data89)) {
-                        if (data89 < 0 || isNaN(data89)) {
+                    if (typeof data88 == "number" && isFinite(data88)) {
+                        if (data88 < 0 || isNaN(data88)) {
                             const err233 = {
-                                instancePath: instancePath + "/completion_forecast/target_items",
+                                instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -23297,18 +23296,18 @@ function validate67(
                         }
                     }
                 }
-                if (data82.forecast_p50_days !== undefined) {
-                    let data90 = data82.forecast_p50_days;
+                if (data82.unfinished_runs !== undefined) {
+                    let data89 = data82.unfinished_runs;
                     if (!(
-                        typeof data90 == "number" &&
-                        !(data90 % 1) &&
-                        !isNaN(data90) &&
-                        isFinite(data90)
+                        typeof data89 == "number" &&
+                        !(data89 % 1) &&
+                        !isNaN(data89) &&
+                        isFinite(data89)
                     )) {
                         const err234 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -23320,13 +23319,12 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data90 == "number" && isFinite(data90)) {
-                        if (data90 < 0 || isNaN(data90)) {
+                    if (typeof data89 == "number" && isFinite(data89)) {
+                        if (data89 < 0 || isNaN(data89)) {
                             const err235 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -23340,18 +23338,18 @@ function validate67(
                         }
                     }
                 }
-                if (data82.forecast_p85_days !== undefined) {
-                    let data91 = data82.forecast_p85_days;
+                if (data82.target_items !== undefined) {
+                    let data90 = data82.target_items;
                     if (!(
-                        typeof data91 == "number" &&
-                        !(data91 % 1) &&
-                        !isNaN(data91) &&
-                        isFinite(data91)
+                        typeof data90 == "number" &&
+                        !(data90 % 1) &&
+                        !isNaN(data90) &&
+                        isFinite(data90)
                     )) {
                         const err236 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -23363,13 +23361,12 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data91 == "number" && isFinite(data91)) {
-                        if (data91 < 0 || isNaN(data91)) {
+                    if (typeof data90 == "number" && isFinite(data90)) {
+                        if (data90 < 0 || isNaN(data90)) {
                             const err237 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -23383,18 +23380,18 @@ function validate67(
                         }
                     }
                 }
-                if (data82.forecast_p95_days !== undefined) {
-                    let data92 = data82.forecast_p95_days;
+                if (data82.scope_count !== undefined) {
+                    let data91 = data82.scope_count;
                     if (!(
-                        typeof data92 == "number" &&
-                        !(data92 % 1) &&
-                        !isNaN(data92) &&
-                        isFinite(data92)
+                        typeof data91 == "number" &&
+                        !(data91 % 1) &&
+                        !isNaN(data91) &&
+                        isFinite(data91)
                     )) {
                         const err238 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/scope_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -23406,16 +23403,15 @@ function validate67(
                         }
                         errors++;
                     }
-                    if (typeof data92 == "number" && isFinite(data92)) {
-                        if (data92 < 0 || isNaN(data92)) {
+                    if (typeof data91 == "number" && isFinite(data91)) {
+                        if (data91 < 1 || isNaN(data91)) {
                             const err239 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                instancePath: instancePath + "/completion_forecast/scope_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/scope_count/minimum",
                                 keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                params: { comparison: ">=", limit: 1 },
+                                message: "must be >= 1",
                             };
                             if (vErrors === null) {
                                 vErrors = [err239];
@@ -23426,11 +23422,159 @@ function validate67(
                         }
                     }
                 }
+                if (data82.scope_count_at_least !== undefined) {
+                    if (typeof data82.scope_count_at_least !== "boolean") {
+                        const err240 = {
+                            instancePath:
+                                instancePath + "/completion_forecast/scope_count_at_least",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count_at_least/type",
+                            keyword: "type",
+                            params: { type: "boolean" },
+                            message: "must be boolean",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err240];
+                        } else {
+                            vErrors.push(err240);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.forecast_p50_days !== undefined) {
+                    let data93 = data82.forecast_p50_days;
+                    if (!(
+                        typeof data93 == "number" &&
+                        !(data93 % 1) &&
+                        !isNaN(data93) &&
+                        isFinite(data93)
+                    )) {
+                        const err241 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err241];
+                        } else {
+                            vErrors.push(err241);
+                        }
+                        errors++;
+                    }
+                    if (typeof data93 == "number" && isFinite(data93)) {
+                        if (data93 < 0 || isNaN(data93)) {
+                            const err242 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err242];
+                            } else {
+                                vErrors.push(err242);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p85_days !== undefined) {
+                    let data94 = data82.forecast_p85_days;
+                    if (!(
+                        typeof data94 == "number" &&
+                        !(data94 % 1) &&
+                        !isNaN(data94) &&
+                        isFinite(data94)
+                    )) {
+                        const err243 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err243];
+                        } else {
+                            vErrors.push(err243);
+                        }
+                        errors++;
+                    }
+                    if (typeof data94 == "number" && isFinite(data94)) {
+                        if (data94 < 0 || isNaN(data94)) {
+                            const err244 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err244];
+                            } else {
+                                vErrors.push(err244);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p95_days !== undefined) {
+                    let data95 = data82.forecast_p95_days;
+                    if (!(
+                        typeof data95 == "number" &&
+                        !(data95 % 1) &&
+                        !isNaN(data95) &&
+                        isFinite(data95)
+                    )) {
+                        const err245 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err245];
+                        } else {
+                            vErrors.push(err245);
+                        }
+                        errors++;
+                    }
+                    if (typeof data95 == "number" && isFinite(data95)) {
+                        if (data95 < 0 || isNaN(data95)) {
+                            const err246 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err246];
+                            } else {
+                                vErrors.push(err246);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data82.forecast_p50_date !== undefined) {
-                    let data93 = data82.forecast_p50_date;
-                    if (typeof data93 === "string") {
-                        if (func2(data93) > 128) {
-                            const err240 = {
+                    let data96 = data82.forecast_p50_date;
+                    if (typeof data96 === "string") {
+                        if (func2(data96) > 128) {
+                            const err247 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -23440,14 +23584,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err240];
+                                vErrors = [err247];
                             } else {
-                                vErrors.push(err240);
+                                vErrors.push(err247);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data93)) {
-                            const err241 = {
+                        if (!pattern14.test(data96)) {
+                            const err248 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -23458,14 +23602,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err248];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err248);
                             }
                             errors++;
                         }
                     } else {
-                        const err242 = {
+                        const err249 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -23474,18 +23618,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err242];
+                            vErrors = [err249];
                         } else {
-                            vErrors.push(err242);
+                            vErrors.push(err249);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p85_date !== undefined) {
-                    let data94 = data82.forecast_p85_date;
-                    if (typeof data94 === "string") {
-                        if (func2(data94) > 128) {
-                            const err243 = {
+                    let data97 = data82.forecast_p85_date;
+                    if (typeof data97 === "string") {
+                        if (func2(data97) > 128) {
+                            const err250 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -23495,14 +23639,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err243];
+                                vErrors = [err250];
                             } else {
-                                vErrors.push(err243);
+                                vErrors.push(err250);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data94)) {
-                            const err244 = {
+                        if (!pattern14.test(data97)) {
+                            const err251 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -23513,14 +23657,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err244];
+                                vErrors = [err251];
                             } else {
-                                vErrors.push(err244);
+                                vErrors.push(err251);
                             }
                             errors++;
                         }
                     } else {
-                        const err245 = {
+                        const err252 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -23529,18 +23673,18 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err245];
+                            vErrors = [err252];
                         } else {
-                            vErrors.push(err245);
+                            vErrors.push(err252);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p95_date !== undefined) {
-                    let data95 = data82.forecast_p95_date;
-                    if (typeof data95 === "string") {
-                        if (func2(data95) > 128) {
-                            const err246 = {
+                    let data98 = data82.forecast_p95_date;
+                    if (typeof data98 === "string") {
+                        if (func2(data98) > 128) {
+                            const err253 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -23550,14 +23694,14 @@ function validate67(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err246];
+                                vErrors = [err253];
                             } else {
-                                vErrors.push(err246);
+                                vErrors.push(err253);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data95)) {
-                            const err247 = {
+                        if (!pattern14.test(data98)) {
+                            const err254 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -23568,14 +23712,14 @@ function validate67(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err247];
+                                vErrors = [err254];
                             } else {
-                                vErrors.push(err247);
+                                vErrors.push(err254);
                             }
                             errors++;
                         }
                     } else {
-                        const err248 = {
+                        const err255 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -23584,15 +23728,15 @@ function validate67(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err248];
+                            vErrors = [err255];
                         } else {
-                            vErrors.push(err248);
+                            vErrors.push(err255);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err249 = {
+                const err256 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -23600,15 +23744,15 @@ function validate67(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err249];
+                    vErrors = [err256];
                 } else {
-                    vErrors.push(err249);
+                    vErrors.push(err256);
                 }
                 errors++;
             }
         }
     } else {
-        const err250 = {
+        const err257 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -23616,9 +23760,9 @@ function validate67(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err250];
+            vErrors = [err257];
         } else {
-            vErrors.push(err250);
+            vErrors.push(err257);
         }
         errors++;
     }
@@ -50855,45 +50999,55 @@ function validate144(
         }
         if (data.completion_forecast !== undefined) {
             let data82 = data.completion_forecast;
+            const _errs213 = errors;
+            let valid67 = true;
+            const _errs214 = errors;
             if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
-                if (data82.state === undefined) {
-                    const err214 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
+                let missing12;
+                if (
+                    data82.scope_count_at_least === undefined &&
+                    (missing12 = "scope_count_at_least")
+                ) {
+                    const err214 = {};
                     if (vErrors === null) {
                         vErrors = [err214];
                     } else {
                         vErrors.push(err214);
                     }
                     errors++;
-                }
-                if (data82.computed_at === undefined) {
-                    const err215 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err215];
-                    } else {
-                        vErrors.push(err215);
+                } else {
+                    if (data82.scope_count_at_least !== undefined) {
+                        if (true !== data82.scope_count_at_least) {
+                            const err215 = {};
+                            if (vErrors === null) {
+                                vErrors = [err215];
+                            } else {
+                                vErrors.push(err215);
+                            }
+                            errors++;
+                        }
                     }
-                    errors++;
                 }
-                for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+            }
+            var _valid9 = _errs214 === errors;
+            errors = _errs213;
+            if (vErrors !== null) {
+                if (_errs213) {
+                    vErrors.length = _errs213;
+                } else {
+                    vErrors = null;
+                }
+            }
+            if (_valid9) {
+                const _errs216 = errors;
+                if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                    if (data82.scope_count === undefined) {
                         const err216 = {
                             instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key13 },
-                            message: "must NOT have additional properties",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/then/required",
+                            keyword: "required",
+                            params: { missingProperty: "scope_count" },
+                            message: "must have required property '" + "scope_count" + "'",
                         };
                         if (vErrors === null) {
                             vErrors = [err216];
@@ -50903,74 +51057,63 @@ function validate144(
                         errors++;
                     }
                 }
-                if (data82.work_scope_id !== undefined) {
-                    let data83 = data82.work_scope_id;
-                    if (typeof data83 === "string") {
-                        if (func2(data83) > 128) {
-                            const err217 = {
-                                instancePath: instancePath + "/completion_forecast/work_scope_id",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err217];
-                            } else {
-                                vErrors.push(err217);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err218 = {
-                            instancePath: instancePath + "/completion_forecast/work_scope_id",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err218];
-                        } else {
-                            vErrors.push(err218);
-                        }
-                        errors++;
-                    }
+                var _valid9 = _errs216 === errors;
+                valid67 = _valid9;
+            }
+            if (!valid67) {
+                const err217 = {
+                    instancePath: instancePath + "/completion_forecast",
+                    schemaPath: "#/$defs/ClaimedCompletionForecast/if",
+                    keyword: "if",
+                    params: { failingKeyword: "then" },
+                    message: 'must match "then" schema',
+                };
+                if (vErrors === null) {
+                    vErrors = [err217];
+                } else {
+                    vErrors.push(err217);
                 }
-                if (data82.state !== undefined) {
-                    let data84 = data82.state;
-                    if (typeof data84 !== "string") {
-                        const err219 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err219];
-                        } else {
-                            vErrors.push(err219);
-                        }
-                        errors++;
+                errors++;
+            }
+            if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                if (data82.state === undefined) {
+                    const err218 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err218];
+                    } else {
+                        vErrors.push(err218);
                     }
-                    if (!(
-                        data84 === "available" ||
-                        data84 === "not_stored" ||
-                        data84 === "no_run_within_horizon" ||
-                        data84 === "over_limit" ||
-                        data84 === "malformed" ||
-                        data84 === "scope_ambiguous" ||
-                        data84 === "unmatched"
-                    )) {
+                    errors++;
+                }
+                if (data82.computed_at === undefined) {
+                    const err219 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err219];
+                    } else {
+                        vErrors.push(err219);
+                    }
+                    errors++;
+                }
+                for (const key13 in data82) {
+                    if (!func1.call(schema90.properties, key13)) {
                         const err220 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
-                            message: "must be equal to one of the allowed values",
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
                             vErrors = [err220];
@@ -50980,14 +51123,14 @@ function validate144(
                         errors++;
                     }
                 }
-                if (data82.computed_at !== undefined) {
-                    let data85 = data82.computed_at;
-                    if (typeof data85 === "string") {
-                        if (func2(data85) > 128) {
+                if (data82.work_scope_id !== undefined) {
+                    let data84 = data82.work_scope_id;
+                    if (typeof data84 === "string") {
+                        if (func2(data84) > 128) {
                             const err221 = {
-                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
                                 keyword: "maxLength",
                                 params: { limit: 128 },
                                 message: "must NOT have more than 128 characters",
@@ -50999,8 +51142,85 @@ function validate144(
                             }
                             errors++;
                         }
-                        if (func2(data85) < 1) {
-                            const err222 = {
+                    } else {
+                        const err222 = {
+                            instancePath: instancePath + "/completion_forecast/work_scope_id",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err222];
+                        } else {
+                            vErrors.push(err222);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.state !== undefined) {
+                    let data85 = data82.state;
+                    if (typeof data85 !== "string") {
+                        const err223 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err223];
+                        } else {
+                            vErrors.push(err223);
+                        }
+                        errors++;
+                    }
+                    if (!(
+                        data85 === "available" ||
+                        data85 === "not_stored" ||
+                        data85 === "no_run_within_horizon" ||
+                        data85 === "over_limit" ||
+                        data85 === "malformed" ||
+                        data85 === "scope_ambiguous" ||
+                        data85 === "unmatched"
+                    )) {
+                        const err224 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema90.properties.state.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err224];
+                        } else {
+                            vErrors.push(err224);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.computed_at !== undefined) {
+                    let data86 = data82.computed_at;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err225 = {
+                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err225];
+                            } else {
+                                vErrors.push(err225);
+                            }
+                            errors++;
+                        }
+                        if (func2(data86) < 1) {
+                            const err226 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -51009,14 +51229,14 @@ function validate144(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err222];
+                                vErrors = [err226];
                             } else {
-                                vErrors.push(err222);
+                                vErrors.push(err226);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data85)) {
-                            const err223 = {
+                        if (!pattern13.test(data86)) {
+                            const err227 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -51031,14 +51251,14 @@ function validate144(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err223];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err223);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data85)) {
-                            const err224 = {
+                        if (!formats0.validate(data86)) {
+                            const err228 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -51047,14 +51267,14 @@ function validate144(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err228];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err228);
                             }
                             errors++;
                         }
                     } else {
-                        const err225 = {
+                        const err229 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -51063,110 +51283,25 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err225];
+                            vErrors = [err229];
                         } else {
-                            vErrors.push(err225);
+                            vErrors.push(err229);
                         }
                         errors++;
                     }
                 }
                 if (data82.simulation_count !== undefined) {
-                    let data86 = data82.simulation_count;
-                    if (!(
-                        typeof data86 == "number" &&
-                        !(data86 % 1) &&
-                        !isNaN(data86) &&
-                        isFinite(data86)
-                    )) {
-                        const err226 = {
-                            instancePath: instancePath + "/completion_forecast/simulation_count",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err226];
-                        } else {
-                            vErrors.push(err226);
-                        }
-                        errors++;
-                    }
-                    if (typeof data86 == "number" && isFinite(data86)) {
-                        if (data86 < 0 || isNaN(data86)) {
-                            const err227 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/simulation_count",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err227];
-                            } else {
-                                vErrors.push(err227);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.horizon_days !== undefined) {
-                    let data87 = data82.horizon_days;
+                    let data87 = data82.simulation_count;
                     if (!(
                         typeof data87 == "number" &&
                         !(data87 % 1) &&
                         !isNaN(data87) &&
                         isFinite(data87)
                     )) {
-                        const err228 = {
-                            instancePath: instancePath + "/completion_forecast/horizon_days",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err228];
-                        } else {
-                            vErrors.push(err228);
-                        }
-                        errors++;
-                    }
-                    if (typeof data87 == "number" && isFinite(data87)) {
-                        if (data87 < 0 || isNaN(data87)) {
-                            const err229 = {
-                                instancePath: instancePath + "/completion_forecast/horizon_days",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err229];
-                            } else {
-                                vErrors.push(err229);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.unfinished_runs !== undefined) {
-                    let data88 = data82.unfinished_runs;
-                    if (!(
-                        typeof data88 == "number" &&
-                        !(data88 % 1) &&
-                        !isNaN(data88) &&
-                        isFinite(data88)
-                    )) {
                         const err230 = {
-                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                            instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -51178,12 +51313,13 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data88 == "number" && isFinite(data88)) {
-                        if (data88 < 0 || isNaN(data88)) {
+                    if (typeof data87 == "number" && isFinite(data87)) {
+                        if (data87 < 0 || isNaN(data87)) {
                             const err231 = {
-                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                                instancePath:
+                                    instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -51197,18 +51333,18 @@ function validate144(
                         }
                     }
                 }
-                if (data82.target_items !== undefined) {
-                    let data89 = data82.target_items;
+                if (data82.horizon_days !== undefined) {
+                    let data88 = data82.horizon_days;
                     if (!(
-                        typeof data89 == "number" &&
-                        !(data89 % 1) &&
-                        !isNaN(data89) &&
-                        isFinite(data89)
+                        typeof data88 == "number" &&
+                        !(data88 % 1) &&
+                        !isNaN(data88) &&
+                        isFinite(data88)
                     )) {
                         const err232 = {
-                            instancePath: instancePath + "/completion_forecast/target_items",
+                            instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -51220,12 +51356,12 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data89 == "number" && isFinite(data89)) {
-                        if (data89 < 0 || isNaN(data89)) {
+                    if (typeof data88 == "number" && isFinite(data88)) {
+                        if (data88 < 0 || isNaN(data88)) {
                             const err233 = {
-                                instancePath: instancePath + "/completion_forecast/target_items",
+                                instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -51239,18 +51375,18 @@ function validate144(
                         }
                     }
                 }
-                if (data82.forecast_p50_days !== undefined) {
-                    let data90 = data82.forecast_p50_days;
+                if (data82.unfinished_runs !== undefined) {
+                    let data89 = data82.unfinished_runs;
                     if (!(
-                        typeof data90 == "number" &&
-                        !(data90 % 1) &&
-                        !isNaN(data90) &&
-                        isFinite(data90)
+                        typeof data89 == "number" &&
+                        !(data89 % 1) &&
+                        !isNaN(data89) &&
+                        isFinite(data89)
                     )) {
                         const err234 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -51262,13 +51398,12 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data90 == "number" && isFinite(data90)) {
-                        if (data90 < 0 || isNaN(data90)) {
+                    if (typeof data89 == "number" && isFinite(data89)) {
+                        if (data89 < 0 || isNaN(data89)) {
                             const err235 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -51282,18 +51417,18 @@ function validate144(
                         }
                     }
                 }
-                if (data82.forecast_p85_days !== undefined) {
-                    let data91 = data82.forecast_p85_days;
+                if (data82.target_items !== undefined) {
+                    let data90 = data82.target_items;
                     if (!(
-                        typeof data91 == "number" &&
-                        !(data91 % 1) &&
-                        !isNaN(data91) &&
-                        isFinite(data91)
+                        typeof data90 == "number" &&
+                        !(data90 % 1) &&
+                        !isNaN(data90) &&
+                        isFinite(data90)
                     )) {
                         const err236 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -51305,13 +51440,12 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data91 == "number" && isFinite(data91)) {
-                        if (data91 < 0 || isNaN(data91)) {
+                    if (typeof data90 == "number" && isFinite(data90)) {
+                        if (data90 < 0 || isNaN(data90)) {
                             const err237 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -51325,18 +51459,18 @@ function validate144(
                         }
                     }
                 }
-                if (data82.forecast_p95_days !== undefined) {
-                    let data92 = data82.forecast_p95_days;
+                if (data82.scope_count !== undefined) {
+                    let data91 = data82.scope_count;
                     if (!(
-                        typeof data92 == "number" &&
-                        !(data92 % 1) &&
-                        !isNaN(data92) &&
-                        isFinite(data92)
+                        typeof data91 == "number" &&
+                        !(data91 % 1) &&
+                        !isNaN(data91) &&
+                        isFinite(data91)
                     )) {
                         const err238 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/scope_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -51348,16 +51482,15 @@ function validate144(
                         }
                         errors++;
                     }
-                    if (typeof data92 == "number" && isFinite(data92)) {
-                        if (data92 < 0 || isNaN(data92)) {
+                    if (typeof data91 == "number" && isFinite(data91)) {
+                        if (data91 < 1 || isNaN(data91)) {
                             const err239 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                instancePath: instancePath + "/completion_forecast/scope_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/scope_count/minimum",
                                 keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                params: { comparison: ">=", limit: 1 },
+                                message: "must be >= 1",
                             };
                             if (vErrors === null) {
                                 vErrors = [err239];
@@ -51368,11 +51501,159 @@ function validate144(
                         }
                     }
                 }
+                if (data82.scope_count_at_least !== undefined) {
+                    if (typeof data82.scope_count_at_least !== "boolean") {
+                        const err240 = {
+                            instancePath:
+                                instancePath + "/completion_forecast/scope_count_at_least",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count_at_least/type",
+                            keyword: "type",
+                            params: { type: "boolean" },
+                            message: "must be boolean",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err240];
+                        } else {
+                            vErrors.push(err240);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.forecast_p50_days !== undefined) {
+                    let data93 = data82.forecast_p50_days;
+                    if (!(
+                        typeof data93 == "number" &&
+                        !(data93 % 1) &&
+                        !isNaN(data93) &&
+                        isFinite(data93)
+                    )) {
+                        const err241 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err241];
+                        } else {
+                            vErrors.push(err241);
+                        }
+                        errors++;
+                    }
+                    if (typeof data93 == "number" && isFinite(data93)) {
+                        if (data93 < 0 || isNaN(data93)) {
+                            const err242 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err242];
+                            } else {
+                                vErrors.push(err242);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p85_days !== undefined) {
+                    let data94 = data82.forecast_p85_days;
+                    if (!(
+                        typeof data94 == "number" &&
+                        !(data94 % 1) &&
+                        !isNaN(data94) &&
+                        isFinite(data94)
+                    )) {
+                        const err243 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err243];
+                        } else {
+                            vErrors.push(err243);
+                        }
+                        errors++;
+                    }
+                    if (typeof data94 == "number" && isFinite(data94)) {
+                        if (data94 < 0 || isNaN(data94)) {
+                            const err244 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err244];
+                            } else {
+                                vErrors.push(err244);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p95_days !== undefined) {
+                    let data95 = data82.forecast_p95_days;
+                    if (!(
+                        typeof data95 == "number" &&
+                        !(data95 % 1) &&
+                        !isNaN(data95) &&
+                        isFinite(data95)
+                    )) {
+                        const err245 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err245];
+                        } else {
+                            vErrors.push(err245);
+                        }
+                        errors++;
+                    }
+                    if (typeof data95 == "number" && isFinite(data95)) {
+                        if (data95 < 0 || isNaN(data95)) {
+                            const err246 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err246];
+                            } else {
+                                vErrors.push(err246);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data82.forecast_p50_date !== undefined) {
-                    let data93 = data82.forecast_p50_date;
-                    if (typeof data93 === "string") {
-                        if (func2(data93) > 128) {
-                            const err240 = {
+                    let data96 = data82.forecast_p50_date;
+                    if (typeof data96 === "string") {
+                        if (func2(data96) > 128) {
+                            const err247 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -51382,14 +51663,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err240];
+                                vErrors = [err247];
                             } else {
-                                vErrors.push(err240);
+                                vErrors.push(err247);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data93)) {
-                            const err241 = {
+                        if (!pattern14.test(data96)) {
+                            const err248 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -51400,14 +51681,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err248];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err248);
                             }
                             errors++;
                         }
                     } else {
-                        const err242 = {
+                        const err249 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -51416,18 +51697,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err242];
+                            vErrors = [err249];
                         } else {
-                            vErrors.push(err242);
+                            vErrors.push(err249);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p85_date !== undefined) {
-                    let data94 = data82.forecast_p85_date;
-                    if (typeof data94 === "string") {
-                        if (func2(data94) > 128) {
-                            const err243 = {
+                    let data97 = data82.forecast_p85_date;
+                    if (typeof data97 === "string") {
+                        if (func2(data97) > 128) {
+                            const err250 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -51437,14 +51718,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err243];
+                                vErrors = [err250];
                             } else {
-                                vErrors.push(err243);
+                                vErrors.push(err250);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data94)) {
-                            const err244 = {
+                        if (!pattern14.test(data97)) {
+                            const err251 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -51455,14 +51736,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err244];
+                                vErrors = [err251];
                             } else {
-                                vErrors.push(err244);
+                                vErrors.push(err251);
                             }
                             errors++;
                         }
                     } else {
-                        const err245 = {
+                        const err252 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -51471,18 +51752,18 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err245];
+                            vErrors = [err252];
                         } else {
-                            vErrors.push(err245);
+                            vErrors.push(err252);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p95_date !== undefined) {
-                    let data95 = data82.forecast_p95_date;
-                    if (typeof data95 === "string") {
-                        if (func2(data95) > 128) {
-                            const err246 = {
+                    let data98 = data82.forecast_p95_date;
+                    if (typeof data98 === "string") {
+                        if (func2(data98) > 128) {
+                            const err253 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -51492,14 +51773,14 @@ function validate144(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err246];
+                                vErrors = [err253];
                             } else {
-                                vErrors.push(err246);
+                                vErrors.push(err253);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data95)) {
-                            const err247 = {
+                        if (!pattern14.test(data98)) {
+                            const err254 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -51510,14 +51791,14 @@ function validate144(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err247];
+                                vErrors = [err254];
                             } else {
-                                vErrors.push(err247);
+                                vErrors.push(err254);
                             }
                             errors++;
                         }
                     } else {
-                        const err248 = {
+                        const err255 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -51526,15 +51807,15 @@ function validate144(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err248];
+                            vErrors = [err255];
                         } else {
-                            vErrors.push(err248);
+                            vErrors.push(err255);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err249 = {
+                const err256 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -51542,15 +51823,15 @@ function validate144(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err249];
+                    vErrors = [err256];
                 } else {
-                    vErrors.push(err249);
+                    vErrors.push(err256);
                 }
                 errors++;
             }
         }
     } else {
-        const err250 = {
+        const err257 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -51558,9 +51839,9 @@ function validate144(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err250];
+            vErrors = [err257];
         } else {
-            vErrors.push(err250);
+            vErrors.push(err257);
         }
         errors++;
     }
@@ -65090,6 +65371,8 @@ const schema196 = {
                 horizon_days: { type: "integer", minimum: 0 },
                 unfinished_runs: { type: "integer", minimum: 0 },
                 target_items: { type: "integer", minimum: 0 },
+                scope_count: { type: "integer", minimum: 1 },
+                scope_count_at_least: { type: "boolean" },
                 forecast_p50_days: { type: "integer", minimum: 0 },
                 forecast_p85_days: { type: "integer", minimum: 0 },
                 forecast_p95_days: { type: "integer", minimum: 0 },
@@ -65109,6 +65392,11 @@ const schema196 = {
                     pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
                 },
             },
+            if: {
+                properties: { scope_count_at_least: { const: true } },
+                required: ["scope_count_at_least"],
+            },
+            then: { required: ["scope_count"] },
         },
     },
 };
@@ -70491,6 +70779,8 @@ const schema216 = {
         horizon_days: { type: "integer", minimum: 0 },
         unfinished_runs: { type: "integer", minimum: 0 },
         target_items: { type: "integer", minimum: 0 },
+        scope_count: { type: "integer", minimum: 1 },
+        scope_count_at_least: { type: "boolean" },
         forecast_p50_days: { type: "integer", minimum: 0 },
         forecast_p85_days: { type: "integer", minimum: 0 },
         forecast_p95_days: { type: "integer", minimum: 0 },
@@ -70510,6 +70800,11 @@ const schema216 = {
             pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
         },
     },
+    if: {
+        properties: { scope_count_at_least: { const: true } },
+        required: ["scope_count_at_least"],
+    },
+    then: { required: ["scope_count"] },
 };
 function validate195(
     data,
@@ -73953,45 +74248,55 @@ function validate195(
         }
         if (data.completion_forecast !== undefined) {
             let data73 = data.completion_forecast;
+            const _errs180 = errors;
+            let valid56 = true;
+            const _errs181 = errors;
             if (data73 && typeof data73 == "object" && !Array.isArray(data73)) {
-                if (data73.state === undefined) {
-                    const err181 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
+                let missing8;
+                if (
+                    data73.scope_count_at_least === undefined &&
+                    (missing8 = "scope_count_at_least")
+                ) {
+                    const err181 = {};
                     if (vErrors === null) {
                         vErrors = [err181];
                     } else {
                         vErrors.push(err181);
                     }
                     errors++;
-                }
-                if (data73.computed_at === undefined) {
-                    const err182 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err182];
-                    } else {
-                        vErrors.push(err182);
+                } else {
+                    if (data73.scope_count_at_least !== undefined) {
+                        if (true !== data73.scope_count_at_least) {
+                            const err182 = {};
+                            if (vErrors === null) {
+                                vErrors = [err182];
+                            } else {
+                                vErrors.push(err182);
+                            }
+                            errors++;
+                        }
                     }
-                    errors++;
                 }
-                for (const key12 in data73) {
-                    if (!func1.call(schema216.properties, key12)) {
+            }
+            var _valid5 = _errs181 === errors;
+            errors = _errs180;
+            if (vErrors !== null) {
+                if (_errs180) {
+                    vErrors.length = _errs180;
+                } else {
+                    vErrors = null;
+                }
+            }
+            if (_valid5) {
+                const _errs183 = errors;
+                if (data73 && typeof data73 == "object" && !Array.isArray(data73)) {
+                    if (data73.scope_count === undefined) {
                         const err183 = {
                             instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ProjectedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key12 },
-                            message: "must NOT have additional properties",
+                            schemaPath: "#/$defs/ProjectedCompletionForecast/then/required",
+                            keyword: "required",
+                            params: { missingProperty: "scope_count" },
+                            message: "must have required property '" + "scope_count" + "'",
                         };
                         if (vErrors === null) {
                             vErrors = [err183];
@@ -74001,74 +74306,63 @@ function validate195(
                         errors++;
                     }
                 }
-                if (data73.work_scope_id !== undefined) {
-                    let data74 = data73.work_scope_id;
-                    if (typeof data74 === "string") {
-                        if (func2(data74) > 128) {
-                            const err184 = {
-                                instancePath: instancePath + "/completion_forecast/work_scope_id",
-                                schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err184];
-                            } else {
-                                vErrors.push(err184);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err185 = {
-                            instancePath: instancePath + "/completion_forecast/work_scope_id",
-                            schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err185];
-                        } else {
-                            vErrors.push(err185);
-                        }
-                        errors++;
-                    }
+                var _valid5 = _errs183 === errors;
+                valid56 = _valid5;
+            }
+            if (!valid56) {
+                const err184 = {
+                    instancePath: instancePath + "/completion_forecast",
+                    schemaPath: "#/$defs/ProjectedCompletionForecast/if",
+                    keyword: "if",
+                    params: { failingKeyword: "then" },
+                    message: 'must match "then" schema',
+                };
+                if (vErrors === null) {
+                    vErrors = [err184];
+                } else {
+                    vErrors.push(err184);
                 }
-                if (data73.state !== undefined) {
-                    let data75 = data73.state;
-                    if (typeof data75 !== "string") {
-                        const err186 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err186];
-                        } else {
-                            vErrors.push(err186);
-                        }
-                        errors++;
+                errors++;
+            }
+            if (data73 && typeof data73 == "object" && !Array.isArray(data73)) {
+                if (data73.state === undefined) {
+                    const err185 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err185];
+                    } else {
+                        vErrors.push(err185);
                     }
-                    if (!(
-                        data75 === "available" ||
-                        data75 === "not_stored" ||
-                        data75 === "no_run_within_horizon" ||
-                        data75 === "over_limit" ||
-                        data75 === "malformed" ||
-                        data75 === "scope_ambiguous" ||
-                        data75 === "unmatched"
-                    )) {
+                    errors++;
+                }
+                if (data73.computed_at === undefined) {
+                    const err186 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ProjectedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err186];
+                    } else {
+                        vErrors.push(err186);
+                    }
+                    errors++;
+                }
+                for (const key12 in data73) {
+                    if (!func1.call(schema216.properties, key12)) {
                         const err187 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema216.properties.state.enum },
-                            message: "must be equal to one of the allowed values",
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ProjectedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key12 },
+                            message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
                             vErrors = [err187];
@@ -74078,14 +74372,14 @@ function validate195(
                         errors++;
                     }
                 }
-                if (data73.computed_at !== undefined) {
-                    let data76 = data73.computed_at;
-                    if (typeof data76 === "string") {
-                        if (func2(data76) > 128) {
+                if (data73.work_scope_id !== undefined) {
+                    let data75 = data73.work_scope_id;
+                    if (typeof data75 === "string") {
+                        if (func2(data75) > 128) {
                             const err188 = {
-                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/computed_at/maxLength",
+                                    "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/maxLength",
                                 keyword: "maxLength",
                                 params: { limit: 128 },
                                 message: "must NOT have more than 128 characters",
@@ -74097,8 +74391,85 @@ function validate195(
                             }
                             errors++;
                         }
-                        if (func2(data76) < 1) {
-                            const err189 = {
+                    } else {
+                        const err189 = {
+                            instancePath: instancePath + "/completion_forecast/work_scope_id",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/work_scope_id/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err189];
+                        } else {
+                            vErrors.push(err189);
+                        }
+                        errors++;
+                    }
+                }
+                if (data73.state !== undefined) {
+                    let data76 = data73.state;
+                    if (typeof data76 !== "string") {
+                        const err190 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err190];
+                        } else {
+                            vErrors.push(err190);
+                        }
+                        errors++;
+                    }
+                    if (!(
+                        data76 === "available" ||
+                        data76 === "not_stored" ||
+                        data76 === "no_run_within_horizon" ||
+                        data76 === "over_limit" ||
+                        data76 === "malformed" ||
+                        data76 === "scope_ambiguous" ||
+                        data76 === "unmatched"
+                    )) {
+                        const err191 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema216.properties.state.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err191];
+                        } else {
+                            vErrors.push(err191);
+                        }
+                        errors++;
+                    }
+                }
+                if (data73.computed_at !== undefined) {
+                    let data77 = data73.computed_at;
+                    if (typeof data77 === "string") {
+                        if (func2(data77) > 128) {
+                            const err192 = {
+                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                schemaPath:
+                                    "#/$defs/ProjectedCompletionForecast/properties/computed_at/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err192];
+                            } else {
+                                vErrors.push(err192);
+                            }
+                            errors++;
+                        }
+                        if (func2(data77) < 1) {
+                            const err193 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/minLength",
@@ -74107,14 +74478,14 @@ function validate195(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err189];
+                                vErrors = [err193];
                             } else {
-                                vErrors.push(err189);
+                                vErrors.push(err193);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data76)) {
-                            const err190 = {
+                        if (!pattern13.test(data77)) {
+                            const err194 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/pattern",
@@ -74129,14 +74500,14 @@ function validate195(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err190];
+                                vErrors = [err194];
                             } else {
-                                vErrors.push(err190);
+                                vErrors.push(err194);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data76)) {
-                            const err191 = {
+                        if (!formats0.validate(data77)) {
+                            const err195 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ProjectedCompletionForecast/properties/computed_at/format",
@@ -74145,14 +74516,14 @@ function validate195(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err191];
+                                vErrors = [err195];
                             } else {
-                                vErrors.push(err191);
+                                vErrors.push(err195);
                             }
                             errors++;
                         }
                     } else {
-                        const err192 = {
+                        const err196 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/computed_at/type",
@@ -74161,110 +74532,25 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err192];
+                            vErrors = [err196];
                         } else {
-                            vErrors.push(err192);
+                            vErrors.push(err196);
                         }
                         errors++;
                     }
                 }
                 if (data73.simulation_count !== undefined) {
-                    let data77 = data73.simulation_count;
-                    if (!(
-                        typeof data77 == "number" &&
-                        !(data77 % 1) &&
-                        !isNaN(data77) &&
-                        isFinite(data77)
-                    )) {
-                        const err193 = {
-                            instancePath: instancePath + "/completion_forecast/simulation_count",
-                            schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/simulation_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err193];
-                        } else {
-                            vErrors.push(err193);
-                        }
-                        errors++;
-                    }
-                    if (typeof data77 == "number" && isFinite(data77)) {
-                        if (data77 < 0 || isNaN(data77)) {
-                            const err194 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/simulation_count",
-                                schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/simulation_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err194];
-                            } else {
-                                vErrors.push(err194);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data73.horizon_days !== undefined) {
-                    let data78 = data73.horizon_days;
+                    let data78 = data73.simulation_count;
                     if (!(
                         typeof data78 == "number" &&
                         !(data78 % 1) &&
                         !isNaN(data78) &&
                         isFinite(data78)
                     )) {
-                        const err195 = {
-                            instancePath: instancePath + "/completion_forecast/horizon_days",
-                            schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/horizon_days/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err195];
-                        } else {
-                            vErrors.push(err195);
-                        }
-                        errors++;
-                    }
-                    if (typeof data78 == "number" && isFinite(data78)) {
-                        if (data78 < 0 || isNaN(data78)) {
-                            const err196 = {
-                                instancePath: instancePath + "/completion_forecast/horizon_days",
-                                schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/horizon_days/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err196];
-                            } else {
-                                vErrors.push(err196);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data73.unfinished_runs !== undefined) {
-                    let data79 = data73.unfinished_runs;
-                    if (!(
-                        typeof data79 == "number" &&
-                        !(data79 % 1) &&
-                        !isNaN(data79) &&
-                        isFinite(data79)
-                    )) {
                         const err197 = {
-                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                            instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/simulation_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -74276,12 +74562,13 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data79 == "number" && isFinite(data79)) {
-                        if (data79 < 0 || isNaN(data79)) {
+                    if (typeof data78 == "number" && isFinite(data78)) {
+                        if (data78 < 0 || isNaN(data78)) {
                             const err198 = {
-                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                                instancePath:
+                                    instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/simulation_count/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -74295,18 +74582,18 @@ function validate195(
                         }
                     }
                 }
-                if (data73.target_items !== undefined) {
-                    let data80 = data73.target_items;
+                if (data73.horizon_days !== undefined) {
+                    let data79 = data73.horizon_days;
                     if (!(
-                        typeof data80 == "number" &&
-                        !(data80 % 1) &&
-                        !isNaN(data80) &&
-                        isFinite(data80)
+                        typeof data79 == "number" &&
+                        !(data79 % 1) &&
+                        !isNaN(data79) &&
+                        isFinite(data79)
                     )) {
                         const err199 = {
-                            instancePath: instancePath + "/completion_forecast/target_items",
+                            instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/target_items/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/horizon_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -74318,12 +74605,12 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data80 == "number" && isFinite(data80)) {
-                        if (data80 < 0 || isNaN(data80)) {
+                    if (typeof data79 == "number" && isFinite(data79)) {
+                        if (data79 < 0 || isNaN(data79)) {
                             const err200 = {
-                                instancePath: instancePath + "/completion_forecast/target_items",
+                                instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/target_items/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/horizon_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -74337,18 +74624,18 @@ function validate195(
                         }
                     }
                 }
-                if (data73.forecast_p50_days !== undefined) {
-                    let data81 = data73.forecast_p50_days;
+                if (data73.unfinished_runs !== undefined) {
+                    let data80 = data73.unfinished_runs;
                     if (!(
-                        typeof data81 == "number" &&
-                        !(data81 % 1) &&
-                        !isNaN(data81) &&
-                        isFinite(data81)
+                        typeof data80 == "number" &&
+                        !(data80 % 1) &&
+                        !isNaN(data80) &&
+                        isFinite(data80)
                     )) {
                         const err201 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -74360,13 +74647,12 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data81 == "number" && isFinite(data81)) {
-                        if (data81 < 0 || isNaN(data81)) {
+                    if (typeof data80 == "number" && isFinite(data80)) {
+                        if (data80 < 0 || isNaN(data80)) {
                             const err202 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/unfinished_runs/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -74380,18 +74666,18 @@ function validate195(
                         }
                     }
                 }
-                if (data73.forecast_p85_days !== undefined) {
-                    let data82 = data73.forecast_p85_days;
+                if (data73.target_items !== undefined) {
+                    let data81 = data73.target_items;
                     if (!(
-                        typeof data82 == "number" &&
-                        !(data82 % 1) &&
-                        !isNaN(data82) &&
-                        isFinite(data82)
+                        typeof data81 == "number" &&
+                        !(data81 % 1) &&
+                        !isNaN(data81) &&
+                        isFinite(data81)
                     )) {
                         const err203 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -74403,13 +74689,12 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data82 == "number" && isFinite(data82)) {
-                        if (data82 < 0 || isNaN(data82)) {
+                    if (typeof data81 == "number" && isFinite(data81)) {
+                        if (data81 < 0 || isNaN(data81)) {
                             const err204 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -74423,18 +74708,18 @@ function validate195(
                         }
                     }
                 }
-                if (data73.forecast_p95_days !== undefined) {
-                    let data83 = data73.forecast_p95_days;
+                if (data73.scope_count !== undefined) {
+                    let data82 = data73.scope_count;
                     if (!(
-                        typeof data83 == "number" &&
-                        !(data83 % 1) &&
-                        !isNaN(data83) &&
-                        isFinite(data83)
+                        typeof data82 == "number" &&
+                        !(data82 % 1) &&
+                        !isNaN(data82) &&
+                        isFinite(data82)
                     )) {
                         const err205 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/scope_count",
                             schemaPath:
-                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ProjectedCompletionForecast/properties/scope_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -74446,16 +74731,15 @@ function validate195(
                         }
                         errors++;
                     }
-                    if (typeof data83 == "number" && isFinite(data83)) {
-                        if (data83 < 0 || isNaN(data83)) {
+                    if (typeof data82 == "number" && isFinite(data82)) {
+                        if (data82 < 1 || isNaN(data82)) {
                             const err206 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                instancePath: instancePath + "/completion_forecast/scope_count",
                                 schemaPath:
-                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ProjectedCompletionForecast/properties/scope_count/minimum",
                                 keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                params: { comparison: ">=", limit: 1 },
+                                message: "must be >= 1",
                             };
                             if (vErrors === null) {
                                 vErrors = [err206];
@@ -74466,11 +74750,159 @@ function validate195(
                         }
                     }
                 }
+                if (data73.scope_count_at_least !== undefined) {
+                    if (typeof data73.scope_count_at_least !== "boolean") {
+                        const err207 = {
+                            instancePath:
+                                instancePath + "/completion_forecast/scope_count_at_least",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/scope_count_at_least/type",
+                            keyword: "type",
+                            params: { type: "boolean" },
+                            message: "must be boolean",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err207];
+                        } else {
+                            vErrors.push(err207);
+                        }
+                        errors++;
+                    }
+                }
+                if (data73.forecast_p50_days !== undefined) {
+                    let data84 = data73.forecast_p50_days;
+                    if (!(
+                        typeof data84 == "number" &&
+                        !(data84 % 1) &&
+                        !isNaN(data84) &&
+                        isFinite(data84)
+                    )) {
+                        const err208 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err208];
+                        } else {
+                            vErrors.push(err208);
+                        }
+                        errors++;
+                    }
+                    if (typeof data84 == "number" && isFinite(data84)) {
+                        if (data84 < 0 || isNaN(data84)) {
+                            const err209 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                schemaPath:
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err209];
+                            } else {
+                                vErrors.push(err209);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data73.forecast_p85_days !== undefined) {
+                    let data85 = data73.forecast_p85_days;
+                    if (!(
+                        typeof data85 == "number" &&
+                        !(data85 % 1) &&
+                        !isNaN(data85) &&
+                        isFinite(data85)
+                    )) {
+                        const err210 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err210];
+                        } else {
+                            vErrors.push(err210);
+                        }
+                        errors++;
+                    }
+                    if (typeof data85 == "number" && isFinite(data85)) {
+                        if (data85 < 0 || isNaN(data85)) {
+                            const err211 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                schemaPath:
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err211];
+                            } else {
+                                vErrors.push(err211);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data73.forecast_p95_days !== undefined) {
+                    let data86 = data73.forecast_p95_days;
+                    if (!(
+                        typeof data86 == "number" &&
+                        !(data86 % 1) &&
+                        !isNaN(data86) &&
+                        isFinite(data86)
+                    )) {
+                        const err212 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err212];
+                        } else {
+                            vErrors.push(err212);
+                        }
+                        errors++;
+                    }
+                    if (typeof data86 == "number" && isFinite(data86)) {
+                        if (data86 < 0 || isNaN(data86)) {
+                            const err213 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err213];
+                            } else {
+                                vErrors.push(err213);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data73.forecast_p50_date !== undefined) {
-                    let data84 = data73.forecast_p50_date;
-                    if (typeof data84 === "string") {
-                        if (func2(data84) > 128) {
-                            const err207 = {
+                    let data87 = data73.forecast_p50_date;
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 128) {
+                            const err214 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -74480,14 +74912,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err207];
+                                vErrors = [err214];
                             } else {
-                                vErrors.push(err207);
+                                vErrors.push(err214);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data84)) {
-                            const err208 = {
+                        if (!pattern14.test(data87)) {
+                            const err215 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -74498,14 +74930,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err208];
+                                vErrors = [err215];
                             } else {
-                                vErrors.push(err208);
+                                vErrors.push(err215);
                             }
                             errors++;
                         }
                     } else {
-                        const err209 = {
+                        const err216 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p50_date/type",
@@ -74514,18 +74946,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err209];
+                            vErrors = [err216];
                         } else {
-                            vErrors.push(err209);
+                            vErrors.push(err216);
                         }
                         errors++;
                     }
                 }
                 if (data73.forecast_p85_date !== undefined) {
-                    let data85 = data73.forecast_p85_date;
-                    if (typeof data85 === "string") {
-                        if (func2(data85) > 128) {
-                            const err210 = {
+                    let data88 = data73.forecast_p85_date;
+                    if (typeof data88 === "string") {
+                        if (func2(data88) > 128) {
+                            const err217 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -74535,14 +74967,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err210];
+                                vErrors = [err217];
                             } else {
-                                vErrors.push(err210);
+                                vErrors.push(err217);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data85)) {
-                            const err211 = {
+                        if (!pattern14.test(data88)) {
+                            const err218 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -74553,14 +74985,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err211];
+                                vErrors = [err218];
                             } else {
-                                vErrors.push(err211);
+                                vErrors.push(err218);
                             }
                             errors++;
                         }
                     } else {
-                        const err212 = {
+                        const err219 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p85_date/type",
@@ -74569,18 +75001,18 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err219];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err219);
                         }
                         errors++;
                     }
                 }
                 if (data73.forecast_p95_date !== undefined) {
-                    let data86 = data73.forecast_p95_date;
-                    if (typeof data86 === "string") {
-                        if (func2(data86) > 128) {
-                            const err213 = {
+                    let data89 = data73.forecast_p95_date;
+                    if (typeof data89 === "string") {
+                        if (func2(data89) > 128) {
+                            const err220 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -74590,14 +75022,14 @@ function validate195(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err213];
+                                vErrors = [err220];
                             } else {
-                                vErrors.push(err213);
+                                vErrors.push(err220);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data86)) {
-                            const err214 = {
+                        if (!pattern14.test(data89)) {
+                            const err221 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -74608,14 +75040,14 @@ function validate195(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err214];
+                                vErrors = [err221];
                             } else {
-                                vErrors.push(err214);
+                                vErrors.push(err221);
                             }
                             errors++;
                         }
                     } else {
-                        const err215 = {
+                        const err222 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ProjectedCompletionForecast/properties/forecast_p95_date/type",
@@ -74624,15 +75056,15 @@ function validate195(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err222];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err222);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err216 = {
+                const err223 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ProjectedCompletionForecast/type",
                     keyword: "type",
@@ -74640,15 +75072,15 @@ function validate195(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err216];
+                    vErrors = [err223];
                 } else {
-                    vErrors.push(err216);
+                    vErrors.push(err223);
                 }
                 errors++;
             }
         }
     } else {
-        const err217 = {
+        const err224 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -74656,9 +75088,9 @@ function validate195(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err217];
+            vErrors = [err224];
         } else {
-            vErrors.push(err217);
+            vErrors.push(err224);
         }
         errors++;
     }
@@ -105589,45 +106021,55 @@ function validate274(
         }
         if (data.completion_forecast !== undefined) {
             let data82 = data.completion_forecast;
+            const _errs213 = errors;
+            let valid67 = true;
+            const _errs214 = errors;
             if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
-                if (data82.state === undefined) {
-                    const err214 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
+                let missing12;
+                if (
+                    data82.scope_count_at_least === undefined &&
+                    (missing12 = "scope_count_at_least")
+                ) {
+                    const err214 = {};
                     if (vErrors === null) {
                         vErrors = [err214];
                     } else {
                         vErrors.push(err214);
                     }
                     errors++;
-                }
-                if (data82.computed_at === undefined) {
-                    const err215 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err215];
-                    } else {
-                        vErrors.push(err215);
+                } else {
+                    if (data82.scope_count_at_least !== undefined) {
+                        if (true !== data82.scope_count_at_least) {
+                            const err215 = {};
+                            if (vErrors === null) {
+                                vErrors = [err215];
+                            } else {
+                                vErrors.push(err215);
+                            }
+                            errors++;
+                        }
                     }
-                    errors++;
                 }
-                for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+            }
+            var _valid9 = _errs214 === errors;
+            errors = _errs213;
+            if (vErrors !== null) {
+                if (_errs213) {
+                    vErrors.length = _errs213;
+                } else {
+                    vErrors = null;
+                }
+            }
+            if (_valid9) {
+                const _errs216 = errors;
+                if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                    if (data82.scope_count === undefined) {
                         const err216 = {
                             instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key13 },
-                            message: "must NOT have additional properties",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/then/required",
+                            keyword: "required",
+                            params: { missingProperty: "scope_count" },
+                            message: "must have required property '" + "scope_count" + "'",
                         };
                         if (vErrors === null) {
                             vErrors = [err216];
@@ -105637,74 +106079,63 @@ function validate274(
                         errors++;
                     }
                 }
-                if (data82.work_scope_id !== undefined) {
-                    let data83 = data82.work_scope_id;
-                    if (typeof data83 === "string") {
-                        if (func2(data83) > 128) {
-                            const err217 = {
-                                instancePath: instancePath + "/completion_forecast/work_scope_id",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err217];
-                            } else {
-                                vErrors.push(err217);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err218 = {
-                            instancePath: instancePath + "/completion_forecast/work_scope_id",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err218];
-                        } else {
-                            vErrors.push(err218);
-                        }
-                        errors++;
-                    }
+                var _valid9 = _errs216 === errors;
+                valid67 = _valid9;
+            }
+            if (!valid67) {
+                const err217 = {
+                    instancePath: instancePath + "/completion_forecast",
+                    schemaPath: "#/$defs/ClaimedCompletionForecast/if",
+                    keyword: "if",
+                    params: { failingKeyword: "then" },
+                    message: 'must match "then" schema',
+                };
+                if (vErrors === null) {
+                    vErrors = [err217];
+                } else {
+                    vErrors.push(err217);
                 }
-                if (data82.state !== undefined) {
-                    let data84 = data82.state;
-                    if (typeof data84 !== "string") {
-                        const err219 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err219];
-                        } else {
-                            vErrors.push(err219);
-                        }
-                        errors++;
+                errors++;
+            }
+            if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                if (data82.state === undefined) {
+                    const err218 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err218];
+                    } else {
+                        vErrors.push(err218);
                     }
-                    if (!(
-                        data84 === "available" ||
-                        data84 === "not_stored" ||
-                        data84 === "no_run_within_horizon" ||
-                        data84 === "over_limit" ||
-                        data84 === "malformed" ||
-                        data84 === "scope_ambiguous" ||
-                        data84 === "unmatched"
-                    )) {
+                    errors++;
+                }
+                if (data82.computed_at === undefined) {
+                    const err219 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err219];
+                    } else {
+                        vErrors.push(err219);
+                    }
+                    errors++;
+                }
+                for (const key13 in data82) {
+                    if (!func1.call(schema90.properties, key13)) {
                         const err220 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
-                            message: "must be equal to one of the allowed values",
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
                             vErrors = [err220];
@@ -105714,14 +106145,14 @@ function validate274(
                         errors++;
                     }
                 }
-                if (data82.computed_at !== undefined) {
-                    let data85 = data82.computed_at;
-                    if (typeof data85 === "string") {
-                        if (func2(data85) > 128) {
+                if (data82.work_scope_id !== undefined) {
+                    let data84 = data82.work_scope_id;
+                    if (typeof data84 === "string") {
+                        if (func2(data84) > 128) {
                             const err221 = {
-                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
                                 keyword: "maxLength",
                                 params: { limit: 128 },
                                 message: "must NOT have more than 128 characters",
@@ -105733,8 +106164,85 @@ function validate274(
                             }
                             errors++;
                         }
-                        if (func2(data85) < 1) {
-                            const err222 = {
+                    } else {
+                        const err222 = {
+                            instancePath: instancePath + "/completion_forecast/work_scope_id",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err222];
+                        } else {
+                            vErrors.push(err222);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.state !== undefined) {
+                    let data85 = data82.state;
+                    if (typeof data85 !== "string") {
+                        const err223 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err223];
+                        } else {
+                            vErrors.push(err223);
+                        }
+                        errors++;
+                    }
+                    if (!(
+                        data85 === "available" ||
+                        data85 === "not_stored" ||
+                        data85 === "no_run_within_horizon" ||
+                        data85 === "over_limit" ||
+                        data85 === "malformed" ||
+                        data85 === "scope_ambiguous" ||
+                        data85 === "unmatched"
+                    )) {
+                        const err224 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema90.properties.state.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err224];
+                        } else {
+                            vErrors.push(err224);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.computed_at !== undefined) {
+                    let data86 = data82.computed_at;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err225 = {
+                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err225];
+                            } else {
+                                vErrors.push(err225);
+                            }
+                            errors++;
+                        }
+                        if (func2(data86) < 1) {
+                            const err226 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -105743,14 +106251,14 @@ function validate274(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err222];
+                                vErrors = [err226];
                             } else {
-                                vErrors.push(err222);
+                                vErrors.push(err226);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data85)) {
-                            const err223 = {
+                        if (!pattern13.test(data86)) {
+                            const err227 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -105765,14 +106273,14 @@ function validate274(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err223];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err223);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data85)) {
-                            const err224 = {
+                        if (!formats0.validate(data86)) {
+                            const err228 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -105781,14 +106289,14 @@ function validate274(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err228];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err228);
                             }
                             errors++;
                         }
                     } else {
-                        const err225 = {
+                        const err229 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -105797,110 +106305,25 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err225];
+                            vErrors = [err229];
                         } else {
-                            vErrors.push(err225);
+                            vErrors.push(err229);
                         }
                         errors++;
                     }
                 }
                 if (data82.simulation_count !== undefined) {
-                    let data86 = data82.simulation_count;
-                    if (!(
-                        typeof data86 == "number" &&
-                        !(data86 % 1) &&
-                        !isNaN(data86) &&
-                        isFinite(data86)
-                    )) {
-                        const err226 = {
-                            instancePath: instancePath + "/completion_forecast/simulation_count",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err226];
-                        } else {
-                            vErrors.push(err226);
-                        }
-                        errors++;
-                    }
-                    if (typeof data86 == "number" && isFinite(data86)) {
-                        if (data86 < 0 || isNaN(data86)) {
-                            const err227 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/simulation_count",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err227];
-                            } else {
-                                vErrors.push(err227);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.horizon_days !== undefined) {
-                    let data87 = data82.horizon_days;
+                    let data87 = data82.simulation_count;
                     if (!(
                         typeof data87 == "number" &&
                         !(data87 % 1) &&
                         !isNaN(data87) &&
                         isFinite(data87)
                     )) {
-                        const err228 = {
-                            instancePath: instancePath + "/completion_forecast/horizon_days",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err228];
-                        } else {
-                            vErrors.push(err228);
-                        }
-                        errors++;
-                    }
-                    if (typeof data87 == "number" && isFinite(data87)) {
-                        if (data87 < 0 || isNaN(data87)) {
-                            const err229 = {
-                                instancePath: instancePath + "/completion_forecast/horizon_days",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err229];
-                            } else {
-                                vErrors.push(err229);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.unfinished_runs !== undefined) {
-                    let data88 = data82.unfinished_runs;
-                    if (!(
-                        typeof data88 == "number" &&
-                        !(data88 % 1) &&
-                        !isNaN(data88) &&
-                        isFinite(data88)
-                    )) {
                         const err230 = {
-                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                            instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -105912,12 +106335,13 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data88 == "number" && isFinite(data88)) {
-                        if (data88 < 0 || isNaN(data88)) {
+                    if (typeof data87 == "number" && isFinite(data87)) {
+                        if (data87 < 0 || isNaN(data87)) {
                             const err231 = {
-                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                                instancePath:
+                                    instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -105931,18 +106355,18 @@ function validate274(
                         }
                     }
                 }
-                if (data82.target_items !== undefined) {
-                    let data89 = data82.target_items;
+                if (data82.horizon_days !== undefined) {
+                    let data88 = data82.horizon_days;
                     if (!(
-                        typeof data89 == "number" &&
-                        !(data89 % 1) &&
-                        !isNaN(data89) &&
-                        isFinite(data89)
+                        typeof data88 == "number" &&
+                        !(data88 % 1) &&
+                        !isNaN(data88) &&
+                        isFinite(data88)
                     )) {
                         const err232 = {
-                            instancePath: instancePath + "/completion_forecast/target_items",
+                            instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -105954,12 +106378,12 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data89 == "number" && isFinite(data89)) {
-                        if (data89 < 0 || isNaN(data89)) {
+                    if (typeof data88 == "number" && isFinite(data88)) {
+                        if (data88 < 0 || isNaN(data88)) {
                             const err233 = {
-                                instancePath: instancePath + "/completion_forecast/target_items",
+                                instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -105973,18 +106397,18 @@ function validate274(
                         }
                     }
                 }
-                if (data82.forecast_p50_days !== undefined) {
-                    let data90 = data82.forecast_p50_days;
+                if (data82.unfinished_runs !== undefined) {
+                    let data89 = data82.unfinished_runs;
                     if (!(
-                        typeof data90 == "number" &&
-                        !(data90 % 1) &&
-                        !isNaN(data90) &&
-                        isFinite(data90)
+                        typeof data89 == "number" &&
+                        !(data89 % 1) &&
+                        !isNaN(data89) &&
+                        isFinite(data89)
                     )) {
                         const err234 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -105996,13 +106420,12 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data90 == "number" && isFinite(data90)) {
-                        if (data90 < 0 || isNaN(data90)) {
+                    if (typeof data89 == "number" && isFinite(data89)) {
+                        if (data89 < 0 || isNaN(data89)) {
                             const err235 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -106016,18 +106439,18 @@ function validate274(
                         }
                     }
                 }
-                if (data82.forecast_p85_days !== undefined) {
-                    let data91 = data82.forecast_p85_days;
+                if (data82.target_items !== undefined) {
+                    let data90 = data82.target_items;
                     if (!(
-                        typeof data91 == "number" &&
-                        !(data91 % 1) &&
-                        !isNaN(data91) &&
-                        isFinite(data91)
+                        typeof data90 == "number" &&
+                        !(data90 % 1) &&
+                        !isNaN(data90) &&
+                        isFinite(data90)
                     )) {
                         const err236 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -106039,13 +106462,12 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data91 == "number" && isFinite(data91)) {
-                        if (data91 < 0 || isNaN(data91)) {
+                    if (typeof data90 == "number" && isFinite(data90)) {
+                        if (data90 < 0 || isNaN(data90)) {
                             const err237 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -106059,18 +106481,18 @@ function validate274(
                         }
                     }
                 }
-                if (data82.forecast_p95_days !== undefined) {
-                    let data92 = data82.forecast_p95_days;
+                if (data82.scope_count !== undefined) {
+                    let data91 = data82.scope_count;
                     if (!(
-                        typeof data92 == "number" &&
-                        !(data92 % 1) &&
-                        !isNaN(data92) &&
-                        isFinite(data92)
+                        typeof data91 == "number" &&
+                        !(data91 % 1) &&
+                        !isNaN(data91) &&
+                        isFinite(data91)
                     )) {
                         const err238 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/scope_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -106082,16 +106504,15 @@ function validate274(
                         }
                         errors++;
                     }
-                    if (typeof data92 == "number" && isFinite(data92)) {
-                        if (data92 < 0 || isNaN(data92)) {
+                    if (typeof data91 == "number" && isFinite(data91)) {
+                        if (data91 < 1 || isNaN(data91)) {
                             const err239 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                instancePath: instancePath + "/completion_forecast/scope_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/scope_count/minimum",
                                 keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                params: { comparison: ">=", limit: 1 },
+                                message: "must be >= 1",
                             };
                             if (vErrors === null) {
                                 vErrors = [err239];
@@ -106102,11 +106523,159 @@ function validate274(
                         }
                     }
                 }
+                if (data82.scope_count_at_least !== undefined) {
+                    if (typeof data82.scope_count_at_least !== "boolean") {
+                        const err240 = {
+                            instancePath:
+                                instancePath + "/completion_forecast/scope_count_at_least",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count_at_least/type",
+                            keyword: "type",
+                            params: { type: "boolean" },
+                            message: "must be boolean",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err240];
+                        } else {
+                            vErrors.push(err240);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.forecast_p50_days !== undefined) {
+                    let data93 = data82.forecast_p50_days;
+                    if (!(
+                        typeof data93 == "number" &&
+                        !(data93 % 1) &&
+                        !isNaN(data93) &&
+                        isFinite(data93)
+                    )) {
+                        const err241 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err241];
+                        } else {
+                            vErrors.push(err241);
+                        }
+                        errors++;
+                    }
+                    if (typeof data93 == "number" && isFinite(data93)) {
+                        if (data93 < 0 || isNaN(data93)) {
+                            const err242 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err242];
+                            } else {
+                                vErrors.push(err242);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p85_days !== undefined) {
+                    let data94 = data82.forecast_p85_days;
+                    if (!(
+                        typeof data94 == "number" &&
+                        !(data94 % 1) &&
+                        !isNaN(data94) &&
+                        isFinite(data94)
+                    )) {
+                        const err243 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err243];
+                        } else {
+                            vErrors.push(err243);
+                        }
+                        errors++;
+                    }
+                    if (typeof data94 == "number" && isFinite(data94)) {
+                        if (data94 < 0 || isNaN(data94)) {
+                            const err244 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err244];
+                            } else {
+                                vErrors.push(err244);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p95_days !== undefined) {
+                    let data95 = data82.forecast_p95_days;
+                    if (!(
+                        typeof data95 == "number" &&
+                        !(data95 % 1) &&
+                        !isNaN(data95) &&
+                        isFinite(data95)
+                    )) {
+                        const err245 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err245];
+                        } else {
+                            vErrors.push(err245);
+                        }
+                        errors++;
+                    }
+                    if (typeof data95 == "number" && isFinite(data95)) {
+                        if (data95 < 0 || isNaN(data95)) {
+                            const err246 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err246];
+                            } else {
+                                vErrors.push(err246);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data82.forecast_p50_date !== undefined) {
-                    let data93 = data82.forecast_p50_date;
-                    if (typeof data93 === "string") {
-                        if (func2(data93) > 128) {
-                            const err240 = {
+                    let data96 = data82.forecast_p50_date;
+                    if (typeof data96 === "string") {
+                        if (func2(data96) > 128) {
+                            const err247 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -106116,14 +106685,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err240];
+                                vErrors = [err247];
                             } else {
-                                vErrors.push(err240);
+                                vErrors.push(err247);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data93)) {
-                            const err241 = {
+                        if (!pattern14.test(data96)) {
+                            const err248 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -106134,14 +106703,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err248];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err248);
                             }
                             errors++;
                         }
                     } else {
-                        const err242 = {
+                        const err249 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -106150,18 +106719,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err242];
+                            vErrors = [err249];
                         } else {
-                            vErrors.push(err242);
+                            vErrors.push(err249);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p85_date !== undefined) {
-                    let data94 = data82.forecast_p85_date;
-                    if (typeof data94 === "string") {
-                        if (func2(data94) > 128) {
-                            const err243 = {
+                    let data97 = data82.forecast_p85_date;
+                    if (typeof data97 === "string") {
+                        if (func2(data97) > 128) {
+                            const err250 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -106171,14 +106740,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err243];
+                                vErrors = [err250];
                             } else {
-                                vErrors.push(err243);
+                                vErrors.push(err250);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data94)) {
-                            const err244 = {
+                        if (!pattern14.test(data97)) {
+                            const err251 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -106189,14 +106758,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err244];
+                                vErrors = [err251];
                             } else {
-                                vErrors.push(err244);
+                                vErrors.push(err251);
                             }
                             errors++;
                         }
                     } else {
-                        const err245 = {
+                        const err252 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -106205,18 +106774,18 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err245];
+                            vErrors = [err252];
                         } else {
-                            vErrors.push(err245);
+                            vErrors.push(err252);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p95_date !== undefined) {
-                    let data95 = data82.forecast_p95_date;
-                    if (typeof data95 === "string") {
-                        if (func2(data95) > 128) {
-                            const err246 = {
+                    let data98 = data82.forecast_p95_date;
+                    if (typeof data98 === "string") {
+                        if (func2(data98) > 128) {
+                            const err253 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -106226,14 +106795,14 @@ function validate274(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err246];
+                                vErrors = [err253];
                             } else {
-                                vErrors.push(err246);
+                                vErrors.push(err253);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data95)) {
-                            const err247 = {
+                        if (!pattern14.test(data98)) {
+                            const err254 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -106244,14 +106813,14 @@ function validate274(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err247];
+                                vErrors = [err254];
                             } else {
-                                vErrors.push(err247);
+                                vErrors.push(err254);
                             }
                             errors++;
                         }
                     } else {
-                        const err248 = {
+                        const err255 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -106260,15 +106829,15 @@ function validate274(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err248];
+                            vErrors = [err255];
                         } else {
-                            vErrors.push(err248);
+                            vErrors.push(err255);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err249 = {
+                const err256 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -106276,15 +106845,15 @@ function validate274(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err249];
+                    vErrors = [err256];
                 } else {
-                    vErrors.push(err249);
+                    vErrors.push(err256);
                 }
                 errors++;
             }
         }
     } else {
-        const err250 = {
+        const err257 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -106292,9 +106861,9 @@ function validate274(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err250];
+            vErrors = [err257];
         } else {
-            vErrors.push(err250);
+            vErrors.push(err257);
         }
         errors++;
     }
@@ -126535,45 +127104,55 @@ function validate338(
         }
         if (data.completion_forecast !== undefined) {
             let data82 = data.completion_forecast;
+            const _errs213 = errors;
+            let valid67 = true;
+            const _errs214 = errors;
             if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
-                if (data82.state === undefined) {
-                    const err214 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "state" },
-                        message: "must have required property '" + "state" + "'",
-                    };
+                let missing12;
+                if (
+                    data82.scope_count_at_least === undefined &&
+                    (missing12 = "scope_count_at_least")
+                ) {
+                    const err214 = {};
                     if (vErrors === null) {
                         vErrors = [err214];
                     } else {
                         vErrors.push(err214);
                     }
                     errors++;
-                }
-                if (data82.computed_at === undefined) {
-                    const err215 = {
-                        instancePath: instancePath + "/completion_forecast",
-                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
-                        keyword: "required",
-                        params: { missingProperty: "computed_at" },
-                        message: "must have required property '" + "computed_at" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err215];
-                    } else {
-                        vErrors.push(err215);
+                } else {
+                    if (data82.scope_count_at_least !== undefined) {
+                        if (true !== data82.scope_count_at_least) {
+                            const err215 = {};
+                            if (vErrors === null) {
+                                vErrors = [err215];
+                            } else {
+                                vErrors.push(err215);
+                            }
+                            errors++;
+                        }
                     }
-                    errors++;
                 }
-                for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+            }
+            var _valid9 = _errs214 === errors;
+            errors = _errs213;
+            if (vErrors !== null) {
+                if (_errs213) {
+                    vErrors.length = _errs213;
+                } else {
+                    vErrors = null;
+                }
+            }
+            if (_valid9) {
+                const _errs216 = errors;
+                if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                    if (data82.scope_count === undefined) {
                         const err216 = {
                             instancePath: instancePath + "/completion_forecast",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key13 },
-                            message: "must NOT have additional properties",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/then/required",
+                            keyword: "required",
+                            params: { missingProperty: "scope_count" },
+                            message: "must have required property '" + "scope_count" + "'",
                         };
                         if (vErrors === null) {
                             vErrors = [err216];
@@ -126583,74 +127162,63 @@ function validate338(
                         errors++;
                     }
                 }
-                if (data82.work_scope_id !== undefined) {
-                    let data83 = data82.work_scope_id;
-                    if (typeof data83 === "string") {
-                        if (func2(data83) > 128) {
-                            const err217 = {
-                                instancePath: instancePath + "/completion_forecast/work_scope_id",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
-                                keyword: "maxLength",
-                                params: { limit: 128 },
-                                message: "must NOT have more than 128 characters",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err217];
-                            } else {
-                                vErrors.push(err217);
-                            }
-                            errors++;
-                        }
-                    } else {
-                        const err218 = {
-                            instancePath: instancePath + "/completion_forecast/work_scope_id",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err218];
-                        } else {
-                            vErrors.push(err218);
-                        }
-                        errors++;
-                    }
+                var _valid9 = _errs216 === errors;
+                valid67 = _valid9;
+            }
+            if (!valid67) {
+                const err217 = {
+                    instancePath: instancePath + "/completion_forecast",
+                    schemaPath: "#/$defs/ClaimedCompletionForecast/if",
+                    keyword: "if",
+                    params: { failingKeyword: "then" },
+                    message: 'must match "then" schema',
+                };
+                if (vErrors === null) {
+                    vErrors = [err217];
+                } else {
+                    vErrors.push(err217);
                 }
-                if (data82.state !== undefined) {
-                    let data84 = data82.state;
-                    if (typeof data84 !== "string") {
-                        const err219 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
-                            keyword: "type",
-                            params: { type: "string" },
-                            message: "must be string",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err219];
-                        } else {
-                            vErrors.push(err219);
-                        }
-                        errors++;
+                errors++;
+            }
+            if (data82 && typeof data82 == "object" && !Array.isArray(data82)) {
+                if (data82.state === undefined) {
+                    const err218 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "state" },
+                        message: "must have required property '" + "state" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err218];
+                    } else {
+                        vErrors.push(err218);
                     }
-                    if (!(
-                        data84 === "available" ||
-                        data84 === "not_stored" ||
-                        data84 === "no_run_within_horizon" ||
-                        data84 === "over_limit" ||
-                        data84 === "malformed" ||
-                        data84 === "scope_ambiguous" ||
-                        data84 === "unmatched"
-                    )) {
+                    errors++;
+                }
+                if (data82.computed_at === undefined) {
+                    const err219 = {
+                        instancePath: instancePath + "/completion_forecast",
+                        schemaPath: "#/$defs/ClaimedCompletionForecast/required",
+                        keyword: "required",
+                        params: { missingProperty: "computed_at" },
+                        message: "must have required property '" + "computed_at" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err219];
+                    } else {
+                        vErrors.push(err219);
+                    }
+                    errors++;
+                }
+                for (const key13 in data82) {
+                    if (!func1.call(schema90.properties, key13)) {
                         const err220 = {
-                            instancePath: instancePath + "/completion_forecast/state",
-                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
-                            keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
-                            message: "must be equal to one of the allowed values",
+                            instancePath: instancePath + "/completion_forecast",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key13 },
+                            message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
                             vErrors = [err220];
@@ -126660,14 +127228,14 @@ function validate338(
                         errors++;
                     }
                 }
-                if (data82.computed_at !== undefined) {
-                    let data85 = data82.computed_at;
-                    if (typeof data85 === "string") {
-                        if (func2(data85) > 128) {
+                if (data82.work_scope_id !== undefined) {
+                    let data84 = data82.work_scope_id;
+                    if (typeof data84 === "string") {
+                        if (func2(data84) > 128) {
                             const err221 = {
-                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                instancePath: instancePath + "/completion_forecast/work_scope_id",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                    "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/maxLength",
                                 keyword: "maxLength",
                                 params: { limit: 128 },
                                 message: "must NOT have more than 128 characters",
@@ -126679,8 +127247,85 @@ function validate338(
                             }
                             errors++;
                         }
-                        if (func2(data85) < 1) {
-                            const err222 = {
+                    } else {
+                        const err222 = {
+                            instancePath: instancePath + "/completion_forecast/work_scope_id",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/work_scope_id/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err222];
+                        } else {
+                            vErrors.push(err222);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.state !== undefined) {
+                    let data85 = data82.state;
+                    if (typeof data85 !== "string") {
+                        const err223 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err223];
+                        } else {
+                            vErrors.push(err223);
+                        }
+                        errors++;
+                    }
+                    if (!(
+                        data85 === "available" ||
+                        data85 === "not_stored" ||
+                        data85 === "no_run_within_horizon" ||
+                        data85 === "over_limit" ||
+                        data85 === "malformed" ||
+                        data85 === "scope_ambiguous" ||
+                        data85 === "unmatched"
+                    )) {
+                        const err224 = {
+                            instancePath: instancePath + "/completion_forecast/state",
+                            schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
+                            keyword: "enum",
+                            params: { allowedValues: schema90.properties.state.enum },
+                            message: "must be equal to one of the allowed values",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err224];
+                        } else {
+                            vErrors.push(err224);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.computed_at !== undefined) {
+                    let data86 = data82.computed_at;
+                    if (typeof data86 === "string") {
+                        if (func2(data86) > 128) {
+                            const err225 = {
+                                instancePath: instancePath + "/completion_forecast/computed_at",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/computed_at/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 128 },
+                                message: "must NOT have more than 128 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err225];
+                            } else {
+                                vErrors.push(err225);
+                            }
+                            errors++;
+                        }
+                        if (func2(data86) < 1) {
+                            const err226 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/minLength",
@@ -126689,14 +127334,14 @@ function validate338(
                                 message: "must NOT have fewer than 1 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err222];
+                                vErrors = [err226];
                             } else {
-                                vErrors.push(err222);
+                                vErrors.push(err226);
                             }
                             errors++;
                         }
-                        if (!pattern13.test(data85)) {
-                            const err223 = {
+                        if (!pattern13.test(data86)) {
+                            const err227 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/pattern",
@@ -126711,14 +127356,14 @@ function validate338(
                                     '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err223];
+                                vErrors = [err227];
                             } else {
-                                vErrors.push(err223);
+                                vErrors.push(err227);
                             }
                             errors++;
                         }
-                        if (!formats0.validate(data85)) {
-                            const err224 = {
+                        if (!formats0.validate(data86)) {
+                            const err228 = {
                                 instancePath: instancePath + "/completion_forecast/computed_at",
                                 schemaPath:
                                     "#/$defs/ClaimedCompletionForecast/properties/computed_at/format",
@@ -126727,14 +127372,14 @@ function validate338(
                                 message: 'must match format "' + "date-time" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err228];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err228);
                             }
                             errors++;
                         }
                     } else {
-                        const err225 = {
+                        const err229 = {
                             instancePath: instancePath + "/completion_forecast/computed_at",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/computed_at/type",
@@ -126743,110 +127388,25 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err225];
+                            vErrors = [err229];
                         } else {
-                            vErrors.push(err225);
+                            vErrors.push(err229);
                         }
                         errors++;
                     }
                 }
                 if (data82.simulation_count !== undefined) {
-                    let data86 = data82.simulation_count;
-                    if (!(
-                        typeof data86 == "number" &&
-                        !(data86 % 1) &&
-                        !isNaN(data86) &&
-                        isFinite(data86)
-                    )) {
-                        const err226 = {
-                            instancePath: instancePath + "/completion_forecast/simulation_count",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err226];
-                        } else {
-                            vErrors.push(err226);
-                        }
-                        errors++;
-                    }
-                    if (typeof data86 == "number" && isFinite(data86)) {
-                        if (data86 < 0 || isNaN(data86)) {
-                            const err227 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/simulation_count",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err227];
-                            } else {
-                                vErrors.push(err227);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.horizon_days !== undefined) {
-                    let data87 = data82.horizon_days;
+                    let data87 = data82.simulation_count;
                     if (!(
                         typeof data87 == "number" &&
                         !(data87 % 1) &&
                         !isNaN(data87) &&
                         isFinite(data87)
                     )) {
-                        const err228 = {
-                            instancePath: instancePath + "/completion_forecast/horizon_days",
-                            schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
-                            keyword: "type",
-                            params: { type: "integer" },
-                            message: "must be integer",
-                        };
-                        if (vErrors === null) {
-                            vErrors = [err228];
-                        } else {
-                            vErrors.push(err228);
-                        }
-                        errors++;
-                    }
-                    if (typeof data87 == "number" && isFinite(data87)) {
-                        if (data87 < 0 || isNaN(data87)) {
-                            const err229 = {
-                                instancePath: instancePath + "/completion_forecast/horizon_days",
-                                schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
-                                keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
-                            };
-                            if (vErrors === null) {
-                                vErrors = [err229];
-                            } else {
-                                vErrors.push(err229);
-                            }
-                            errors++;
-                        }
-                    }
-                }
-                if (data82.unfinished_runs !== undefined) {
-                    let data88 = data82.unfinished_runs;
-                    if (!(
-                        typeof data88 == "number" &&
-                        !(data88 % 1) &&
-                        !isNaN(data88) &&
-                        isFinite(data88)
-                    )) {
                         const err230 = {
-                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                            instancePath: instancePath + "/completion_forecast/simulation_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/simulation_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -126858,12 +127418,13 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data88 == "number" && isFinite(data88)) {
-                        if (data88 < 0 || isNaN(data88)) {
+                    if (typeof data87 == "number" && isFinite(data87)) {
+                        if (data87 < 0 || isNaN(data87)) {
                             const err231 = {
-                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
+                                instancePath:
+                                    instancePath + "/completion_forecast/simulation_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/simulation_count/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -126877,18 +127438,18 @@ function validate338(
                         }
                     }
                 }
-                if (data82.target_items !== undefined) {
-                    let data89 = data82.target_items;
+                if (data82.horizon_days !== undefined) {
+                    let data88 = data82.horizon_days;
                     if (!(
-                        typeof data89 == "number" &&
-                        !(data89 % 1) &&
-                        !isNaN(data89) &&
-                        isFinite(data89)
+                        typeof data88 == "number" &&
+                        !(data88 % 1) &&
+                        !isNaN(data88) &&
+                        isFinite(data88)
                     )) {
                         const err232 = {
-                            instancePath: instancePath + "/completion_forecast/target_items",
+                            instancePath: instancePath + "/completion_forecast/horizon_days",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/horizon_days/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -126900,12 +127461,12 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data89 == "number" && isFinite(data89)) {
-                        if (data89 < 0 || isNaN(data89)) {
+                    if (typeof data88 == "number" && isFinite(data88)) {
+                        if (data88 < 0 || isNaN(data88)) {
                             const err233 = {
-                                instancePath: instancePath + "/completion_forecast/target_items",
+                                instancePath: instancePath + "/completion_forecast/horizon_days",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/horizon_days/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -126919,18 +127480,18 @@ function validate338(
                         }
                     }
                 }
-                if (data82.forecast_p50_days !== undefined) {
-                    let data90 = data82.forecast_p50_days;
+                if (data82.unfinished_runs !== undefined) {
+                    let data89 = data82.unfinished_runs;
                     if (!(
-                        typeof data90 == "number" &&
-                        !(data90 % 1) &&
-                        !isNaN(data90) &&
-                        isFinite(data90)
+                        typeof data89 == "number" &&
+                        !(data89 % 1) &&
+                        !isNaN(data89) &&
+                        isFinite(data89)
                     )) {
                         const err234 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            instancePath: instancePath + "/completion_forecast/unfinished_runs",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -126942,13 +127503,12 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data90 == "number" && isFinite(data90)) {
-                        if (data90 < 0 || isNaN(data90)) {
+                    if (typeof data89 == "number" && isFinite(data89)) {
+                        if (data89 < 0 || isNaN(data89)) {
                             const err235 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                instancePath: instancePath + "/completion_forecast/unfinished_runs",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/unfinished_runs/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -126962,18 +127522,18 @@ function validate338(
                         }
                     }
                 }
-                if (data82.forecast_p85_days !== undefined) {
-                    let data91 = data82.forecast_p85_days;
+                if (data82.target_items !== undefined) {
+                    let data90 = data82.target_items;
                     if (!(
-                        typeof data91 == "number" &&
-                        !(data91 % 1) &&
-                        !isNaN(data91) &&
-                        isFinite(data91)
+                        typeof data90 == "number" &&
+                        !(data90 % 1) &&
+                        !isNaN(data90) &&
+                        isFinite(data90)
                     )) {
                         const err236 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            instancePath: instancePath + "/completion_forecast/target_items",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/target_items/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -126985,13 +127545,12 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data91 == "number" && isFinite(data91)) {
-                        if (data91 < 0 || isNaN(data91)) {
+                    if (typeof data90 == "number" && isFinite(data90)) {
+                        if (data90 < 0 || isNaN(data90)) {
                             const err237 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                instancePath: instancePath + "/completion_forecast/target_items",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/target_items/minimum",
                                 keyword: "minimum",
                                 params: { comparison: ">=", limit: 0 },
                                 message: "must be >= 0",
@@ -127005,18 +127564,18 @@ function validate338(
                         }
                     }
                 }
-                if (data82.forecast_p95_days !== undefined) {
-                    let data92 = data82.forecast_p95_days;
+                if (data82.scope_count !== undefined) {
+                    let data91 = data82.scope_count;
                     if (!(
-                        typeof data92 == "number" &&
-                        !(data92 % 1) &&
-                        !isNaN(data92) &&
-                        isFinite(data92)
+                        typeof data91 == "number" &&
+                        !(data91 % 1) &&
+                        !isNaN(data91) &&
+                        isFinite(data91)
                     )) {
                         const err238 = {
-                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            instancePath: instancePath + "/completion_forecast/scope_count",
                             schemaPath:
-                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count/type",
                             keyword: "type",
                             params: { type: "integer" },
                             message: "must be integer",
@@ -127028,16 +127587,15 @@ function validate338(
                         }
                         errors++;
                     }
-                    if (typeof data92 == "number" && isFinite(data92)) {
-                        if (data92 < 0 || isNaN(data92)) {
+                    if (typeof data91 == "number" && isFinite(data91)) {
+                        if (data91 < 1 || isNaN(data91)) {
                             const err239 = {
-                                instancePath:
-                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                instancePath: instancePath + "/completion_forecast/scope_count",
                                 schemaPath:
-                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                    "#/$defs/ClaimedCompletionForecast/properties/scope_count/minimum",
                                 keyword: "minimum",
-                                params: { comparison: ">=", limit: 0 },
-                                message: "must be >= 0",
+                                params: { comparison: ">=", limit: 1 },
+                                message: "must be >= 1",
                             };
                             if (vErrors === null) {
                                 vErrors = [err239];
@@ -127048,11 +127606,159 @@ function validate338(
                         }
                     }
                 }
+                if (data82.scope_count_at_least !== undefined) {
+                    if (typeof data82.scope_count_at_least !== "boolean") {
+                        const err240 = {
+                            instancePath:
+                                instancePath + "/completion_forecast/scope_count_at_least",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/scope_count_at_least/type",
+                            keyword: "type",
+                            params: { type: "boolean" },
+                            message: "must be boolean",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err240];
+                        } else {
+                            vErrors.push(err240);
+                        }
+                        errors++;
+                    }
+                }
+                if (data82.forecast_p50_days !== undefined) {
+                    let data93 = data82.forecast_p50_days;
+                    if (!(
+                        typeof data93 == "number" &&
+                        !(data93 % 1) &&
+                        !isNaN(data93) &&
+                        isFinite(data93)
+                    )) {
+                        const err241 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p50_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err241];
+                        } else {
+                            vErrors.push(err241);
+                        }
+                        errors++;
+                    }
+                    if (typeof data93 == "number" && isFinite(data93)) {
+                        if (data93 < 0 || isNaN(data93)) {
+                            const err242 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p50_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err242];
+                            } else {
+                                vErrors.push(err242);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p85_days !== undefined) {
+                    let data94 = data82.forecast_p85_days;
+                    if (!(
+                        typeof data94 == "number" &&
+                        !(data94 % 1) &&
+                        !isNaN(data94) &&
+                        isFinite(data94)
+                    )) {
+                        const err243 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p85_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err243];
+                        } else {
+                            vErrors.push(err243);
+                        }
+                        errors++;
+                    }
+                    if (typeof data94 == "number" && isFinite(data94)) {
+                        if (data94 < 0 || isNaN(data94)) {
+                            const err244 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p85_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err244];
+                            } else {
+                                vErrors.push(err244);
+                            }
+                            errors++;
+                        }
+                    }
+                }
+                if (data82.forecast_p95_days !== undefined) {
+                    let data95 = data82.forecast_p95_days;
+                    if (!(
+                        typeof data95 == "number" &&
+                        !(data95 % 1) &&
+                        !isNaN(data95) &&
+                        isFinite(data95)
+                    )) {
+                        const err245 = {
+                            instancePath: instancePath + "/completion_forecast/forecast_p95_days",
+                            schemaPath:
+                                "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/type",
+                            keyword: "type",
+                            params: { type: "integer" },
+                            message: "must be integer",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err245];
+                        } else {
+                            vErrors.push(err245);
+                        }
+                        errors++;
+                    }
+                    if (typeof data95 == "number" && isFinite(data95)) {
+                        if (data95 < 0 || isNaN(data95)) {
+                            const err246 = {
+                                instancePath:
+                                    instancePath + "/completion_forecast/forecast_p95_days",
+                                schemaPath:
+                                    "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_days/minimum",
+                                keyword: "minimum",
+                                params: { comparison: ">=", limit: 0 },
+                                message: "must be >= 0",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err246];
+                            } else {
+                                vErrors.push(err246);
+                            }
+                            errors++;
+                        }
+                    }
+                }
                 if (data82.forecast_p50_date !== undefined) {
-                    let data93 = data82.forecast_p50_date;
-                    if (typeof data93 === "string") {
-                        if (func2(data93) > 128) {
-                            const err240 = {
+                    let data96 = data82.forecast_p50_date;
+                    if (typeof data96 === "string") {
+                        if (func2(data96) > 128) {
+                            const err247 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -127062,14 +127768,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err240];
+                                vErrors = [err247];
                             } else {
-                                vErrors.push(err240);
+                                vErrors.push(err247);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data93)) {
-                            const err241 = {
+                        if (!pattern14.test(data96)) {
+                            const err248 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p50_date",
                                 schemaPath:
@@ -127080,14 +127786,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err248];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err248);
                             }
                             errors++;
                         }
                     } else {
-                        const err242 = {
+                        const err249 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p50_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p50_date/type",
@@ -127096,18 +127802,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err242];
+                            vErrors = [err249];
                         } else {
-                            vErrors.push(err242);
+                            vErrors.push(err249);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p85_date !== undefined) {
-                    let data94 = data82.forecast_p85_date;
-                    if (typeof data94 === "string") {
-                        if (func2(data94) > 128) {
-                            const err243 = {
+                    let data97 = data82.forecast_p85_date;
+                    if (typeof data97 === "string") {
+                        if (func2(data97) > 128) {
+                            const err250 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -127117,14 +127823,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err243];
+                                vErrors = [err250];
                             } else {
-                                vErrors.push(err243);
+                                vErrors.push(err250);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data94)) {
-                            const err244 = {
+                        if (!pattern14.test(data97)) {
+                            const err251 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p85_date",
                                 schemaPath:
@@ -127135,14 +127841,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err244];
+                                vErrors = [err251];
                             } else {
-                                vErrors.push(err244);
+                                vErrors.push(err251);
                             }
                             errors++;
                         }
                     } else {
-                        const err245 = {
+                        const err252 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p85_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p85_date/type",
@@ -127151,18 +127857,18 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err245];
+                            vErrors = [err252];
                         } else {
-                            vErrors.push(err245);
+                            vErrors.push(err252);
                         }
                         errors++;
                     }
                 }
                 if (data82.forecast_p95_date !== undefined) {
-                    let data95 = data82.forecast_p95_date;
-                    if (typeof data95 === "string") {
-                        if (func2(data95) > 128) {
-                            const err246 = {
+                    let data98 = data82.forecast_p95_date;
+                    if (typeof data98 === "string") {
+                        if (func2(data98) > 128) {
+                            const err253 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -127172,14 +127878,14 @@ function validate338(
                                 message: "must NOT have more than 128 characters",
                             };
                             if (vErrors === null) {
-                                vErrors = [err246];
+                                vErrors = [err253];
                             } else {
-                                vErrors.push(err246);
+                                vErrors.push(err253);
                             }
                             errors++;
                         }
-                        if (!pattern14.test(data95)) {
-                            const err247 = {
+                        if (!pattern14.test(data98)) {
+                            const err254 = {
                                 instancePath:
                                     instancePath + "/completion_forecast/forecast_p95_date",
                                 schemaPath:
@@ -127190,14 +127896,14 @@ function validate338(
                                     'must match pattern "' + "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err247];
+                                vErrors = [err254];
                             } else {
-                                vErrors.push(err247);
+                                vErrors.push(err254);
                             }
                             errors++;
                         }
                     } else {
-                        const err248 = {
+                        const err255 = {
                             instancePath: instancePath + "/completion_forecast/forecast_p95_date",
                             schemaPath:
                                 "#/$defs/ClaimedCompletionForecast/properties/forecast_p95_date/type",
@@ -127206,15 +127912,15 @@ function validate338(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err248];
+                            vErrors = [err255];
                         } else {
-                            vErrors.push(err248);
+                            vErrors.push(err255);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err249 = {
+                const err256 = {
                     instancePath: instancePath + "/completion_forecast",
                     schemaPath: "#/$defs/ClaimedCompletionForecast/type",
                     keyword: "type",
@@ -127222,15 +127928,15 @@ function validate338(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err249];
+                    vErrors = [err256];
                 } else {
-                    vErrors.push(err249);
+                    vErrors.push(err256);
                 }
                 errors++;
             }
         }
     } else {
-        const err250 = {
+        const err257 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -127238,9 +127944,9 @@ function validate338(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err250];
+            vErrors = [err257];
         } else {
-            vErrors.push(err250);
+            vErrors.push(err257);
         }
         errors++;
     }
