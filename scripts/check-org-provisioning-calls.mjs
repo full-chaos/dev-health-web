@@ -66,9 +66,23 @@ const literalText = (node) =>
         ? node.text
         : null;
 
+const unwrap = (node) => {
+    let at = node;
+    while (
+        at &&
+        (ts.isParenthesizedExpression(at) ||
+            ts.isAsExpression(at) ||
+            ts.isSatisfiesExpression(at) ||
+            ts.isTypeAssertionExpression(at) ||
+            ts.isNonNullExpression(at))
+    )
+        at = at.expression;
+    return at;
+};
+
 // Method of one call, read from its own options object (2nd argument) only.
 function callMethod(call) {
-    const options = call.arguments[1];
+    const options = unwrap(call.arguments[1]);
     if (!options || !ts.isObjectLiteralExpression(options)) return null;
     for (const prop of options.properties) {
         if (!ts.isPropertyAssignment(prop)) continue;
