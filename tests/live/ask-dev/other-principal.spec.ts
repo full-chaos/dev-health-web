@@ -474,6 +474,7 @@ test("AC-10 (INV-1): another principal's turn naming the owner's thread id does 
             expect(theirRead.status, "the other principal's read of that id").toBe(404);
         }
     } finally {
+        console.log(`AC10_EVIDENCE=${JSON.stringify(evidence)}`);
         await testInfo.attach("ac10-evidence", {
             body: JSON.stringify(evidence, null, 2),
             contentType: "application/json",
