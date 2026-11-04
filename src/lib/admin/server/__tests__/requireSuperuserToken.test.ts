@@ -126,9 +126,9 @@ describe("A3 switch on: the decision point decides", () => {
         const { transport, calls } = answering(DENY);
         mocks.transport = transport;
         mocks.session = session({ is_superuser: true });
-        await expect(requireSuperuserToken({ guard: "superuser.unmapped" })).resolves.toBe(TOKEN);
+        await expect(requireSuperuserToken({ guard: "unmapped" })).resolves.toBe(TOKEN);
         mocks.session = session({ is_superuser: false });
-        const e = await refusal(requireSuperuserToken({ guard: "superuser.unmapped" }));
+        const e = await refusal(requireSuperuserToken({ guard: "unmapped" }));
         expect(e.status).toBe(403);
         expect(calls).toHaveLength(0);
     });

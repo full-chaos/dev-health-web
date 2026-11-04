@@ -74,12 +74,12 @@ describe("A1 the decision point verdict is the only one read when the switch is 
         const { transport, calls } = answering(DENY);
         const yes = await decideGuard(
             session({ is_superuser: true }),
-            "superuser.unmapped",
+            "unmapped",
             on({ transport }),
         );
         const no = await decideGuard(
             session({ is_superuser: false }),
-            "superuser.unmapped",
+            "unmapped",
             on({ transport }),
         );
         expect(yes.allowed).toBe(true);
@@ -98,8 +98,8 @@ describe("switch off: the client rule, nothing asked", () => {
         ["org.integrations.write", { role: "owner" }, true],
         ["org.integrations.write", { role: "member" }, false],
         ["org.integrations.write", { is_superuser: true, role: "member" }, true],
-        ["superuser.unmapped", { is_superuser: true }, true],
-        ["superuser.unmapped", { is_superuser: false }, false],
+        ["unmapped", { is_superuser: true }, true],
+        ["unmapped", { is_superuser: false }, false],
     ] as const)("%s %j -> %s", async (guard, user, want) => {
         const { transport, calls } = answering(ALLOW);
         const out = await decideGuard(session(user), guard, {
