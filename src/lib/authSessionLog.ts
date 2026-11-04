@@ -35,6 +35,9 @@ const log = logger.child({ module: "auth-session" });
  *                           stored), and one branch per refusal reason (`malformed`, `unverified`,
  *                           `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the answer is refused.
  * - `sso_org_mismatch`      class eddsa: the SSO answer names another org than its verified access token.
+ * - `sso_token_class_refused` ERROR level, a configuration fault counted by branch: an SSO completion
+ *                           ran with a token class other than eddsa (unset, empty, hs256_compat or
+ *                           unknown): no call is made and no session starts (CHAOS-12928).
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
@@ -58,6 +61,7 @@ export type SessionBranch =
     | "session_token_sub_mismatch"
     | "session_token_exp_mismatch"
     | "sso_org_mismatch"
+    | "sso_token_class_refused"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -102,11 +106,12 @@ const MESSAGES: Record<SessionBranch, string> = {
     session_token_sub_mismatch: "answer refused: the service session token names another subject",
     session_token_exp_mismatch: "answer refused: the service session token expiry differs",
     sso_org_mismatch: "sso sign-in refused: the answer org differs from the verified token org",
+    sso_token_class_refused: "sso sign-in refused: the access token class is not eddsa",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 
 /**
- * One warn line per backend call that changes, or declines to change, what a
+ * One warn line (error for `sso_token_class_refused`) per backend call that changes, or declines to change, what a
  * session holds. The fields are a closed set: operation, branch, status, error
  * name and failure count. A token, a cookie, an e-mail address and any text the
  * backend served must never be passed here; the logger adds the time.
@@ -125,7 +130,8 @@ export function logSessionBranch(fields: SessionBranchFields): void {
         if (fields.status !== undefined) line.status = fields.status;
         if (fields.errorName !== undefined) line.errorName = fields.errorName;
         if (fields.failures !== undefined) line.failures = fields.failures;
-        log.warn(line, MESSAGES[fields.branch]);
+        if (fields.branch === "sso_token_class_refused") log.error(line, MESSAGES[fields.branch]);
+        else log.warn(line, MESSAGES[fields.branch]);
     } catch {
         // There is no second channel to report a failed log line on; the
         // session logic goes on unchanged.
