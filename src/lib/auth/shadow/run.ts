@@ -17,10 +17,16 @@ export interface ShadowInput {
     orgId: string | undefined;
     principalReference: string | undefined;
     sampleKey: string;
+    sampleGroups?: readonly SampleGroup[];
     impersonating: boolean;
     surfaceIds: readonly string[];
     surfaces?: readonly Surface[];
     includeImpersonating?: boolean;
+}
+
+export interface SampleGroup {
+    key: string;
+    surfaceIds: readonly string[];
 }
 
 export interface ShadowDeps {
@@ -71,7 +77,11 @@ export function shadowViewerFrom(session: Session): ShadowViewer {
 export interface ShadowInputOptions {
     surfaces?: readonly Surface[];
     includeImpersonating?: boolean;
+    sampleGroups?: readonly (readonly string[])[];
 }
+
+const sampleKeyFor = (session: Session, surfaceIds: readonly string[]): string =>
+    `${session.user.id}|${session.user.org_id ?? ""}|${surfaceSet(surfaceIds)}`;
 
 export function shadowInputFrom(
     session: Session,
@@ -82,7 +92,15 @@ export function shadowInputFrom(
         viewer: shadowViewerFrom(session),
         orgId: session.user.org_id,
         principalReference: session.access_token,
-        sampleKey: `${session.user.id}|${session.user.org_id ?? ""}|${surfaceSet(surfaceIds)}`,
+        sampleKey: sampleKeyFor(session, surfaceIds),
+        ...(opts?.sampleGroups === undefined
+            ? {}
+            : {
+                  sampleGroups: opts.sampleGroups.map((ids) => ({
+                      key: sampleKeyFor(session, ids),
+                      surfaceIds: ids,
+                  })),
+              }),
         impersonating: session.user.is_impersonating === true,
         surfaceIds,
         ...(opts?.surfaces === undefined ? {} : { surfaces: opts.surfaces }),
@@ -126,6 +144,36 @@ export function buildShadowRequest(
     };
 }
 
+function planAsks(
+    input: ShadowInput,
+    principalReference: string,
+    surfaceIds: readonly string[],
+): { counts: RunRecord["counts"]; asked: Asked[]; ids: string[] } {
+    const counts = { match: 0, mismatch: 0, unavailable: 0, no_action: 0 };
+    const asked: Asked[] = [];
+    const ids: string[] = [];
+    for (const id of surfaceIds) {
+        const surface = input.surfaces?.find((row) => row.id === id) ?? surfaceById(id);
+        if (!surface) continue;
+        ids.push(id);
+        if (!surface.request) {
+            counts.no_action += 1;
+            continue;
+        }
+        const request = buildShadowRequest(surface.request, {
+            orgId: input.orgId,
+            principalReference,
+            requestId: newRequestId(),
+        });
+        if (!request) {
+            counts.no_action += 1;
+            continue;
+        }
+        asked.push({ surface, clientAllowed: surface.clientAllowed(input.viewer), request });
+    }
+    return { counts, asked, ids };
+}
+
 export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promise<ShadowResult> {
     try {
         const { transport } = deps;
@@ -137,40 +185,42 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
             return { status: "skipped", reason: "no_scope" };
         }
         const now = (deps.nowMs ?? Date.now)();
-        if (slotHeld(input.sampleKey, now)) {
-            logSkip(surfaceSet(input.surfaceIds), "sampled", deps.log);
-            return { status: "skipped", reason: "sampled" };
+        // Each group is sampled on its own; the groups still free are asked in one run.
+        const groups = new Map<string, readonly string[]>();
+        for (const g of input.sampleGroups ?? [
+            { key: input.sampleKey, surfaceIds: input.surfaceIds },
+        ]) {
+            if (!groups.has(g.key)) groups.set(g.key, g.surfaceIds);
+        }
+        const free: [string, readonly string[]][] = [];
+        for (const [key, groupIds] of groups) {
+            if (slotHeld(key, now)) logSkip(surfaceSet(groupIds), "sampled", deps.log);
+            else free.push([key, groupIds]);
+        }
+        if (free.length === 0) return { status: "skipped", reason: "sampled" };
+        const freeIds = new Set(free.flatMap(([, groupIds]) => groupIds));
+        const surfaceIds = input.surfaceIds.filter((id) => freeIds.has(id));
+
+        let plan = planAsks(input, input.principalReference, surfaceIds);
+        if (plan.asked.length > 0) {
+            const taken = new Set<string>();
+            for (const [key, groupIds] of free) {
+                if (takeSlot(key, now)) for (const id of groupIds) taken.add(id);
+                else logSkip(surfaceSet(groupIds), "sampled", deps.log);
+            }
+            if (taken.size === 0) return { status: "skipped", reason: "sampled" };
+            if (taken.size < freeIds.size) {
+                plan = planAsks(
+                    input,
+                    input.principalReference,
+                    surfaceIds.filter((id) => taken.has(id)),
+                );
+            }
         }
 
-        const counts = { match: 0, mismatch: 0, unavailable: 0, no_action: 0 };
-        const asked: Asked[] = [];
-        const ids: string[] = [];
-        for (const id of input.surfaceIds) {
-            const surface = input.surfaces?.find((row) => row.id === id) ?? surfaceById(id);
-            if (!surface) continue;
-            ids.push(id);
-            if (!surface.request) {
-                counts.no_action += 1;
-                continue;
-            }
-            const request = buildShadowRequest(surface.request, {
-                orgId: input.orgId,
-                principalReference: input.principalReference,
-                requestId: newRequestId(),
-            });
-            if (!request) {
-                counts.no_action += 1;
-                continue;
-            }
-            asked.push({ surface, clientAllowed: surface.clientAllowed(input.viewer), request });
-        }
-
+        const { counts, asked, ids } = plan;
         const mismatches: MismatchRecord[] = [];
         if (asked.length > 0) {
-            if (!takeSlot(input.sampleKey, now)) {
-                logSkip(surfaceSet(input.surfaceIds), "sampled", deps.log);
-                return { status: "skipped", reason: "sampled" };
-            }
             const outcomes = await authorizeBatch(
                 asked.map((a) => a.request),
                 { transport, timeoutMs: SHADOW_TIMEOUT_MS, nowMs: deps.nowMs },

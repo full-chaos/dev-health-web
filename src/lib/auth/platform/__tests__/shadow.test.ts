@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     env: {} as Record<string, string | undefined>,
     transport: undefined as unknown,
     info: vi.fn(),
+    debug: vi.fn(),
 }));
 vi.mock("next/server", () => ({
     after: (fn: () => Promise<unknown> | unknown) => {
@@ -16,13 +17,13 @@ vi.mock("@/lib/config", async (orig) => ({
     ...(await orig<typeof import("@/lib/config")>()),
     getServerEnv: () => mocks.env,
 }));
-vi.mock("@/lib/logger", () => ({ logger: { info: mocks.info } }));
+vi.mock("@/lib/logger", () => ({ logger: { info: mocks.info, debug: mocks.debug } }));
 vi.mock("@/lib/auth/shadow/config", async (orig) => ({
     ...(await orig<typeof import("@/lib/auth/shadow/config")>()),
     getShadowTransport: () => mocks.transport,
 }));
 
-import { MISMATCH_MESSAGE, RUN_MESSAGE } from "@/lib/auth/shadow/log";
+import { MISMATCH_MESSAGE, RUN_MESSAGE, SKIP_MESSAGE } from "@/lib/auth/shadow/log";
 import { ALLOW, DENY, TOKEN, recordingTransport } from "@/lib/auth/shadow/__tests__/helpers";
 import { PLATFORM_ACTIONS, PLATFORM_SURFACES } from "../actionTable";
 import { PLATFORM_SHADOW_ROWS, scheduleFnShadow, schedulePlatformShadow } from "../shadow";
@@ -54,6 +55,8 @@ interface Wire {
 const wire = (calls: { body: string }[]): Wire[] =>
     calls.flatMap((c) => (JSON.parse(c.body) as { requests: Wire[] }).requests);
 const messages = () => mocks.info.mock.calls.map((c) => c[1] as string);
+const skipLines = () =>
+    mocks.debug.mock.calls.filter((c) => c[1] === SKIP_MESSAGE).map((c) => c[0]);
 const mismatchLines = () =>
     mocks.info.mock.calls.filter((c) => c[1] === MISMATCH_MESSAGE).map((c) => c[0]);
 
@@ -65,6 +68,7 @@ beforeEach(() => {
     mocks.env = {};
     mocks.transport = undefined;
     mocks.info.mockReset();
+    mocks.debug.mockReset();
 });
 
 describe("C3 switch off", () => {
@@ -237,6 +241,98 @@ describe("C4 shadow", () => {
         await flush();
         expect(calls).toHaveLength(1);
         expect(wire(calls)).toHaveLength(2);
+    });
+
+    type Queue = (s: Session) => void;
+    const FN_ID = "fn:admin.users";
+    const overlaps: [string, Queue, string, Queue, string][] = [
+        [
+            "nav -> other nav",
+            (s) => schedulePlatformShadow(s, ["nav:platform"]),
+            "nav:platform",
+            (s) => schedulePlatformShadow(s, ["nav:platform-billing"]),
+            "nav:platform-billing",
+        ],
+        [
+            "nav -> page",
+            (s) => schedulePlatformShadow(s, NAV),
+            NAV.join(","),
+            (s) => schedulePlatformShadow(s, ["page:/superadmin"]),
+            "page:/superadmin",
+        ],
+        [
+            "nav -> control",
+            (s) => schedulePlatformShadow(s, NAV),
+            NAV.join(","),
+            (s) => schedulePlatformShadow(s, ["control:ImpersonateUserButton"]),
+            "control:ImpersonateUserButton",
+        ],
+        [
+            "nav -> fn",
+            (s) => schedulePlatformShadow(s, NAV),
+            NAV.join(","),
+            (s) => scheduleFnShadow(s, "admin.users", false),
+            FN_ID,
+        ],
+    ];
+
+    it.each(overlaps)(
+        "C4f %s: overlapping renders keep their own surface sets, each held after the flush",
+        async (_name, queueA, setA, queueB, setB) => {
+            const { transport, calls } = recordingTransport([ALLOW, ALLOW, ALLOW]);
+            mocks.transport = transport;
+            const s = session();
+            queueA(s);
+            queueB(s);
+            expect(mocks.callbacks).toHaveLength(1);
+            await flush();
+            expect(calls).toHaveLength(1);
+            expect(wire(calls)).toHaveLength(setA.split(",").length + 1);
+            expect(skipLines()).toHaveLength(0);
+
+            for (const [queue, set] of [
+                [queueA, setA],
+                [queueB, setB],
+            ] as const) {
+                mocks.callbacks.length = 0;
+                mocks.debug.mockReset();
+                queue(s);
+                await flush();
+                expect(calls).toHaveLength(1);
+                expect(skipLines()).toEqual([{ surfaces: set, reason: "sampled" }]);
+            }
+        },
+    );
+
+    it("C4f: a batch with one held set and one free set asks only the free set", async () => {
+        const { transport, calls } = recordingTransport([ALLOW, ALLOW]);
+        mocks.transport = transport;
+        const s = session();
+        schedulePlatformShadow(s, ["nav:platform"]);
+        await flush();
+        expect(calls).toHaveLength(1);
+        mocks.callbacks.length = 0;
+        mocks.info.mockReset();
+        schedulePlatformShadow(s, ["nav:platform"]);
+        schedulePlatformShadow(s, ["page:/superadmin"]);
+        await flush();
+        expect(calls).toHaveLength(2);
+        const second = (JSON.parse(calls[1]?.body ?? "{}") as { requests: Wire[] }).requests;
+        expect(second.map((i) => i.action)).toEqual(["admin.stats"]);
+        expect(skipLines()).toEqual([{ surfaces: "nav:platform", reason: "sampled" }]);
+        expect(mocks.info.mock.calls.find((c) => c[1] === RUN_MESSAGE)?.[0]).toMatchObject({
+            surfaces: "page:/superadmin",
+        });
+        mocks.callbacks.length = 0;
+        mocks.debug.mockReset();
+        schedulePlatformShadow(s, ["page:/superadmin"]);
+        schedulePlatformShadow(s, ["nav:platform"]);
+        await flush();
+        expect(calls).toHaveLength(2);
+        expect(skipLines()).toEqual([
+            { surfaces: "page:/superadmin", reason: "sampled" },
+            { surfaces: "nav:platform", reason: "sampled" },
+        ]);
     });
 });
 
