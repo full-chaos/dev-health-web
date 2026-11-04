@@ -18,6 +18,7 @@ import {
     ORACLE,
     OTHER_EMAIL,
     acrCallAs,
+    acrInvestigateAs,
     ask,
     authorize,
     expectAnswersSynthesized,
@@ -396,6 +397,114 @@ test("INV-1 runs: another principal of the organization gets 404 on an attach to
         });
     } finally {
         await testInfo.attach("other-principal-runs", {
+            body: JSON.stringify(evidence, null, 2),
+            contentType: "application/json",
+        });
+        await other?.context.close();
+    }
+});
+
+/**
+ * CHAOS-11960, E6 AC-10 (c4 F4): "append re-authorizes the result through the gate" and "another
+ * principal's `thread_id` does not join the thread". The other principal makes two creates by hand
+ * with its own bearer, in the owner's organization:
+ *
+ * - a turn whose `parent_result_id` is the OWNER's result: the other principal may not read that
+ *   result, so ACR refuses it, with the answer it gives for a parent that never existed;
+ * - a turn that names the OWNER's `thread_id`: whatever ACR does with it, the owner's thread is the
+ *   same afterwards (same turns, same results), and nothing of the owner's is in what the other
+ *   principal reads under that id.
+ *
+ * The owner reads its thread first (the baseline) and last, so a join could not pass unseen.
+ */
+test("AC-10 (INV-1): another principal cannot use the owner's result as a parent, and its turn naming the owner's thread id does not join it", async ({
+    page,
+    browser,
+    baseURL,
+}, testInfo) => {
+    test.setTimeout(420_000);
+    const evidence: Record<string, unknown> = {};
+    const results = await watchResults(page);
+    const { calls, surface } = await panel(page);
+    let other: Awaited<ReturnType<typeof otherPrincipal>> | undefined;
+    try {
+        await ask(surface, question("p4Owner"));
+        await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
+        await expectAnswersSynthesized(results, "p4Owner");
+        const create = investigations(calls)[0]!;
+        const ownerThread = threadOf(create);
+        const owner = withBearer(calls);
+        const baseline = await acrCallAs(owner, "GET", `${THREADS_PATH}/${ownerThread}`);
+        expect(baseline.status, "the owner cannot read its own thread").toBe(200);
+        const turnsOf = (body: unknown) =>
+            (
+                (body as { turns?: Array<{ submission_id: string; result_id?: string }> }).turns ??
+                []
+            ).map((turn) => `${turn.submission_id}/${turn.result_id ?? ""}`);
+        const before = turnsOf(baseline.body);
+        const ownerResult = (baseline.body as { turns?: Array<{ result_id?: string }> }).turns?.[0]
+            ?.result_id;
+        expect(ownerResult, "the owner's first turn names no result").toMatch(/^result_/u);
+        evidence.owner = { thread: ownerThread, turns_before: before.length };
+
+        other = await otherPrincipal(browser, baseURL!);
+        const theirs = withBearer(other.calls);
+        await expectSameOrganization(page, other.page, calls, other.calls, testInfo);
+        const freshThread = () => `thread_${randomBytes(16).toString("hex")}`;
+
+        // The parent: the owner's result, and a result that never existed, from the other principal.
+        const realParent = await acrInvestigateAs(theirs, create, {
+            question: question("p4Parent"),
+            threadId: freshThread(),
+            parentResultId: ownerResult!,
+        });
+        const unknownParent = await acrInvestigateAs(theirs, create, {
+            question: question("p4ParentUnknown"),
+            threadId: freshThread(),
+            parentResultId: fabricated(ownerResult!),
+        });
+        evidence.parent = {
+            owner_result_status: realParent.status,
+            unknown_status: unknownParent.status,
+            owner_request_id: realParent.requestId,
+            unknown_request_id: unknownParent.requestId,
+        };
+        expect(
+            realParent.status,
+            "ACR took another principal's turn with the owner's result as its parent",
+        ).toBeGreaterThanOrEqual(400);
+        expect(realParent.status, "ACR failed the refusal").toBeLessThan(500);
+        expect(
+            refusalOf(realParent.body),
+            "the refusal tells the owner's result from an unknown one",
+        ).toEqual(refusalOf(unknownParent.body));
+        expect(realParent.status, "the two refusals differ in status").toBe(unknownParent.status);
+
+        // The join: the other principal's turn on the owner's thread id.
+        const join = await acrInvestigateAs(theirs, create, {
+            question: question("p4Join"),
+            threadId: ownerThread,
+        });
+        evidence.join = { status: join.status, request_id: join.requestId };
+        const after = await acrCallAs(owner, "GET", `${THREADS_PATH}/${ownerThread}`);
+        expect(after.status, "the owner lost its thread").toBe(200);
+        expect(
+            turnsOf(after.body),
+            "the owner's thread changed after the other principal's turn",
+        ).toEqual(before);
+        const theirRead = await acrCallAs(theirs, "GET", `${THREADS_PATH}/${ownerThread}`);
+        evidence.their_read = { status: theirRead.status, request_id: theirRead.requestId };
+        if (theirRead.status === 200) {
+            const mine = turnsOf(theirRead.body);
+            expect(
+                mine.filter((turn) => before.includes(turn)),
+                "what the other principal reads under the owner's id holds the owner's turns",
+            ).toEqual([]);
+        } else {
+            expect(theirRead.status, "the other principal's read of that id").toBe(404);
+        }
+    } finally {
+        await testInfo.attach("ac10-evidence", {
             body: JSON.stringify(evidence, null, 2),
             contentType: "application/json",
         });

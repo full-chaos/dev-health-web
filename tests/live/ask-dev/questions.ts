@@ -85,6 +85,13 @@ export const CASES = {
     peerThreadOwn: "What is the status of full-chaos/dev-health-web?",
     peerRunOwner: "Hold: what is the status of full-chaos/dev-health-web?",
     peerRunOwn: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-11960 (Phase 4 gaps): AC-10 in `other-principal.spec.ts`, AC-6 in `usage-retention.spec.ts`.
+    p4Owner: "What is the status of full-chaos/dev-health-web?",
+    p4Parent: "What is the status of full-chaos/dev-health-web?",
+    p4ParentUnknown: "What is the status of full-chaos/dev-health-web?",
+    p4Join: "What is the status of full-chaos/dev-health-web?",
+    p4Retention0: "What is the status of full-chaos/dev-health-web?",
+    p4Exhausted: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
