@@ -25,17 +25,31 @@ const batchOf = (items: Record<string, unknown>[]) =>
     });
 
 describe("allowed and reason_code must agree", () => {
-    it.each(["grant_absent", "repository_not_granted", "platform_role_absent"])(
-        "refuses allowed=true with %s",
+    it.each([
+        "grant_absent",
+        "repository_not_granted",
+        "platform_role_absent",
+        "no_membership",
+        "role_lacks_action",
+        "impersonation_denied",
+        "workload_audience_denied",
+    ])("refuses allowed=true with %s", (reason_code) => {
+        const r = parseDecision(JSON.stringify(decision({ reason_code })), NOW);
+        expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
+    });
+    it.each(["allowed_by_repository_grant", "allowed_by_role", "allowed_by_membership_default"])(
+        "refuses allowed=false with the allow reason %s",
         (reason_code) => {
-            const r = parseDecision(JSON.stringify(decision({ reason_code })), NOW);
+            const r = parseDecision(JSON.stringify(decision({ allowed: false, reason_code })), NOW);
             expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
         },
     );
-    it("refuses allowed=false with the allow reason", () => {
-        const r = parseDecision(JSON.stringify(decision({ allowed: false })), NOW);
-        expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
-    });
+    it.each(["allowed_by_role", "allowed_by_membership_default"])(
+        "accepts allowed=true with the role allow reason %s",
+        (reason_code) => {
+            expect(parseDecision(JSON.stringify(decision({ reason_code })), NOW).ok).toBe(true);
+        },
+    );
     it("refuses the whole batch when one entry disagrees", () => {
         const bad = decision({ reason_code: "grant_absent" });
         expect(parseBatch(batchOf([decision(), bad]), 2, NOW)).toEqual({

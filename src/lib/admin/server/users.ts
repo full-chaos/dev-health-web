@@ -26,13 +26,6 @@ export async function getUser(userId: string): Promise<ActionResult<User>> {
     });
 }
 
-export async function createUser(data: UserCreate): Promise<ActionResult<User>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        return adminApi.users.create(data, token, orgId);
-    });
-}
-
 export async function updateUser(userId: string, data: UserUpdate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
@@ -65,7 +58,7 @@ export async function setUserPassword(
  */
 export async function createPlatformUser(data: UserCreate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "platform.users" });
         return adminApi.users.create(data, token, undefined);
     });
 }

@@ -1,6 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { parseBatch, parseDecision } from "../decision";
 
+const ALLOW_REASONS = [
+    "allowed_by_membership_default",
+    "allowed_by_repository_grant",
+    "allowed_by_role",
+];
+const WIRE_REASONS = [
+    "allowed_by_membership_default",
+    "allowed_by_repository_grant",
+    "allowed_by_role",
+    "delegation_invalid",
+    "grant_absent",
+    "grant_expired",
+    "grant_revoked",
+    "impersonation_denied",
+    "invalid_request",
+    "membership_inactive",
+    "no_membership",
+    "org_mismatch",
+    "organization_inactive",
+    "platform_role_absent",
+    "principal_inactive",
+    "repository_not_granted",
+    "resource_mismatch",
+    "role_lacks_action",
+    "role_scope_mismatch",
+    "role_unknown",
+    "service_account_inactive",
+    "unknown_action",
+    "workload_action_denied",
+    "workload_audience_denied",
+];
+
 const NOW = 1_800_000_000_000;
 const FUTURE = "2027-06-01T00:00:00Z";
 const PAST = "2020-01-01T00:00:00Z";
@@ -40,25 +72,23 @@ describe("parseDecision", () => {
         const r = one({ allowed: false, reason_code: "repository_not_granted" });
         expect(r.ok && r.decision.allowed).toBe(false);
     });
-    it.each([
-        "allowed_by_repository_grant",
-        "grant_absent",
-        "repository_not_granted",
-        "platform_role_absent",
-    ])("accepts the wire reason %s", (reason_code) => {
-        expect(
-            one({ reason_code, allowed: reason_code === "allowed_by_repository_grant" }).ok,
-        ).toBe(true);
+    it.each(WIRE_REASONS)("accepts the wire reason %s", (reason_code) => {
+        const r = one({ reason_code, allowed: ALLOW_REASONS.includes(reason_code) });
+        expect(r.ok && r.decision.reasonCode).toBe(reason_code);
     });
-    it.each([
-        "invalid_request",
-        "impersonation_denied",
-        "delegation_invalid",
-        "ALLOWED",
-        "free text",
-    ])("refuses the reason %s", (reason_code) => {
-        expect(one({ reason_code }).ok).toBe(false);
+    it("decodes an allow reason as an allow and every other reason as a deny", () => {
+        for (const reason_code of WIRE_REASONS) {
+            const r = one({ reason_code, allowed: ALLOW_REASONS.includes(reason_code) });
+            expect(r.ok && r.decision.allowed).toBe(ALLOW_REASONS.includes(reason_code));
+        }
     });
+    it.each(["ALLOWED", "free text", "grant_read_failed", "clock_unavailable", ""])(
+        "refuses the reason %j",
+        (reason_code) => {
+            expect(one({ reason_code }).ok).toBe(false);
+            expect(one({ reason_code, allowed: false }).ok).toBe(false);
+        },
+    );
     it("refuses a duplicate allowed member", () => {
         const text = JSON.stringify(decision({ allowed: false })).replace(
             '"allowed":false',
