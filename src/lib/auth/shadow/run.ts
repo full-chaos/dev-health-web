@@ -50,7 +50,8 @@ function sampled(key: string, now: number): boolean {
     return false;
 }
 
-const newRequestId = (): string => `req_${randomBytes(20).toString("base64url").slice(0, 26)}`;
+export const newRequestId = (): string =>
+    `req_${randomBytes(20).toString("base64url").slice(0, 26)}`;
 
 export function shadowViewerFrom(session: Session): ShadowViewer {
     return {

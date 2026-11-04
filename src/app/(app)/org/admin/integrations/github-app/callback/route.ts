@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { decideGuard } from "@/lib/auth/decide/decide";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
@@ -111,11 +112,12 @@ export async function GET(request: NextRequest) {
         return resultRedirect(request, "error");
     }
 
-    // Defense-in-depth: this route is directly addressable and does not sit
-    // under the admin layout's requireRole guard. Mirror requireRole(["admin",
-    // "owner"]) inline (do NOT call it — it redirects to /dashboard, breaking
-    // this handler's consistent ?github_app=error UX).
-    if (!session.user.is_superuser && !["admin", "owner"].includes(session.user.role || "")) {
+    // Defense-in-depth: this route is directly addressable and does not sit under the admin
+    // layout's requireRole guard. The single policy decision replaces the inline role array; a
+    // deny keeps this handler's consistent ?github_app=error UX (do NOT call requireRole: it
+    // redirects to /dashboard).
+    const verdict = await decideGuard(session, "org.integrations.write");
+    if (!verdict.allowed) {
         return resultRedirect(request, "error");
     }
 

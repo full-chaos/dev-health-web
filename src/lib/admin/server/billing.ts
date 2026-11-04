@@ -18,14 +18,14 @@ export async function getOrgEntitlements(orgId: string): Promise<ActionResult<Or
             return adminApi.licensing.entitlements(orgId, token, sessionOrgId);
         }
 
-        const superuserToken = await requireSuperuserToken();
+        const superuserToken = await requireSuperuserToken({ guard: "unmapped" });
         return adminApi.licensing.entitlements(orgId, superuserToken);
     });
 }
 
 export async function listFeatureFlags(): Promise<ActionResult<FeatureFlag[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         return adminApi.licensing.featureFlags(token);
     });
 }
@@ -34,7 +34,7 @@ export async function listFeatureOverrides(
     orgId: string,
 ): Promise<ActionResult<FeatureOverride[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         return adminApi.licensing.overrides.list(orgId, token);
     });
 }
@@ -44,7 +44,7 @@ export async function createFeatureOverride(
     data: FeatureOverrideCreate,
 ): Promise<ActionResult<FeatureOverride>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         const result = await adminApi.licensing.overrides.create(orgId, data, token);
         revalidatePath(`/superadmin/licensing/${orgId}`);
         return result;
@@ -56,7 +56,7 @@ export async function deleteFeatureOverride(
     overrideId: string,
 ): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         const result = await adminApi.licensing.overrides.delete(orgId, overrideId, token);
         revalidatePath(`/superadmin/licensing/${orgId}`);
         return result;
@@ -71,7 +71,7 @@ export async function grantPlatformModelFallback(
     orgId: string,
 ): Promise<ActionResult<PlatformModelFallbackChange>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         const overrides = await adminApi.licensing.overrides.list(orgId, token);
         const existing = overrides.find((o) => o.feature_key === PLATFORM_MODEL_FALLBACK_KEY);
         const active =
@@ -110,7 +110,7 @@ export async function revokePlatformModelFallback(
     orgId: string,
 ): Promise<ActionResult<PlatformModelFallbackChange>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "unmapped" });
         const overrides = await adminApi.licensing.overrides.list(orgId, token);
         const existing = overrides.find((o) => o.feature_key === PLATFORM_MODEL_FALLBACK_KEY);
         if (!existing) {
