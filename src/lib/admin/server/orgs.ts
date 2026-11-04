@@ -126,7 +126,10 @@ export async function startImpersonation(targetUserId: string): Promise<
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken({ action: "admin.impersonate" });
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            guard: "unmapped",
+        });
         return adminApi.impersonation.start(targetUserId, token);
     }, "changes-impersonation");
 }
@@ -136,6 +139,7 @@ export async function stopImpersonation(): Promise<ActionResult<{ status: string
         const token = await requireSuperuserToken({
             action: "admin.impersonate",
             allowImpersonating: true,
+            guard: "unmapped",
         });
         return adminApi.impersonation.stop(token);
     }, "changes-impersonation");
@@ -154,6 +158,7 @@ export async function getImpersonationStatus(): Promise<
         const token = await requireSuperuserToken({
             action: "admin.impersonate",
             allowImpersonating: true,
+            guard: "unmapped",
         });
         return adminApi.impersonation.status(token);
     });

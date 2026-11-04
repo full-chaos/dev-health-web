@@ -65,7 +65,10 @@ export async function setUserPassword(
  */
 export async function createPlatformUser(data: UserCreate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken({ action: "admin.users" });
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
         return adminApi.users.create(data, token, undefined);
     });
 }

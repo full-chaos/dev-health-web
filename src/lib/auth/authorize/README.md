@@ -8,8 +8,9 @@ allow only for a valid, unexpired, unambiguous answer. Every other path is a den
   a non-integer number, an unknown reason, an expired decision, an unknown member, and a batch whose count or index order differs
   from the request. One bad entry refuses the whole batch.
 - `client.ts`: `transport` and `timeoutMs` are required arguments. No module default exists. The deny-default double lives in tests.
-  Its first consumer is `../shadow` (advisory, off by default, no transport wired yet); `client.ts` and `shadow/run.ts` are rows of
-  `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
+  Its consumers are `../shadow` (advisory, off by default) and `../decide` (single decisions for the platform admin actions and
+  the GitHub App routes, off by default, a missing transport denies); no transport is wired yet. `client.ts`, `shadow/run.ts` and
+  `decide/decide.ts` are rows of `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
 
 ## Two kinds of deny
 
@@ -37,6 +38,5 @@ directory by DIGEST (`__tests__/testdata/decision-golden.digest`). Go runs the p
 
 ## Server-only guard
 
-Each module starts with `import "server-only"`; `__tests__/serverOnly.test.ts` holds that. The module rows of
-`SERVER_ONLY_MODULES` (client-bundle scan) are not added yet: the scan needs each marker in the server output, and no route
-imports this client yet. The first consumer adds the rows in its PR.
+Each module starts with `import "server-only"`; `__tests__/serverOnly.test.ts` holds that. `client.ts` is a row of
+`SERVER_ONLY_MODULES` (client-bundle scan); the other modules of this directory are reached through it.
