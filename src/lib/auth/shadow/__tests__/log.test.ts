@@ -17,7 +17,6 @@ describe("shadow log", () => {
                 "action",
                 "client_allowed",
                 "decision_allowed",
-                "decision_id",
                 "outcome",
                 "reason_code",
                 "request_id",

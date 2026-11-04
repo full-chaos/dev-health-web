@@ -39,15 +39,19 @@ export type ShadowResult =
 const sampleMemo = processMemo<number>("authzShadowSample");
 const SAMPLE_MEMO_MAX = 1000;
 
-function sampled(key: string, now: number): boolean {
+function slotHeld(key: string, now: number): boolean {
     const until = sampleMemo.get(key);
-    if (until !== undefined && until > now) return true;
+    return until !== undefined && until > now;
+}
+
+function takeSlot(key: string, now: number): boolean {
+    if (slotHeld(key, now)) return false;
     if (sampleMemo.size >= SAMPLE_MEMO_MAX) {
         for (const [k, v] of sampleMemo) if (v <= now) sampleMemo.delete(k);
-        if (sampleMemo.size >= SAMPLE_MEMO_MAX) sampleMemo.clear();
+        if (sampleMemo.size >= SAMPLE_MEMO_MAX) return false;
     }
     sampleMemo.set(key, now + SAMPLE_WINDOW_MS);
-    return false;
+    return true;
 }
 
 export const newRequestId = (): string =>
@@ -75,7 +79,7 @@ export function shadowInputFrom(
         viewer: shadowViewerFrom(session),
         orgId: session.user.org_id,
         principalReference: session.access_token,
-        sampleKey: `${session.user.id}|${session.user.org_id ?? ""}|${surfaceIds.join(",")}`,
+        sampleKey: `${session.user.id}|${session.user.org_id ?? ""}`,
         impersonating: session.user.is_impersonating === true,
         surfaceIds,
         ...(opts?.surfaces === undefined ? {} : { surfaces: opts.surfaces }),
@@ -129,9 +133,8 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
         if (!input.principalReference) {
             return { status: "skipped", reason: "no_scope" };
         }
-        if (sampled(input.sampleKey, (deps.nowMs ?? Date.now)())) {
-            return { status: "skipped", reason: "sampled" };
-        }
+        const now = (deps.nowMs ?? Date.now)();
+        if (slotHeld(input.sampleKey, now)) return { status: "skipped", reason: "sampled" };
 
         const counts = { match: 0, mismatch: 0, unavailable: 0, no_action: 0 };
         const asked: Asked[] = [];
@@ -158,6 +161,7 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
 
         const mismatches: MismatchRecord[] = [];
         if (asked.length > 0) {
+            if (!takeSlot(input.sampleKey, now)) return { status: "skipped", reason: "sampled" };
             const outcomes = await authorizeBatch(
                 asked.map((a) => a.request),
                 { transport, timeoutMs: SHADOW_TIMEOUT_MS, nowMs: deps.nowMs },
@@ -177,7 +181,6 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
                         clientAllowed: a.clientAllowed,
                         decisionAllowed: outcome.allowed,
                         reasonCode: outcome.decision.reasonCode,
-                        decisionId: outcome.decision.decisionId,
                         requestId: a.request.requestId,
                     });
                 }

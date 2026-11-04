@@ -3,15 +3,7 @@ import type { Transport } from "../../authorize/client";
 import { decideGuard } from "../decide";
 import { ALLOW, DENY, ORG, TOKEN, USER, answering, session } from "./helpers";
 
-const CLOSED = [
-    "guard",
-    "action",
-    "allowed",
-    "source",
-    "reason_code",
-    "decision_id",
-    "request_id",
-] as const;
+const CLOSED = ["guard", "action", "allowed", "source", "reason_code", "request_id"] as const;
 
 async function logged(transport: Transport | undefined) {
     const info = vi.fn();
@@ -44,14 +36,35 @@ describe("C2 the decision log holds a closed field set", () => {
         expect(text).not.toMatch(/principal|access_token/i);
     });
 
-    it("a decision line carries the wire reason and decision id", async () => {
+    it("a decision line carries the wire reason and request id, never the decision id", async () => {
         const info = await logged(answering(DENY).transport);
         const fields = info.mock.calls[0]?.[0] as Record<string, unknown>;
         expect(fields.allowed).toBe(false);
         expect(fields.source).toBe("pdp");
         expect(fields.reason_code).toBe("role_lacks_action");
-        expect(fields.decision_id).toMatch(/^dec_/);
+        expect(fields).not.toHaveProperty("decision_id");
         expect(fields.request_id).toMatch(/^req_/);
+    });
+
+    it("a principal-like decision id from the transport never reaches a log line", async () => {
+        const principalLike = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const transport: Transport = async () => ({
+            status: 200,
+            body: JSON.stringify({
+                schema_version: "authorization_decision.v1",
+                decision_id: `dec_${principalLike}`,
+                allowed: false,
+                reason_code: DENY.reason,
+                principal_id: "prn_EXAMPLE0000000000000001",
+                organization_id: ORG,
+                policy_revision: 1,
+                expires_at: "2099-01-01T00:00:00Z",
+            }),
+        });
+        const info = await logged(transport);
+        expect(info).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(info.mock.calls)).not.toContain(principalLike);
+        expect(Object.keys(info.mock.calls[0]?.[0] as object)).not.toContain("decision_id");
     });
 
     it("a failure line says client and names the local reason", async () => {
