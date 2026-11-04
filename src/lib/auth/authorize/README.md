@@ -16,8 +16,10 @@ allow only for a valid, unexpired, unambiguous answer. Every other path is a den
 
 ## Wire reason codes
 
-Only the 4 values of `decision_reason_code` are valid. Any other value is an invalid decision and a deny. A new wire value denies
-until web moves `ci/ops-contract.pin`.
+Only the 24 values of `decision_reason_code` in the pinned `vocabulary/reason-codes.json` are valid (`WIRE_REASON_CODES`). Any other
+value is an invalid decision and a deny. `allowed` must agree with the reason: the 3 `allowed_by_*` reasons
+(`allowed_by_role`, `allowed_by_membership_default`, `allowed_by_repository_grant`) are the only allows; every other reason is a deny.
+A new wire value denies until web moves `ci/ops-contract.pin`. `__tests__/corpus.test.ts` fails when the client set and the pinned file differ.
 
 ## Golden corpus
 

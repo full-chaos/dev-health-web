@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseBatch, parseDecision } from "../decision";
+import { parseBatch, parseDecision, WIRE_REASON_CODES } from "../decision";
 import { buildRequestBody, type AuthorizeRequest, type ResourceType } from "../request";
 
 // The corpus is owned by dev-health-ops and arrives through the pinned sparse checkout
@@ -106,6 +106,40 @@ suite("authorization_request.v1 examples", () => {
     });
 });
 
+suite("vocabulary/reason-codes.json decision_reason_code", () => {
+    const values = (): string[] =>
+        (
+            JSON.parse(text(path.join(v1, "vocabulary/reason-codes.json"))) as {
+                decision_reason_code: { values: string[] };
+            }
+        ).decision_reason_code.values;
+    const body = (reason_code: string, allowed: boolean) =>
+        JSON.stringify({
+            schema_version: "authorization_decision.v1",
+            decision_id: "dec_EXAMPLE0000000000000000001",
+            allowed,
+            reason_code,
+            principal_id: "prn_EXAMPLE0000000000000001",
+            organization_id: "org_EXAMPLE0000000000000001",
+            policy_revision: 1,
+            expires_at: "2026-09-03T05:00:30Z",
+        });
+    it("is not empty", () => {
+        expect(values().length).toBeGreaterThan(0);
+    });
+    it("decodes every code with the matching allowed flag", () => {
+        for (const code of values()) {
+            const allow = code.startsWith("allowed_by_");
+            const r = parseDecision(body(code, allow), FIXTURE_NOW);
+            expect(r.ok && r.decision.allowed, code).toBe(allow);
+            expect(parseDecision(body(code, !allow), FIXTURE_NOW).ok, code).toBe(false);
+        }
+    });
+    it("is the set the client accepts, no more and no fewer", () => {
+        expect([...WIRE_REASON_CODES].sort()).toEqual([...values()].sort());
+    });
+});
+
 // golden/decision: Go runs the pdp and pep rows; this client pins the same files by DIGEST
 // (algorithm: golden/decision/README.md).
 function digestOf(dir: string): string {
@@ -141,8 +175,9 @@ suite("golden/decision pin", () => {
             vectors: { file: string }[];
             catalogs: { file: string }[];
         };
+        // git keeps no empty directory: an empty catalogs list has no directory on disk.
         const onDisk = (sub: string) =>
-            readdirSync(path.join(goldenDir, sub))
+            (existsSync(path.join(goldenDir, sub)) ? readdirSync(path.join(goldenDir, sub)) : [])
                 .map((f) => `${sub}/${f}`)
                 .sort();
         expect(m.vectors.map((r) => `vectors/${r.file}`).sort()).toEqual(onDisk("vectors"));
