@@ -18,6 +18,10 @@ import { fittedRingLabel } from "./sunburstRingLabels";
 // segments side by side never print their labels over each other.
 const RING1_INNER = 0.15;
 const RING1_OUTER = 0.4;
+// The second ring (40% to 65%) fits the same way (CHAOS-12912): its small subcategory arcs sit
+// side by side at panel width and printed their labels over each other.
+const RING2_INNER = 0.4;
+const RING2_OUTER = 0.65;
 
 echarts.use([EChartsSunburstChart]);
 
@@ -118,14 +122,15 @@ export function SunburstChart({
             const ink = color
                 ? tileLabelStyle(color, opacity, chartTheme.background)
                 : { color: chartTheme.text, textBorderWidth: 0 };
-            // The first ring's label fits its arc, or is hidden; deeper rings keep their level rule.
+            // The first two rings' labels fit their arcs, or are hidden; the outside ring keeps its
+            // level rule.
             const fit =
-                depth === 0
+                depth <= 1
                     ? fittedRingLabel(
                           halfSidePx,
                           totalValue > 0 ? node.value / totalValue : 0,
-                          RING1_INNER,
-                          RING1_OUTER,
+                          depth === 0 ? RING1_INNER : RING2_INNER,
+                          depth === 0 ? RING1_OUTER : RING2_OUTER,
                       )
                     : {};
             return {
