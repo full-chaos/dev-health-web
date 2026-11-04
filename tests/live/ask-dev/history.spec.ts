@@ -24,7 +24,6 @@ import {
     ask,
     investigations,
     panel,
-    secretsOf,
     signIn,
     threadOf,
     type AcrCall,
