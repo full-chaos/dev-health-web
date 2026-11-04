@@ -15,7 +15,7 @@ import { buildTooltipHtml } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
 import type { QuadrantPoint, QuadrantResponse, SankeyLink, SankeyNode } from "@/lib/types";
 
-import { forecastSlotInput } from "./forecastSlotInput";
+import { forecastScopeNote, forecastSlotInput } from "./forecastSlotInput";
 
 /** On demand: an answer with no rich shape loads no chart. */
 const TreemapChart = dynamic(
@@ -379,7 +379,21 @@ export const askDevShapeChart: ShapeSlot = (shape, detail?: ForecastShapeDetail)
         // The capacity page's mapping, through the slot's own adapter: one copy of the rules.
         if (detail?.kind !== "forecast") return null;
         const view = completionRangeView(forecastSlotInput(detail));
-        return view.reported ? <CompletionRangeFigure interpolation="step" view={view} /> : null;
+        if (!view.reported) return null;
+        const scopeNote = forecastScopeNote(detail.summary);
+        return (
+            <>
+                {scopeNote === undefined ? null : (
+                    <p
+                        className="mb-2 text-xs text-(--text-muted)"
+                        data-testid="forecast-scope-note"
+                    >
+                        {scopeNote}
+                    </p>
+                )}
+                <CompletionRangeFigure interpolation="step" view={view} />
+            </>
+        );
     }
     if (shape.kind === "quadrant") {
         // A quadrant's two measures have two units, so it declares none (CHAOS-12623).

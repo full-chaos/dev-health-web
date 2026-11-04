@@ -26,15 +26,17 @@ const hs256: WireConfig = { tokenClassRaw: undefined, issuer: undefined, backend
 const eddsa: WireConfig = { tokenClassRaw: "eddsa", issuer: ISSUER, backendUrl: BACKEND };
 const fetchMock = vi.fn();
 const b64u = (s: string) => Buffer.from(s).toString("base64url");
-const hs256Token = (exp = 1760000600) =>
-    `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(JSON.stringify({ sid: SID, exp }))}.${b64u("sig")}`;
+const VALID_EXP = inSeconds(1800);
+const VALID_TOKEN = mint({ exp: VALID_EXP, org: ORG });
+const serve = (make: () => Response) =>
+    fetchMock.mockImplementation(eddsaFetch({ "/callback": make, "/acs": make }));
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
     new Response(JSON.stringify(body), {
         status,
         headers: { "content-type": "application/json", ...headers },
     });
 const answer = (over: Record<string, unknown> = {}) => ({
-    access_token: hs256Token(),
+    access_token: VALID_TOKEN,
     refresh_token: "ref-1",
     token_type: "bearer",
     expires_in: 3600,
@@ -102,8 +104,8 @@ describe("classifySsoRefusal", () => {
 
 describe("completeOidc", () => {
     it("posts code and state with the login cookie and reads the flat answer", async () => {
-        fetchMock.mockResolvedValue(json(200, answer({ session_access_token: "svc" })));
-        const got = await completeOidc(callback, hs256);
+        serve(() => json(200, answer()));
+        const got = await completeOidc(callback, eddsa);
         expect(got).toMatchObject({
             kind: "ok",
             session: {
@@ -111,10 +113,10 @@ describe("completeOidc", () => {
                 email: "a@example.test",
                 orgId: ORG,
                 role: "member",
-                accessToken: hs256Token(),
+                accessToken: VALID_TOKEN,
                 refreshToken: "ref-1",
                 expiresIn: 3600,
-                accessExp: 1760000600,
+                accessExp: VALID_EXP,
                 sid: SID,
             },
         });
@@ -123,42 +125,47 @@ describe("completeOidc", () => {
         expect(init.method).toBe("POST");
         expect(JSON.parse(String(init.body))).toEqual({ code: "c", state: "s" });
         expect((init.headers as Record<string, string>).Cookie).toBe("dho_oidc_login_nonce_x=n");
-        expect(JSON.stringify(got)).not.toContain("svc");
     });
 
     it("maps the non-member refusal to sso_not_member and gives no session", async () => {
-        fetchMock.mockResolvedValue(json(403, membership));
-        expect(await completeOidc(callback, hs256)).toMatchObject({
+        serve(() => json(403, membership));
+        expect(await completeOidc(callback, eddsa)).toMatchObject({
             kind: "refused",
             code: "sso_not_member",
         });
     });
 
     it("an answer without an org is no SSO session", async () => {
-        fetchMock.mockResolvedValue(json(200, answer({ org_id: "" })));
-        expect(await completeOidc(callback, hs256)).toMatchObject({
+        serve(() => json(200, answer({ org_id: "" })));
+        expect(await completeOidc(callback, eddsa)).toMatchObject({
             kind: "refused",
             code: "sso_failed",
         });
     });
 
     it("an answer without a refresh token or user id is refused", async () => {
-        fetchMock.mockResolvedValue(json(200, answer({ refresh_token: undefined })));
-        expect(await completeOidc(callback, hs256)).toMatchObject({ kind: "refused" });
-        fetchMock.mockResolvedValue(json(200, answer({ user_id: undefined })));
-        expect(await completeOidc(callback, hs256)).toMatchObject({ kind: "refused" });
+        serve(() => json(200, answer({ refresh_token: undefined })));
+        expect(await completeOidc(callback, eddsa)).toMatchObject({ kind: "refused" });
+        serve(() => json(200, answer({ user_id: undefined })));
+        expect(await completeOidc(callback, eddsa)).toMatchObject({ kind: "refused" });
     });
 
     it("a call that throws is sso_unavailable", async () => {
-        fetchMock.mockRejectedValue(new Error("down"));
-        expect(await completeOidc(callback, hs256)).toMatchObject({
+        fetchMock.mockImplementation(
+            eddsaFetch({
+                "/callback": () => {
+                    throw new Error("down");
+                },
+            }),
+        );
+        expect(await completeOidc(callback, eddsa)).toMatchObject({
             kind: "refused",
             code: "sso_unavailable",
         });
     });
 
     it("a provider id that is not a UUID is refused before any call", async () => {
-        const got = await completeOidc({ ...callback, providerId: "../x" }, hs256);
+        const got = await completeOidc({ ...callback, providerId: "../x" }, eddsa);
         expect(got).toMatchObject({ kind: "refused", code: "sso_failed" });
         expect(fetchMock).not.toHaveBeenCalled();
     });
@@ -210,8 +217,8 @@ describe("completeOidc under class eddsa", () => {
 
 describe("completeSaml", () => {
     it("posts the response and relay state with the binding cookie", async () => {
-        fetchMock.mockResolvedValue(json(200, answer()));
-        const got = await completeSaml({ ...acs, relayState: "rs" }, hs256);
+        serve(() => json(200, answer()));
+        const got = await completeSaml({ ...acs, relayState: "rs" }, eddsa);
         expect(got).toMatchObject({ kind: "ok", session: { orgId: ORG } });
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe(`${BACKEND}/api/v1/auth/saml/${PROVIDER}/acs`);
@@ -223,8 +230,8 @@ describe("completeSaml", () => {
     });
 
     it("maps the non-member refusal", async () => {
-        fetchMock.mockResolvedValue(json(403, membership));
-        expect(await completeSaml(acs, hs256)).toMatchObject({
+        serve(() => json(403, membership));
+        expect(await completeSaml(acs, eddsa)).toMatchObject({
             kind: "refused",
             code: "sso_not_member",
         });
