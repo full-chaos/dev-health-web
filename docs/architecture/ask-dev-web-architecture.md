@@ -5,7 +5,7 @@ This page describes what is built on web main (`fd309c90`), ask-dev as web pins 
 ## Status
 
 - **Built** on web main. The askdev-1 stack is set up for it (deploy values files, below); this page did not re-test askdev-1.
-- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set; the code comments state that prod sets it only in the T13 roll (`src/lib/ask-dev/acr-browser-config.ts:21`, `src/lib/ask-dev/acr-transport/index.ts:32`), and the check is `src/lib/acr/config.ts:161`. With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
+- **Off in prod.** The browser client is configured only when `ACR_OAUTH_ISSUER` is set; the code comments state that prod sets it only in the T13 roll (`src/lib/ask-dev/acr-browser-config.ts:23`, `src/lib/ask-dev/acr-transport/index.ts:32`), and the check is `src/lib/acr/config.ts:161`. With it unset, the panel draws no composer. In the deploy repo, a test fails if the prod ACR values turn the event stream flag on (`tests/test-acr-prod-direct-browser.sh:31-32`, CHAOS-11967). No date is promised here.
 - The askdev-1 values files in the deploy repo (`kiac/askdev-1/values/values.askdev-web-acr.yaml`) cite older pins than web main, so askdev-1 can lag what this page describes.
 
 ## Data path
@@ -43,7 +43,7 @@ Not found: a web-side keepalive timer, and a web outer deadline read from an env
 ## Run lifecycle
 
 - **Streaming needs a flag.** With `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED` off (the default, `config.go:260`), a create request that asks for the event stream gets `406 stream_unavailable` before any admission work, and the panel says Ask Dev is not available.
-- **Stop, detach and re-attach need the run lease.** `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED` is off by default (`config.go:276`) and also needs the stream flag (`context_fabric_run_lease.go:125-127`). With it off the run routes answer not found (`context_fabric_run_routes.go:78-80`) and the user has no stop button. With it on: cancel, attach, and `410 cursor_expired` when a cursor is too old.
+- **Cancel by run id, detach and re-attach need the run lease.** `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED` is off by default (`config.go:276`) and also needs the stream flag (`context_fabric_run_lease.go:125-127`). With it off the run routes answer not found (`context_fabric_run_routes.go:78-80`). The web Stop control is still offered for a running turn: for a run ACR cannot stop (no lease), and before ACR admitted the run, the disconnect is the cancel (`conversationStore.ts:603-604,1015-1020`). With the lease on, Stop asks ACR to cancel the run and keeps the stream open for the result, and a reload can attach to a running turn; ACR answers `410 cursor_expired` when a cursor is too old.
 - **The store handles a lost run.** `run_lost` becomes `interrupted` (`conversationStore.ts:348`); a stall after the run was accepted tries one attach and up to two reattaches (`:77`, `:2211-2221`); a dropped run whose status shows no answer ends as `interrupted` (`:174-175`).
 - **Retention is off by default.** The purge job needs `ACR_ASK_DEV_RETENTION_ENABLED` (`config.go:266`); web sends only `X-ACR-Thread-ID` per turn (`src/components/ask-dev/conversation/keys.ts:5`) and no retention header, so a web thread gets ACR's default.
 - **Thread titles** use the first question only when `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED` is on (default off, `config.go:284`).
@@ -95,18 +95,18 @@ ACR checks access on every call; the web gate only decides whether to draw the b
 
 Order to enable (plan of record section 2.10 in Linear; no code enforces this order): the ACR event-stream flag, then the organization flags (`ask_dev`, `agent_context_runtime`), then `ask_dev_contextual_entrypoints`. Disable in the reverse order.
 
-| Step turned off                     | What the user sees                                                 |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| `ask_dev_contextual_entrypoints`    | No chips. Plain questions still work.                              |
-| `ask_dev` / `agent_context_runtime` | The launcher is hidden.                                            |
-| ACR event-stream flag               | `406 stream_unavailable`; the panel says Ask Dev is not available. |
-| Retention job                       | Stored rows are kept.                                              |
+| Step turned off                     | What the user sees                                                                                                                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ask_dev_contextual_entrypoints`    | No chips. Plain questions still work.                                                                                                                                                                                       |
+| `ask_dev` / `agent_context_runtime` | The launcher is hidden.                                                                                                                                                                                                     |
+| ACR event-stream flag               | `406 stream_unavailable`; the panel says Ask Dev is not available.                                                                                                                                                          |
+| Retention job                       | Expired threads and results are still not served on any read after their `expires_at` (24 hours or 30 days after the last turn); the rows stay stored until the job removes them (`src/lib/acr/threadValidators.js:67-73`). |
 
 ACR database migrations roll back with the ACR release, not with these flags. The prod enable steps (CHAOS-11967 for the stream flag, CHAOS-11968 for organization entitlements) are not done and wait on a prod decision.
 
 ## Environment
 
-Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `ACR_API_ORIGIN`, `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL`, `ACR_ASK_DEV_MAX_RUNNING_PER_ORG`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
+Web: `ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_OAUTH_ISSUER`, `NEXT_PUBLIC_ACR_WEB_ORIGIN`, `ACR_API_ORIGIN`, `ACR_WEB_ASSERTION_AUDIENCE`, `ACR_WEB_ASSERTION_ISSUER`, `ACR_WEB_ASSERTION_KEY_FILE`, `ACR_WEB_ASSERTION_KID` (required by the authorize route, `src/lib/acr/config.ts:100-105`), `ACR_REQUEST_TIMEOUT_MS` (`src/lib/acr/config.ts`). ACR: `ACR_CONTEXT_FABRIC_EVENT_STREAM_ENABLED`, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED`, `ACR_ASK_DEV_RETENTION_ENABLED`, `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED`, `ACR_ASK_DEV_MONTHLY_RUN_ALLOWANCE`, `ACR_ASK_DEV_MAX_RUNNING_PER_PRINCIPAL`, `ACR_ASK_DEV_MAX_RUNNING_PER_ORG`, `ACR_OAUTH_RESOURCES`, `ACR_OAUTH_BROWSER_CLIENTS`, `ACR_CORS_ALLOWED_ORIGINS`.
 
 ## Not built
 
