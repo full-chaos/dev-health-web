@@ -243,3 +243,31 @@ describe("check-org-provisioning-calls: r1 findings", () => {
         );
     });
 });
+
+describe("check-org-provisioning-calls: wrapped options", () => {
+    const keys = (file, text) => findSites(file, text).map((site) => site.key);
+    const opts = '{ method: "POST" }';
+    const wrappers = [
+        ["parentheses", `(${opts})`],
+        ["as", `${opts} as RequestInit`],
+        ["satisfies", `${opts} satisfies RequestInit`],
+        ["type assertion", `<RequestInit>${opts}`],
+        ["non-null", `${opts}!`],
+        ["nested", `((${opts} as RequestInit)!) satisfies RequestInit`],
+    ];
+    const calls = [
+        ["request", (o) => `request("/orgs", ${o});`, "POST /orgs"],
+        ["selfRequest", (o) => `selfRequest("/orgs/me", ${o});`, "POST /orgs/me"],
+        ["fetch", (o) => `fetch("/api/v1/admin/users", ${o});`, "POST /admin/users"],
+    ];
+    for (const [callee, build, key] of calls) {
+        it.each(wrappers)(`${callee} reads the method through %s`, (_name, wrapped) => {
+            expect(keys("src/lib/admin/api/new.ts", build(wrapped))).toEqual([key]);
+        });
+    }
+
+    it("still reads a GET through a wrapper as no write", () => {
+        const text = 'request("/orgs", ({ method: "GET" }) as RequestInit);';
+        expect(keys("src/lib/admin/api/new.ts", text)).toEqual([]);
+    });
+});
