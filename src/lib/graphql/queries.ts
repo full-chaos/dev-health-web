@@ -51,6 +51,10 @@ export const INVESTMENT_BREAKDOWN_REPOSITORY_QUERY = scopedInvestmentBreakdownQu
     "InvestmentBreakdownRepository",
 );
 
+// CHAOS-13017: the work-item team breakdown ACR serves (batch.useInvestment false), same body.
+export const TEAM_WORK_ITEM_BREAKDOWN_QUERY =
+    scopedInvestmentBreakdownQuery("TeamWorkItemBreakdown");
+
 // Query for fetching same-dimension flow matrix (team↔team, repo↔repo, work_type↔work_type).
 // Backed by analytics.flowMatrix resolver (CHAOS-1289) — returns directional N×N data
 // where source and target share a single dimension.
