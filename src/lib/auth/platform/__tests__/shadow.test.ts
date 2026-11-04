@@ -206,8 +206,8 @@ describe("C4 shadow", () => {
         ]);
     });
 
-    it("C4e: a later render opens a new batch (main keeps one sampling slot per session), another user never joins one", async () => {
-        const { transport, calls } = recordingTransport([ALLOW, ALLOW]);
+    it("C4e: a later render opens a new batch (one sampling slot per user, org and surface set), another user never joins one", async () => {
+        const { transport, calls } = recordingTransport([ALLOW, ALLOW, ALLOW]);
         mocks.transport = transport;
         const a = session();
         const b = session();
@@ -220,7 +220,12 @@ describe("C4 shadow", () => {
         schedulePlatformShadow(a, ["nav:platform-billing"]);
         expect(mocks.callbacks).toHaveLength(1);
         await flush();
-        expect(calls).toHaveLength(2);
+        expect(calls).toHaveLength(3);
+        mocks.callbacks.length = 0;
+        schedulePlatformShadow(a, ["nav:platform"]);
+        expect(mocks.callbacks).toHaveLength(1);
+        await flush();
+        expect(calls).toHaveLength(3);
     });
 
     it("C4c: one batch for all surfaces of one render, and one audit window per user and surfaces", async () => {
