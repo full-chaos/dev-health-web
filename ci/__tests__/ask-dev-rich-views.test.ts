@@ -213,7 +213,15 @@ describe("evidenceWindowText (AC-7, AC-8)", () => {
                 {},
                 day,
             ),
-        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-03T00:00:00Z) · x");
+        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-02T00:00:00.000Z) · x");
+        // An end that is not a UTC midnight is its own day, never moved (CHAOS-13005).
+        expect(
+            evidenceWindowText(
+                { start: "2026-10-04T00:00:00Z", end: "2026-11-03T12:00:00Z", provenance: "x" },
+                {},
+                day,
+            ),
+        ).toBe("Evidence window: day(2026-10-04T00:00:00Z) – day(2026-11-03T12:00:00Z) · x");
         expect(
             evidenceWindowText(
                 { relative_id: "trailing_30d", provenance: "question_stated" },

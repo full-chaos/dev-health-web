@@ -2,6 +2,8 @@
 
 Ask Dev is the product surface over Context Fabric (ACR). ACR resolves, authorizes and answers. There is one render, in the ask-dev repo: web mounts `AskDevChat` from `@full-chaos/ask-dev/render` on the panel, the mobile sheet and `/dev` (`src/components/ask-dev/AskDevRender.tsx`, CHAOS-12378). Web draws only its frame around it.
 
+For the data path, deadlines, run lifecycle, partition, admission states, gates and the on/off order, see [Ask Dev in web: architecture and runbook](architecture/ask-dev-web-architecture.md).
+
 Web keeps what only a host has, behind ask-dev's `ChatSource` seam (`src/components/ask-dev/conversation/chatSource.tsx`): the conversation store and the ACR transport, the silent authorization, the partition and clear rules, the 401 rule, impersonation hiding and page context. A part the render lacks is built once, in ask-dev, never in web.
 
 ## Where Ask Dev is entered

@@ -15,6 +15,7 @@ import { REPLICATES, richQuestionFor, type Replicate, type RichCase } from "./qu
 import {
     elapsedTimeMismatches,
     evidenceWindowText,
+    lastCoveredIso,
     headingMismatches,
     landscapeGap,
     outcomeWordMismatches,
@@ -269,9 +270,12 @@ const labelsOf = (result: Served): Labels => (result.vocabulary_labels as Labels
 async function expectWindowLine(page: Page, answer: Locator, result: Served): Promise<void> {
     const window = result.effective_evidence_window as
         { start?: string; end?: string; relative_id?: string; as_of?: string } | undefined;
-    const isos = [window?.start, window?.end, window?.as_of].filter(
-        (iso): iso is string => iso !== undefined,
-    );
+    const isos = [
+        window?.start,
+        window?.end,
+        window?.end === undefined ? undefined : lastCoveredIso(window.end),
+        window?.as_of,
+    ].filter((iso): iso is string => iso !== undefined);
     const days = await page.evaluate(
         (list) =>
             Object.fromEntries(
@@ -285,6 +289,7 @@ async function expectWindowLine(page: Page, answer: Locator, result: Served): Pr
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
+                                  timeZone: "UTC",
                               }),
                     ];
                 }),
