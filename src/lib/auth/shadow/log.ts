@@ -16,7 +16,6 @@ export interface MismatchRecord {
     clientAllowed: boolean;
     decisionAllowed: boolean;
     reasonCode: string;
-    decisionId: string;
     requestId: string;
 }
 
@@ -48,7 +47,6 @@ export function logRun(record: RunRecord, log: ShadowLogger = defaultLogger): vo
                 client_allowed: m.clientAllowed,
                 decision_allowed: m.decisionAllowed,
                 reason_code: m.reasonCode,
-                decision_id: m.decisionId,
                 request_id: m.requestId,
                 outcome: "mismatch",
             },

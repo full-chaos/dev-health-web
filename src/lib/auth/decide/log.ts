@@ -14,7 +14,6 @@ export interface DecisionRecord {
     allowed: boolean;
     source: "pdp" | "client";
     reasonCode: string;
-    decisionId?: string;
     requestId?: string;
 }
 
@@ -28,7 +27,6 @@ export function logDecision(record: DecisionRecord, log: DecideLogger = defaultL
             allowed: record.allowed,
             source: record.source,
             reason_code: record.reasonCode,
-            ...(record.decisionId === undefined ? {} : { decision_id: record.decisionId }),
             ...(record.requestId === undefined ? {} : { request_id: record.requestId }),
         },
         DECIDE_MESSAGE,
