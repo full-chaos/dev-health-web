@@ -1,7 +1,10 @@
 import "server-only";
 import type { Session } from "next-auth";
+import { after } from "next/server";
 import type { Surface } from "../shadow/catalog";
-import { scheduleShadow } from "../shadow";
+import { getServerEnv } from "@/lib/config";
+import { getShadowTransport, shadowEnabled } from "../shadow/config";
+import { shadowDecide, shadowInputFrom } from "../shadow/run";
 import {
     PLATFORM_ACTIONS,
     PLATFORM_SURFACES,
@@ -47,16 +50,53 @@ export function fnSurface(action: PlatformAction, allowImpersonating: boolean): 
     };
 }
 
+interface PendingBatch {
+    session: Session;
+    ids: Set<string>;
+    extra: Map<string, Surface>;
+}
+
+// One render asks for its nav rows, page row, control row and fn rows in separate calls. They join
+// one batch per user and organisation, flushed once after the response, so the decision point sees
+// one request and the audit window counts one run. A flush that starts removes its batch first, so
+// a later render opens a new one.
+const pending = new Map<string, PendingBatch>();
+
 export function schedulePlatformShadow(
     session: Session,
     surfaceIds: readonly string[],
     extra: readonly Surface[] = [],
 ): void {
-    scheduleShadow(session, surfaceIds, {
-        surfaces: [...PLATFORM_SHADOW_ROWS, ...extra],
-        includeImpersonating: true,
-        switch: PLATFORM_UI_SWITCH,
-    });
+    try {
+        if (!shadowEnabled(getServerEnv()[PLATFORM_UI_SWITCH.name], PLATFORM_UI_SWITCH.onValue)) {
+            return;
+        }
+        const transport = getShadowTransport();
+        if (!transport) return;
+        const key = `${session.user.id}|${session.user.org_id ?? ""}|${session.user.is_impersonating === true}`;
+        const open = pending.get(key);
+        if (open) {
+            for (const id of surfaceIds) open.ids.add(id);
+            for (const surface of extra) open.extra.set(surface.id, surface);
+            return;
+        }
+        const batch: PendingBatch = {
+            session,
+            ids: new Set(surfaceIds),
+            extra: new Map(extra.map((surface) => [surface.id, surface])),
+        };
+        after(() => {
+            pending.delete(key);
+            const input = shadowInputFrom(batch.session, [...batch.ids], {
+                surfaces: [...PLATFORM_SHADOW_ROWS, ...batch.extra.values()],
+                includeImpersonating: true,
+            });
+            return shadowDecide(input, { transport }).then(() => undefined);
+        });
+        pending.set(key, batch);
+    } catch {
+        // advisory only
+    }
 }
 
 export function scheduleFnShadow(

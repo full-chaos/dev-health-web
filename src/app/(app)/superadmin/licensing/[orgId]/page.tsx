@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { EntitlementsDetail } from "@/components/superadmin/EntitlementsDetail";
 import { PlatformModelFallbackCard } from "@/components/superadmin/PlatformModelFallbackCard";
-import { auth } from "@/lib/auth";
+import { auth, requireSuperuser } from "@/lib/auth";
 import {
     getOrganization,
     getOrgEntitlements,
@@ -16,6 +16,7 @@ type PageProps = {
 
 export default async function LicensingDetailPage({ params }: PageProps) {
     const { orgId } = await params;
+    await requireSuperuser(`/superadmin/licensing/${orgId}`, "page:/superadmin/licensing/[orgId]");
 
     const [session, orgResult, entitlementsResult, overridesResult, flagsResult] =
         await Promise.all([

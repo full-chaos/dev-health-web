@@ -1,5 +1,4 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
     PLATFORM_ACTIONS,
@@ -107,14 +106,15 @@ const NOT_HOOKED_ROWS = new Map<string, string>([
 
 describe("C4b page, nav and control rows", () => {
     const guarded = new Map<string, string>();
-    const files = execFileSync("git", ["grep", "-l", "requireSuperuser(", "--", "src/app"], {
-        encoding: "utf8",
-    })
-        .split("\n")
-        .filter((f) => f && !f.includes(".test."));
+    const files = readdirSync("src/app", { recursive: true, encoding: "utf8" })
+        .map((f) => `src/app/${f}`)
+        .filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."))
+        .filter((f) => read(f).includes("requireSuperuser("));
     for (const f of files) {
-        for (const m of read(f).matchAll(/requireSuperuser\(\s*"([^"]+)",\s*"([^"]+)",?\s*\)/g)) {
-            guarded.set(m[2] ?? "", f);
+        for (const m of read(f).matchAll(
+            /requireSuperuser\(\s*(?:"[^"]+"|`[^`]+`),\s*"([^"]+)",?\s*\)/g,
+        )) {
+            guarded.set(m[1] ?? "", f);
         }
     }
 
@@ -122,7 +122,7 @@ describe("C4b page, nav and control rows", () => {
         for (const f of files) {
             const calls = read(f).match(/requireSuperuser\([^)]*\)/g) ?? [];
             for (const c of calls)
-                expect(c).toMatch(/requireSuperuser\(\s*"[^"]+",\s*"[^"]+",?\s*\)/);
+                expect(c).toMatch(/requireSuperuser\(\s*(?:"[^"]+"|`[^`]+`),\s*"[^"]+",?\s*\)/);
         }
     });
 

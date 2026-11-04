@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({
     notFound: vi.fn(),
     usePathname: () => "/superadmin/licensing/org-1",
 }));
-vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn(), requireSuperuser: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({
     grantPlatformModelFallback: vi.fn(),
     revokePlatformModelFallback: vi.fn(),

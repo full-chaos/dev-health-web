@@ -2,6 +2,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { PlatformProductTelemetryDashboard } from "@/components/product-telemetry/PlatformProductTelemetryDashboard";
 import { getProductTelemetryPlatformDashboardViaGraphQL } from "@/lib/graphql/productTelemetryFetchers";
 import { resolveReaderWindow } from "@/lib/telemetry/readerWindow";
+import { requireSuperuser } from "@/lib/auth";
 
 type SearchParams = { startDate?: string; endDate?: string };
 
@@ -10,6 +11,7 @@ export default async function ProductTelemetryDashboardPage({
 }: {
     searchParams?: Promise<SearchParams>;
 }) {
+    await requireSuperuser("/superadmin/product-telemetry", "page:/superadmin/product-telemetry");
     const params = (await searchParams) ?? {};
     const { start, end } = resolveReaderWindow(params);
     const dashboard = await getProductTelemetryPlatformDashboardViaGraphQL({
