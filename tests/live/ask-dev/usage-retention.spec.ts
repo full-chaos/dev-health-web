@@ -74,18 +74,18 @@ test.use({
 });
 
 test.beforeEach(({}, testInfo) => {
-    const wants = testInfo.title.startsWith("window ac6_prepare:")
+    const wants = testInfo.title.startsWith("window ac6_prepare ")
         ? "ac6_prepare"
-        : testInfo.title.startsWith("window ac6_after:")
+        : testInfo.title.startsWith("window ac6_after ")
           ? "ac6_after"
           : "";
-    test.skip(wants !== WINDOW, `runs only in the ${wants} window, not "${WINDOW}"`);
+    test.skip(wants !== WINDOW, `NOT RUN: runs only in the ${wants} window, not "${WINDOW}"`);
 });
 
 const answers = (surface: Locator) => surface.getByRole("article", { name: "Answer" });
 const statusPanel = (surface: Locator) => surface.getByTestId("chat-status").last();
 
-test("window ac6_prepare: a retention-0 turn is admitted and its conversation is read back", async ({
+test("window ac6_prepare [behind a flag]: a retention-0 turn is admitted and its conversation is read back", async ({
     page,
 }, testInfo) => {
     const results = await watchResults(page);
@@ -113,7 +113,7 @@ test("window ac6_prepare: a retention-0 turn is admitted and its conversation is
     console.log(`AC6_THREAD=${thread}`);
 });
 
-test("window ac6_after: the purged conversation is gone, and with a gated allowance a submit still refuses", async ({
+test("window ac6_after [behind a flag]: the purged conversation is gone, and with a gated allowance a submit still refuses", async ({
     page,
 }, testInfo) => {
     expect(PURGED_THREAD, "ASK_DEV_LIVE_AC6_THREAD is not set: the prepare window's id").toMatch(
@@ -136,6 +136,11 @@ test("window ac6_after: the purged conversation is gone, and with a gated allowa
         listed.push(...(parsed.threads ?? []).map((thread) => thread.thread_id));
         cursor = parsed.next_cursor;
         if (cursor === undefined) break;
+        if (pageNumber === 39) {
+            throw new Error(
+                "the thread list has more than 40 pages: the case cannot read all of it",
+            );
+        }
     }
     expect(listed, "the purged conversation is still listed").not.toContain(PURGED_THREAD);
 
