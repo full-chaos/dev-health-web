@@ -192,7 +192,15 @@
         "sentry": 0
     },
     "src/lib/auth.ts": {
-        "log": 8,
+        "log": 10,
+        "sentry": 0
+    },
+    "src/lib/auth/decide/log.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/auth/shadow/log.ts": {
+        "log": 2,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {

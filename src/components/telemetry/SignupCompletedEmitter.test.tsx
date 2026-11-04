@@ -15,6 +15,9 @@ describe("SignupCompletedEmitter", () => {
         trackOnboardingEvent.mockReset();
         resetSignupCompletedForTests();
         window.localStorage.clear();
+        for (const part of document.cookie.split(";")) {
+            document.cookie = `${part.split("=")[0]?.trim()}=; Max-Age=0; Path=/`;
+        }
     });
     afterEach(() => {
         vi.restoreAllMocks();

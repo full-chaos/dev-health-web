@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { requireRole } from "@/lib/auth";
+import { scheduleShadow } from "@/lib/auth/shadow";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { getOrgEntitlements } from "@/lib/admin/server";
 
@@ -17,6 +18,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ["admin", "owner"],
         orgAdminCallbackUrl(requestHeaders.get("x-dev-health-path")),
     );
+
+    scheduleShadow(session, ["guard:/org/admin"]);
 
     const isSuperuser = session.user.is_superuser === true;
 

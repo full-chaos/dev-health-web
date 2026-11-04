@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
     authHeaders,
     envFault,
+    expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
@@ -35,7 +36,7 @@ test.describe("organization deletion / offboarding @guided", () => {
             data: { email, password, full_name: "Offboard User" },
             headers: { Origin: liveBackendUrl },
         });
-        if (!regRes.ok()) return;
+        expectRegisterAccepted(regRes);
 
         superToken = (await getSuperuserToken(request)) ?? "";
         const userId = superToken ? await userIdByEmail(request, email, superToken) : "";

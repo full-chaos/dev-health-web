@@ -52,6 +52,33 @@ export const CASES = {
     termOrgLimit: "Hold: what is the status of full-chaos/dev-health-web?",
     termRunEndedStalled: "Hold: what is the status of full-chaos/dev-health-web?",
     termRunEndedEos: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12234 (`feedback.spec.ts`): answer feedback, one case per test. `fbReuse` is asked twice
+    // in two conversations on purpose: ACR serves the second turn the first turn's result.
+    fbPanel: "What is the status of full-chaos/dev-health-web?",
+    fbDev: "What is the status of full-chaos/dev-health-web?",
+    fbReuse: "Again: what is the status of full-chaos/dev-health-web?",
+    fbGuard: "What is the status of full-chaos/dev-health-web?",
+    // AC-3's positive control: the second principal's own question, so its own feedback is 200.
+    fbPeer: "What is the status of full-chaos/dev-health-web?",
+    fbTelemetry: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12232 (`history.spec.ts`): history and reload recovery through the browser transport.
+    histTurn1: "What is the status of full-chaos/dev-health-web?",
+    histTurn2: "What is the status of full-chaos/dev-health-web?",
+    histTurn3: "What is the status of full-chaos/dev-health-web?",
+    histHold: "Hold: what is the status of full-chaos/dev-health-web?",
+    histDelPanel: "What is the status of full-chaos/dev-health-web?",
+    histDelDev: "What is the status of full-chaos/dev-health-web?",
+    histLateList: "What is the status of full-chaos/dev-health-web?",
+    histLateRead: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12233 (`reattach.spec.ts`): reattach and cancel through the browser transport.
+    att1: "What is the status of full-chaos/dev-health-web?",
+    att2: "What is the status of full-chaos/dev-health-web?",
+    att3: "What is the status of full-chaos/dev-health-web?",
+    attCursor: "What is the status of full-chaos/dev-health-web?",
+    attKept: "What is the status of full-chaos/dev-health-web?",
+    attStop: "Long: what is the status of full-chaos/dev-health-web?",
+    attLong: "Long: what is the status of full-chaos/dev-health-web?",
+    attPodLoss: "Long: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
@@ -108,6 +135,9 @@ export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
  * - `sankey`: one team's effort across its repositories. The scope-anchor allocation route serves
  *   it from the team's own investment fact, and the claimed `repository_theme_breakdown` detail
  *   table draws the sankey (CHAOS-12582; NOT RUN while the stack's sankey flag is off).
+ * - `sunburst`: one repository's investment by theme and subcategory. The claimed
+ *   `subcategory_breakdown` detail table draws the sunburst, and the treemap is not drawn beside
+ *   it (CHAOS-12554; NOT RUN while the stack's sunburst flag is off).
  * - `window`: one team's open work over a stated date range. A non-current axis composes no
  *   effective window, so the answer must say its window was not reported (AC-7).
  */
@@ -121,6 +151,8 @@ const RICH_BASES = {
         "how do Fullchaos and Ops Team compare on churn and delivery units over the last 30 days?",
     cohort: "which teams are struggling and why over the last 30 days?",
     sankey: "how is the Fullchaos team's engineering effort split across its repositories over the last 30 days?",
+    sunburst:
+        "how is engineering effort in full-chaos/dev-health-acr split across themes and subcategories over the last 30 days?",
     window: "how was the Fullchaos team's open work between 2026-10-01 and 2026-10-15?",
 } as const;
 

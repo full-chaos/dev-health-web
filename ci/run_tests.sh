@@ -284,7 +284,7 @@ run_auth_profiles_gate() {
 }
 
 # CHAOS-10461: the TS access-token verifier decides the ops-owned golden corpus
-# from the pinned sparse checkout. WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 makes a
+# from the pinned sparse checkout; the plane fixture drift cell reads the same checkout. WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 makes a
 # missing checkout a failure instead of a skip.
 run_access_token_corpus() {
   if [[ -z "${WEB_OPS_CONTRACT_ROOT:-}" ]]; then
@@ -292,7 +292,7 @@ run_access_token_corpus() {
     return 1
   fi
   echo "==> vitest access-token and authorization corpus (${WEB_OPS_CONTRACT_ROOT})"
-  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize
+  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize ci/__tests__/live-e2e-plane-router-drift.test.ts
 }
 
 run_e2e() {
