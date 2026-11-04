@@ -8,6 +8,7 @@ import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserB
 import { getUser } from "@/lib/admin/server";
 import { requireSuperuser } from "@/lib/auth";
 import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
+import { appPath } from "@/lib/navigation/appPath";
 
 type PageProps = {
     params: Promise<{ id: string }>;
@@ -16,7 +17,7 @@ type PageProps = {
 export default async function UserDetailPage({ params }: PageProps) {
     const { id } = await params;
     const session = await requireSuperuser(
-        `/superadmin/users/${id}`,
+        appPath("/superadmin/users/[id]", { id }),
         "page:/superadmin/users/[id]",
     );
     schedulePlatformShadow(session, ["control:ImpersonateUserButton"]);

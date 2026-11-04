@@ -9,6 +9,7 @@ import {
     listFeatureOverrides,
     listFeatureFlags,
 } from "@/lib/admin/server";
+import { appPath } from "@/lib/navigation/appPath";
 
 type PageProps = {
     params: Promise<{ orgId: string }>;
@@ -16,7 +17,10 @@ type PageProps = {
 
 export default async function LicensingDetailPage({ params }: PageProps) {
     const { orgId } = await params;
-    await requireSuperuser(`/superadmin/licensing/${orgId}`, "page:/superadmin/licensing/[orgId]");
+    await requireSuperuser(
+        appPath("/superadmin/licensing/[orgId]", { orgId }),
+        "page:/superadmin/licensing/[orgId]",
+    );
 
     const [session, orgResult, entitlementsResult, overridesResult, flagsResult] =
         await Promise.all([

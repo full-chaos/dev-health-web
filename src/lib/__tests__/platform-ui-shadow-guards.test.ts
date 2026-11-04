@@ -56,6 +56,7 @@ vi.mock("@/lib/auth/shadow/config", async (orig) => ({
 
 import { requireSuperuser } from "@/lib/auth";
 import { recordingTransport, DENY, TOKEN } from "@/lib/auth/shadow/__tests__/helpers";
+import { processMemo } from "@/lib/processMemo";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import { listOrganizations, stopImpersonation } from "@/lib/admin/server";
 
@@ -75,6 +76,7 @@ beforeEach(async () => {
     shadowEnv.value = {};
     shadowTransport.value = undefined;
     resetImpersonationStatusForTests();
+    processMemo<number>("authzShadowSample").clear();
     backendCalls.length = 0;
     vi.stubGlobal(
         "fetch",

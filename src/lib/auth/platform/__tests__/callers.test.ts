@@ -112,7 +112,7 @@ describe("C4b page, nav and control rows", () => {
         .filter((f) => read(f).includes("requireSuperuser("));
     for (const f of files) {
         for (const m of read(f).matchAll(
-            /requireSuperuser\(\s*(?:"[^"]+"|`[^`]+`),\s*"([^"]+)",?\s*\)/g,
+            /requireSuperuser\(\s*(?:"[^"]+"|appPath\("[^"]+",\s*\{[^}]*\}\)),\s*"([^"]+)",?\s*\)/g,
         )) {
             guarded.set(m[1] ?? "", f);
         }
@@ -120,9 +120,11 @@ describe("C4b page, nav and control rows", () => {
 
     it("every requireSuperuser call in src/app names a surface", () => {
         for (const f of files) {
-            const calls = read(f).match(/requireSuperuser\([^)]*\)/g) ?? [];
+            const calls = read(f).match(/requireSuperuser\((?:[^()]|\([^()]*\))*\)/g) ?? [];
             for (const c of calls)
-                expect(c).toMatch(/requireSuperuser\(\s*(?:"[^"]+"|`[^`]+`),\s*"[^"]+",?\s*\)/);
+                expect(c).toMatch(
+                    /requireSuperuser\(\s*(?:"[^"]+"|appPath\("[^"]+",\s*\{[^}]*\}\)),\s*"[^"]+",?\s*\)/,
+                );
         }
     });
 

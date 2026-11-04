@@ -7,6 +7,7 @@ import { OrgMembersManager } from "@/components/superadmin/OrgMembersManager";
 import { OrgDeleteSection } from "@/components/superadmin/OrgDeleteSection";
 import { getOrganization, listOrgMembers } from "@/lib/admin/server";
 import { requireSuperuser } from "@/lib/auth";
+import { appPath } from "@/lib/navigation/appPath";
 
 type PageProps = {
     params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ type PageProps = {
 
 export default async function OrgDetailPage({ params }: PageProps) {
     const { id } = await params;
-    await requireSuperuser(`/superadmin/orgs/${id}`, "page:/superadmin/orgs/[id]");
+    await requireSuperuser(appPath("/superadmin/orgs/[id]", { id }), "page:/superadmin/orgs/[id]");
     const { data: org, error: orgError } = await getOrganization(id);
     const { data: members, error: membersError } = await listOrgMembers(id);
 
