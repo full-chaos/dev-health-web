@@ -8,6 +8,7 @@ import GitLab from "next-auth/providers/gitlab";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
 import { getClientIpFromEnv } from "@/lib/client-ip";
@@ -855,8 +856,9 @@ export async function requireRole(
     return session;
 }
 
-export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
+export async function requireSuperuser(callbackUrl?: string, surfaceId?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
+    if (surfaceId) schedulePlatformShadow(session, [surfaceId]);
     if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }

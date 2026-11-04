@@ -20,7 +20,7 @@ export default async function SuperadminRefundsPage({
 }: {
     searchParams: RefundsPageSearchParams;
 }) {
-    await requireSuperuser("/superadmin/billing/refunds");
+    await requireSuperuser("/superadmin/billing/refunds", "page:/superadmin/billing/refunds");
     const resolvedSearchParams = await searchParams;
     const orgId = firstValue(resolvedSearchParams.org_id);
 

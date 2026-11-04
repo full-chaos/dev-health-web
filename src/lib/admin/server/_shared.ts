@@ -1,6 +1,8 @@
 import { failureFromError } from "@/lib/actionFailure";
 import { auth, forgetOwnImpersonationStatus } from "@/lib/auth";
 import { decideGuard, defaultDeps, type GuardId } from "@/lib/auth/decide/decide";
+import type { PlatformAction } from "@/lib/auth/platform/actionTable";
+import { scheduleFnShadow } from "@/lib/auth/platform/shadow";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
 
@@ -36,7 +38,8 @@ export async function getToken(): Promise<string> {
  * The guard is an option, not a second helper: the auth-profile gate anchors the action files by
  * line, so those files get no new import line.
  */
-export async function requireSuperuserToken(opts?: {
+export async function requireSuperuserToken(opts: {
+    action: PlatformAction;
     allowImpersonating?: true;
     guard?: GuardId;
 }): Promise<string> {
@@ -44,13 +47,14 @@ export async function requireSuperuserToken(opts?: {
     if (!session?.access_token) {
         throw new AdminApiError(401, "Unauthorized", "No access token");
     }
+    scheduleFnShadow(session, opts.action, opts.allowImpersonating === true);
     const impersonating =
-        session.user?.is_impersonating === true && opts?.allowImpersonating !== true;
+        session.user?.is_impersonating === true && opts.allowImpersonating !== true;
     const deps = defaultDeps();
     if (deps.enforced && impersonating) {
         throw new AdminApiError(403, "Forbidden", "Not available while impersonating");
     }
-    const verdict = await decideGuard(session, opts?.guard ?? "platform.orgs", deps);
+    const verdict = await decideGuard(session, opts.guard ?? "platform.orgs", deps);
     if (!verdict.allowed) {
         throw new AdminApiError(403, "Forbidden", verdict.message);
     }
