@@ -9377,6 +9377,8 @@ export interface ClaimedCompletionForecast {
     horizon_days?: number;
     unfinished_runs?: number;
     target_items?: number;
+    scope_count?: number;
+    scope_count_at_least?: boolean;
     forecast_p50_days?: number;
     forecast_p85_days?: number;
     forecast_p95_days?: number;
