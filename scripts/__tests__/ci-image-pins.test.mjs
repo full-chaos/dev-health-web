@@ -27,7 +27,7 @@ const digests = Object.values(pins.images).map((i) => i.digest);
 
 describe("CI image pins agree (ci/ci-images.json is the source)", () => {
     it("has the web-owned mirrored images (buildkit is ops-owned)", () => {
-        expect(Object.keys(pins.images).sort()).toEqual(["node", "traefik"]);
+        expect(Object.keys(pins.images).sort()).toEqual(["node", "playwright", "traefik"]);
     });
 
     it("the Dockerfile NODE_IMAGE default is the pinned upstream ref", () => {

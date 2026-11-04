@@ -14,8 +14,12 @@ import { parseExpandedEvidence } from "@/lib/acr/evidenceContract";
 import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { asTranscriptResult } from "@/components/ask-dev/conversation/testModeAnswer";
-import type { TranscriptResult } from "@/lib/ask-dev/transcript";
-import type { AskDevTransport, FeedbackView } from "@/components/ask-dev/conversation/transport";
+import { isAnswerProjection } from "@/lib/ask-dev/projectionBudget";
+import type {
+    AskDevTransport,
+    FeedbackView,
+    StreamResult,
+} from "@/components/ask-dev/conversation/transport";
 
 export type { StreamEnvelopeValidators, StreamValidators };
 
@@ -24,7 +28,7 @@ export type { StreamEnvelopeValidators, StreamValidators };
  * (`@full-chaos/ask-dev/acr-client`). Web adds the reads only it has: threads, evidence and
  * feedback, on the same call rules, each mapping every status ACR's OpenAPI names for its route.
  */
-export type BrowserTransportDependencies = Omit<AcrCallDependencies<TranscriptResult>, "isResult">;
+export type BrowserTransportDependencies = Omit<AcrCallDependencies<StreamResult>, "isResult">;
 
 /** The one route the browser reads outside the Context Fabric API (CHAOS-12105). */
 const EVIDENCE_API = "/api/v1/agent-context/evidence";
@@ -40,9 +44,12 @@ export function createAcrBrowserTransport(
     config: AcrBrowserClientConfig,
     dependencies: BrowserTransportDependencies,
 ): AskDevTransport {
-    const calls = createAcrCalls<TranscriptResult, ContextFabricSubmissionStatusV1>(config, {
+    const calls = createAcrCalls<StreamResult, ContextFabricSubmissionStatusV1>(config, {
         ...dependencies,
-        isResult: (value): value is TranscriptResult => asTranscriptResult(value) !== null,
+        // CHAOS-12643: ACR's bounded answer is a result too. The stream gate has already checked
+        // the event against the pinned schema, whose result forms include the projection.
+        isResult: (value): value is StreamResult =>
+            isAnswerProjection(value) || asTranscriptResult(value) !== null,
     });
     const { callJson, callUrl, refuse } = calls;
 

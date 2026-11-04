@@ -51,6 +51,21 @@ describe("CredentialsTable", () => {
         expect(screen.getByText("Connected")).toBeInTheDocument();
     });
 
+    it("labels every row with the Integration kind", () => {
+        renderWithToaster(
+            <CredentialsTable
+                provider="github"
+                providerName="GitHub"
+                credentials={[makeCredential(), makeCredential({ id: "cred-2", name: "Second" })]}
+                syncConfigs={[]}
+            />,
+        );
+
+        expect(screen.getByRole("columnheader", { name: "Kind" })).toBeInTheDocument();
+        expect(screen.getAllByText("Integration")).toHaveLength(2);
+        expect(screen.queryByText("External Push")).not.toBeInTheDocument();
+    });
+
     it("shows a used-by-sync-configs count derived from the passed sync configs", () => {
         renderWithToaster(
             <CredentialsTable
