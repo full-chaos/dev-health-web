@@ -23,7 +23,7 @@ export async function createServiceAccount(input: {
     const problem = validateServiceAccountName(input.name);
     if (problem) return { error: problem };
     const result = await withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ guard: "platform.users" });
         const description = input.description?.trim();
         return adminApi.users.create(
             {

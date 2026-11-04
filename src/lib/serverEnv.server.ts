@@ -14,6 +14,8 @@ const serverEnvSchema = z.object({
     BACKEND_URL: z.string().optional(),
     BASE_PATH: z.string().optional(),
     AUTHZ_SHADOW_NAV: z.string().optional(),
+    /** Policy decisions replace the client role rules of the platform admin actions and the GitHub App routes. Off unless exactly `on`. */
+    AUTHZ_DECISIONS_ENFORCE: z.string().optional(),
     AUTH_SECRET: z.string().optional(),
     AUTH_URL: z.string().optional(),
     NEXTAUTH_SECRET: z.string().optional(),
