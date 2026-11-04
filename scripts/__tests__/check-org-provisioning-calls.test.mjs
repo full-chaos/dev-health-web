@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { scan } from "../check-org-provisioning-calls.mjs";
+import { findSites, scan } from "../check-org-provisioning-calls.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/check-org-provisioning-calls.mjs");
@@ -175,5 +175,71 @@ describe("check-org-provisioning-calls", () => {
         fs.mkdirSync(path.join(good, "ci"));
         fs.writeFileSync(path.join(good, "ci/org_provisioning_allowlist.txt"), "");
         expect(spawnSync("node", [SCRIPT, "--root", good], { encoding: "utf8" }).status).toBe(0);
+    });
+});
+
+describe("check-org-provisioning-calls: r1 findings", () => {
+    const keys = (file, text) => findSites(file, text).map((site) => site.key);
+    const pad = `{ a: "${"x".repeat(450)}", method: "POST" }`;
+
+    it("reads the method of request( when a requestBody identifier comes first", () => {
+        const text = 'request("/orgs", { body: requestBody, method: "POST" });';
+        expect(keys("src/lib/admin/api/new.ts", text)).toEqual(["POST /orgs"]);
+    });
+
+    it("reads the method of selfRequest( when a requestBody identifier comes first", () => {
+        const text = 'selfRequest("/orgs/me", { body: requestBody, method: "PATCH" });';
+        expect(keys("src/lib/admin/api/new.ts", text)).toEqual(["PATCH /orgs/me"]);
+    });
+
+    it("reads a method that sits after a 450-character option body", () => {
+        expect(keys("src/lib/admin/api/new.ts", `request("/orgs", ${pad});`)).toEqual([
+            "POST /orgs",
+        ]);
+        expect(keys("src/lib/admin/api/new.ts", `selfRequest("/orgs/me", ${pad});`)).toEqual([
+            "POST /orgs/me",
+        ]);
+    });
+
+    it("does not read the method of a later call for a GET request(", () => {
+        const text = 'request("/orgs");\nrequest("/teams", { method: "POST" });';
+        expect(keys("src/lib/admin/api/new.ts", text)).toEqual(["POST /teams"]);
+    });
+
+    it.each([
+        ["admin", 'await fetch("/api/v1/admin/users");'],
+        ["orgs", 'await fetch("/api/v1/orgs/me");'],
+        ["accept-invite", 'await fetch("/api/v1/auth/accept-invite");'],
+    ])("passes a %s GET that is followed by an unrelated POST", (_name, get) => {
+        const text = `${get}\nawait fetch("/health", { method: "POST" });`;
+        expect(keys("src/lib/x.ts", text)).toEqual([]);
+    });
+
+    it("still fails the POST that belongs to the raw path", () => {
+        const text =
+            'await fetch("/health");\nawait fetch("/api/v1/admin/users", { method: "POST" });';
+        expect(keys("src/lib/x.ts", text)).toEqual(["POST /admin/users"]);
+    });
+
+    it.each([
+        ["const", "export const createUser = async () => {};"],
+        ["default function", "export default async function createUser() {}"],
+        ["export list", "const createUser = async () => {}; export { createUser };"],
+        ["renamed export list", "const make = async () => {}; export { make as createUser };"],
+        ["default identifier", "const createUser = async () => {}; export default createUser;"],
+        ["function", "export async function createUser() {}"],
+    ])("refuses an exported createUser (%s)", (_name, text) => {
+        expect(keys("src/lib/admin/server/users.ts", text)).toEqual(["export createUser"]);
+    });
+
+    it("passes a createUser that is not exported", () => {
+        expect(keys("src/lib/admin/server/users.ts", "const createUser = () => 1;")).toEqual([]);
+    });
+
+    it("skips .spec test files", () => {
+        const text = 'fetch("/api/v1/admin/users", { method: "POST" });';
+        expect(failures({ "src/lib/check.spec.ts": text, "src/lib/check.spec.tsx": text })).toEqual(
+            [],
+        );
     });
 });
