@@ -13,7 +13,11 @@ interface Captured {
     config: null | {
         callbacks: { jwt: (args: { token: Row; user?: Row }) => Promise<Row> };
     };
-    credentials: null | { authorize: (credentials: Row) => Promise<Row | null> };
+    credentials: null | {
+        id?: string;
+        name?: string;
+        authorize: (credentials: Row) => Promise<Row | null>;
+    };
 }
 
 const { captured } = vi.hoisted(() => ({
@@ -57,6 +61,9 @@ describe("Web -> go-api -> auth-service", () => {
         expect(email).not.toBe("");
         expect(password).not.toBe("");
         expect(captured.credentials).not.toBeNull();
+        expect(captured.credentials!.name, "the proof drives the password provider").toBe(
+            "Credentials",
+        );
     });
 
     it("logs in, refreshes, and logs out", async () => {
