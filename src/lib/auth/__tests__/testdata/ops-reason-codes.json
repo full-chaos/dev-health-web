@@ -1,5 +1,5 @@
 {
-    "source": "ops 2474f584e5 (decision_reason_code) and ff2215b5ae (the rest): contracts/auth/v1/vocabulary/reason-codes.json (decision_reason_code.values) and internal/auth/contracts/session.go (AuthOutcomeReasonCodes minus success reasons accepted, refresh_grace_replay)",
+    "source": "ops 3f62abd006d532a466d71504661d73d37985ae1e (decision_reason_code) and ff2215b5ae (the rest): contracts/auth/v1/vocabulary/reason-codes.json (decision_reason_code.values) and internal/auth/contracts/session.go (AuthOutcomeReasonCodes minus success reasons accepted, refresh_grace_replay)",
     "decision_reason_code": [
         "allowed_by_membership_default",
         "allowed_by_repository_grant",
@@ -10,12 +10,12 @@
         "grant_revoked",
         "impersonation_denied",
         "invalid_request",
-        "membership_inactive",
         "no_membership",
         "org_mismatch",
         "organization_inactive",
         "platform_role_absent",
         "principal_inactive",
+        "repository_allowlist_too_large",
         "repository_not_granted",
         "resource_mismatch",
         "role_lacks_action",

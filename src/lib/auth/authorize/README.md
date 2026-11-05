@@ -24,6 +24,13 @@ value is an invalid decision and a deny. `allowed` must agree with the reason: t
 (`allowed_by_role`, `allowed_by_membership_default`, `allowed_by_repository_grant`) are the only allows; every other reason is a deny.
 A new wire value denies until web moves `ci/ops-contract.pin`. `__tests__/corpus.test.ts` fails when the client set and the pinned file differ.
 
+## Repository obligations
+
+`obligations.repository_scope` is closed to `"organization"`; any other value is an invalid decision. A decision never carries both
+`repository_scope` and `repository_allowlist`, and a `repository_allowlist` has at most 256 keys. `repository_allowlist_too_large`
+is a deny. This client does not filter repositories itself: a future reader of `Obligations` must treat a decision with neither member
+as a deny on a repository-filtered action.
+
 ## Golden corpus
 
 `__tests__/corpus.test.ts` runs the ops `examples/authorization_*` manifests through the client and pins the `golden/decision`
