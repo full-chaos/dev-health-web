@@ -125,7 +125,9 @@ export async function ssoStart(
     const target = safePostLoginRedirect(new URL(request.url).searchParams.get("callbackUrl"));
     return withCookies(NextResponse.redirect(result.redirectUrl, 303), [
         ...result.setCookies,
-        ...(target === undefined ? [] : [returnCookie(protocol, providerId, target)]),
+        target === undefined
+            ? clearReturnCookie(protocol, providerId)
+            : returnCookie(protocol, providerId, target),
     ]);
 }
 

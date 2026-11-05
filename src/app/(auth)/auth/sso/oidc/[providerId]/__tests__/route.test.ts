@@ -90,12 +90,12 @@ describe("GET /auth/sso/oidc/[providerId]", () => {
     });
 
     it.each(["https://evil.example/steal", "//evil.example", "/auth/signin", "\\evil.example"])(
-        "an unsafe callbackUrl (%s) is not stored",
+        "an unsafe callbackUrl (%s) is not stored and expires any earlier one",
         async (value) => {
             serve(() => json(200, { authorization_url: IDP }, [OIDC_NONCE]));
             const res = await call(`?callbackUrl=${encodeURIComponent(value)}`);
             expect(res.headers.get("location")).toBe(IDP);
-            expect(returnCookie(res)).toBeUndefined();
+            expect(returnCookie(res)).toContain("Max-Age=0");
         },
     );
 
