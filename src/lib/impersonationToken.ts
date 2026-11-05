@@ -28,6 +28,29 @@ export function clearImpersonationToken(token: JWT): void {
 }
 
 /**
+ * The one guard of the token pair while an impersonation is live (delegated token or status
+ * flag set). Only the administrator's own refresh rotates the pair. A handoff of another kind is
+ * refused: an org switch or a password change made under the delegated bearer answers with the
+ * target's pair. A sign-in starts a new session, so the delegated state is dropped first.
+ */
+export function admitPairWrite<H extends { kind: string }>(
+    token: JWT,
+    handoff: H | null,
+    signIn: boolean,
+): H | null {
+    if (!token.imp_access_token && !token.is_impersonating) return handoff;
+    if (signIn) {
+        clearImpersonationToken(token);
+        token.is_impersonating = false;
+        token.impersonated_user_id = undefined;
+        token.impersonated_email = undefined;
+        token.impersonated_org_id = undefined;
+        return handoff;
+    }
+    return handoff?.kind === "impersonation" ? handoff : null;
+}
+
+/**
  * The delegated token ran out while the row may still be open. The row is ended with the
  * administrator token; only a stop that answered 2xx drops the fields. A failed stop keeps them,
  * so every request stays on the (expired) delegated token and is refused: never a silent fall

@@ -17,6 +17,7 @@ import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import {
+    admitPairWrite,
     clearImpersonationToken,
     endExpiredImpersonation,
     setImpersonationToken,
@@ -229,6 +230,21 @@ const nextAuth = NextAuth({
     ],
     callbacks: {
         async jwt({ token, user, account, trigger, session }) {
+            // A new Ops token pair (workspace creation, org switch, password change) enters the
+            // session only as a sealed handoff the server made (CHAOS-12088): the browser passes
+            // it to update() and cannot read it. A plain `activeOrg` / `onboardComplete` payload is
+            // refused by the HTTP route and ignored here. Before any pair is written, the
+            // impersonation guard admits it.
+            const handoff = admitPairWrite(
+                token,
+                trigger === "update"
+                    ? await openSessionHandoff(
+                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
+                          token.id as string | undefined,
+                      )
+                    : null,
+                Boolean(user || account),
+            );
             if (user) {
                 token.id = user.id;
                 token.org_id = user.org_id;
@@ -348,17 +364,6 @@ const nextAuth = NextAuth({
                 }
             }
 
-            // A new Ops token pair (workspace creation, org switch, password change) enters the
-            // session only as a sealed handoff the server made (CHAOS-12088): the browser passes
-            // it to update() and cannot read it. A plain `activeOrg` / `onboardComplete` payload is
-            // refused by the HTTP route and ignored here.
-            const handoff =
-                trigger === "update"
-                    ? await openSessionHandoff(
-                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
-                          token.id as string | undefined,
-                      )
-                    : null;
             if (handoff?.kind === "onboardComplete") {
                 const pair = handoff.pair as OnboardPair;
                 token.access_token = pair.access_token;
