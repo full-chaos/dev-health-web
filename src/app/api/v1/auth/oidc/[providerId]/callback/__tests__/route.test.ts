@@ -70,6 +70,20 @@ describe("GET /api/v1/auth/oidc/[providerId]/callback", () => {
         expect(signIn).not.toHaveBeenCalled();
     });
 
+    it("W-12 switch off: 404 even for a request that would otherwise be refused locally", async () => {
+        stubSsoEnv(false);
+        for (const query of ["", "error=access_denied", "code=c1"]) {
+            const res = await call(query, "sso_return=%2Fx");
+            expect(res.status).toBe(404);
+            expect(setCookieLines(res)).toEqual([]);
+        }
+        const bad = await GET(new Request(`${ORIGIN}${OIDC_CALLBACK_PATH}?code=c&state=s`), {
+            params: Promise.resolve({ providerId: "not-a-uuid" }),
+        });
+        expect(bad.status).toBe(404);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it("W-8 completes the sign-in: exact backend call, sealed ticket, sso provider, dashboard", async () => {
         serve(() => json(200, sessionAnswer(), [OIDC_NONCE_CLEAR]));
         const res = await call("code=c1&state=s1", "dho_oidc_login_nonce_abc=n1");

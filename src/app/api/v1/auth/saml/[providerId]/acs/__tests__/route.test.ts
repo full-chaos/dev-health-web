@@ -77,6 +77,23 @@ describe("POST /api/v1/auth/saml/[providerId]/acs", () => {
         expect(signIn).not.toHaveBeenCalled();
     });
 
+    it("W-12 switch off: 404 even for a request that would otherwise be refused locally", async () => {
+        stubSsoEnv(false);
+        const empty = await call({ RelayState: "rs-1" }, "sso_return=%2Fx");
+        expect(empty.status).toBe(404);
+        expect(setCookieLines(empty)).toEqual([]);
+        const bad = await POST(
+            new Request(`${ORIGIN}${SAML_ACS_PATH}`, {
+                method: "POST",
+                headers: { "content-type": "application/x-www-form-urlencoded" },
+                body: "SAMLResponse=x",
+            }),
+            { params: Promise.resolve({ providerId: "not-a-uuid" }) },
+        );
+        expect(bad.status).toBe(404);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it("W-10 completes the sign-in: exact backend call, sealed ticket, 303 to the dashboard", async () => {
         serve(() => json(200, sessionAnswer(), [SAML_NONCE_CLEAR]));
         const res = await call(FIELDS, "dho_saml_login_nonce_def=n2");
