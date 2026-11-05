@@ -511,3 +511,124 @@ describe("check-org-provisioning-calls: r1 (pm) classes on the AST", () => {
         expect(keys("src/lib/x.ts", text)).toEqual(["call adminApi.users.create"]);
     });
 });
+
+const keysOf = (rel, text) => findSites(rel, text).map((s) => s.key);
+
+describe("check-org-provisioning-calls: D6690 contract, site rule (any callee)", () => {
+    const PATHS = {
+        admin: ["/api/v1/admin/users", "POST /admin/users"],
+        orgs: ["/api/v1/orgs", "POST /orgs"],
+        invite: ["/api/v1/auth/accept-invite", "POST /auth/accept-invite"],
+    };
+    const SHAPES = {
+        call: (p, o) => `writeRequest("${p}", ${o});`,
+        property: (p, o) => `transport.send("${p}", ${o});`,
+        new: (p, o) => `new WriteRequest("${p}", ${o});`,
+        comma: (p, o) => `(0, transport.send)("${p}", ${o});`,
+        deadline: (p, o) => `fetchWithDeadline(\`\${baseUrl}${p}\`, ${o}, { kind: "write" });`,
+    };
+
+    for (const [family, [route, key]] of Object.entries(PATHS)) {
+        for (const [shape, build] of Object.entries(SHAPES)) {
+            it(`refuses an unknown method on ${family} through ${shape}`, () => {
+                const text = build(route, "{ method }");
+                expect(keysOf("src/probe.ts", text)).toEqual([key.replace("POST", "UNKNOWN")]);
+            });
+            it(`refuses a literal POST on ${family} through ${shape}`, () => {
+                const text = build(route, '{ method: "POST" }');
+                expect(keysOf("src/probe.ts", text)).toEqual([key]);
+            });
+            it(`passes a GET on ${family} through ${shape}`, () => {
+                expect(keysOf("src/probe.ts", build(route, '{ method: "GET" }'))).toEqual([]);
+            });
+        }
+    }
+
+    it("reads the method from a later object argument", () => {
+        const text = 'send("/api/v1/orgs", token, { method: "DELETE" });';
+        expect(keysOf("src/probe.ts", text)).toEqual(["DELETE /orgs"]);
+    });
+
+    it("passes a protected path with no options argument (GET)", () => {
+        expect(keysOf("src/probe.ts", 'read("/api/v1/orgs/me");')).toEqual([]);
+    });
+
+    it("finds the protected path in a later argument", () => {
+        const text = 'send(init, "/api/v1/orgs", { method: "PUT" });';
+        expect(keysOf("src/probe.ts", text)).toEqual(["PUT /orgs"]);
+    });
+});
+
+describe("check-org-provisioning-calls: D6690 contract, anchored path", () => {
+    const post = (url) => `fetch(${JSON.stringify(url)}, { method: "POST" });`;
+    it("passes a protected-looking text after an unrelated prefix", () => {
+        for (const url of ["/unrelated/api/v1/admin/users", "/unrelated/api/v1/orgs"])
+            expect(keysOf("src/probe.ts", post(url))).toEqual([]);
+    });
+    it("passes a protected-looking text in a query string", () => {
+        for (const url of ["/health?next=/api/v1/orgs", "/health?next=/api/v1/admin/users"])
+            expect(keysOf("src/probe.ts", post(url))).toEqual([]);
+    });
+    it("matches after an origin, after a base hole and with a query", () => {
+        expect(keysOf("src/probe.ts", post("https://api.example.com/api/v1/orgs?x=1"))).toEqual([
+            "POST /orgs",
+        ]);
+        expect(
+            keysOf("src/probe.ts", 'fetch(`${base}/api/v1/admin/users`, { method: "POST" });'),
+        ).toEqual(["POST /admin/users"]);
+    });
+    it("matches whole segments only", () => {
+        expect(keysOf("src/probe.ts", post("/api/v1/organisations"))).toEqual([]);
+        expect(keysOf("src/probe.ts", post("/api/v1/administrators"))).toEqual([]);
+        expect(keysOf("src/probe.ts", post("/api/v1/auth/accept-invite-x"))).toEqual([]);
+    });
+});
+
+describe("check-org-provisioning-calls: D6690 contract, test-file skip", () => {
+    const text = 'fetch("/api/v1/orgs", { method: "POST" });';
+    for (const name of [
+        "src/probe.test.ts",
+        "src/probe.spec.tsx",
+        "src/probe.test.fixture.ts",
+        "src/probe.spec.helper.ts",
+    ])
+        it(`skips ${name}`, () => {
+            expect(failures({ [name]: text })).toEqual([]);
+        });
+    it("scans a name that only contains test or spec without the dots", () => {
+        expect(failures({ "src/contest.ts": text })).toEqual(["FAIL src/contest.ts:1 POST /orgs"]);
+    });
+});
+
+describe("check-org-provisioning-calls: D6690 contract, callee unwrap on adminApi.users.create", () => {
+    it("refuses the direct, the comma and the parenthesised forms", () => {
+        for (const text of [
+            "adminApi.users.create(data, token);",
+            "(0, adminApi.users.create)(data, token);",
+            "(adminApi.users.create)(data, token);",
+        ])
+            expect(keysOf("src/probe.ts", text)).toEqual(["call adminApi.users.create"]);
+    });
+});
+
+describe("check-org-provisioning-calls: D6690 contract, stated limits (not detected by contract)", () => {
+    it("does not fold a constant inside a template substitution", () => {
+        for (const text of [
+            'fetch(`/api/v1/${"admin"}/users`, { method: "POST" });',
+            'fetch(`/api/v1/${"orgs"}`, { method: "POST" });',
+            'fetch(`/api/v1/auth/${"accept-invite"}`, { method: "POST" });',
+        ])
+            expect(keysOf("src/probe.ts", text)).toEqual([]);
+    });
+    it("does not fold a constant member segment in a template", () => {
+        expect(keysOf("src/probe.ts", 'const p = `/orgs/${"acme"}/${"members"}`;')).toEqual([]);
+    });
+    it("does not see a path held in a variable", () => {
+        const text = 'const p = "/api/v1/orgs"; fetch(p, { method: "POST" });';
+        expect(keysOf("src/probe.ts", text)).toEqual([]);
+    });
+    it("does not read CommonJS object exports of createUser", () => {
+        expect(keysOf("src/probe.cjs", "module.exports = { createUser() {} };")).toEqual([]);
+        expect(keysOf("src/probe.cjs", "module.exports = { ...{ createUser } };")).toEqual([]);
+    });
+});
