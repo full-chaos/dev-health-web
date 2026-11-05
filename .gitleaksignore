@@ -1,0 +1,3 @@
+# throwaway-key fixtures from the ops minter (CHAOS-13105 harness), not secrets
+src/app/api/auth/[...nextauth]/__tests__/session-cookie-bytes.test.ts:jwt:37
+src/app/api/auth/[...nextauth]/__tests__/session-cookie-bytes.test.ts:jwt:39
