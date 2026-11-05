@@ -16,22 +16,21 @@ export const MAX_DELEGATED_SECONDS = 15 * 60;
  * handoff and dropped together.
  */
 
+// The delegated service token (aud auth-service) is not kept: it would take about 1 KB of the
+// session cookie (CHAOS-13105 byte budget) and no auth-service route is used while impersonating.
 export type ImpersonationPair = {
     access_token: string;
-    session_access_token?: string;
     expires_in?: number;
 };
 
 export function setImpersonationToken(token: JWT, pair: ImpersonationPair, now: number): void {
     token.imp_access_token = pair.access_token;
-    token.imp_session_access_token = pair.session_access_token;
     token.imp_expires_at =
         now + Math.min(pair.expires_in ?? MAX_DELEGATED_SECONDS, MAX_DELEGATED_SECONDS) * 1000;
 }
 
 export function clearImpersonationToken(token: JWT): void {
     token.imp_access_token = undefined;
-    token.imp_session_access_token = undefined;
     token.imp_expires_at = undefined;
 }
 

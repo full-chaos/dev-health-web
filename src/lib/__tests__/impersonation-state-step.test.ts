@@ -89,7 +89,16 @@ const DELEGATED_REFRESH = "refresh-delegated-1";
 type Refresh = "ok" | 429 | 503 | "network" | "invalid_grant";
 type StopOutcome = "ok" | 400 | 429 | 503 | "network" | 401 | 403;
 type StatusAnswer =
-    "true" | "false" | 500 | 429 | 503 | "network" | "missing-field" | "non-boolean" | "non-json";
+    | "true"
+    | "false"
+    | 500
+    | 429
+    | 503
+    | "network"
+    | "missing-field"
+    | "null"
+    | "non-boolean"
+    | "non-json";
 
 const calls: { path: string; bearer: string | null; body: string; at: number }[] = [];
 const backend = {
@@ -153,6 +162,7 @@ beforeEach(() => {
                 if (typeof forced === "number") return json({ detail: "busy" }, forced);
                 if (forced === "false") return json({ is_impersonating: false });
                 if (forced === "missing-field") return json({ target_user_id: "target-1" });
+                if (forced === "null") return json({ is_impersonating: null });
                 if (forced === "non-boolean") return json({ is_impersonating: "false" });
                 if (forced === "non-json") {
                     return new Response("<html>ok</html>", {
@@ -470,6 +480,23 @@ describe("S4 case (c): no valid bearer", () => {
     });
 });
 
+describe("S4b a sid that does not decode", () => {
+    it("logs the raw sid without a delegation id and still signs out", async () => {
+        const token = await impersonating("expired", "expired");
+        const odd = jwtOf({ sub: "target-1", sid: "not-a-session-id", exp: 4102444800 });
+        backend.refresh = 503;
+        logLines.length = 0;
+        const next = await later({ ...token, imp_access_token: odd });
+        const events = stopNotRecorded();
+        expect(events).toHaveLength(1);
+        expect(events[0].fields).toMatchObject({ sid: "not-a-session-id", user_id: "admin-1" });
+        expect(events[0].fields).not.toHaveProperty("delegation_id");
+        expect(next.imp_access_token).toBeUndefined();
+        expect(next.access_token).toBeUndefined();
+        expect(next.error).toBe("refresh_failed");
+    });
+});
+
 describe("S5 the delegated token has a bounded life and no refresh path", () => {
     it("a refresh token in the start answer never enters the handoff or the session", async () => {
         backend.startBody = {
@@ -501,6 +528,9 @@ describe("S5 the delegated token has a bounded life and no refresh path", () => 
             session: { sessionHandoff: (r.data as { sessionHandoff: string }).sessionHandoff },
         });
         expect(JSON.stringify(token)).not.toContain(DELEGATED_REFRESH);
+        // The delegated service token is not kept either (cookie byte budget, CHAOS-13105).
+        expect(JSON.stringify(token)).not.toContain(DELEGATED_SERVICE);
+        expect((await session(token)).session_access_token).toBeUndefined();
         // No expires_in in the answer: the delegated life is the 15 min bound, never unbounded.
         expect(token.imp_expires_at).toEqual(expect.any(Number));
         expect(token.imp_expires_at as number).toBeLessThanOrEqual(Date.now() + 15 * MIN);
@@ -536,6 +566,7 @@ describe("S6 the status read clears imp_* only on an administrator-bearer answer
         503,
         "network",
         "missing-field",
+        "null",
         "non-boolean",
         "non-json",
     ];

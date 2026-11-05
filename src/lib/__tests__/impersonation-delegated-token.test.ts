@@ -193,7 +193,9 @@ describe("session: delegated token in, administrator pair kept", () => {
         expect(token.access_token).toBe(ADMIN);
         expect(token.refresh_token).toBe("refresh-admin-1");
         expect(token.imp_access_token).toBe(DELEGATED);
-        expect(token.imp_session_access_token).toBe(DELEGATED_SERVICE);
+        // The delegated service token is not kept (cookie byte budget).
+        expect(token.imp_session_access_token).toBeUndefined();
+        expect(JSON.stringify(token)).not.toContain(DELEGATED_SERVICE);
         expect(token.imp_expires_at).toEqual(expect.any(Number));
         expect(token.is_impersonating).toBe(true);
     });
@@ -201,7 +203,7 @@ describe("session: delegated token in, administrator pair kept", () => {
     it("R3 the session carries the delegated token and the administrator's aside", async () => {
         const s = await callbacks().session({ session: { user: {} }, token: await started() });
         expect(s.access_token).toBe(DELEGATED);
-        expect(s.session_access_token).toBe(DELEGATED_SERVICE);
+        expect(s.session_access_token).toBeUndefined();
         expect(s.admin_access_token).toBe(ADMIN);
         expect(s.user.is_impersonating).toBe(true);
     });

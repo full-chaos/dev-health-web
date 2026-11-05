@@ -69,7 +69,6 @@ declare module "next-auth/jwt" {
         session_expires_at?: number;
         /** The delegated token of an impersonation, set and dropped together; the access token stays the administrator's. */
         imp_access_token?: string;
-        imp_session_access_token?: string;
         imp_expires_at?: number;
         act_sub?: string;
         error?: string;

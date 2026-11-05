@@ -608,10 +608,12 @@ const nextAuth = NextAuth({
                 } else {
                     session.access_token = (delegated ?? token.access_token) as string;
                     // In-process only: the HTTP session answer drops them (authBrowserSession).
-                    // The actor is never put on the session.
-                    session.session_access_token = (
-                        delegated ? token.imp_session_access_token : token.session_access_token
-                    ) as string | undefined;
+                    // The actor is never put on the session. While impersonating there is no
+                    // service token: the delegated one is not kept (cookie byte budget,
+                    // CHAOS-13105), and the auth-service routes refuse a pair change then anyway.
+                    session.session_access_token = delegated
+                        ? undefined
+                        : (token.session_access_token as string | undefined);
                     if (delegated)
                         session.admin_access_token = token.access_token as string | undefined;
                     if (token.error) {
