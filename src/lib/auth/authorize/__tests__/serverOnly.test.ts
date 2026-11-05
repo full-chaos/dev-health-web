@@ -16,6 +16,7 @@ describe("authorize modules are server-only", () => {
             "decision.ts",
             "repositoryKey.ts",
             "request.ts",
+            "transport.ts",
         ]);
     });
     it.each(modules)("%s imports server-only first", (file) => {
