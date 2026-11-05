@@ -294,7 +294,7 @@ describe("end of the delegated token", () => {
         expect(next.is_impersonating).toBe(false);
     });
 
-    it("R6b expiry with a failing stop keeps the delegated fields and never serves the admin token", async () => {
+    it("R6b expiry with a failing stop keeps the delegated fields and serves no bearer", async () => {
         const token = await started();
         const expired = { ...token, imp_expires_at: Date.now() - 1000 };
         backend.stopStatus = 503;
@@ -303,8 +303,9 @@ describe("end of the delegated token", () => {
         expect(next.imp_access_token).toBe(DELEGATED);
         expect(next.is_impersonating).toBe(true);
         const s = await callbacks().session({ session: { user: {} }, token: next });
-        expect(s.access_token).toBe(DELEGATED);
-        expect(s.access_token).not.toBe(ADMIN);
+        expect(s.access_token).toBeUndefined();
+        expect(s).not.toHaveProperty("admin_access_token");
+        expect((s as { error?: string }).error).toBe("impersonation_ending");
         // The next poll retries the stop.
         backend.stopStatus = 200;
         resetImpersonationStatusForTests();

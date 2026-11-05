@@ -12,8 +12,11 @@ export type StartResult = Omit<
 
 /** The start answer for the browser: the old members, plus a sealed handoff when a token came. */
 export async function startResultWithHandoff(answer: StartAnswer): Promise<StartResult> {
-    const { access_token, session_access_token, expires_in, token_type, ...rest } = answer;
+    // A delegated token has no refresh path: a refresh token in the answer is never passed on.
+    const { access_token, session_access_token, expires_in, token_type, refresh_token, ...rest } =
+        answer as StartAnswer & { refresh_token?: unknown };
     void token_type;
+    void refresh_token;
     if (typeof access_token !== "string" || !access_token) return rest;
     const session = await auth();
     const userId = session?.user?.id;
