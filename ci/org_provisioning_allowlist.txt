@@ -1,0 +1,71 @@
+# Org, member and user writes web may make. Row = key<TAB>file<TAB>reason. A row that matches no site fails as stale.
+POST /orgs	src/lib/admin/api/orgs.ts	org create; go-api proxies the first owner (CHAOS-10988)
+PATCH /orgs/{}	src/lib/admin/api/orgs.ts	org update; suspend/reactivate proxied
+PATCH /orgs/me	src/lib/admin/api/orgs.ts	org profile rename through selfRequest
+DELETE /orgs/{}	src/lib/admin/api/orgs.ts	org delete and dry run; proxied to deprovision
+POST /orgs/{}/invites	src/lib/admin/api/orgs.ts	invite create; proxied to invites/create
+POST /orgs/{}/members	src/lib/admin/api/orgs.ts	member add; proxied to memberships/add
+PATCH /orgs/{}/members/{}	src/lib/admin/api/orgs.ts	member role; proxied to memberships/role
+DELETE /orgs/{}/members/{}	src/lib/admin/api/orgs.ts	member remove; proxied to memberships/remove
+POST /orgs/{}/transfer-ownership	src/lib/admin/api/orgs.ts	owner handover; proxied to memberships/transfer
+POST /orgs/{}/feature-overrides	src/lib/admin/api/billing.ts	entitlement override, no membership change
+DELETE /orgs/{}/feature-overrides/{}	src/lib/admin/api/billing.ts	entitlement override, no membership change
+POST /users	src/lib/admin/api/users.ts	platform user and service account create; callers pinned by the call rows below
+PATCH /users/{}	src/lib/admin/api/users.ts	principal state, no membership (PLAN-10881 call 11)
+DELETE /users/{}	src/lib/admin/api/users.ts	user delete (PLAN-10881 call 12)
+POST /users/{}/password	src/lib/admin/api/users.ts	password set by an admin, no membership change
+call adminApi.users.create	src/lib/admin/server/users.ts	createPlatformUser only (no X-Org-Id, no membership)
+call adminApi.users.create	src/lib/admin/server/serviceAccounts.ts	service account principal create
+POST /admin/integrations/github/install-callback	src/app/(app)/org/admin/integrations/github-app/callback/route.ts	integration install, not identity
+POST /admin/integrations/github/install-url	src/app/(app)/org/admin/integrations/github-app/install/route.ts	integration install, not identity
+DELETE /credentials/{}/{}	src/lib/admin/api/credentials.ts	non-identity admin write; no org or membership change
+DELETE /identities/{}	src/lib/admin/api/identities.ts	non-identity admin write; no org or membership change
+DELETE /ip-allowlist/{}	src/lib/admin/api/security.ts	non-identity admin write; no org or membership change
+DELETE /llm-settings	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+DELETE /retention-policies/{}	src/lib/admin/api/retention.ts	non-identity admin write; no org or membership change
+DELETE /settings/{}/{}	src/lib/admin/api/settings.ts	non-identity admin write; no org or membership change
+DELETE /sync-configs/{}	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+DELETE /teams/{}	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+PATCH /credentials/{}/{}	src/lib/admin/api/credentials.ts	non-identity admin write; no org or membership change
+PATCH /customer-push/sources/{}	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+PATCH /ip-allowlist/{}	src/lib/admin/api/security.ts	non-identity admin write; no org or membership change
+PATCH /retention-policies/{}	src/lib/admin/api/retention.ts	non-identity admin write; no org or membership change
+PATCH /sync-configs/{}	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+PATCH /teams/{}	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+POST /credentials	src/lib/admin/api/credentials.ts	non-identity admin write; no org or membership change
+POST /credentials/test	src/lib/admin/api/credentials.ts	non-identity admin write; no org or membership change
+POST /customer-push/sources	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+POST /customer-push/sources/{}/tokens	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+POST /customer-push/sources/{}/validate	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+POST /customer-push/tokens/{}/revoke	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+POST /customer-push/tokens/{}/rotate	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
+POST /identities	src/lib/admin/api/identities.ts	non-identity admin write; no org or membership change
+POST /impersonate	src/lib/admin/api/platform.ts	impersonation session start/stop; no membership change
+POST /impersonate/stop	src/lib/admin/api/platform.ts	impersonation session start/stop; no membership change
+POST /integrations/pagerduty/api-token	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /integrations/pagerduty/authorize	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /integrations/pagerduty/callback	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /integrations/pagerduty/client-credentials	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /integrations/pagerduty/disconnect	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /integrations/pagerduty/preflight	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
+POST /ip-allowlist/check	src/lib/admin/api/security.ts	non-identity admin write; no org or membership change
+POST /ip-allowlist	src/lib/admin/api/security.ts	non-identity admin write; no org or membership change
+POST /llm-settings/readiness	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+POST /retention-policies/{}/execute	src/lib/admin/api/retention.ts	non-identity admin write; no org or membership change
+POST /retention-policies	src/lib/admin/api/retention.ts	non-identity admin write; no org or membership change
+POST /settings	src/lib/admin/api/settings.ts	non-identity admin write; no org or membership change
+POST /sync-configs/{}/backfill	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+POST /sync-configs/batch	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+POST /sync-configs	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+POST /sync-configs/{}/trigger	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+POST /teams/{}/approve-changes	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+POST /teams/{}/dismiss-changes	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+POST /teams/import	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+POST /teams	src/lib/admin/api/teams.ts	non-identity admin write; no org or membership change
+PUT /llm-settings/own-model	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+PUT /llm-settings/prompt-cache	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+PUT /llm-settings/service-model	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+PUT /llm-settings	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
+PUT /settings/{}/{}	src/lib/admin/api/settings.ts	non-identity admin write; no org or membership change
+PUT /sync-configs/{}/repositories	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+UNKNOWN /admin	src/lib/admin/api/_request.ts	admin transport prefix; the caller passes the method (CHAOS-12792)

@@ -227,6 +227,7 @@ run_quality() {
     "run_wire_parity"
     "run_pnpm_script lint"
     "run_pnpm_script typecheck"
+    "run_pnpm_script check:org-provisioning"
     "run_audit"
   )
   for step in "${steps[@]}"; do
