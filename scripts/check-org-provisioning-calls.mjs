@@ -5,16 +5,24 @@
  * provisioning proxy fronts, and only from the files named in ci/org_provisioning_allowlist.txt.
  * The check is static and fails closed: no `src` dir is a failure, never a pass.
  *
+ * It reads the TypeScript syntax tree of every .ts .tsx .js .jsx .mjs .cjs .mts .cts file under
+ * `src` (test files and __tests__ skipped). It never matches source text, so comments, escapes and
+ * wrappers (parentheses, `as`, `satisfies`, `<T>`, `!`) cannot hide or fake a finding.
+ *
  * Findings (each printed as `FAIL <file>:<line> <key>`):
- * - a mutating call (POST/PATCH/PUT/DELETE) made through the admin client (`request(` /
- *   `selfRequest(`, in any src file) whose `METHOD /path` key has no row for that file;
- * - a raw mutating `fetch` to /api/v1/admin/*, /api/v1/orgs/* or accept-invite whose key has no row
- *   for that file (this covers POST /admin/users from a component);
- * - an `/orgs/<id>/(members|transfer-ownership|invites)` literal outside src/lib/admin/api/orgs.ts;
- * - an `export ... createUser` (the org-scoped user create that wrote a membership);
- * - a call to `adminApi.users.create(` from a file with no `call users.create` row.
+ * - a call to `request(` / `selfRequest(` (identifier or property access) whose path is a static
+ *   string and whose method is POST/PATCH/PUT/DELETE, or is not a literal (key `UNKNOWN /path`),
+ *   when the file has no row for that `METHOD /path` key;
+ * - a call or `new` whose path is a static string under /api/v1/admin, /api/v1/orgs (the root and
+ *   every subpath) or /api/v1/auth/accept-invite, with such a method, and no row for that file;
+ * - an `/orgs/<id>/(members|transfer-ownership|invites)` string outside src/lib/admin/api/orgs.ts;
+ * - an exported `createUser` (ES export in any form, or a CommonJS export);
+ * - a call to `adminApi.users.create` from a file with no `call adminApi.users.create` row.
  * A row that no longer matches any site fails as stale ("remove it"), so the list only shrinks.
- * Limit: it reads literals; a path built by concatenation from variables is not seen.
+ *
+ * A static string is a string literal, a template literal or a `+` chain of them, read after
+ * escapes are decoded; each non-literal part reads as `{}`.
+ * Limit: a path held in a variable or built by a function call is not seen.
  *
  * Allowlist row: `<key><TAB><file><TAB><reason>`; `#` starts a comment line.
  * Usage: node scripts/check-org-provisioning-calls.mjs [--root .] [--allowlist ci/org_provisioning_allowlist.txt]
@@ -25,11 +33,12 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 export const CLIENT_FILE = "src/lib/admin/api/orgs.ts";
-const MUTATING = "POST|PATCH|PUT|DELETE";
-const RAW_PATH = /\/api\/v1(\/(?:admin|orgs)\/[A-Za-z0-9_\-/{}$.]*|\/auth\/accept-invite)/gu;
-const MEMBER_LITERAL =
-    /\/orgs\/(?:\$\{[^}]*\}|[^/"'`\s]+)\/(?:members|transfer-ownership|invites)/gu;
-const SOURCE_EXT = "ts|tsx|js|jsx|mjs|cjs|mts|cts";
+const MUTATING = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+const CLIENT_CALLEES = new Set(["request", "selfRequest"]);
+const CALLEES = new Set(["request", "selfRequest", "fetch"]);
+const MEMBER_SEGMENTS = new Set(["members", "transfer-ownership", "invites"]);
+const SOURCE = /\.(?:ts|tsx|js|jsx|mjs|cjs|mts|cts)$/u;
+const TEST_FILE = /\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs|mts|cts)$/u;
 const SCRIPT_KINDS = {
     tsx: ts.ScriptKind.TSX,
     jsx: ts.ScriptKind.JSX,
@@ -37,13 +46,10 @@ const SCRIPT_KINDS = {
     mjs: ts.ScriptKind.JS,
     cjs: ts.ScriptKind.JS,
 };
+const HOLE = "{}";
 
-export function normalizePath(literal) {
-    return literal
-        .replace(/^[`"']|[`"']$/gu, "")
-        .replace(/\$\{[^}]*\}/gu, "{}")
-        .replace(/[?#].*$/u, "")
-        .replace(/\/$/u, "");
+export function normalizePath(text) {
+    return text.replace(/[?#].*$/u, "").replace(/\/$/u, "");
 }
 
 function walk(dir, out) {
@@ -52,22 +58,13 @@ function walk(dir, out) {
         if (entry.isDirectory()) {
             if (entry.name === "__tests__" || entry.name === "node_modules") continue;
             walk(full, out);
-        } else if (
-            new RegExp(`\\.(?:${SOURCE_EXT})$`, "u").test(entry.name) &&
-            !new RegExp(`\\.(?:test|spec)\\.(?:${SOURCE_EXT})$`, "u").test(entry.name)
-        ) {
+        } else if (SOURCE.test(entry.name) && !TEST_FILE.test(entry.name)) {
             out.push(full);
         }
     }
 }
 
-const lineOf = (text, index) => text.slice(0, index).split("\n").length;
-
 const hasModifier = (node, kind) => node.modifiers?.some((m) => m.kind === kind) ?? false;
-const literalText = (node) =>
-    node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
-        ? node.text
-        : null;
 
 const unwrap = (node) => {
     let at = node;
@@ -83,55 +80,227 @@ const unwrap = (node) => {
     return at;
 };
 
-// Method of one call, read from its own options object (2nd argument) only.
-function callMethod(call) {
-    const options = unwrap(call.arguments[1]);
-    if (!options || !ts.isObjectLiteralExpression(options)) return null;
-    for (const prop of options.properties) {
-        if (!ts.isPropertyAssignment(prop)) continue;
-        const name = ts.isIdentifier(prop.name) ? prop.name.text : literalText(prop.name);
-        if (name !== "method") continue;
-        const value = literalText(prop.initializer)?.toUpperCase();
-        return value && MUTATING.split("|").includes(value) ? value : null;
+const isLiteral = (node) =>
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isTemplateExpression(node);
+const isConcat = (node) =>
+    ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken;
+
+// The decoded text of a string expression with HOLE for every part that is not a literal; null
+// when the expression holds no literal at all.
+function textOf(expr) {
+    const node = unwrap(expr);
+    if (!node) return null;
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    if (ts.isTemplateExpression(node))
+        return node.templateSpans.reduce(
+            (acc, span) => acc + HOLE + span.literal.text,
+            node.head.text,
+        );
+    if (isConcat(node)) {
+        const left = textOf(node.left);
+        const right = textOf(node.right);
+        return left === null && right === null ? null : (left ?? HOLE) + (right ?? HOLE);
     }
     return null;
 }
 
-// First path argument of a call as source text, `${...}` kept so normalizePath can fold it.
-const pathArg = (call) => {
-    const arg = call.arguments[0];
-    if (!arg) return null;
-    return ts.isStringLiteral(arg) ||
-        ts.isNoSubstitutionTemplateLiteral(arg) ||
-        ts.isTemplateExpression(arg)
-        ? arg.getText()
-        : null;
+// Every outermost string expression inside one argument, not looking into nested calls or
+// functions (a nested call owns its own arguments).
+function stringParts(node, out) {
+    const at = unwrap(node);
+    if (!at) return;
+    if (isLiteral(at) || isConcat(at)) {
+        const text = textOf(at);
+        if (text !== null) {
+            out.push({ node: at, text });
+            return;
+        }
+    }
+    if (
+        ts.isCallExpression(at) ||
+        ts.isNewExpression(at) ||
+        ts.isFunctionLike(at) ||
+        ts.isClassLike(at)
+    )
+        return;
+    ts.forEachChild(at, (child) => stringParts(child, out));
+}
+
+const propertyName = (name) => {
+    if (
+        ts.isIdentifier(name) ||
+        ts.isStringLiteral(name) ||
+        ts.isNoSubstitutionTemplateLiteral(name)
+    )
+        return name.text;
+    if (ts.isComputedPropertyName(name)) {
+        const inner = unwrap(name.expression);
+        return inner && (ts.isStringLiteral(inner) || ts.isNoSubstitutionTemplateLiteral(inner))
+            ? inner.text
+            : null;
+    }
+    return ts.isNumericLiteral(name) ? name.text : null;
 };
 
-function exportsCreateUser(node) {
-    if (ts.isFunctionDeclaration(node) && hasModifier(node, ts.SyntaxKind.ExportKeyword))
-        return node.name?.text === "createUser";
-    if (ts.isVariableStatement(node) && hasModifier(node, ts.SyntaxKind.ExportKeyword))
-        return node.declarationList.declarations.some(
-            (d) => ts.isIdentifier(d.name) && d.name.text === "createUser",
-        );
-    if (ts.isExportAssignment(node))
-        return ts.isIdentifier(node.expression) && node.expression.text === "createUser";
-    if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause))
-        return node.exportClause.elements.some(
-            (e) => e.name.text === "createUser" || e.propertyName?.text === "createUser",
-        );
-    return false;
+const staticString = (node) =>
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    (ts.isTemplateExpression(node) && node.templateSpans.length === 0)
+        ? node.text
+        : null;
+
+// The method after an options expression is applied over `current`: a method name, or "UNKNOWN"
+// when a literal method cannot be read. Spreads of object literals are read; `a && {..}` and
+// `a ? {..} : {..}` merge their branches; anything else may hold a method.
+function methodFrom(expr, current) {
+    const node = unwrap(expr);
+    if (!node) return current;
+    if (ts.isIdentifier(node) && node.text === "undefined") return current;
+    if (node.kind === ts.SyntaxKind.NullKeyword || node.kind === ts.SyntaxKind.FalseKeyword)
+        return current;
+    const merge = (a, b) => (a === b ? a : "UNKNOWN");
+    if (ts.isConditionalExpression(node))
+        return merge(methodFrom(node.whenTrue, current), methodFrom(node.whenFalse, current));
+    if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+    )
+        return merge(current, methodFrom(node.right, current));
+    if (!ts.isObjectLiteralExpression(node)) return "UNKNOWN";
+    let method = current;
+    for (const prop of node.properties) {
+        if (ts.isSpreadAssignment(prop)) {
+            method = methodFrom(prop.expression, method);
+            continue;
+        }
+        if (!prop.name) continue;
+        const name = propertyName(prop.name);
+        if (name !== null && name !== "method") continue;
+        if (name === null || !ts.isPropertyAssignment(prop)) {
+            method = "UNKNOWN";
+            continue;
+        }
+        const value = staticString(unwrap(prop.initializer));
+        method = value === null ? "UNKNOWN" : value.toUpperCase();
+    }
+    return method;
 }
 
-// The call that holds `node` as (part of) one of its arguments.
-function owningCall(node) {
-    for (let at = node; at.parent; at = at.parent) {
-        const up = at.parent;
-        if (ts.isCallExpression(up) && up.arguments.includes(at)) return up;
-        if (ts.isBlock(up) || ts.isSourceFile(up)) return null;
+// The HTTP method of a call, read from its options object (2nd argument); "GET" when there is none.
+const methodOf = (call) => methodFrom(call.arguments?.[1], "GET");
+
+const bare = (segment) => (segment ?? "").replace(/\{\}$/u, "");
+const cut = (text) => text.replace(/[?#].*$/u, "");
+
+// Routes under the go-api admin namespaces named in a path text, as normalized keys.
+function rawRoutes(text) {
+    const routes = [];
+    const prefix = "/api/v1";
+    for (let at = text.indexOf(`${prefix}/`); at >= 0; at = text.indexOf(`${prefix}/`, at + 1)) {
+        const rest = cut(text.slice(at + prefix.length));
+        const segments = rest.split("/").slice(1);
+        const first = bare(segments[0]);
+        if (first === "admin" || first === "orgs") routes.push(normalizePath(rest));
+        else if (first === "auth" && bare(segments[1]) === "accept-invite")
+            routes.push("/auth/accept-invite");
+    }
+    return routes;
+}
+
+// How many `/orgs/<id>/(members|transfer-ownership|invites)` routes a text names.
+function memberRoutes(text) {
+    let count = 0;
+    for (let at = text.indexOf("/orgs/"); at >= 0; at = text.indexOf("/orgs/", at + 1)) {
+        const segments = cut(text.slice(at + "/orgs/".length)).split("/");
+        if (segments[0] && MEMBER_SEGMENTS.has(bare(segments[1]))) count += 1;
+    }
+    return count;
+}
+
+// The name chain of a callee, `adminApi.users.create` -> ["adminApi", "users", "create"].
+function chainOf(expr) {
+    let node = unwrap(expr);
+    const names = [];
+    while (node) {
+        if (ts.isPropertyAccessExpression(node)) names.unshift(node.name.text);
+        else if (ts.isElementAccessExpression(node)) {
+            const key = unwrap(node.argumentExpression);
+            if (!key || !(ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)))
+                return null;
+            names.unshift(key.text);
+        } else if (ts.isIdentifier(node)) {
+            names.unshift(node.text);
+            return names;
+        } else return null;
+        node = unwrap(node.expression);
     }
     return null;
+}
+
+function calleeName(call) {
+    let callee = unwrap(call.expression);
+    while (
+        callee &&
+        ts.isBinaryExpression(callee) &&
+        callee.operatorToken.kind === ts.SyntaxKind.CommaToken
+    )
+        callee = unwrap(callee.right);
+    const chain = callee && chainOf(callee);
+    return chain ? chain[chain.length - 1] : null;
+}
+
+const NAME = "createUser";
+const isNameToken = (node) =>
+    node && (ts.isIdentifier(node) || ts.isStringLiteral(node)) && node.text === NAME;
+
+function bindingHasName(name) {
+    if (ts.isIdentifier(name)) return name.text === NAME;
+    return name.elements.some((el) => !ts.isOmittedExpression(el) && bindingHasName(el.name));
+}
+
+function objectHasName(object) {
+    return object.properties.some((prop) =>
+        ts.isShorthandPropertyAssignment(prop) || ts.isPropertyAssignment(prop)
+            ? propertyName(prop.name) === NAME
+            : false,
+    );
+}
+
+function exportsValue(expr) {
+    const node = unwrap(expr);
+    if (!node) return false;
+    if (ts.isIdentifier(node)) return node.text === NAME;
+    return ts.isObjectLiteralExpression(node) && objectHasName(node);
+}
+
+function exportsCreateUser(node) {
+    if (
+        (ts.isFunctionDeclaration(node) ||
+            ts.isClassDeclaration(node) ||
+            ts.isEnumDeclaration(node) ||
+            ts.isModuleDeclaration(node)) &&
+        hasModifier(node, ts.SyntaxKind.ExportKeyword)
+    )
+        return node.name?.text === NAME;
+    if (ts.isVariableStatement(node) && hasModifier(node, ts.SyntaxKind.ExportKeyword))
+        return node.declarationList.declarations.some((d) => bindingHasName(d.name));
+    if (ts.isExportAssignment(node)) return exportsValue(node.expression);
+    if (ts.isExportDeclaration(node) && node.exportClause) {
+        if (ts.isNamespaceExport(node.exportClause)) return isNameToken(node.exportClause.name);
+        return node.exportClause.elements.some(
+            (e) => isNameToken(e.name) || isNameToken(e.propertyName),
+        );
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const chain = chainOf(node.left);
+        if (!chain) return false;
+        const key = chain.join(".");
+        if (key === `exports.${NAME}` || key === `module.exports.${NAME}`) return true;
+        return key === "module.exports" && exportsValue(node.right);
+    }
+    return false;
 }
 
 export function findSites(rel, text) {
@@ -143,44 +312,55 @@ export function findSites(rel, text) {
         true,
         SCRIPT_KINDS[rel.slice(rel.lastIndexOf(".") + 1)] ?? ts.ScriptKind.TS,
     );
-    const memberAt = new Set();
-    const add = (index, key) => sites.push({ file: rel, line: lineOf(text, index), key });
-    const visit = (node) => {
-        if (ts.isCallExpression(node)) {
-            const callee = node.expression;
-            if (ts.isIdentifier(callee) && /^(?:selfRequest|request)$/u.test(callee.text)) {
-                const arg = pathArg(node);
-                const p = arg && normalizePath(arg);
-                const method = callMethod(node);
-                if (p && !p.startsWith("/api/") && method) add(node.getStart(sf), `${method} ${p}`);
+    const add = (node, key) =>
+        sites.push({
+            file: rel,
+            line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+            key,
+        });
+    const covered = new WeakSet();
+    const cover = (node) => {
+        const at = unwrap(node);
+        if (!at) return;
+        covered.add(at);
+        if (isConcat(at)) {
+            cover(at.left);
+            cover(at.right);
+        }
+    };
+    const visitCall = (node) => {
+        const name = calleeName(node);
+        const http = CALLEES.has(name) || (ts.isNewExpression(node) && name === "Request");
+        const method = methodOf(node);
+        const flagged = MUTATING.has(method) || (http && method === "UNKNOWN");
+        const first = node.arguments?.[0];
+        if (flagged && first) {
+            if (CLIENT_CALLEES.has(name)) {
+                const p = textOf(first);
+                if (p !== null && !p.startsWith("/api/"))
+                    add(node, `${method} ${normalizePath(p)}`);
             }
-            if (
-                ts.isPropertyAccessExpression(callee) &&
-                callee.getText(sf) === "adminApi.users.create"
-            )
-                add(node.getStart(sf), "call adminApi.users.create");
+            const parts = [];
+            stringParts(first, parts);
+            for (const part of parts)
+                for (const route of rawRoutes(part.text)) add(part.node, `${method} ${route}`);
         }
         if (
-            ts.isStringLiteral(node) ||
-            ts.isNoSubstitutionTemplateLiteral(node) ||
-            ts.isTemplateExpression(node)
-        ) {
-            const source = node.getText(sf);
-            if (rel !== CLIENT_FILE)
-                for (const match of source.matchAll(MEMBER_LITERAL)) {
-                    const at = node.getStart(sf) + match.index;
-                    if (memberAt.has(at)) continue;
-                    memberAt.add(at);
-                    add(at, "member route literal");
-                }
-            for (const match of source.matchAll(RAW_PATH)) {
-                const call = owningCall(node);
-                const method = call && callMethod(call);
-                if (method)
-                    add(node.getStart(sf) + match.index, `${method} ${normalizePath(match[1])}`);
+            ts.isCallExpression(node) &&
+            chainOf(node.expression)?.join(".") === "adminApi.users.create"
+        )
+            add(node, "call adminApi.users.create");
+    };
+    const visit = (node) => {
+        if (ts.isCallExpression(node) || ts.isNewExpression(node)) visitCall(node);
+        if (rel !== CLIENT_FILE && (isLiteral(node) || isConcat(node)) && !covered.has(node)) {
+            const value = textOf(node);
+            if (value !== null) {
+                cover(node);
+                for (let n = memberRoutes(value); n > 0; n -= 1) add(node, "member route literal");
             }
         }
-        if (exportsCreateUser(node)) add(node.getStart(sf), "export createUser");
+        if (exportsCreateUser(node)) add(node, "export createUser");
         ts.forEachChild(node, visit);
     };
     visit(sf);
