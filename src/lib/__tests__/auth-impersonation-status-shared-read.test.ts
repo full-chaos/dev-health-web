@@ -474,7 +474,7 @@ describe("(e) server only", () => {
             .filter((file) =>
                 /from "@\/lib\/impersonationStatusMemo"/.test(readFileSync(file, "utf8")),
             );
-        expect(importers).toEqual(["src/lib/auth/platform/limits.ts", "src/lib/auth.ts"]);
+        expect(importers).toEqual(["src/lib/auth.ts"]);
         for (const file of importers) {
             expect(readFileSync(file, "utf8")).toMatch(/^import "server-only";$/m);
         }
