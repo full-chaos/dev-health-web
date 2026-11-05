@@ -1,9 +1,9 @@
 {
-  "source_commit": "479a986a3b6966069de7368b38f72e7dfe8d1e82",
+  "source_commit": "981218f5f6cad1a899e00f375caa81f9297efe8b",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "65d61e82f0e60dc8b4610c585580709607f183d62799c312f27185fe9aea6ef6"
+      "sha256": "817346ca729a8cd1455b7de016ba0ee0034ecccd7ca8badc3a1715e476e82ee3"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "63851cabdc15619f764e83a0d64d474e5b813e31ea991a231e54636fcaaeebb4"
+      "sha256": "34664aeb01756ba4dc36b453dddf98d86d76682cd37f06d2a1f6819de6781012"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -59,7 +59,7 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "5e40c4c1019e07f43a53a8438f8a43f093d8f433922623265117083f6e2b8334"
+      "sha256": "0c40bba53fe495621280e2333057ee7a57567c17545c947a5bef29d8bf07606d"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
@@ -124,6 +124,10 @@
     {
       "path": "schemas/credential_lifecycle_list.v1.schema.json",
       "sha256": "d4642dbd6cfb1faf5f18167717779e616b404ac62a1fcde2d501b0fef2587ea6"
+    },
+    {
+      "path": "schemas/credential_revoke_on_behalf_request.v1.schema.json",
+      "sha256": "398ed6659465eeab256512d73beb9fdba91fa6405fe70e0e9ec299e987031312"
     },
     {
       "path": "schemas/credential_revoke_request.v1.schema.json",
