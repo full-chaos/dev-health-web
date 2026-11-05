@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { appPath } from "@/lib/navigation/appPath";
 
 type SsoEntryProps = {
     callbackUrl?: string;
@@ -28,7 +29,11 @@ export function SsoEntry({ callbackUrl }: SsoEntryProps) {
         }
         setInvalid(false);
         const query = callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : "";
-        window.location.assign(`/auth/sso/${protocol}/${id}${query}`);
+        const start =
+            protocol === "saml"
+                ? appPath("/auth/sso/saml/[providerId]", { providerId: id })
+                : appPath("/auth/sso/oidc/[providerId]", { providerId: id });
+        window.location.assign(`${start}${query}`);
     };
 
     return (
