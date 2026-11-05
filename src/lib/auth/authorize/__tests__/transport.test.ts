@@ -160,7 +160,7 @@ describe("failures are denies", () => {
         expect(out).toEqual({ allowed: false, source: "client", reason: "transport_error" });
     });
     it("a non-200 passes through and the client denies non_200", async () => {
-        fetchMock.mockResolvedValue(ok("nope", 503));
+        fetchMock.mockImplementation(async () => ok("nope", 503));
         const { createAuthorizeTransport } = await load();
         const reply = await createAuthorizeTransport()({ path: "/v1/authorize", body: "{}" });
         expect(reply.status).toBe(503);

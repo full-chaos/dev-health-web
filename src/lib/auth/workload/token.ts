@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 
 // Server-only workload token source: exchanges the projected ServiceAccount token at auth-service
 // for a short-lived workload token (RFC 8693). Rules mirror dev-health-go workloadtoken v0.44.0.
-// No consumer yet. The token and the subject are never logged and never put in an error.
+// The token and the subject are never logged and never put in an error.
 
 const PATH = "/internal/v1/token/exchange";
 const AUDIENCE = "auth-service";
@@ -47,6 +47,10 @@ function source(): Source | undefined {
     const issuer = env.AUTH_WORKLOAD_ISSUER?.trim();
     if (!base || !subjectFile || !issuer || !ISSUER_SHAPE.test(issuer)) return undefined;
     return { url: base.replace(/\/+$/, "") + PATH, subjectFile, issuer };
+}
+
+export function workloadTokenConfigured(): boolean {
+    return source() !== undefined;
 }
 
 // Top-level member names of a JSON object text, in order. Duplicates are visible here, which
