@@ -67,7 +67,7 @@ export async function updateCurrentOrg(
 ): Promise<ActionResult<Organization>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const { token, orgId } = await getSessionContext();
+            const { token, orgId } = await getSessionContext({ write: "org.write" });
             if (!orgId) {
                 throw new AdminApiError(400, "Bad Request", "No organization ID in session");
             }
@@ -86,7 +86,7 @@ export async function updateOrgProfile(data: {
 }): Promise<ActionResult<Organization>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const { token, orgId } = await getSessionContext();
+            const { token, orgId } = await getSessionContext({ write: "org.write" });
             if (!orgId) {
                 throw new AdminApiError(400, "Bad Request", "No organization ID in session");
             }
@@ -98,7 +98,7 @@ export async function updateOrgProfile(data: {
 export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
     return withErrorHandling(() =>
         withOrgMemberRefusals(async () => {
-            const { token, orgId } = await getSessionContext();
+            const { token, orgId } = await getSessionContext({ write: "org.delete" });
             if (!orgId) {
                 throw new AdminApiError(400, "Bad Request", "No organization ID in session");
             }
@@ -383,7 +383,7 @@ export async function inviteCurrentOrgMember(
         const body = inviteBody(email, role);
         return withOrgMemberRefusals(
             async () => {
-                const { token, orgId } = await getSessionContext();
+                const { token, orgId } = await getSessionContext({ write: "members.invite" });
                 if (!orgId) {
                     throw new AdminApiError(400, "Bad Request", "No organization ID in session");
                 }

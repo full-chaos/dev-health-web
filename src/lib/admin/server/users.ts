@@ -28,14 +28,14 @@ export async function getUser(userId: string): Promise<ActionResult<User>> {
 
 export async function updateUser(userId: string, data: UserUpdate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
+        const { token, orgId } = await getSessionContext({ write: "members.update" });
         return adminApi.users.update(userId, data, token, orgId);
     });
 }
 
 export async function deleteUser(userId: string): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
+        const { token, orgId } = await getSessionContext({ write: "members.manage" });
         return adminApi.users.delete(userId, token, orgId);
     });
 }
@@ -46,7 +46,7 @@ export async function setUserPassword(
     adminPassword: string,
 ): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
+        const { token, orgId } = await getSessionContext({ write: "members.manage" });
         return adminApi.users.setPassword(userId, password, adminPassword, token, orgId);
     });
 }

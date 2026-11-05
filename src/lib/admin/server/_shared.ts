@@ -1,7 +1,7 @@
 import { failureFromError } from "@/lib/actionFailure";
 import { auth, forgetOwnImpersonationStatus } from "@/lib/auth";
 import { decideGuard, defaultDeps, type GuardId } from "@/lib/auth/decide/decide";
-import type { PlatformAction } from "@/lib/auth/platform/actionTable";
+import type { OrgDeniedAction, PlatformAction } from "@/lib/auth/platform/actionTable";
 import { scheduleFnShadow } from "@/lib/auth/platform/shadow";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
@@ -11,8 +11,8 @@ export interface SessionContext {
     orgId: string | undefined;
 }
 
-export async function getSessionContext(): Promise<SessionContext> {
-    const session = await auth();
+export async function getSessionContext(o: OrgWrite = {}): Promise<SessionContext> {
+    const session = await authForOrgWrite(o.write);
     if (!session?.access_token) {
         throw new AdminApiError(401, "Unauthorized", "No access token");
     }
@@ -83,4 +83,22 @@ export async function withErrorHandling<T>(
     } finally {
         if (after === "changes-impersonation") await forgetOwnImpersonationStatus();
     }
+}
+
+// Below the anchored lines on purpose: the auth-profile gate anchors this file by line.
+import { IMPERSONATION_LIMIT_MESSAGE, refuseOrgWrite } from "@/lib/auth/platform/limits";
+
+/**
+ * `getSessionContext({ write })` names the catalog action of an organization write. With
+ * AUTHZ_PLATFORM_UI=enforce a session that is impersonating (or whose status is unknown) is
+ * refused with 403 before any backend call. No session token keeps the 401 of the caller.
+ */
+type OrgWrite = { write?: OrgDeniedAction };
+
+async function authForOrgWrite(write: OrgDeniedAction | undefined) {
+    const session = await auth();
+    if (write !== undefined && session?.access_token && (await refuseOrgWrite(session, write))) {
+        throw new AdminApiError(403, "Forbidden", IMPERSONATION_LIMIT_MESSAGE);
+    }
+    return session;
 }

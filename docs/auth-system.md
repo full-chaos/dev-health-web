@@ -420,6 +420,8 @@ sequenceDiagram
 
 Superuser "Login as User" functionality for debugging and support.
 
+What an impersonating session sees and may not do, and the `AUTHZ_PLATFORM_UI` switch: [auth-impersonation.md](auth-impersonation.md).
+
 ```mermaid
 sequenceDiagram
     participant SA as Superuser

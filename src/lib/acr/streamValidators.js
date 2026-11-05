@@ -201,7 +201,7 @@ const schema31 = {
         },
     ],
 };
-const schema274 = {
+const schema276 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     title: "ACR Error v1",
     type: "object",
@@ -591,7 +591,7 @@ const schema32 = {
         },
     ],
 };
-const schema93 = {
+const schema94 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -642,7 +642,7 @@ const schema93 = {
         "canonical_service_version",
     ],
 };
-const schema141 = {
+const schema142 = {
     description:
         "CHAOS-5405 D-d: one attempted requirement/origin scope decision, as served -- what population was measured, how much of it the caller was authorized to see, how much was admitted, and whether the answer was cut short. It is SERVED rather than only logged because two distinctions the answer depends on cannot be recovered from anything else on the result: a measured zero versus an unmeasured population, and which policy a successful expansion ran on. Counts from overlapping origin groups are NOT additive, and authorized_population_count always means the CALLER-VISIBLE population, never the organization's unrestricted one.",
     type: "object",
@@ -6208,6 +6208,7 @@ const schema50 = {
             description:
                 "The derived requirement rows this turn planned, one per coordinate. Optional: absent means no rows were derived, which the completeness state reports as not_derived.",
         },
+        fallback: { $ref: "#/$defs/AnswerPlanFallback" },
     },
     required: [
         "family",
@@ -6280,6 +6281,66 @@ const schema56 = {
         "CHAOS-3900 P1: the closed enum for which intent-frame member is missing or ambiguous (pivot-intent design brief section 2.1).",
     type: "string",
     enum: ["expected_kind", "subject_anchor", "subject_handle", "window", "subject_candidate"],
+};
+const schema65 = {
+    description:
+        "CHAOS-13002: the plan's record of a read fallback. Present only when the model planned some of this answer's reads, because no fixed question family serves what the question asks: why the fallback applied, the fact kinds the model planned in plan order, and the outcome. Optional: absent means the family planned every read.",
+    type: "object",
+    additionalProperties: false,
+    properties: {
+        reason: {
+            type: "string",
+            description:
+                "Why the fallback applied. Open vocabulary; documented values: judgment_unservable, kind_unserved_for_member. A client must tolerate values it does not know.",
+            "x-documented-values": ["judgment_unservable", "kind_unserved_for_member"],
+        },
+        planned_kinds: {
+            type: "array",
+            items: {
+                type: "string",
+                description:
+                    "Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.",
+                "x-documented-values": [
+                    "identity",
+                    "membership",
+                    "status",
+                    "actual_completion",
+                    "work",
+                    "blockers",
+                    "required_children",
+                    "pull_requests",
+                    "reviews",
+                    "continuous_integration",
+                    "deployments",
+                    "incidents",
+                    "metrics",
+                    "health",
+                    "workload",
+                    "investment",
+                    "readiness",
+                    "operational_deficiencies",
+                    "source_health",
+                    "evidence",
+                    "flow",
+                    "landscape",
+                    "security_alerts",
+                    "commitment",
+                    "file_hotspots",
+                ],
+            },
+            minItems: 1,
+            maxItems: 64,
+            description:
+                "The fact kinds the model planned, in plan order, each once. A kind the family or the interpreter already planned keeps its own entry in fact_kinds.",
+        },
+        outcome: {
+            type: "string",
+            description:
+                "What became of the fallback. Open vocabulary; documented values: applied. A client must tolerate values it does not know.",
+            "x-documented-values": ["applied"],
+        },
+    },
+    required: ["reason", "planned_kinds", "outcome"],
 };
 const schema57 = {
     description:
@@ -8390,8 +8451,193 @@ function validate41(
                 errors++;
             }
         }
+        if (data.fallback !== undefined) {
+            let data18 = data.fallback;
+            if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
+                if (data18.reason === undefined) {
+                    const err33 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "reason" },
+                        message: "must have required property '" + "reason" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err33];
+                    } else {
+                        vErrors.push(err33);
+                    }
+                    errors++;
+                }
+                if (data18.planned_kinds === undefined) {
+                    const err34 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "planned_kinds" },
+                        message: "must have required property '" + "planned_kinds" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err34];
+                    } else {
+                        vErrors.push(err34);
+                    }
+                    errors++;
+                }
+                if (data18.outcome === undefined) {
+                    const err35 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "outcome" },
+                        message: "must have required property '" + "outcome" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err35];
+                    } else {
+                        vErrors.push(err35);
+                    }
+                    errors++;
+                }
+                for (const key1 in data18) {
+                    if (!(key1 === "reason" || key1 === "planned_kinds" || key1 === "outcome")) {
+                        const err36 = {
+                            instancePath: instancePath + "/fallback",
+                            schemaPath: "#/$defs/AnswerPlanFallback/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key1 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err36];
+                        } else {
+                            vErrors.push(err36);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.reason !== undefined) {
+                    if (typeof data18.reason !== "string") {
+                        const err37 = {
+                            instancePath: instancePath + "/fallback/reason",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/reason/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err37];
+                        } else {
+                            vErrors.push(err37);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.planned_kinds !== undefined) {
+                    let data20 = data18.planned_kinds;
+                    if (Array.isArray(data20)) {
+                        if (data20.length > 64) {
+                            const err38 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/maxItems",
+                                keyword: "maxItems",
+                                params: { limit: 64 },
+                                message: "must NOT have more than 64 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err38];
+                            } else {
+                                vErrors.push(err38);
+                            }
+                            errors++;
+                        }
+                        if (data20.length < 1) {
+                            const err39 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/minItems",
+                                keyword: "minItems",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err39];
+                            } else {
+                                vErrors.push(err39);
+                            }
+                            errors++;
+                        }
+                        const len5 = data20.length;
+                        for (let i5 = 0; i5 < len5; i5++) {
+                            if (typeof data20[i5] !== "string") {
+                                const err40 = {
+                                    instancePath: instancePath + "/fallback/planned_kinds/" + i5,
+                                    schemaPath:
+                                        "#/$defs/AnswerPlanFallback/properties/planned_kinds/items/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err40];
+                                } else {
+                                    vErrors.push(err40);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err41 = {
+                            instancePath: instancePath + "/fallback/planned_kinds",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/planned_kinds/type",
+                            keyword: "type",
+                            params: { type: "array" },
+                            message: "must be array",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err41];
+                        } else {
+                            vErrors.push(err41);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.outcome !== undefined) {
+                    if (typeof data18.outcome !== "string") {
+                        const err42 = {
+                            instancePath: instancePath + "/fallback/outcome",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/outcome/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err42];
+                        } else {
+                            vErrors.push(err42);
+                        }
+                        errors++;
+                    }
+                }
+            } else {
+                const err43 = {
+                    instancePath: instancePath + "/fallback",
+                    schemaPath: "#/$defs/AnswerPlanFallback/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err43];
+                } else {
+                    vErrors.push(err43);
+                }
+                errors++;
+            }
+        }
     } else {
-        const err33 = {
+        const err44 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -8399,9 +8645,9 @@ function validate41(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err33];
+            vErrors = [err44];
         } else {
-            vErrors.push(err33);
+            vErrors.push(err44);
         }
         errors++;
     }
@@ -8409,7 +8655,7 @@ function validate41(
     return errors === 0;
 }
 validate41.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema65 = {
+const schema66 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -8491,7 +8737,7 @@ const schema65 = {
         },
     ],
 };
-const schema66 = {
+const schema67 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -8617,7 +8863,7 @@ const schema66 = {
         },
     ],
 };
-const schema68 = {
+const schema69 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -9524,7 +9770,7 @@ function validate50(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema66.properties, key0)) {
+            if (!func1.call(schema67.properties, key0)) {
                 const err39 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -10152,7 +10398,7 @@ function validate50(
                             instancePath: instancePath + "/ranking_basis/" + i3,
                             schemaPath: "#/properties/ranking_basis/items/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema66.properties.ranking_basis.items.enum },
+                            params: { allowedValues: schema67.properties.ranking_basis.items.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -10281,7 +10527,7 @@ function validate50(
                     instancePath: instancePath + "/data_completeness",
                     schemaPath: "#/properties/data_completeness/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema66.properties.data_completeness.enum },
+                    params: { allowedValues: schema67.properties.data_completeness.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -11294,7 +11540,7 @@ function validate50(
                             errors++;
                         }
                         for (const key2 in data27) {
-                            if (!func1.call(schema68.properties, key2)) {
+                            if (!func1.call(schema69.properties, key2)) {
                                 const err130 = {
                                     instancePath: instancePath + "/drivers/" + i5,
                                     schemaPath: "#/$defs/CohortMemberDriver/additionalProperties",
@@ -11338,7 +11584,7 @@ function validate50(
                                     instancePath: instancePath + "/drivers/" + i5 + "/signal",
                                     schemaPath: "#/$defs/CohortMemberDriver/properties/signal/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema68.properties.signal.enum },
+                                    params: { allowedValues: schema69.properties.signal.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -11495,7 +11741,7 @@ function validate50(
                                     instancePath: instancePath + "/drivers/" + i5 + "/window",
                                     schemaPath: "#/$defs/CohortMemberDriver/properties/window/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema68.properties.window.enum },
+                                    params: { allowedValues: schema69.properties.window.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -11549,7 +11795,7 @@ function validate50(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema68.properties.threshold_labels.items.enum,
+                                                    schema69.properties.threshold_labels.items.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
                                         };
@@ -11765,7 +12011,7 @@ function validate50(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema68.properties.concentration_method.enum,
+                                            schema69.properties.concentration_method.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
                                 };
@@ -11987,7 +12233,7 @@ function validate50(
                     instancePath: instancePath + "/outcome",
                     schemaPath: "#/properties/outcome/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema66.properties.outcome.enum },
+                    params: { allowedValues: schema67.properties.outcome.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -12061,7 +12307,7 @@ function validate50(
                             schemaPath: "#/properties/missing_signals/items/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema66.properties.missing_signals.items.enum,
+                                allowedValues: schema67.properties.missing_signals.items.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -12142,7 +12388,7 @@ function validate50(
     return errors === 0;
 }
 validate50.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema69 = {
+const schema70 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -12482,7 +12728,7 @@ function validate52(
     return errors === 0;
 }
 validate52.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema71 = {
+const schema72 = {
     description:
         "CHAOS-4636: one group of a GROUPED cohort answer. Members are named by canonical id into Cohort.members rather than nested, so the flattened member list stays authoritative and a grouped answer does not pay for every member twice against the byte budget. A group carries its OWN complete/truncated, which is the representation the flat cohort booleans could not express.",
     type: "object",
@@ -13400,7 +13646,7 @@ function validate49(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema65.properties, key0)) {
+            if (!func1.call(schema66.properties, key0)) {
                 const err17 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -13694,7 +13940,7 @@ function validate49(
                     instancePath: instancePath + "/score_meaning",
                     schemaPath: "#/properties/score_meaning/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema65.properties.score_meaning.enum },
+                    params: { allowedValues: schema66.properties.score_meaning.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -13781,7 +14027,7 @@ function validate49(
     return errors === 0;
 }
 validate49.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema73 = {
+const schema74 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -14308,7 +14554,7 @@ function validate57(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema73.properties, key0)) {
+            if (!func1.call(schema74.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -15440,7 +15686,7 @@ function validate57(
     return errors === 0;
 }
 validate57.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema75 = {
+const schema76 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -16294,7 +16540,7 @@ function validate59(
     return errors === 0;
 }
 validate59.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema77 = {
+const schema78 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -16318,7 +16564,7 @@ const schema77 = {
     },
     required: ["path_id", "nodes", "edges", "why_relevant", "evidence_ref_ids", "truncated"],
 };
-const schema79 = {
+const schema80 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -16493,7 +16739,7 @@ function validate63(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema79.properties, key0)) {
+            if (!func1.call(schema80.properties, key0)) {
                 const err6 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -17954,7 +18200,7 @@ function validate62(
     return errors === 0;
 }
 validate62.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema82 = {
+const schema83 = {
     type: "object",
     additionalProperties: false,
     allOf: [
@@ -18128,7 +18374,7 @@ const schema82 = {
     },
     required: ["claim_id", "kind", "subject", "field", "value"],
 };
-const schema84 = {
+const schema85 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -18146,7 +18392,7 @@ const schema84 = {
         { required: ["null"] },
     ],
 };
-const schema87 = {
+const schema88 = {
     description:
         "CHAOS-4637: the declaration of what a fact's row table is. Carries no rows of its own -- it describes the rows carried beside it, so a declaration can never double a table's bytes against the response budget.",
     type: "object",
@@ -18253,7 +18499,7 @@ const schema87 = {
     },
     required: ["field", "shape", "key"],
 };
-const schema89 = {
+const schema90 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -18276,7 +18522,7 @@ const schema89 = {
         project_own_work_unit_count: { type: "integer", minimum: 0 },
     },
 };
-const schema90 = {
+const schema91 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -18334,7 +18580,7 @@ const schema90 = {
     },
     then: { required: ["scope_count"] },
 };
-const schema85 = {
+const schema86 = {
     description:
         "CHAOS-4347: one row of a claimed fact's OPTIONAL renderable table. A row's own fields are plain scalars -- it never nests another table.",
     type: "object",
@@ -19299,7 +19545,7 @@ function validate67(
                                 if (
                                     !func0(
                                         data5.key,
-                                        schema82.allOf[3].if.not.anyOf[1].properties.table
+                                        schema83.allOf[3].if.not.anyOf[1].properties.table
                                             .properties.key.const,
                                     )
                                 ) {
@@ -19587,7 +19833,7 @@ function validate67(
                                 if (
                                     !func0(
                                         data12.key,
-                                        schema82.allOf[5].if.properties.table.properties.key.const,
+                                        schema83.allOf[5].if.properties.table.properties.key.const,
                                     )
                                 ) {
                                     const err35 = {};
@@ -19749,7 +19995,7 @@ function validate67(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema82.properties, key0)) {
+            if (!func1.call(schema83.properties, key0)) {
                 const err43 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -20670,7 +20916,7 @@ function validate67(
                     instancePath: instancePath + "/operation",
                     schemaPath: "#/properties/operation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema82.properties.operation.enum },
+                    params: { allowedValues: schema83.properties.operation.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -20782,7 +21028,7 @@ function validate67(
                     errors++;
                 }
                 for (const key4 in data37) {
-                    if (!func1.call(schema87.properties, key4)) {
+                    if (!func1.call(schema88.properties, key4)) {
                         const err99 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -20874,7 +21120,7 @@ function validate67(
                             instancePath: instancePath + "/table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -21391,7 +21637,7 @@ function validate67(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -21459,7 +21705,7 @@ function validate67(
                             instancePath: instancePath + "/table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -21521,7 +21767,7 @@ function validate67(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -21764,7 +22010,7 @@ function validate67(
                     errors++;
                 }
                 for (const key8 in data58) {
-                    if (!func1.call(schema87.properties, key8)) {
+                    if (!func1.call(schema88.properties, key8)) {
                         const err152 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -21856,7 +22102,7 @@ function validate67(
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -22387,7 +22633,7 @@ function validate67(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -22456,7 +22702,7 @@ function validate67(
                             instancePath: instancePath + "/time_series_table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -22519,7 +22765,7 @@ function validate67(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -23028,7 +23274,7 @@ function validate67(
                     errors++;
                 }
                 for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+                    if (!func1.call(schema91.properties, key13)) {
                         const err220 = {
                             instancePath: instancePath + "/completion_forecast",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
@@ -23110,7 +23356,7 @@ function validate67(
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
+                            params: { allowedValues: schema91.properties.state.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -23770,7 +24016,7 @@ function validate67(
     return errors === 0;
 }
 validate67.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema91 = {
+const schema92 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -23818,7 +24064,7 @@ const schema91 = {
     },
     required: ["sources", "partial"],
 };
-const schema92 = {
+const schema93 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -24557,7 +24803,7 @@ function validate72(
                             errors++;
                         }
                         for (const key2 in data13) {
-                            if (!func1.call(schema92.properties, key2)) {
+                            if (!func1.call(schema93.properties, key2)) {
                                 const err35 = {
                                     instancePath: instancePath + "/details/" + i2,
                                     schemaPath: "#/$defs/CoverageDetail/additionalProperties",
@@ -25306,7 +25552,7 @@ function validate72(
     return errors === 0;
 }
 validate72.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema94 = {
+const schema95 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -25459,7 +25705,7 @@ function validate74(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.requested.allOf[1].properties.axis.enum,
+                                    schema95.properties.requested.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -25501,7 +25747,7 @@ function validate74(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.effective.allOf[1].properties.axis.enum,
+                                    schema95.properties.effective.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -25537,7 +25783,7 @@ function validate74(
                     instancePath: instancePath + "/grain",
                     schemaPath: "#/properties/grain/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema94.properties.grain.enum },
+                    params: { allowedValues: schema95.properties.grain.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -25584,7 +25830,7 @@ function validate74(
     return errors === 0;
 }
 validate74.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema95 = {
+const schema96 = {
     description:
         "CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire. CHAOS-11601: as_of (date-time) is the third form, a current-state snapshot read at that instant with no read window; it is legal only with no start, end or relative_id.",
     type: "object",
@@ -26344,7 +26590,7 @@ function validate78(
     return errors === 0;
 }
 validate78.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema97 = {
+const schema98 = {
     description:
         "CHAOS-3900 W1: every window option a stored result offered. RESIDUAL, SERVER-SIDE-ONLY INVARIANT (codex round 7): options.uniqueItems below rejects two options that are structurally identical in EVERY field, but standard JSON Schema (draft 2020-12) has no keyword to express uniqueness on a DERIVED SUBSET of fields -- so two options differing only in, say, label but sharing the same receipt_id or option_id pass this schema even though ContextFabricWindowClarification.Validate (validate_context_fabric_window.go, the design brief's own 'm5' invariant) rejects them. That per-field uniqueness is enforced by Go alone; it is not expressible here.",
     type: "object",
@@ -26360,7 +26606,7 @@ const schema97 = {
     },
     required: ["options"],
 };
-const schema98 = {
+const schema99 = {
     description:
         "CHAOS-3900 W1: one server-offered window choice, minted onto a stored result so a later turn can confirm it via winr_ receipt redemption. Start/end are the FROZEN absolute bounds computed at offer time.",
     type: "object",
@@ -27422,7 +27668,7 @@ function validate80(
     return errors === 0;
 }
 validate80.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema100 = {
+const schema101 = {
     description:
         "CHAOS-3900 P1: the disclosure block -- present whenever an investigation round ends short of decisive. relation_family and cohort_shape are unrepresentable here by design (design brief section 1.1's demotion).",
     type: "object",
@@ -27457,7 +27703,7 @@ const schema100 = {
     },
     required: ["missing"],
 };
-const schema102 = {
+const schema103 = {
     description:
         "CHAOS-3900 P1: one server-offered census-kind choice, minted onto a stored result so a later turn can confirm it via kindr_ receipt redemption.",
     type: "object",
@@ -27474,7 +27720,7 @@ const schema102 = {
     },
     required: ["receipt_id", "option_id", "label", "kind", "offer_source"],
 };
-const schema104 = {
+const schema105 = {
     description:
         "CHAOS-3900 P1: vocabulary distinguishing an engine-derived offer from a Bridge-proposed one (design brief section 2.1/2.4). Open vocabulary; documented values: engine, prior. A client must tolerate values it does not know.",
     type: "string",
@@ -27996,7 +28242,7 @@ function validate85(
     return errors === 0;
 }
 validate85.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema105 = {
+const schema106 = {
     description:
         "CHAOS-3900 P1: one server-offered unique-claimant anchor candidate, minted onto a stored result so a later turn can confirm it via ancr_ receipt redemption. Re-verification identity is (kind, canonical_id, matched_term_hash) -- see internal/contextfabric's verifyAnchorClaimantUnique. matched_term_hash is the SHA-256 digest of the normalized matched term, never the raw term.",
     type: "object",
@@ -28156,7 +28402,7 @@ function validate87(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema105.properties, key0)) {
+            if (!func1.call(schema106.properties, key0)) {
                 const err7 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -28679,7 +28925,7 @@ function validate87(
     return errors === 0;
 }
 validate87.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema108 = {
+const schema109 = {
     description:
         "CHAOS-3900 P1: one server-offered grammar-valid handle candidate, minted onto a stored result so a later turn can confirm it via handr_ receipt redemption. pattern_id names the closed handle-grammar registry pattern -- never regex text on the wire.",
     type: "object",
@@ -28850,7 +29096,7 @@ function validate89(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema108.properties, key0)) {
+            if (!func1.call(schema109.properties, key0)) {
                 const err8 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -29407,7 +29653,7 @@ function validate89(
     return errors === 0;
 }
 validate89.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema111 = {
+const schema112 = {
     description:
         "CHAOS-3900 P1: discloses one grammar the engine accepts for explicit supply (design brief section 2.1). pattern_id is registry-pinned, never regex text.",
     type: "object",
@@ -29642,7 +29888,7 @@ function validate92(
     return errors === 0;
 }
 validate92.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema114 = {
+const schema115 = {
     description:
         "CHAOS-4012: one server-offered top-ranked SubjectCandidate from the resolution's own pool, minted onto a stored result so a later turn can confirm it via candr_ receipt redemption. Fires independently of KindOption above -- offered whenever nothing committed and the pool is non-empty, regardless of how many distinct kinds it spans. Field shape mirrors AnchorOption minus matched_term_hash: a candidate claims no per-term uniqueness, so there is no hash to re-verify.",
     type: "object",
@@ -29772,7 +30018,7 @@ function validate94(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema114.properties, key0)) {
+            if (!func1.call(schema115.properties, key0)) {
                 const err6 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -30231,7 +30477,7 @@ function validate94(
     return errors === 0;
 }
 validate94.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema117 = {
+const schema118 = {
     description:
         "CHAOS-4314; semantics widened CHAOS-4336: a gated window's recommendation that a wider tier is available to try -- presence is a statement about tier ordering alone, never evidence that an offers-only pool was found non-empty (see candidate_label/candidate_kind, now genuinely optional). receipt_id/option_id/label/relative_id are copied VERBATIM from one entry the same result's own window_options already carries (no fresh bounds here -- redemption applies the referenced WindowOption's own frozen start/end, never a value on this type).",
     type: "object",
@@ -31243,7 +31489,7 @@ function validate84(
     return errors === 0;
 }
 validate84.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema120 = {
+const schema121 = {
     description:
         "CHAOS-3900 P1: the wire-visible disposition for one carried structure member -- one entry per carried member, including vetoed ones.",
     type: "object",
@@ -31269,13 +31515,13 @@ const schema120 = {
         else: { not: { anyOf: [{ required: ["prior_result_id"] }, { required: ["receipt_id"] }] } },
     },
 };
-const schema122 = {
+const schema123 = {
     description:
         "CHAOS-3900 P1: vocabulary for how a ConfirmedStructureEntry's value entered (design brief section 2.1's echo). Open vocabulary; documented values: receipt, explicit, explicit_unattributed, carried. A client must tolerate values it does not know.",
     type: "string",
     "x-documented-values": ["receipt", "explicit", "explicit_unattributed", "carried"],
 };
-const schema124 = {
+const schema125 = {
     description:
         "CHAOS-3900 P1: authority-tier vocabulary for a ConfirmedStructureEntry (design brief section 2.0's authority table). A distinct enum from WindowProvenance despite sharing the same three values -- each frame member owns its own authority vocabulary independently. engine_committed (v1-additive) is a carried subject_anchor member the engine bound to the frame's own anchor with no clarification ever offered. Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, engine_committed. A client must tolerate values it does not know.",
     type: "string",
@@ -31286,7 +31532,7 @@ const schema124 = {
         "engine_committed",
     ],
 };
-const schema125 = {
+const schema126 = {
     description:
         "CHAOS-3900 P1: closed vocabulary for what happened to one carried structure member (design brief section 2.1's silent-drop closure).",
     type: "string",
@@ -31690,7 +31936,7 @@ function validate99(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema120.properties, key0)) {
+            if (!func1.call(schema121.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -32070,7 +32316,7 @@ function validate99(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/StructureDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema125.enum },
+                    params: { allowedValues: schema126.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -32100,7 +32346,7 @@ function validate99(
     return errors === 0;
 }
 validate99.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema126 = {
+const schema127 = {
     description:
         "CHAOS-3900 P1: one echoed offer inside a decisive result's structure_offer_snapshot (design brief section 2.1's B5 gap). Ids/ranks/enums only, never display text.",
     type: "object",
@@ -32476,7 +32722,7 @@ function validate101(
     return errors === 0;
 }
 validate101.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema129 = {
+const schema130 = {
     description:
         "CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.",
     type: "object",
@@ -32533,13 +32779,13 @@ const schema129 = {
         "series",
     ],
 };
-const schema131 = {
+const schema132 = {
     description:
         'CHAOS-4415: the visual encoding of a "series" shape. Kind names the DATA shape, presentation names the drawing -- a bar chart and a line chart carry identical payloads, so bars are not their own kind.',
     type: "string",
     enum: ["bars", "stacked_bars", "line"],
 };
-const schema132 = {
+const schema133 = {
     description:
         "CHAOS-4415: the CLOSED vocabulary of deterministic selection rules. Exactly one rule produced any given shape; a shape with no rule would be the default-charting this contract forbids.",
     type: "string",
@@ -32556,19 +32802,19 @@ const schema132 = {
         "landscape_position",
     ],
 };
-const schema133 = {
+const schema134 = {
     description:
         "CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.",
     type: "string",
     enum: ["category", "time"],
 };
-const schema134 = {
+const schema135 = {
     description:
         "CHAOS-4610: the CLOSED vocabulary of units a shape may declare for its values, so a consumer formats a number without parsing value_label. ratio is a share from 0 to 1, and validation holds every value of the shape to that range. No unit claims nothing: the value is shown as served.",
     type: "string",
     enum: ["ratio"],
 };
-const schema135 = {
+const schema136 = {
     description:
         "CHAOS-4415: one named line/bar family within a shape. A series with no point for a label has a genuine gap there -- never a zero.",
     type: "object",
@@ -32585,7 +32831,7 @@ const schema135 = {
     },
     required: ["key", "label", "points"],
 };
-const schema136 = {
+const schema137 = {
     description: "CHAOS-4415: one plotted number and its provenance.",
     type: "object",
     additionalProperties: false,
@@ -32596,7 +32842,7 @@ const schema136 = {
     },
     required: ["label", "value", "source"],
 };
-const schema137 = {
+const schema138 = {
     description:
         "CHAOS-4415: where in THIS SAME document a plotted number came from. Validation resolves it and requires exact equality, so a chart number can never be authored, re-derived, rounded or aggregated.",
     type: "object",
@@ -32841,7 +33087,7 @@ function validate105(
                             instancePath: instancePath + "/source/kind",
                             schemaPath: "#/$defs/RenderPointSource/properties/kind/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema137.properties.kind.enum },
+                            params: { allowedValues: schema138.properties.kind.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -33783,7 +34029,7 @@ function validate103(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema129.properties, key0)) {
+            if (!func1.call(schema130.properties, key0)) {
                 const err18 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -33912,7 +34158,7 @@ function validate103(
                     instancePath: instancePath + "/presentation",
                     schemaPath: "#/$defs/RenderPresentation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema131.enum },
+                    params: { allowedValues: schema132.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -33956,7 +34202,7 @@ function validate103(
                     instancePath: instancePath + "/selected_by",
                     schemaPath: "#/$defs/RenderShapeRule/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema132.enum },
+                    params: { allowedValues: schema133.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34038,7 +34284,7 @@ function validate103(
                     instancePath: instancePath + "/axis_kind",
                     schemaPath: "#/$defs/RenderAxisKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema133.enum },
+                    params: { allowedValues: schema134.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34169,7 +34415,7 @@ function validate103(
                     instancePath: instancePath + "/value_unit",
                     schemaPath: "#/$defs/RenderValueUnit/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema134.enum },
+                    params: { allowedValues: schema135.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34266,7 +34512,7 @@ function validate103(
     return errors === 0;
 }
 validate103.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema138 = {
+const schema139 = {
     description:
         "CHAOS-4413: promotes the answer-rate/terminal-state measurement (formerly harness-only telemetry, CHAOS-4386) into the public contract. terminal_status/terminal_reason answer WHY the answer stopped where it did; claimed_facts_count/rows_count answer HOW MUCH of an answer is here -- the un-clamped totals, independent of any bounded consumer's own projection budget.",
     type: "object",
@@ -34371,7 +34617,7 @@ const schema138 = {
         },
     ],
 };
-const schema139 = {
+const schema140 = {
     description:
         "One requirement outcome: what the answer was supposed to contain, what became of it, and what the reader loses where it did not happen. Every field is a closed token or an integer -- never free text, which the degraded-reason and limitation channels already carry.",
     type: "object",
@@ -34436,7 +34682,7 @@ const schema139 = {
     },
     required: ["stage", "outcome", "impact", "cause_observed", "served", "declared"],
 };
-const schema140 = {
+const schema141 = {
     description:
         "One recorded reduction of one requirement: which stage narrowed it, on what declared basis, and from what count to what count. Modelled on PlanNarrowing, the established shape for a disclosed narrowing, one level down. Stages append; the chain runs from the row's declared count to its served count, so a reduction nobody recorded leaves a gap.",
     type: "object",
@@ -34587,7 +34833,7 @@ function validate110(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema139.properties, key0)) {
+            if (!func1.call(schema140.properties, key0)) {
                 const err6 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -34630,7 +34876,7 @@ function validate110(
                     instancePath: instancePath + "/stage",
                     schemaPath: "#/properties/stage/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema139.properties.stage.enum },
+                    params: { allowedValues: schema140.properties.stage.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34737,7 +34983,7 @@ function validate110(
                     instancePath: instancePath + "/outcome",
                     schemaPath: "#/properties/outcome/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema139.properties.outcome.enum },
+                    params: { allowedValues: schema140.properties.outcome.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34775,7 +35021,7 @@ function validate110(
                     instancePath: instancePath + "/impact",
                     schemaPath: "#/properties/impact/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema139.properties.impact.enum },
+                    params: { allowedValues: schema140.properties.impact.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -34808,7 +35054,7 @@ function validate110(
                     instancePath: instancePath + "/cause_overrun",
                     schemaPath: "#/properties/cause_overrun/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema139.properties.cause_overrun.enum },
+                    params: { allowedValues: schema140.properties.cause_overrun.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -35066,7 +35312,7 @@ function validate110(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/stage/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema140.properties.stage.enum },
+                                    params: { allowedValues: schema141.properties.stage.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -35107,7 +35353,7 @@ function validate110(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/basis/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema140.properties.basis.enum },
+                                    params: { allowedValues: schema141.properties.basis.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -35142,7 +35388,7 @@ function validate110(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/overrun/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema140.properties.overrun.enum },
+                                    params: { allowedValues: schema141.properties.overrun.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -35561,7 +35807,7 @@ function validate109(
                     instancePath: instancePath + "/terminal_status",
                     schemaPath: "#/properties/terminal_status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.terminal_status.enum },
+                    params: { allowedValues: schema139.properties.terminal_status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -35686,7 +35932,7 @@ function validate109(
                     instancePath: instancePath + "/state",
                     schemaPath: "#/properties/state/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.state.enum },
+                    params: { allowedValues: schema139.properties.state.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -35847,7 +36093,7 @@ function validate109(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -35889,7 +36135,7 @@ function validate109(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties.direction
+                                    schema139.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -35952,7 +36198,7 @@ function validate109(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -37887,7 +38133,7 @@ function validate21(
                     errors++;
                 }
                 for (const key1 in data38) {
-                    if (!func1.call(schema93.properties, key1)) {
+                    if (!func1.call(schema94.properties, key1)) {
                         const err98 = {
                             instancePath: instancePath + "/versions",
                             schemaPath:
@@ -38433,7 +38679,7 @@ function validate21(
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/interpretation_source/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema93.properties.interpretation_source.enum,
+                                allowedValues: schema94.properties.interpretation_source.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -38523,7 +38769,7 @@ function validate21(
                             schemaPath:
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/synthesis_source/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema93.properties.synthesis_source.enum },
+                            params: { allowedValues: schema94.properties.synthesis_source.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -39247,7 +39493,7 @@ function validate21(
                             errors++;
                         }
                         for (const key2 in data68) {
-                            if (!func1.call(schema141.properties, key2)) {
+                            if (!func1.call(schema142.properties, key2)) {
                                 const err167 = {
                                     instancePath: instancePath + "/fact_scope_census/" + i14,
                                     schemaPath:
@@ -39594,7 +39840,7 @@ function validate21(
                                         "context_fabric_common.v1.schema.json#/$defs/FactScopeCensusRecord/properties/authorized_population_count/type",
                                     keyword: "type",
                                     params: {
-                                        type: schema141.properties.authorized_population_count.type,
+                                        type: schema142.properties.authorized_population_count.type,
                                     },
                                     message: "must be integer,null",
                                 };
@@ -40880,7 +41126,7 @@ function validate21(
     return errors === 0;
 }
 validate21.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema142 = {
+const schema143 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: "https://contracts.fullchaos.dev/acr/v1/context_fabric_investigation_response.v2.schema.json",
     title: "ACR Context Fabric Investigation Response v2",
@@ -43146,8 +43392,193 @@ function validate125(
                 errors++;
             }
         }
+        if (data.fallback !== undefined) {
+            let data18 = data.fallback;
+            if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
+                if (data18.reason === undefined) {
+                    const err33 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "reason" },
+                        message: "must have required property '" + "reason" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err33];
+                    } else {
+                        vErrors.push(err33);
+                    }
+                    errors++;
+                }
+                if (data18.planned_kinds === undefined) {
+                    const err34 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "planned_kinds" },
+                        message: "must have required property '" + "planned_kinds" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err34];
+                    } else {
+                        vErrors.push(err34);
+                    }
+                    errors++;
+                }
+                if (data18.outcome === undefined) {
+                    const err35 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "outcome" },
+                        message: "must have required property '" + "outcome" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err35];
+                    } else {
+                        vErrors.push(err35);
+                    }
+                    errors++;
+                }
+                for (const key1 in data18) {
+                    if (!(key1 === "reason" || key1 === "planned_kinds" || key1 === "outcome")) {
+                        const err36 = {
+                            instancePath: instancePath + "/fallback",
+                            schemaPath: "#/$defs/AnswerPlanFallback/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key1 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err36];
+                        } else {
+                            vErrors.push(err36);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.reason !== undefined) {
+                    if (typeof data18.reason !== "string") {
+                        const err37 = {
+                            instancePath: instancePath + "/fallback/reason",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/reason/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err37];
+                        } else {
+                            vErrors.push(err37);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.planned_kinds !== undefined) {
+                    let data20 = data18.planned_kinds;
+                    if (Array.isArray(data20)) {
+                        if (data20.length > 64) {
+                            const err38 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/maxItems",
+                                keyword: "maxItems",
+                                params: { limit: 64 },
+                                message: "must NOT have more than 64 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err38];
+                            } else {
+                                vErrors.push(err38);
+                            }
+                            errors++;
+                        }
+                        if (data20.length < 1) {
+                            const err39 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/minItems",
+                                keyword: "minItems",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err39];
+                            } else {
+                                vErrors.push(err39);
+                            }
+                            errors++;
+                        }
+                        const len5 = data20.length;
+                        for (let i5 = 0; i5 < len5; i5++) {
+                            if (typeof data20[i5] !== "string") {
+                                const err40 = {
+                                    instancePath: instancePath + "/fallback/planned_kinds/" + i5,
+                                    schemaPath:
+                                        "#/$defs/AnswerPlanFallback/properties/planned_kinds/items/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err40];
+                                } else {
+                                    vErrors.push(err40);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err41 = {
+                            instancePath: instancePath + "/fallback/planned_kinds",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/planned_kinds/type",
+                            keyword: "type",
+                            params: { type: "array" },
+                            message: "must be array",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err41];
+                        } else {
+                            vErrors.push(err41);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.outcome !== undefined) {
+                    if (typeof data18.outcome !== "string") {
+                        const err42 = {
+                            instancePath: instancePath + "/fallback/outcome",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/outcome/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err42];
+                        } else {
+                            vErrors.push(err42);
+                        }
+                        errors++;
+                    }
+                }
+            } else {
+                const err43 = {
+                    instancePath: instancePath + "/fallback",
+                    schemaPath: "#/$defs/AnswerPlanFallback/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err43];
+                } else {
+                    vErrors.push(err43);
+                }
+                errors++;
+            }
+        }
     } else {
-        const err33 = {
+        const err44 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -43155,9 +43586,9 @@ function validate125(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err33];
+            vErrors = [err44];
         } else {
-            vErrors.push(err33);
+            vErrors.push(err44);
         }
         errors++;
     }
@@ -43482,7 +43913,7 @@ function validate130(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema65.properties, key0)) {
+            if (!func1.call(schema66.properties, key0)) {
                 const err17 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -43776,7 +44207,7 @@ function validate130(
                     instancePath: instancePath + "/score_meaning",
                     schemaPath: "#/properties/score_meaning/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema65.properties.score_meaning.enum },
+                    params: { allowedValues: schema66.properties.score_meaning.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -44249,7 +44680,7 @@ function validate135(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema73.properties, key0)) {
+            if (!func1.call(schema74.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -47378,7 +47809,7 @@ function validate144(
                                 if (
                                     !func0(
                                         data5.key,
-                                        schema82.allOf[3].if.not.anyOf[1].properties.table
+                                        schema83.allOf[3].if.not.anyOf[1].properties.table
                                             .properties.key.const,
                                     )
                                 ) {
@@ -47666,7 +48097,7 @@ function validate144(
                                 if (
                                     !func0(
                                         data12.key,
-                                        schema82.allOf[5].if.properties.table.properties.key.const,
+                                        schema83.allOf[5].if.properties.table.properties.key.const,
                                     )
                                 ) {
                                     const err35 = {};
@@ -47828,7 +48259,7 @@ function validate144(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema82.properties, key0)) {
+            if (!func1.call(schema83.properties, key0)) {
                 const err43 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -48749,7 +49180,7 @@ function validate144(
                     instancePath: instancePath + "/operation",
                     schemaPath: "#/properties/operation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema82.properties.operation.enum },
+                    params: { allowedValues: schema83.properties.operation.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -48861,7 +49292,7 @@ function validate144(
                     errors++;
                 }
                 for (const key4 in data37) {
-                    if (!func1.call(schema87.properties, key4)) {
+                    if (!func1.call(schema88.properties, key4)) {
                         const err99 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -48953,7 +49384,7 @@ function validate144(
                             instancePath: instancePath + "/table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -49470,7 +49901,7 @@ function validate144(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -49538,7 +49969,7 @@ function validate144(
                             instancePath: instancePath + "/table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -49600,7 +50031,7 @@ function validate144(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -49843,7 +50274,7 @@ function validate144(
                     errors++;
                 }
                 for (const key8 in data58) {
-                    if (!func1.call(schema87.properties, key8)) {
+                    if (!func1.call(schema88.properties, key8)) {
                         const err152 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -49935,7 +50366,7 @@ function validate144(
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -50466,7 +50897,7 @@ function validate144(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -50535,7 +50966,7 @@ function validate144(
                             instancePath: instancePath + "/time_series_table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -50598,7 +51029,7 @@ function validate144(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -51107,7 +51538,7 @@ function validate144(
                     errors++;
                 }
                 for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+                    if (!func1.call(schema91.properties, key13)) {
                         const err220 = {
                             instancePath: instancePath + "/completion_forecast",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
@@ -51189,7 +51620,7 @@ function validate144(
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
+                            params: { allowedValues: schema91.properties.state.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -52478,7 +52909,7 @@ function validate148(
                             errors++;
                         }
                         for (const key2 in data13) {
-                            if (!func1.call(schema92.properties, key2)) {
+                            if (!func1.call(schema93.properties, key2)) {
                                 const err35 = {
                                     instancePath: instancePath + "/details/" + i2,
                                     schemaPath: "#/$defs/CoverageDetail/additionalProperties",
@@ -53357,7 +53788,7 @@ function validate150(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.requested.allOf[1].properties.axis.enum,
+                                    schema95.properties.requested.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -53399,7 +53830,7 @@ function validate150(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.effective.allOf[1].properties.axis.enum,
+                                    schema95.properties.effective.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -53435,7 +53866,7 @@ function validate150(
                     instancePath: instancePath + "/grain",
                     schemaPath: "#/properties/grain/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema94.properties.grain.enum },
+                    params: { allowedValues: schema95.properties.grain.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -54354,7 +54785,7 @@ function validate156(
     return errors === 0;
 }
 validate156.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema174 = {
+const schema176 = {
     description:
         "CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); CHAOS-12073: the schemas require structure_needs on a v2 result and anchor_options here, both shipped optional in the release before (a field is optional for one release before it becomes required).",
     type: "object",
@@ -54394,7 +54825,7 @@ const schema174 = {
     },
     required: ["missing", "anchor_options"],
 };
-const schema176 = {
+const schema178 = {
     description:
         "CHAOS-4042 (sol-max ruling): one server-offered anchor candidate under MEMBERSHIP-VERIFY semantics -- the claimant set is NOT required to be unique. Redemption re-verifies that (kind, canonical_id) remains a member of the term's complete claimant set at the pinned ResolvedGraphBinding epoch, matched by (matched_term_hash, kind, canonical_id) together, never id or hash alone. Wire shape is identical to v1 AnchorOption; only the meaning differs, which is why this is a distinct, permanently-separate contract rather than a v1 revision. Only ever carried on a result whose schema_version is context_fabric_investigation_result.v2 -- a v1 result (context_fabric_investigation_result.v1) uses AnchorOption and stays unique-claimant permanently.",
     type: "object",
@@ -54552,7 +54983,7 @@ function validate161(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema176.properties, key0)) {
+            if (!func1.call(schema178.properties, key0)) {
                 const err7 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -56058,7 +56489,7 @@ function validate169(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema120.properties, key0)) {
+            if (!func1.call(schema121.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -56438,7 +56869,7 @@ function validate169(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/StructureDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema125.enum },
+                    params: { allowedValues: schema126.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -57217,7 +57648,7 @@ function validate173(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema129.properties, key0)) {
+            if (!func1.call(schema130.properties, key0)) {
                 const err18 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -57346,7 +57777,7 @@ function validate173(
                     instancePath: instancePath + "/presentation",
                     schemaPath: "#/$defs/RenderPresentation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema131.enum },
+                    params: { allowedValues: schema132.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -57390,7 +57821,7 @@ function validate173(
                     instancePath: instancePath + "/selected_by",
                     schemaPath: "#/$defs/RenderShapeRule/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema132.enum },
+                    params: { allowedValues: schema133.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -57472,7 +57903,7 @@ function validate173(
                     instancePath: instancePath + "/axis_kind",
                     schemaPath: "#/$defs/RenderAxisKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema133.enum },
+                    params: { allowedValues: schema134.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -57603,7 +58034,7 @@ function validate173(
                     instancePath: instancePath + "/value_unit",
                     schemaPath: "#/$defs/RenderValueUnit/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema134.enum },
+                    params: { allowedValues: schema135.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -57953,7 +58384,7 @@ function validate176(
                     instancePath: instancePath + "/terminal_status",
                     schemaPath: "#/properties/terminal_status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.terminal_status.enum },
+                    params: { allowedValues: schema139.properties.terminal_status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -58078,7 +58509,7 @@ function validate176(
                     instancePath: instancePath + "/state",
                     schemaPath: "#/properties/state/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.state.enum },
+                    params: { allowedValues: schema139.properties.state.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -58239,7 +58670,7 @@ function validate176(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -58281,7 +58712,7 @@ function validate176(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties.direction
+                                    schema139.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -58344,7 +58775,7 @@ function validate176(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -59101,7 +59532,7 @@ function validate114(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema142.properties, key0)) {
+            if (!func1.call(schema143.properties, key0)) {
                 const err40 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -59294,7 +59725,7 @@ function validate114(
                     instancePath: instancePath + "/status",
                     schemaPath: "#/properties/status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema142.properties.status.enum },
+                    params: { allowedValues: schema143.properties.status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -60298,7 +60729,7 @@ function validate114(
                     errors++;
                 }
                 for (const key1 in data38) {
-                    if (!func1.call(schema93.properties, key1)) {
+                    if (!func1.call(schema94.properties, key1)) {
                         const err99 = {
                             instancePath: instancePath + "/versions",
                             schemaPath:
@@ -60844,7 +61275,7 @@ function validate114(
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/interpretation_source/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema93.properties.interpretation_source.enum,
+                                allowedValues: schema94.properties.interpretation_source.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -60934,7 +61365,7 @@ function validate114(
                             schemaPath:
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/synthesis_source/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema93.properties.synthesis_source.enum },
+                            params: { allowedValues: schema94.properties.synthesis_source.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -61662,7 +62093,7 @@ function validate114(
                             errors++;
                         }
                         for (const key2 in data68) {
-                            if (!func1.call(schema141.properties, key2)) {
+                            if (!func1.call(schema142.properties, key2)) {
                                 const err168 = {
                                     instancePath: instancePath + "/fact_scope_census/" + i14,
                                     schemaPath:
@@ -62009,7 +62440,7 @@ function validate114(
                                         "context_fabric_common.v1.schema.json#/$defs/FactScopeCensusRecord/properties/authorized_population_count/type",
                                     keyword: "type",
                                     params: {
-                                        type: schema141.properties.authorized_population_count.type,
+                                        type: schema142.properties.authorized_population_count.type,
                                     },
                                     message: "must be integer,null",
                                 };
@@ -62487,7 +62918,7 @@ function validate114(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema142.properties.status_correction.properties
+                                    schema143.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -62529,7 +62960,7 @@ function validate114(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema142.properties.status_correction.properties.direction
+                                    schema143.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -62592,7 +63023,7 @@ function validate114(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema142.properties.status_correction.properties
+                                    schema143.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -62695,7 +63126,7 @@ function validate114(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema142.properties.semantic_reading.properties.status.enum,
+                                    schema143.properties.semantic_reading.properties.status.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -63296,7 +63727,7 @@ function validate114(
     return errors === 0;
 }
 validate114.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema196 = {
+const schema198 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: "https://contracts.fullchaos.dev/acr/v1/context_fabric_answer_projection.v1.schema.json",
     title: "ACR Context Fabric Answer Projection v1",
@@ -65400,7 +65831,7 @@ const schema196 = {
         },
     },
 };
-const schema197 = {
+const schema199 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -65431,7 +65862,7 @@ const schema197 = {
     },
     required: ["kind", "canonical_id", "label"],
 };
-const schema217 = {
+const schema219 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -65459,7 +65890,7 @@ const schema217 = {
     },
     required: ["source", "state"],
 };
-const schema222 = {
+const schema224 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -65468,7 +65899,7 @@ const schema222 = {
     },
     required: ["result_id", "receipt_id"],
 };
-const schema223 = {
+const schema225 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -65519,7 +65950,7 @@ const schema223 = {
         "canonical_service_version",
     ],
 };
-const schema224 = {
+const schema226 = {
     description:
         "Declares what the projection dropped. truncated is true if and only if at least one omitted count is non-zero or full_result_omitted is set. Silent truncation is a defect: a caller that cannot see what was omitted cannot tell a short answer from a complete one. The counters added after this contract's first shape (limitations, warnings, coverage, reasons, values_clamped) are OPTIONAL: additive-optional means optional, so a payload produced before they existed still validates and an absent counter reads as zero. ACR itself always emits them.",
     type: "object",
@@ -65563,7 +65994,7 @@ const schema224 = {
         "full_result_omitted",
     ],
 };
-const schema272 = {
+const schema274 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -65673,7 +66104,7 @@ const schema272 = {
     },
     required: ["detail_id", "source", "code", "degrading", "label"],
 };
-const schema273 = {
+const schema275 = {
     description:
         "CHAOS-5405 D-d: one attempted requirement/origin scope decision, as served -- what population was measured, how much of it the caller was authorized to see, how much was admitted, and whether the answer was cut short. It is SERVED rather than only logged because two distinctions the answer depends on cannot be recovered from anything else on the result: a measured zero versus an unmeasured population, and which policy a successful expansion ran on. Counts from overlapping origin groups are NOT additive, and authorized_population_count always means the CALLER-VISIBLE population, never the organization's unrestricted one.",
     type: "object",
@@ -65713,7 +66144,7 @@ const schema273 = {
     then: { properties: { authorized_population_count: { type: "integer" } } },
     else: { properties: { authorized_population_count: { type: "null" } } },
 };
-const schema198 = {
+const schema200 = {
     description: "Present only when status is clarification_required.",
     type: "object",
     additionalProperties: false,
@@ -65723,7 +66154,7 @@ const schema198 = {
     },
     required: ["candidates"],
 };
-const schema199 = {
+const schema201 = {
     description:
         "One ambiguity option. receipt_id is the opaque handle a caller returns to commit this choice on the next turn.",
     type: "object",
@@ -66511,7 +66942,7 @@ function validate181(
     return errors === 0;
 }
 validate181.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema201 = {
+const schema203 = {
     description:
         "Subjectless cohort answer. total reports the canonical member count before projection, so a caller always sees the true size even when members is truncated. complete is the engine's statement about the cohort it discovered, never a statement about this projection.",
     type: "object",
@@ -66584,7 +67015,7 @@ const schema201 = {
         },
     ],
 };
-const schema202 = {
+const schema204 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -66719,7 +67150,7 @@ function validate186(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema202.properties, key0)) {
+            if (!func1.call(schema204.properties, key0)) {
                 const err3 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -67377,7 +67808,7 @@ function validate186(
                             schemaPath: "#/properties/ranking_basis/items/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema202.properties.ranking_basis.items.enum,
+                                allowedValues: schema204.properties.ranking_basis.items.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -67507,7 +67938,7 @@ function validate186(
                     instancePath: instancePath + "/data_completeness",
                     schemaPath: "#/properties/data_completeness/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema202.properties.data_completeness.enum },
+                    params: { allowedValues: schema204.properties.data_completeness.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -67545,7 +67976,7 @@ function validate186(
                     instancePath: instancePath + "/outcome",
                     schemaPath: "#/properties/outcome/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema202.properties.outcome.enum },
+                    params: { allowedValues: schema204.properties.outcome.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -67619,7 +68050,7 @@ function validate186(
                             schemaPath: "#/properties/missing_signals/items/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema202.properties.missing_signals.items.enum,
+                                allowedValues: schema204.properties.missing_signals.items.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -67700,7 +68131,7 @@ function validate186(
     return errors === 0;
 }
 validate186.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema204 = {
+const schema206 = {
     description:
         "CHAOS-4636: one group of a projected grouped cohort. Mirrors the canonical CohortGroup: the group subject, its members by canonical id into ProjectedCohort.members, its OWN completeness, and the size it had before narrowing.",
     type: "object",
@@ -68288,7 +68719,7 @@ function validate188(
     return errors === 0;
 }
 validate188.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema206 = {
+const schema208 = {
     description:
         "CHAOS-4347: one row of a projected fact's OPTIONAL renderable table. A row's own fields are plain scalars -- it never nests another table.",
     type: "object",
@@ -68303,7 +68734,7 @@ const schema206 = {
     },
     required: ["fields"],
 };
-const schema207 = {
+const schema209 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -68972,7 +69403,7 @@ function validate185(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema201.properties, key0)) {
+            if (!func1.call(schema203.properties, key0)) {
                 const err9 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -69301,7 +69732,7 @@ function validate185(
                     instancePath: instancePath + "/score_meaning",
                     schemaPath: "#/properties/score_meaning/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema201.properties.score_meaning.enum },
+                    params: { allowedValues: schema203.properties.score_meaning.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -69405,7 +69836,7 @@ function validate185(
     return errors === 0;
 }
 validate185.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema208 = {
+const schema210 = {
     description:
         "One driver judgment, narrowed to what a bounded consumer needs to state and defend it. standing and category are copied verbatim from the canonical result: driver standing IS the judgment, so a projection that promoted or demoted one would change the answer.",
     type: "object",
@@ -69614,7 +70045,7 @@ function validate193(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema208.properties, key0)) {
+            if (!func1.call(schema210.properties, key0)) {
                 const err7 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -70478,7 +70909,7 @@ function validate193(
     return errors === 0;
 }
 validate193.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema210 = {
+const schema212 = {
     description:
         "A claimed fact a retained driver cites, carried at value level so a consumer can show the canonical observation behind a judgment rather than only prose about it.",
     type: "object",
@@ -70618,7 +71049,7 @@ const schema210 = {
     },
     required: ["claim_id", "kind", "subject", "field", "value"],
 };
-const schema213 = {
+const schema215 = {
     description:
         "CHAOS-4637: the declaration of what a fact's row table is. Carries no rows of its own -- it describes the rows carried beside it, so a declaration can never double a table's bytes against the response budget.",
     type: "object",
@@ -70725,7 +71156,7 @@ const schema213 = {
     },
     required: ["field", "shape", "key"],
 };
-const schema215 = {
+const schema217 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -70748,7 +71179,7 @@ const schema215 = {
         project_own_work_unit_count: { type: "integer", minimum: 0 },
     },
 };
-const schema216 = {
+const schema218 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -70928,7 +71359,7 @@ function validate195(
                                 if (
                                     !func0(
                                         data2.key,
-                                        schema210.allOf[0].if.not.anyOf[1].properties.table
+                                        schema212.allOf[0].if.not.anyOf[1].properties.table
                                             .properties.key.const,
                                     )
                                 ) {
@@ -71208,7 +71639,7 @@ function validate195(
                                 if (
                                     !func0(
                                         data9.key,
-                                        schema210.allOf[2].if.properties.table.properties.key.const,
+                                        schema212.allOf[2].if.properties.table.properties.key.const,
                                     )
                                 ) {
                                     const err19 = {};
@@ -71370,7 +71801,7 @@ function validate195(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema210.properties, key0)) {
+            if (!func1.call(schema212.properties, key0)) {
                 const err27 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -72111,7 +72542,7 @@ function validate195(
                     errors++;
                 }
                 for (const key3 in data28) {
-                    if (!func1.call(schema213.properties, key3)) {
+                    if (!func1.call(schema215.properties, key3)) {
                         const err66 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ProjectedFactTable/additionalProperties",
@@ -72203,7 +72634,7 @@ function validate195(
                             instancePath: instancePath + "/table/shape",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema213.properties.shape.enum },
+                            params: { allowedValues: schema215.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -72721,7 +73152,7 @@ function validate195(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema213.properties.measure_units.items
+                                                    schema215.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -72789,7 +73220,7 @@ function validate195(
                             instancePath: instancePath + "/table/cadence",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema213.properties.cadence.enum },
+                            params: { allowedValues: schema215.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -72851,7 +73282,7 @@ function validate195(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema213.properties.column_vocabularies
+                                            schema215.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -73094,7 +73525,7 @@ function validate195(
                     errors++;
                 }
                 for (const key7 in data49) {
-                    if (!func1.call(schema213.properties, key7)) {
+                    if (!func1.call(schema215.properties, key7)) {
                         const err119 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ProjectedFactTable/additionalProperties",
@@ -73186,7 +73617,7 @@ function validate195(
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema213.properties.shape.enum },
+                            params: { allowedValues: schema215.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -73714,7 +74145,7 @@ function validate195(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema213.properties.measure_units.items
+                                                    schema215.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -73783,7 +74214,7 @@ function validate195(
                             instancePath: instancePath + "/time_series_table/cadence",
                             schemaPath: "#/$defs/ProjectedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema213.properties.cadence.enum },
+                            params: { allowedValues: schema215.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -73846,7 +74277,7 @@ function validate195(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema213.properties.column_vocabularies
+                                            schema215.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -74356,7 +74787,7 @@ function validate195(
                     errors++;
                 }
                 for (const key12 in data73) {
-                    if (!func1.call(schema216.properties, key12)) {
+                    if (!func1.call(schema218.properties, key12)) {
                         const err187 = {
                             instancePath: instancePath + "/completion_forecast",
                             schemaPath: "#/$defs/ProjectedCompletionForecast/additionalProperties",
@@ -74438,7 +74869,7 @@ function validate195(
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ProjectedCompletionForecast/properties/state/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema216.properties.state.enum },
+                            params: { allowedValues: schema218.properties.state.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -75098,7 +75529,7 @@ function validate195(
     return errors === 0;
 }
 validate195.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema218 = {
+const schema220 = {
     type: "object",
     additionalProperties: false,
     description:
@@ -75121,7 +75552,7 @@ const schema218 = {
     },
     required: ["requested", "effective", "grain", "coverage_complete"],
 };
-const schema219 = {
+const schema221 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -75161,7 +75592,7 @@ const schema219 = {
         },
     ],
 };
-const schema220 = {
+const schema222 = {
     description:
         "CHAOS-3900 W1: the caller's own evidence-window intent. Structurally cannot carry provenance/class/confidence -- those are server-computed. RelativeID all_time requires start/end to both be absent; every other shape requires both.",
     type: "object",
@@ -75183,7 +75614,7 @@ const schema220 = {
         ],
     },
 };
-const schema221 = {
+const schema223 = {
     description:
         "CHAOS-3900 W1: the closed, server-owned relative-window identifier registry (design brief v5.2 §5.1).",
     type: "string",
@@ -75682,7 +76113,7 @@ function validate201(
                     instancePath: instancePath + "/relative_id",
                     schemaPath: "#/$defs/RelativeWindowID/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema221.enum },
+                    params: { allowedValues: schema223.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -75969,7 +76400,7 @@ function validate200(
                     instancePath: instancePath + "/axis",
                     schemaPath: "#/oneOf/1/properties/axis/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema219.oneOf[1].properties.axis.enum },
+                    params: { allowedValues: schema221.oneOf[1].properties.axis.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -76226,7 +76657,7 @@ function validate200(
                     instancePath: instancePath + "/axis",
                     schemaPath: "#/properties/axis/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema219.properties.axis.enum },
+                    params: { allowedValues: schema221.properties.axis.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -76504,7 +76935,7 @@ function validate199(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema218.properties.requested.allOf[1].properties.axis.enum,
+                                    schema220.properties.requested.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -76547,7 +76978,7 @@ function validate199(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema218.properties.effective.allOf[1].properties.axis.enum,
+                                    schema220.properties.effective.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -76583,7 +77014,7 @@ function validate199(
                     instancePath: instancePath + "/grain",
                     schemaPath: "#/properties/grain/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema218.properties.grain.enum },
+                    params: { allowedValues: schema220.properties.grain.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -76630,7 +77061,7 @@ function validate199(
     return errors === 0;
 }
 validate199.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema225 = {
+const schema227 = {
     description:
         "CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire. CHAOS-11601: as_of (date-time) is the third form, a current-state snapshot read at that instant with no read window; it is legal only with no start, end or relative_id.",
     type: "object",
@@ -77309,7 +77740,7 @@ function validate206(
                     instancePath: instancePath + "/relative_id",
                     schemaPath: "#/$defs/RelativeWindowID/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema221.enum },
+                    params: { allowedValues: schema223.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -77390,7 +77821,7 @@ function validate206(
     return errors === 0;
 }
 validate206.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema227 = {
+const schema229 = {
     description:
         "CHAOS-3900 W1: every window option a stored result offered. RESIDUAL, SERVER-SIDE-ONLY INVARIANT (codex round 7): options.uniqueItems below rejects two options that are structurally identical in EVERY field, but standard JSON Schema (draft 2020-12) has no keyword to express uniqueness on a DERIVED SUBSET of fields -- so two options differing only in, say, label but sharing the same receipt_id or option_id pass this schema even though ContextFabricWindowClarification.Validate (validate_context_fabric_window.go, the design brief's own 'm5' invariant) rejects them. That per-field uniqueness is enforced by Go alone; it is not expressible here.",
     type: "object",
@@ -77406,7 +77837,7 @@ const schema227 = {
     },
     required: ["options"],
 };
-const schema228 = {
+const schema230 = {
     description:
         "CHAOS-3900 W1: one server-offered window choice, minted onto a stored result so a later turn can confirm it via winr_ receipt redemption. Start/end are the FROZEN absolute bounds computed at offer time.",
     type: "object",
@@ -78202,7 +78633,7 @@ function validate209(
                     instancePath: instancePath + "/relative_id",
                     schemaPath: "#/$defs/RelativeWindowID/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema221.enum },
+                    params: { allowedValues: schema223.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -78467,7 +78898,7 @@ function validate208(
     return errors === 0;
 }
 validate208.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema230 = {
+const schema232 = {
     description:
         "CHAOS-3900 P1: the disclosure block -- present whenever an investigation round ends short of decisive. relation_family and cohort_shape are unrepresentable here by design (design brief section 1.1's demotion).",
     type: "object",
@@ -78502,13 +78933,13 @@ const schema230 = {
     },
     required: ["missing"],
 };
-const schema231 = {
+const schema233 = {
     description:
         "CHAOS-3900 P1: the closed enum for which intent-frame member is missing or ambiguous (pivot-intent design brief section 2.1).",
     type: "string",
     enum: ["expected_kind", "subject_anchor", "subject_handle", "window", "subject_candidate"],
 };
-const schema232 = {
+const schema234 = {
     description:
         "CHAOS-3900 P1: one server-offered census-kind choice, minted onto a stored result so a later turn can confirm it via kindr_ receipt redemption.",
     type: "object",
@@ -78525,7 +78956,7 @@ const schema232 = {
     },
     required: ["receipt_id", "option_id", "label", "kind", "offer_source"],
 };
-const schema233 = {
+const schema235 = {
     description:
         "CHAOS-3900 P1: the closed ContextFabricSubjectKind vocabulary, given its own $def so KindOption/AnchorOption/HandleOption/AcceptedGrammar can $ref it directly rather than each re-duplicating the enum inline the way SubjectRef/SubjectCandidate/etc. still do at their own call sites.",
     type: "string",
@@ -78547,7 +78978,7 @@ const schema233 = {
         "work_item_ref",
     ],
 };
-const schema234 = {
+const schema236 = {
     description:
         "CHAOS-3900 P1: vocabulary distinguishing an engine-derived offer from a Bridge-proposed one (design brief section 2.1/2.4). Open vocabulary; documented values: engine, prior. A client must tolerate values it does not know.",
     type: "string",
@@ -78874,7 +79305,7 @@ function validate213(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -79068,7 +79499,7 @@ function validate213(
     return errors === 0;
 }
 validate213.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema235 = {
+const schema237 = {
     description:
         "CHAOS-3900 P1: one server-offered unique-claimant anchor candidate, minted onto a stored result so a later turn can confirm it via ancr_ receipt redemption. Re-verification identity is (kind, canonical_id, matched_term_hash) -- see internal/contextfabric's verifyAnchorClaimantUnique. matched_term_hash is the SHA-256 digest of the normalized matched term, never the raw term.",
     type: "object",
@@ -79226,7 +79657,7 @@ function validate215(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema235.properties, key0)) {
+            if (!func1.call(schema237.properties, key0)) {
                 const err7 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -79442,7 +79873,7 @@ function validate215(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -79749,7 +80180,7 @@ function validate215(
     return errors === 0;
 }
 validate215.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema238 = {
+const schema240 = {
     description:
         "CHAOS-3900 P1: one server-offered grammar-valid handle candidate, minted onto a stored result so a later turn can confirm it via handr_ receipt redemption. pattern_id names the closed handle-grammar registry pattern -- never regex text on the wire.",
     type: "object",
@@ -79919,7 +80350,7 @@ function validate217(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema238.properties, key0)) {
+            if (!func1.call(schema240.properties, key0)) {
                 const err8 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -80135,7 +80566,7 @@ function validate217(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -80476,7 +80907,7 @@ function validate217(
     return errors === 0;
 }
 validate217.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema241 = {
+const schema243 = {
     description:
         "CHAOS-3900 P1: discloses one grammar the engine accepts for explicit supply (design brief section 2.1). pattern_id is registry-pinned, never regex text.",
     type: "object",
@@ -80583,7 +81014,7 @@ function validate220(
                     instancePath: instancePath + "/member",
                     schemaPath: "#/$defs/StructureNeedKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema231.enum },
+                    params: { allowedValues: schema233.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -80632,7 +81063,7 @@ function validate220(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -80711,7 +81142,7 @@ function validate220(
     return errors === 0;
 }
 validate220.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema244 = {
+const schema246 = {
     description:
         "CHAOS-4012: one server-offered top-ranked SubjectCandidate from the resolution's own pool, minted onto a stored result so a later turn can confirm it via candr_ receipt redemption. Fires independently of KindOption above -- offered whenever nothing committed and the pool is non-empty, regardless of how many distinct kinds it spans. Field shape mirrors AnchorOption minus matched_term_hash: a candidate claims no per-term uniqueness, so there is no hash to re-verify.",
     type: "object",
@@ -80840,7 +81271,7 @@ function validate222(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema244.properties, key0)) {
+            if (!func1.call(schema246.properties, key0)) {
                 const err6 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -81056,7 +81487,7 @@ function validate222(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -81299,7 +81730,7 @@ function validate222(
     return errors === 0;
 }
 validate222.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema247 = {
+const schema249 = {
     description:
         "CHAOS-4314; semantics widened CHAOS-4336: a gated window's recommendation that a wider tier is available to try -- presence is a statement about tier ordering alone, never evidence that an offers-only pool was found non-empty (see candidate_label/candidate_kind, now genuinely optional). receipt_id/option_id/label/relative_id are copied VERBATIM from one entry the same result's own window_options already carries (no fresh bounds here -- redemption applies the referenced WindowOption's own frozen start/end, never a value on this type).",
     type: "object",
@@ -81604,7 +82035,7 @@ function validate224(
                     instancePath: instancePath + "/relative_id",
                     schemaPath: "#/$defs/RelativeWindowID/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema221.enum },
+                    params: { allowedValues: schema223.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -81719,7 +82150,7 @@ function validate224(
                     instancePath: instancePath + "/candidate_kind",
                     schemaPath: "#/$defs/SubjectKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema233.enum },
+                    params: { allowedValues: schema235.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -81872,7 +82303,7 @@ function validate212(
                             instancePath: instancePath + "/missing/" + i0,
                             schemaPath: "#/$defs/StructureNeedKind/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema231.enum },
+                            params: { allowedValues: schema233.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -82311,7 +82742,7 @@ function validate212(
     return errors === 0;
 }
 validate212.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema250 = {
+const schema252 = {
     description:
         "CHAOS-3900 P1: the wire-visible disposition for one carried structure member -- one entry per carried member, including vetoed ones.",
     type: "object",
@@ -82337,13 +82768,13 @@ const schema250 = {
         else: { not: { anyOf: [{ required: ["prior_result_id"] }, { required: ["receipt_id"] }] } },
     },
 };
-const schema252 = {
+const schema254 = {
     description:
         "CHAOS-3900 P1: vocabulary for how a ConfirmedStructureEntry's value entered (design brief section 2.1's echo). Open vocabulary; documented values: receipt, explicit, explicit_unattributed, carried. A client must tolerate values it does not know.",
     type: "string",
     "x-documented-values": ["receipt", "explicit", "explicit_unattributed", "carried"],
 };
-const schema254 = {
+const schema256 = {
     description:
         "CHAOS-3900 P1: authority-tier vocabulary for a ConfirmedStructureEntry (design brief section 2.0's authority table). A distinct enum from WindowProvenance despite sharing the same three values -- each frame member owns its own authority vocabulary independently. engine_committed (v1-additive) is a carried subject_anchor member the engine bound to the frame's own anchor with no clarification ever offered. Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, engine_committed. A client must tolerate values it does not know.",
     type: "string",
@@ -82354,7 +82785,7 @@ const schema254 = {
         "engine_committed",
     ],
 };
-const schema255 = {
+const schema257 = {
     description:
         "CHAOS-3900 P1: closed vocabulary for what happened to one carried structure member (design brief section 2.1's silent-drop closure).",
     type: "string",
@@ -82758,7 +83189,7 @@ function validate227(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema250.properties, key0)) {
+            if (!func1.call(schema252.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -82802,7 +83233,7 @@ function validate227(
                     instancePath: instancePath + "/member",
                     schemaPath: "#/$defs/StructureNeedKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema231.enum },
+                    params: { allowedValues: schema233.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -83138,7 +83569,7 @@ function validate227(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/StructureDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema255.enum },
+                    params: { allowedValues: schema257.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -83168,7 +83599,7 @@ function validate227(
     return errors === 0;
 }
 validate227.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema256 = {
+const schema258 = {
     type: "object",
     additionalProperties: false,
     properties: {
@@ -83526,7 +83957,7 @@ function validate229(
     return errors === 0;
 }
 validate229.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema258 = {
+const schema260 = {
     description:
         "CHAOS-3478/CHAOS-3813: the wire-visible disposition for one PriorSubjectReceipts entry the caller sent -- one entry per carried receipt, including skipped ones.",
     type: "object",
@@ -83538,7 +83969,7 @@ const schema258 = {
     },
     required: ["prior_result_id", "receipt_id", "disposition"],
 };
-const schema259 = {
+const schema261 = {
     description:
         "CHAOS-3478/CHAOS-3813: closed vocabulary for what happened to one PriorSubjectReceipts entry -- unlike StructureDisposition, a skip here never vetoes the investigation (a plural, best-effort conversational hint list degrades per-item by design), it is disclosed instead.",
     type: "string",
@@ -83758,7 +84189,7 @@ function validate231(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/PriorSubjectReceiptDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema259.enum },
+                    params: { allowedValues: schema261.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -83788,7 +84219,7 @@ function validate231(
     return errors === 0;
 }
 validate231.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema260 = {
+const schema262 = {
     description:
         "CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.",
     type: "object",
@@ -83845,19 +84276,19 @@ const schema260 = {
         "series",
     ],
 };
-const schema261 = {
+const schema263 = {
     description:
         'CHAOS-4415: the CLOSED vocabulary of renderable answer shapes. Every member is defined now so a consumer can switch exhaustively; only "series" has a producer in slice 1.',
     type: "string",
     enum: ["series", "table", "quadrant", "treemap", "sunburst", "sankey", "burndown", "forecast"],
 };
-const schema262 = {
+const schema264 = {
     description:
         'CHAOS-4415: the visual encoding of a "series" shape. Kind names the DATA shape, presentation names the drawing -- a bar chart and a line chart carry identical payloads, so bars are not their own kind.',
     type: "string",
     enum: ["bars", "stacked_bars", "line"],
 };
-const schema263 = {
+const schema265 = {
     description:
         "CHAOS-4415: the CLOSED vocabulary of deterministic selection rules. Exactly one rule produced any given shape; a shape with no rule would be the default-charting this contract forbids.",
     type: "string",
@@ -83874,19 +84305,19 @@ const schema263 = {
         "landscape_position",
     ],
 };
-const schema264 = {
+const schema266 = {
     description:
         "CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.",
     type: "string",
     enum: ["category", "time"],
 };
-const schema265 = {
+const schema267 = {
     description:
         "CHAOS-4610: the CLOSED vocabulary of units a shape may declare for its values, so a consumer formats a number without parsing value_label. ratio is a share from 0 to 1, and validation holds every value of the shape to that range. No unit claims nothing: the value is shown as served.",
     type: "string",
     enum: ["ratio"],
 };
-const schema266 = {
+const schema268 = {
     description:
         "CHAOS-4415: one named line/bar family within a shape. A series with no point for a label has a genuine gap there -- never a zero.",
     type: "object",
@@ -83903,7 +84334,7 @@ const schema266 = {
     },
     required: ["key", "label", "points"],
 };
-const schema267 = {
+const schema269 = {
     description: "CHAOS-4415: one plotted number and its provenance.",
     type: "object",
     additionalProperties: false,
@@ -83914,7 +84345,7 @@ const schema267 = {
     },
     required: ["label", "value", "source"],
 };
-const schema268 = {
+const schema270 = {
     description:
         "CHAOS-4415: where in THIS SAME document a plotted number came from. Validation resolves it and requires exact equality, so a chart number can never be authored, re-derived, rounded or aggregated.",
     type: "object",
@@ -84159,7 +84590,7 @@ function validate235(
                             instancePath: instancePath + "/source/kind",
                             schemaPath: "#/$defs/RenderPointSource/properties/kind/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema268.properties.kind.enum },
+                            params: { allowedValues: schema270.properties.kind.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -85101,7 +85532,7 @@ function validate233(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema260.properties, key0)) {
+            if (!func1.call(schema262.properties, key0)) {
                 const err18 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -85197,7 +85628,7 @@ function validate233(
                     instancePath: instancePath + "/kind",
                     schemaPath: "#/$defs/RenderKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema261.enum },
+                    params: { allowedValues: schema263.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -85230,7 +85661,7 @@ function validate233(
                     instancePath: instancePath + "/presentation",
                     schemaPath: "#/$defs/RenderPresentation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema262.enum },
+                    params: { allowedValues: schema264.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -85274,7 +85705,7 @@ function validate233(
                     instancePath: instancePath + "/selected_by",
                     schemaPath: "#/$defs/RenderShapeRule/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema263.enum },
+                    params: { allowedValues: schema265.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -85356,7 +85787,7 @@ function validate233(
                     instancePath: instancePath + "/axis_kind",
                     schemaPath: "#/$defs/RenderAxisKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema264.enum },
+                    params: { allowedValues: schema266.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -85487,7 +85918,7 @@ function validate233(
                     instancePath: instancePath + "/value_unit",
                     schemaPath: "#/$defs/RenderValueUnit/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema265.enum },
+                    params: { allowedValues: schema267.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -85584,7 +86015,7 @@ function validate233(
     return errors === 0;
 }
 validate233.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
-const schema269 = {
+const schema271 = {
     description:
         "CHAOS-4413: promotes the answer-rate/terminal-state measurement (formerly harness-only telemetry, CHAOS-4386) into the public contract. terminal_status/terminal_reason answer WHY the answer stopped where it did; claimed_facts_count/rows_count answer HOW MUCH of an answer is here -- the un-clamped totals, independent of any bounded consumer's own projection budget.",
     type: "object",
@@ -85689,7 +86120,7 @@ const schema269 = {
         },
     ],
 };
-const schema270 = {
+const schema272 = {
     description:
         "One requirement outcome: what the answer was supposed to contain, what became of it, and what the reader loses where it did not happen. Every field is a closed token or an integer -- never free text, which the degraded-reason and limitation channels already carry.",
     type: "object",
@@ -85754,7 +86185,7 @@ const schema270 = {
     },
     required: ["stage", "outcome", "impact", "cause_observed", "served", "declared"],
 };
-const schema271 = {
+const schema273 = {
     description:
         "One recorded reduction of one requirement: which stage narrowed it, on what declared basis, and from what count to what count. Modelled on PlanNarrowing, the established shape for a disclosed narrowing, one level down. Stages append; the chain runs from the row's declared count to its served count, so a reduction nobody recorded leaves a gap.",
     type: "object",
@@ -85905,7 +86336,7 @@ function validate240(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema270.properties, key0)) {
+            if (!func1.call(schema272.properties, key0)) {
                 const err6 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -85948,7 +86379,7 @@ function validate240(
                     instancePath: instancePath + "/stage",
                     schemaPath: "#/properties/stage/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema270.properties.stage.enum },
+                    params: { allowedValues: schema272.properties.stage.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -86055,7 +86486,7 @@ function validate240(
                     instancePath: instancePath + "/outcome",
                     schemaPath: "#/properties/outcome/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema270.properties.outcome.enum },
+                    params: { allowedValues: schema272.properties.outcome.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -86093,7 +86524,7 @@ function validate240(
                     instancePath: instancePath + "/impact",
                     schemaPath: "#/properties/impact/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema270.properties.impact.enum },
+                    params: { allowedValues: schema272.properties.impact.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -86126,7 +86557,7 @@ function validate240(
                     instancePath: instancePath + "/cause_overrun",
                     schemaPath: "#/properties/cause_overrun/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema270.properties.cause_overrun.enum },
+                    params: { allowedValues: schema272.properties.cause_overrun.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -86384,7 +86815,7 @@ function validate240(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/stage/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema271.properties.stage.enum },
+                                    params: { allowedValues: schema273.properties.stage.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -86425,7 +86856,7 @@ function validate240(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/basis/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema271.properties.basis.enum },
+                                    params: { allowedValues: schema273.properties.basis.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -86460,7 +86891,7 @@ function validate240(
                                     schemaPath:
                                         "#/$defs/RequirementRefinement/properties/overrun/enum",
                                     keyword: "enum",
-                                    params: { allowedValues: schema271.properties.overrun.enum },
+                                    params: { allowedValues: schema273.properties.overrun.enum },
                                     message: "must be equal to one of the allowed values",
                                 };
                                 if (vErrors === null) {
@@ -86879,7 +87310,7 @@ function validate239(
                     instancePath: instancePath + "/terminal_status",
                     schemaPath: "#/properties/terminal_status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema269.properties.terminal_status.enum },
+                    params: { allowedValues: schema271.properties.terminal_status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -87004,7 +87435,7 @@ function validate239(
                     instancePath: instancePath + "/state",
                     schemaPath: "#/properties/state/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema269.properties.state.enum },
+                    params: { allowedValues: schema271.properties.state.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -87165,7 +87596,7 @@ function validate239(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema269.properties.status_correction.properties
+                                    schema271.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -87207,7 +87638,7 @@ function validate239(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema269.properties.status_correction.properties.direction
+                                    schema271.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -87270,7 +87701,7 @@ function validate239(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema269.properties.status_correction.properties
+                                    schema271.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -87670,7 +88101,7 @@ function validate180(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema196.properties, key0)) {
+            if (!func1.call(schema198.properties, key0)) {
                 const err22 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -87863,7 +88294,7 @@ function validate180(
                     instancePath: instancePath + "/status",
                     schemaPath: "#/properties/status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema196.properties.status.enum },
+                    params: { allowedValues: schema198.properties.status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -89615,7 +90046,7 @@ function validate180(
                     errors++;
                 }
                 for (const key4 in data42) {
-                    if (!func1.call(schema223.properties, key4)) {
+                    if (!func1.call(schema225.properties, key4)) {
                         const err125 = {
                             instancePath: instancePath + "/versions",
                             schemaPath: "#/$defs/VersionSet/additionalProperties",
@@ -90145,7 +90576,7 @@ function validate180(
                             schemaPath: "#/$defs/VersionSet/properties/interpretation_source/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema223.properties.interpretation_source.enum,
+                                allowedValues: schema225.properties.interpretation_source.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -90233,7 +90664,7 @@ function validate180(
                             instancePath: instancePath + "/versions/synthesis_source",
                             schemaPath: "#/$defs/VersionSet/properties/synthesis_source/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema223.properties.synthesis_source.enum },
+                            params: { allowedValues: schema225.properties.synthesis_source.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -90384,7 +90815,7 @@ function validate180(
                     errors++;
                 }
                 for (const key5 in data56) {
-                    if (!func1.call(schema224.properties, key5)) {
+                    if (!func1.call(schema226.properties, key5)) {
                         const err171 = {
                             instancePath: instancePath + "/projection_budget",
                             schemaPath: "#/$defs/ProjectionBudget/additionalProperties",
@@ -90620,7 +91051,7 @@ function validate180(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema224.properties.cohort_member_selection_basis.enum,
+                                    schema226.properties.cohort_member_selection_basis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -91386,7 +91817,7 @@ function validate180(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema196.properties.semantic_reading.properties.status.enum,
+                                    schema198.properties.semantic_reading.properties.status.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -91529,7 +91960,7 @@ function validate180(
                             errors++;
                         }
                         for (const key7 in data89) {
-                            if (!func1.call(schema272.properties, key7)) {
+                            if (!func1.call(schema274.properties, key7)) {
                                 const err224 = {
                                     instancePath: instancePath + "/coverage_details/" + i18,
                                     schemaPath: "#/$defs/CoverageDetail/additionalProperties",
@@ -92633,7 +93064,7 @@ function validate180(
                             errors++;
                         }
                         for (const key8 in data115) {
-                            if (!func1.call(schema273.properties, key8)) {
+                            if (!func1.call(schema275.properties, key8)) {
                                 const err281 = {
                                     instancePath: instancePath + "/fact_scope_census/" + i21,
                                     schemaPath:
@@ -92980,7 +93411,7 @@ function validate180(
                                         "#/$defs/FactScopeCensusRecord/properties/authorized_population_count/type",
                                     keyword: "type",
                                     params: {
-                                        type: schema273.properties.authorized_population_count.type,
+                                        type: schema275.properties.authorized_population_count.type,
                                     },
                                     message: "must be integer,null",
                                 };
@@ -95557,7 +95988,7 @@ function validate20(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema274.properties.error.properties.code.enum,
+                                            schema276.properties.error.properties.code.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
                                 };
@@ -95830,7 +96261,7 @@ function validate20(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema274.properties.error.properties.details
+                                                    schema276.properties.error.properties.details
                                                         .properties.limit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -95854,7 +96285,7 @@ function validate20(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema274.properties.error.properties.details
+                                                    schema276.properties.error.properties.details
                                                         .properties.deadline.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -95936,7 +96367,7 @@ function validate20(
 }
 validate20.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 export const validateInvestigationResultV1 = validate244;
-const schema275 = {
+const schema277 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: "https://contracts.fullchaos.dev/acr/v1/context_fabric_investigation_result.v1.schema.json",
     title: "ACR Context Fabric Investigation Result v1",
@@ -98168,8 +98599,193 @@ function validate255(
                 errors++;
             }
         }
+        if (data.fallback !== undefined) {
+            let data18 = data.fallback;
+            if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
+                if (data18.reason === undefined) {
+                    const err33 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "reason" },
+                        message: "must have required property '" + "reason" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err33];
+                    } else {
+                        vErrors.push(err33);
+                    }
+                    errors++;
+                }
+                if (data18.planned_kinds === undefined) {
+                    const err34 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "planned_kinds" },
+                        message: "must have required property '" + "planned_kinds" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err34];
+                    } else {
+                        vErrors.push(err34);
+                    }
+                    errors++;
+                }
+                if (data18.outcome === undefined) {
+                    const err35 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "outcome" },
+                        message: "must have required property '" + "outcome" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err35];
+                    } else {
+                        vErrors.push(err35);
+                    }
+                    errors++;
+                }
+                for (const key1 in data18) {
+                    if (!(key1 === "reason" || key1 === "planned_kinds" || key1 === "outcome")) {
+                        const err36 = {
+                            instancePath: instancePath + "/fallback",
+                            schemaPath: "#/$defs/AnswerPlanFallback/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key1 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err36];
+                        } else {
+                            vErrors.push(err36);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.reason !== undefined) {
+                    if (typeof data18.reason !== "string") {
+                        const err37 = {
+                            instancePath: instancePath + "/fallback/reason",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/reason/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err37];
+                        } else {
+                            vErrors.push(err37);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.planned_kinds !== undefined) {
+                    let data20 = data18.planned_kinds;
+                    if (Array.isArray(data20)) {
+                        if (data20.length > 64) {
+                            const err38 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/maxItems",
+                                keyword: "maxItems",
+                                params: { limit: 64 },
+                                message: "must NOT have more than 64 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err38];
+                            } else {
+                                vErrors.push(err38);
+                            }
+                            errors++;
+                        }
+                        if (data20.length < 1) {
+                            const err39 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/minItems",
+                                keyword: "minItems",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err39];
+                            } else {
+                                vErrors.push(err39);
+                            }
+                            errors++;
+                        }
+                        const len5 = data20.length;
+                        for (let i5 = 0; i5 < len5; i5++) {
+                            if (typeof data20[i5] !== "string") {
+                                const err40 = {
+                                    instancePath: instancePath + "/fallback/planned_kinds/" + i5,
+                                    schemaPath:
+                                        "#/$defs/AnswerPlanFallback/properties/planned_kinds/items/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err40];
+                                } else {
+                                    vErrors.push(err40);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err41 = {
+                            instancePath: instancePath + "/fallback/planned_kinds",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/planned_kinds/type",
+                            keyword: "type",
+                            params: { type: "array" },
+                            message: "must be array",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err41];
+                        } else {
+                            vErrors.push(err41);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.outcome !== undefined) {
+                    if (typeof data18.outcome !== "string") {
+                        const err42 = {
+                            instancePath: instancePath + "/fallback/outcome",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/outcome/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err42];
+                        } else {
+                            vErrors.push(err42);
+                        }
+                        errors++;
+                    }
+                }
+            } else {
+                const err43 = {
+                    instancePath: instancePath + "/fallback",
+                    schemaPath: "#/$defs/AnswerPlanFallback/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err43];
+                } else {
+                    vErrors.push(err43);
+                }
+                errors++;
+            }
+        }
     } else {
-        const err33 = {
+        const err44 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -98177,9 +98793,9 @@ function validate255(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err33];
+            vErrors = [err44];
         } else {
-            vErrors.push(err33);
+            vErrors.push(err44);
         }
         errors++;
     }
@@ -98504,7 +99120,7 @@ function validate260(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema65.properties, key0)) {
+            if (!func1.call(schema66.properties, key0)) {
                 const err17 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -98798,7 +99414,7 @@ function validate260(
                     instancePath: instancePath + "/score_meaning",
                     schemaPath: "#/properties/score_meaning/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema65.properties.score_meaning.enum },
+                    params: { allowedValues: schema66.properties.score_meaning.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -99271,7 +99887,7 @@ function validate265(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema73.properties, key0)) {
+            if (!func1.call(schema74.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -102400,7 +103016,7 @@ function validate274(
                                 if (
                                     !func0(
                                         data5.key,
-                                        schema82.allOf[3].if.not.anyOf[1].properties.table
+                                        schema83.allOf[3].if.not.anyOf[1].properties.table
                                             .properties.key.const,
                                     )
                                 ) {
@@ -102688,7 +103304,7 @@ function validate274(
                                 if (
                                     !func0(
                                         data12.key,
-                                        schema82.allOf[5].if.properties.table.properties.key.const,
+                                        schema83.allOf[5].if.properties.table.properties.key.const,
                                     )
                                 ) {
                                     const err35 = {};
@@ -102850,7 +103466,7 @@ function validate274(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema82.properties, key0)) {
+            if (!func1.call(schema83.properties, key0)) {
                 const err43 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -103771,7 +104387,7 @@ function validate274(
                     instancePath: instancePath + "/operation",
                     schemaPath: "#/properties/operation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema82.properties.operation.enum },
+                    params: { allowedValues: schema83.properties.operation.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -103883,7 +104499,7 @@ function validate274(
                     errors++;
                 }
                 for (const key4 in data37) {
-                    if (!func1.call(schema87.properties, key4)) {
+                    if (!func1.call(schema88.properties, key4)) {
                         const err99 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -103975,7 +104591,7 @@ function validate274(
                             instancePath: instancePath + "/table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -104492,7 +105108,7 @@ function validate274(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -104560,7 +105176,7 @@ function validate274(
                             instancePath: instancePath + "/table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -104622,7 +105238,7 @@ function validate274(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -104865,7 +105481,7 @@ function validate274(
                     errors++;
                 }
                 for (const key8 in data58) {
-                    if (!func1.call(schema87.properties, key8)) {
+                    if (!func1.call(schema88.properties, key8)) {
                         const err152 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -104957,7 +105573,7 @@ function validate274(
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -105488,7 +106104,7 @@ function validate274(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -105557,7 +106173,7 @@ function validate274(
                             instancePath: instancePath + "/time_series_table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -105620,7 +106236,7 @@ function validate274(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -106129,7 +106745,7 @@ function validate274(
                     errors++;
                 }
                 for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+                    if (!func1.call(schema91.properties, key13)) {
                         const err220 = {
                             instancePath: instancePath + "/completion_forecast",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
@@ -106211,7 +106827,7 @@ function validate274(
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
+                            params: { allowedValues: schema91.properties.state.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -107500,7 +108116,7 @@ function validate278(
                             errors++;
                         }
                         for (const key2 in data13) {
-                            if (!func1.call(schema92.properties, key2)) {
+                            if (!func1.call(schema93.properties, key2)) {
                                 const err35 = {
                                     instancePath: instancePath + "/details/" + i2,
                                     schemaPath: "#/$defs/CoverageDetail/additionalProperties",
@@ -108379,7 +108995,7 @@ function validate280(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.requested.allOf[1].properties.axis.enum,
+                                    schema95.properties.requested.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -108421,7 +109037,7 @@ function validate280(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.effective.allOf[1].properties.axis.enum,
+                                    schema95.properties.effective.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -108457,7 +109073,7 @@ function validate280(
                     instancePath: instancePath + "/grain",
                     schemaPath: "#/properties/grain/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema94.properties.grain.enum },
+                    params: { allowedValues: schema95.properties.grain.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -110329,7 +110945,7 @@ function validate298(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema120.properties, key0)) {
+            if (!func1.call(schema121.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -110709,7 +111325,7 @@ function validate298(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/StructureDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema125.enum },
+                    params: { allowedValues: schema126.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -111488,7 +112104,7 @@ function validate302(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema129.properties, key0)) {
+            if (!func1.call(schema130.properties, key0)) {
                 const err18 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -111617,7 +112233,7 @@ function validate302(
                     instancePath: instancePath + "/presentation",
                     schemaPath: "#/$defs/RenderPresentation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema131.enum },
+                    params: { allowedValues: schema132.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -111661,7 +112277,7 @@ function validate302(
                     instancePath: instancePath + "/selected_by",
                     schemaPath: "#/$defs/RenderShapeRule/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema132.enum },
+                    params: { allowedValues: schema133.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -111743,7 +112359,7 @@ function validate302(
                     instancePath: instancePath + "/axis_kind",
                     schemaPath: "#/$defs/RenderAxisKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema133.enum },
+                    params: { allowedValues: schema134.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -111874,7 +112490,7 @@ function validate302(
                     instancePath: instancePath + "/value_unit",
                     schemaPath: "#/$defs/RenderValueUnit/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema134.enum },
+                    params: { allowedValues: schema135.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -112224,7 +112840,7 @@ function validate305(
                     instancePath: instancePath + "/terminal_status",
                     schemaPath: "#/properties/terminal_status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.terminal_status.enum },
+                    params: { allowedValues: schema139.properties.terminal_status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -112349,7 +112965,7 @@ function validate305(
                     instancePath: instancePath + "/state",
                     schemaPath: "#/properties/state/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.state.enum },
+                    params: { allowedValues: schema139.properties.state.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -112510,7 +113126,7 @@ function validate305(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -112552,7 +113168,7 @@ function validate305(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties.direction
+                                    schema139.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -112615,7 +113231,7 @@ function validate305(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -113357,7 +113973,7 @@ function validate244(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema275.properties, key0)) {
+            if (!func1.call(schema277.properties, key0)) {
                 const err39 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -113550,7 +114166,7 @@ function validate244(
                     instancePath: instancePath + "/status",
                     schemaPath: "#/properties/status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema275.properties.status.enum },
+                    params: { allowedValues: schema277.properties.status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -114554,7 +115170,7 @@ function validate244(
                     errors++;
                 }
                 for (const key1 in data38) {
-                    if (!func1.call(schema93.properties, key1)) {
+                    if (!func1.call(schema94.properties, key1)) {
                         const err98 = {
                             instancePath: instancePath + "/versions",
                             schemaPath:
@@ -115100,7 +115716,7 @@ function validate244(
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/interpretation_source/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema93.properties.interpretation_source.enum,
+                                allowedValues: schema94.properties.interpretation_source.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -115190,7 +115806,7 @@ function validate244(
                             schemaPath:
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/synthesis_source/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema93.properties.synthesis_source.enum },
+                            params: { allowedValues: schema94.properties.synthesis_source.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -115918,7 +116534,7 @@ function validate244(
                             errors++;
                         }
                         for (const key2 in data68) {
-                            if (!func1.call(schema141.properties, key2)) {
+                            if (!func1.call(schema142.properties, key2)) {
                                 const err167 = {
                                     instancePath: instancePath + "/fact_scope_census/" + i14,
                                     schemaPath:
@@ -116265,7 +116881,7 @@ function validate244(
                                         "context_fabric_common.v1.schema.json#/$defs/FactScopeCensusRecord/properties/authorized_population_count/type",
                                     keyword: "type",
                                     params: {
-                                        type: schema141.properties.authorized_population_count.type,
+                                        type: schema142.properties.authorized_population_count.type,
                                     },
                                     message: "must be integer,null",
                                 };
@@ -116743,7 +117359,7 @@ function validate244(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema275.properties.status_correction.properties
+                                    schema277.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -116785,7 +117401,7 @@ function validate244(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema275.properties.status_correction.properties.direction
+                                    schema277.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -116848,7 +117464,7 @@ function validate244(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema275.properties.status_correction.properties
+                                    schema277.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -116951,7 +117567,7 @@ function validate244(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema275.properties.semantic_reading.properties.status.enum,
+                                    schema277.properties.semantic_reading.properties.status.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -117016,7 +117632,7 @@ function validate244(
 }
 validate244.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 export const validateInvestigationResultV2 = validate308;
-const schema326 = {
+const schema329 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: "https://contracts.fullchaos.dev/acr/v1/context_fabric_investigation_result.v2.schema.json",
     title: "ACR Context Fabric Investigation Result v2",
@@ -119251,8 +119867,193 @@ function validate319(
                 errors++;
             }
         }
+        if (data.fallback !== undefined) {
+            let data18 = data.fallback;
+            if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
+                if (data18.reason === undefined) {
+                    const err33 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "reason" },
+                        message: "must have required property '" + "reason" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err33];
+                    } else {
+                        vErrors.push(err33);
+                    }
+                    errors++;
+                }
+                if (data18.planned_kinds === undefined) {
+                    const err34 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "planned_kinds" },
+                        message: "must have required property '" + "planned_kinds" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err34];
+                    } else {
+                        vErrors.push(err34);
+                    }
+                    errors++;
+                }
+                if (data18.outcome === undefined) {
+                    const err35 = {
+                        instancePath: instancePath + "/fallback",
+                        schemaPath: "#/$defs/AnswerPlanFallback/required",
+                        keyword: "required",
+                        params: { missingProperty: "outcome" },
+                        message: "must have required property '" + "outcome" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err35];
+                    } else {
+                        vErrors.push(err35);
+                    }
+                    errors++;
+                }
+                for (const key1 in data18) {
+                    if (!(key1 === "reason" || key1 === "planned_kinds" || key1 === "outcome")) {
+                        const err36 = {
+                            instancePath: instancePath + "/fallback",
+                            schemaPath: "#/$defs/AnswerPlanFallback/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key1 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err36];
+                        } else {
+                            vErrors.push(err36);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.reason !== undefined) {
+                    if (typeof data18.reason !== "string") {
+                        const err37 = {
+                            instancePath: instancePath + "/fallback/reason",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/reason/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err37];
+                        } else {
+                            vErrors.push(err37);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.planned_kinds !== undefined) {
+                    let data20 = data18.planned_kinds;
+                    if (Array.isArray(data20)) {
+                        if (data20.length > 64) {
+                            const err38 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/maxItems",
+                                keyword: "maxItems",
+                                params: { limit: 64 },
+                                message: "must NOT have more than 64 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err38];
+                            } else {
+                                vErrors.push(err38);
+                            }
+                            errors++;
+                        }
+                        if (data20.length < 1) {
+                            const err39 = {
+                                instancePath: instancePath + "/fallback/planned_kinds",
+                                schemaPath:
+                                    "#/$defs/AnswerPlanFallback/properties/planned_kinds/minItems",
+                                keyword: "minItems",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 items",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err39];
+                            } else {
+                                vErrors.push(err39);
+                            }
+                            errors++;
+                        }
+                        const len5 = data20.length;
+                        for (let i5 = 0; i5 < len5; i5++) {
+                            if (typeof data20[i5] !== "string") {
+                                const err40 = {
+                                    instancePath: instancePath + "/fallback/planned_kinds/" + i5,
+                                    schemaPath:
+                                        "#/$defs/AnswerPlanFallback/properties/planned_kinds/items/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err40];
+                                } else {
+                                    vErrors.push(err40);
+                                }
+                                errors++;
+                            }
+                        }
+                    } else {
+                        const err41 = {
+                            instancePath: instancePath + "/fallback/planned_kinds",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/planned_kinds/type",
+                            keyword: "type",
+                            params: { type: "array" },
+                            message: "must be array",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err41];
+                        } else {
+                            vErrors.push(err41);
+                        }
+                        errors++;
+                    }
+                }
+                if (data18.outcome !== undefined) {
+                    if (typeof data18.outcome !== "string") {
+                        const err42 = {
+                            instancePath: instancePath + "/fallback/outcome",
+                            schemaPath: "#/$defs/AnswerPlanFallback/properties/outcome/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err42];
+                        } else {
+                            vErrors.push(err42);
+                        }
+                        errors++;
+                    }
+                }
+            } else {
+                const err43 = {
+                    instancePath: instancePath + "/fallback",
+                    schemaPath: "#/$defs/AnswerPlanFallback/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err43];
+                } else {
+                    vErrors.push(err43);
+                }
+                errors++;
+            }
+        }
     } else {
-        const err33 = {
+        const err44 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -119260,9 +120061,9 @@ function validate319(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err33];
+            vErrors = [err44];
         } else {
-            vErrors.push(err33);
+            vErrors.push(err44);
         }
         errors++;
     }
@@ -119587,7 +120388,7 @@ function validate324(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema65.properties, key0)) {
+            if (!func1.call(schema66.properties, key0)) {
                 const err17 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -119881,7 +120682,7 @@ function validate324(
                     instancePath: instancePath + "/score_meaning",
                     schemaPath: "#/properties/score_meaning/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema65.properties.score_meaning.enum },
+                    params: { allowedValues: schema66.properties.score_meaning.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -120354,7 +121155,7 @@ function validate329(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema73.properties, key0)) {
+            if (!func1.call(schema74.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -123483,7 +124284,7 @@ function validate338(
                                 if (
                                     !func0(
                                         data5.key,
-                                        schema82.allOf[3].if.not.anyOf[1].properties.table
+                                        schema83.allOf[3].if.not.anyOf[1].properties.table
                                             .properties.key.const,
                                     )
                                 ) {
@@ -123771,7 +124572,7 @@ function validate338(
                                 if (
                                     !func0(
                                         data12.key,
-                                        schema82.allOf[5].if.properties.table.properties.key.const,
+                                        schema83.allOf[5].if.properties.table.properties.key.const,
                                     )
                                 ) {
                                     const err35 = {};
@@ -123933,7 +124734,7 @@ function validate338(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema82.properties, key0)) {
+            if (!func1.call(schema83.properties, key0)) {
                 const err43 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -124854,7 +125655,7 @@ function validate338(
                     instancePath: instancePath + "/operation",
                     schemaPath: "#/properties/operation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema82.properties.operation.enum },
+                    params: { allowedValues: schema83.properties.operation.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -124966,7 +125767,7 @@ function validate338(
                     errors++;
                 }
                 for (const key4 in data37) {
-                    if (!func1.call(schema87.properties, key4)) {
+                    if (!func1.call(schema88.properties, key4)) {
                         const err99 = {
                             instancePath: instancePath + "/table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -125058,7 +125859,7 @@ function validate338(
                             instancePath: instancePath + "/table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -125575,7 +126376,7 @@ function validate338(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -125643,7 +126444,7 @@ function validate338(
                             instancePath: instancePath + "/table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -125705,7 +126506,7 @@ function validate338(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -125948,7 +126749,7 @@ function validate338(
                     errors++;
                 }
                 for (const key8 in data58) {
-                    if (!func1.call(schema87.properties, key8)) {
+                    if (!func1.call(schema88.properties, key8)) {
                         const err152 = {
                             instancePath: instancePath + "/time_series_table",
                             schemaPath: "#/$defs/ClaimedFactTable/additionalProperties",
@@ -126040,7 +126841,7 @@ function validate338(
                             instancePath: instancePath + "/time_series_table/shape",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/shape/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.shape.enum },
+                            params: { allowedValues: schema88.properties.shape.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -126571,7 +127372,7 @@ function validate338(
                                             keyword: "enum",
                                             params: {
                                                 allowedValues:
-                                                    schema87.properties.measure_units.items
+                                                    schema88.properties.measure_units.items
                                                         .properties.unit.enum,
                                             },
                                             message: "must be equal to one of the allowed values",
@@ -126640,7 +127441,7 @@ function validate338(
                             instancePath: instancePath + "/time_series_table/cadence",
                             schemaPath: "#/$defs/ClaimedFactTable/properties/cadence/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema87.properties.cadence.enum },
+                            params: { allowedValues: schema88.properties.cadence.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -126703,7 +127504,7 @@ function validate338(
                                     keyword: "enum",
                                     params: {
                                         allowedValues:
-                                            schema87.properties.column_vocabularies
+                                            schema88.properties.column_vocabularies
                                                 .additionalProperties.enum,
                                     },
                                     message: "must be equal to one of the allowed values",
@@ -127212,7 +128013,7 @@ function validate338(
                     errors++;
                 }
                 for (const key13 in data82) {
-                    if (!func1.call(schema90.properties, key13)) {
+                    if (!func1.call(schema91.properties, key13)) {
                         const err220 = {
                             instancePath: instancePath + "/completion_forecast",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/additionalProperties",
@@ -127294,7 +128095,7 @@ function validate338(
                             instancePath: instancePath + "/completion_forecast/state",
                             schemaPath: "#/$defs/ClaimedCompletionForecast/properties/state/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema90.properties.state.enum },
+                            params: { allowedValues: schema91.properties.state.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -128583,7 +129384,7 @@ function validate342(
                             errors++;
                         }
                         for (const key2 in data13) {
-                            if (!func1.call(schema92.properties, key2)) {
+                            if (!func1.call(schema93.properties, key2)) {
                                 const err35 = {
                                     instancePath: instancePath + "/details/" + i2,
                                     schemaPath: "#/$defs/CoverageDetail/additionalProperties",
@@ -129462,7 +130263,7 @@ function validate344(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.requested.allOf[1].properties.axis.enum,
+                                    schema95.properties.requested.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -129504,7 +130305,7 @@ function validate344(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema94.properties.effective.allOf[1].properties.axis.enum,
+                                    schema95.properties.effective.allOf[1].properties.axis.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -129540,7 +130341,7 @@ function validate344(
                     instancePath: instancePath + "/grain",
                     schemaPath: "#/properties/grain/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema94.properties.grain.enum },
+                    params: { allowedValues: schema95.properties.grain.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -131442,7 +132243,7 @@ function validate362(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema120.properties, key0)) {
+            if (!func1.call(schema121.properties, key0)) {
                 const err20 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -131822,7 +132623,7 @@ function validate362(
                     instancePath: instancePath + "/disposition",
                     schemaPath: "#/$defs/StructureDisposition/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema125.enum },
+                    params: { allowedValues: schema126.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -132601,7 +133402,7 @@ function validate366(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema129.properties, key0)) {
+            if (!func1.call(schema130.properties, key0)) {
                 const err18 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -132730,7 +133531,7 @@ function validate366(
                     instancePath: instancePath + "/presentation",
                     schemaPath: "#/$defs/RenderPresentation/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema131.enum },
+                    params: { allowedValues: schema132.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -132774,7 +133575,7 @@ function validate366(
                     instancePath: instancePath + "/selected_by",
                     schemaPath: "#/$defs/RenderShapeRule/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema132.enum },
+                    params: { allowedValues: schema133.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -132856,7 +133657,7 @@ function validate366(
                     instancePath: instancePath + "/axis_kind",
                     schemaPath: "#/$defs/RenderAxisKind/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema133.enum },
+                    params: { allowedValues: schema134.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -132987,7 +133788,7 @@ function validate366(
                     instancePath: instancePath + "/value_unit",
                     schemaPath: "#/$defs/RenderValueUnit/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema134.enum },
+                    params: { allowedValues: schema135.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -133337,7 +134138,7 @@ function validate369(
                     instancePath: instancePath + "/terminal_status",
                     schemaPath: "#/properties/terminal_status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.terminal_status.enum },
+                    params: { allowedValues: schema139.properties.terminal_status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -133462,7 +134263,7 @@ function validate369(
                     instancePath: instancePath + "/state",
                     schemaPath: "#/properties/state/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema138.properties.state.enum },
+                    params: { allowedValues: schema139.properties.state.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -133623,7 +134424,7 @@ function validate369(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -133665,7 +134466,7 @@ function validate369(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties.direction
+                                    schema139.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -133728,7 +134529,7 @@ function validate369(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema138.properties.status_correction.properties
+                                    schema139.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -134485,7 +135286,7 @@ function validate308(
             errors++;
         }
         for (const key0 in data) {
-            if (!func1.call(schema326.properties, key0)) {
+            if (!func1.call(schema329.properties, key0)) {
                 const err40 = {
                     instancePath,
                     schemaPath: "#/additionalProperties",
@@ -134678,7 +135479,7 @@ function validate308(
                     instancePath: instancePath + "/status",
                     schemaPath: "#/properties/status/enum",
                     keyword: "enum",
-                    params: { allowedValues: schema326.properties.status.enum },
+                    params: { allowedValues: schema329.properties.status.enum },
                     message: "must be equal to one of the allowed values",
                 };
                 if (vErrors === null) {
@@ -135682,7 +136483,7 @@ function validate308(
                     errors++;
                 }
                 for (const key1 in data38) {
-                    if (!func1.call(schema93.properties, key1)) {
+                    if (!func1.call(schema94.properties, key1)) {
                         const err99 = {
                             instancePath: instancePath + "/versions",
                             schemaPath:
@@ -136228,7 +137029,7 @@ function validate308(
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/interpretation_source/enum",
                             keyword: "enum",
                             params: {
-                                allowedValues: schema93.properties.interpretation_source.enum,
+                                allowedValues: schema94.properties.interpretation_source.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };
@@ -136318,7 +137119,7 @@ function validate308(
                             schemaPath:
                                 "context_fabric_common.v1.schema.json#/$defs/VersionSet/properties/synthesis_source/enum",
                             keyword: "enum",
-                            params: { allowedValues: schema93.properties.synthesis_source.enum },
+                            params: { allowedValues: schema94.properties.synthesis_source.enum },
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
@@ -137046,7 +137847,7 @@ function validate308(
                             errors++;
                         }
                         for (const key2 in data68) {
-                            if (!func1.call(schema141.properties, key2)) {
+                            if (!func1.call(schema142.properties, key2)) {
                                 const err168 = {
                                     instancePath: instancePath + "/fact_scope_census/" + i14,
                                     schemaPath:
@@ -137393,7 +138194,7 @@ function validate308(
                                         "context_fabric_common.v1.schema.json#/$defs/FactScopeCensusRecord/properties/authorized_population_count/type",
                                     keyword: "type",
                                     params: {
-                                        type: schema141.properties.authorized_population_count.type,
+                                        type: schema142.properties.authorized_population_count.type,
                                     },
                                     message: "must be integer,null",
                                 };
@@ -137871,7 +138672,7 @@ function validate308(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema326.properties.status_correction.properties
+                                    schema329.properties.status_correction.properties
                                         .replaced_status.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -137913,7 +138714,7 @@ function validate308(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema326.properties.status_correction.properties.direction
+                                    schema329.properties.status_correction.properties.direction
                                         .enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -137976,7 +138777,7 @@ function validate308(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema326.properties.status_correction.properties
+                                    schema329.properties.status_correction.properties
                                         .deciding_outcome.enum,
                             },
                             message: "must be equal to one of the allowed values",
@@ -138079,7 +138880,7 @@ function validate308(
                             keyword: "enum",
                             params: {
                                 allowedValues:
-                                    schema326.properties.semantic_reading.properties.status.enum,
+                                    schema329.properties.semantic_reading.properties.status.enum,
                             },
                             message: "must be equal to one of the allowed values",
                         };

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { BaseForm, inputClass } from "@/components/shared/BaseForm";
 import { ACTION_FAILED_MESSAGE } from "@/lib/actionFailure";
@@ -18,6 +19,7 @@ const ROLE_OPTIONS = [
 
 export default function NewUserPage() {
     const router = useRouter();
+    const { impersonationLimited } = useAdminNav();
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<string>("member");
@@ -60,6 +62,7 @@ export default function NewUserPage() {
                 onSubmitAction={handleSubmit}
                 onCancelAction={() => router.push("/org/admin/users")}
                 isLoading={isLoading}
+                hideSubmit={impersonationLimited}
                 submitLabel={isLoading ? "Sending..." : "Send invite"}
                 className="max-w-2xl space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
                 contentClassName="grid gap-6 md:grid-cols-2"

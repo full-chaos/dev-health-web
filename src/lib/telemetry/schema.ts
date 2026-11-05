@@ -74,6 +74,7 @@ export const APP_ROUTES: readonly string[] = [
     "/feature-flags",
     "/govern",
     "/health",
+    "/impersonation-restricted",
     "/improve",
     "/improve/automations",
     "/improve/experiments",

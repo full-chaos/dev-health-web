@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CircleCheck, CircleSlash, Clock } from "lucide-react";
 import type { User } from "@/lib/admin/types";
+import { HideWhileImpersonationLimited } from "@/components/admin/HideWhileImpersonationLimited";
 import { StatusPill, type StatusPillProps } from "@/components/admin/StatusPill";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
@@ -112,13 +113,15 @@ export function UserTable({ users }: UserTableProps) {
             headerClassName: "px-6 py-4 text-right font-medium",
             className: "px-6 py-4 text-right",
             render: (user) => (
-                <Link
-                    href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
-                    prefetch={false}
-                    className="text-(--accent-2) hover:underline"
-                >
-                    {CTA_LABELS.edit}
-                </Link>
+                <HideWhileImpersonationLimited>
+                    <Link
+                        href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
+                        prefetch={false}
+                        className="text-(--accent-2) hover:underline"
+                    >
+                        {CTA_LABELS.edit}
+                    </Link>
+                </HideWhileImpersonationLimited>
             ),
         },
     ];
