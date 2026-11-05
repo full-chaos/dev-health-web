@@ -113,7 +113,7 @@ describe.each(completions)("the %s completion verifies the access token", (_name
     });
 
     it("refuses a token of another issuer", async () => {
-        serve(answer(forge({ iss: "https://other.example.test" })));
+        serve(answer(mint({ org: ORG, iss: "https://other.example.test" })));
         expect(await complete(cfg)).toMatchObject({ kind: "refused", code: "sso_failed" });
     });
 

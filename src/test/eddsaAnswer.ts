@@ -20,6 +20,7 @@ export interface MintOptions {
     act?: string;
     org?: string;
     kid?: string;
+    iss?: string;
     pad?: number;
 }
 
@@ -32,7 +33,7 @@ export function mint(opts: MintOptions = {}): string {
     const header = b64(JSON.stringify({ alg: "EdDSA", typ: "at+jwt", kid: opts.kid ?? "kid-1" }));
     const payload = b64(
         JSON.stringify({
-            iss: ISSUER,
+            iss: opts.iss ?? ISSUER,
             aud,
             sub: opts.sub ?? SUB,
             principal_type: "human",
