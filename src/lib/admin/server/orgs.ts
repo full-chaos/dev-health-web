@@ -17,6 +17,7 @@ import type {
     DeletionPlan,
 } from "../types";
 import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
+import { startResultWithHandoff } from "@/lib/impersonationSession";
 
 // ---- Current Org (self-service) ----
 
@@ -123,6 +124,7 @@ export async function startImpersonation(targetUserId: string): Promise<
         status: string;
         target_user: { id: string; email: string; org_id: string; role: string };
         expires_at: string;
+        sessionHandoff?: string;
     }>
 > {
     return withErrorHandling(async () => {
@@ -130,7 +132,7 @@ export async function startImpersonation(targetUserId: string): Promise<
             action: "admin.impersonate",
             guard: "unmapped",
         });
-        return adminApi.impersonation.start(targetUserId, token);
+        return startResultWithHandoff(await adminApi.impersonation.start(targetUserId, token));
     }, "changes-impersonation");
 }
 

@@ -41,7 +41,10 @@ export function UserTable({ users }: UserTableProps) {
                 // impersonation for up to 30s — during that window the backend
                 // already scopes data to the target org, poisoning org-keyed
                 // client caches with the wrong org's data.
-                await update({ impersonationChanged: true });
+                await update({
+                    impersonationChanged: true,
+                    sessionHandoff: result.data.sessionHandoff,
+                });
                 broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
                 if (impersonationWindow && !impersonationWindow.closed) {
