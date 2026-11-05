@@ -78,19 +78,28 @@ async function stopWith(adminBearer: string): Promise<boolean> {
     }
 }
 
-// The `sid` claim of the delegated token names its delegated session. Read without a check, for
-// the log line only: no decision is made on it.
-function delegationIdOf(accessToken: unknown): string | undefined {
-    if (typeof accessToken !== "string") return undefined;
+// The `sid` claim of the delegated token is the wire form ("ses_" + base64url of the 16 bytes) of
+// the delegated session id, the id of auth-service's session row and audit row. Read without a
+// check, for the log line only: no decision is made on it.
+function delegationIdsOf(accessToken: unknown): { sid?: string; delegation_id?: string } {
+    if (typeof accessToken !== "string") return {};
     const payload = accessToken.split(".")[1];
-    if (!payload) return undefined;
+    if (!payload) return {};
+    let sid: unknown;
     try {
         const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as unknown;
-        const sid = (claims as { sid?: unknown } | null)?.sid;
-        return typeof sid === "string" ? sid : undefined;
+        sid = (claims as { sid?: unknown } | null)?.sid;
     } catch {
-        return undefined;
+        return {};
     }
+    if (typeof sid !== "string") return {};
+    const bytes = sid.startsWith("ses_") ? Buffer.from(sid.slice(4), "base64url") : undefined;
+    if (!bytes || bytes.length !== 16) return { sid };
+    const hex = bytes.toString("hex");
+    return {
+        sid,
+        delegation_id: `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`,
+    };
 }
 
 function dropImpersonation(token: JWT): void {
@@ -113,8 +122,10 @@ export async function endImpersonationForSignOut(token: JWT, now: number): Promi
         impersonationLogger.error(
             {
                 event: "impersonation_stop_not_recorded",
-                delegation_id: delegationIdOf(token.imp_access_token),
+                ...delegationIdsOf(token.imp_access_token),
                 user_id: token.id,
+                target_user_id: token.impersonated_user_id,
+                org_id: token.impersonated_org_id,
             },
             "impersonation stop not recorded",
         );

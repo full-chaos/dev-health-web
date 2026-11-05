@@ -545,9 +545,11 @@ const nextAuth = NextAuth({
                     force: trigger === "update",
                     now,
                 });
-                // `undefined`: the read failed, or failed a moment ago. Keep the existing state.
-                if (status !== undefined) {
-                    if (!status.is_impersonating) clearImpersonationToken(token);
+                // `undefined`: the read failed, or failed a moment ago. Keep the existing state. An
+                // answer without a boolean `is_impersonating` says nothing: kept too. Only a status
+                // read with the administrator bearer that says false confirms the end.
+                if (status !== undefined && typeof status.is_impersonating === "boolean") {
+                    if (status.is_impersonating === false) clearImpersonationToken(token);
                     token.is_impersonating = status.is_impersonating;
                     token.impersonated_user_id = status.impersonated_user_id;
                     token.impersonated_email = status.impersonated_email;

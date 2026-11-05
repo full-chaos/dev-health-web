@@ -79,19 +79,24 @@ const MIN = 60_000;
 const ADMIN = "access-admin-1";
 const ADMIN_REFRESH = "refresh-admin-1";
 const ADMIN_2 = jwtOf({ sub: "admin-1", exp: Math.floor(Date.now() / 1000) + 3600 });
-const DELEGATION_ID = "deleg-7f3a";
-const DELEGATED = jwtOf({ sub: "target-1", sid: DELEGATION_ID, exp: 4102444800 });
+// auth-service's delegated session id (its session row and audit row) and its wire form, the sid.
+const DELEGATION_ID = "7f3a2b1c-0d4e-4f5a-8b6c-9d0e1f2a3b4c";
+const SID = `ses_${Buffer.from(DELEGATION_ID.replace(/-/g, ""), "hex").toString("base64url")}`;
+const DELEGATED = jwtOf({ sub: "target-1", sid: SID, exp: 4102444800 });
 const DELEGATED_SERVICE = "service-delegated-1";
 const DELEGATED_REFRESH = "refresh-delegated-1";
 
 type Refresh = "ok" | 429 | 503 | "network" | "invalid_grant";
-type StopOutcome = "ok" | 429 | 503 | "network" | 401 | 403;
+type StopOutcome = "ok" | 400 | 429 | 503 | "network" | 401 | 403;
+type StatusAnswer =
+    "true" | "false" | 500 | 429 | 503 | "network" | "missing-field" | "non-boolean" | "non-json";
 
 const calls: { path: string; bearer: string | null; body: string; at: number }[] = [];
 const backend = {
     statusImpersonating: true,
     refresh: "ok" as Refresh,
     stop: "ok" as StopOutcome,
+    status: undefined as StatusAnswer | undefined,
     startBody: {} as Obj,
 };
 
@@ -109,6 +114,7 @@ beforeEach(() => {
     backend.statusImpersonating = true;
     backend.refresh = "ok";
     backend.stop = "ok";
+    backend.status = undefined;
     backend.startBody = {};
     vi.stubGlobal(
         "fetch",
@@ -142,6 +148,18 @@ beforeEach(() => {
             }
             if (path.endsWith("/api/v1/admin/impersonate/status")) {
                 if (!admin) return json({ detail: "Forbidden" }, 403);
+                const forced = backend.status;
+                if (forced === "network") throw new TypeError("fetch failed");
+                if (typeof forced === "number") return json({ detail: "busy" }, forced);
+                if (forced === "false") return json({ is_impersonating: false });
+                if (forced === "missing-field") return json({ target_user_id: "target-1" });
+                if (forced === "non-boolean") return json({ is_impersonating: "false" });
+                if (forced === "non-json") {
+                    return new Response("<html>ok</html>", {
+                        status: 200,
+                        headers: { "content-type": "text/html" },
+                    });
+                }
                 return json(
                     backend.statusImpersonating
                         ? {
@@ -331,7 +349,7 @@ describe("S1 matrix: refresh outcome x delegated x admin", () => {
         const events = stopNotRecorded();
         expect(events).toHaveLength(want.event ? 1 : 0);
         if (want.event) {
-            expect(events[0].fields).toMatchObject({ delegation_id: DELEGATION_ID });
+            expect(events[0].fields).toMatchObject({ delegation_id: DELEGATION_ID, sid: SID });
             expect(next.access_token).toBeUndefined();
             expect(next.refresh_token).toBeUndefined();
             expect(next.is_impersonating).toBeFalsy();
@@ -344,7 +362,8 @@ describe("S1 matrix: refresh outcome x delegated x admin", () => {
 });
 
 describe("S2 stop outcome with an expired delegated token and a live admin bearer", () => {
-    const OUTCOMES: StopOutcome[] = ["ok", 429, 503, "network", 401, 403];
+    // 400 ("No active impersonation session") is not a successful stop either.
+    const OUTCOMES: StopOutcome[] = ["ok", 400, 429, 503, "network", 401, 403];
     it.each(OUTCOMES)("stop %s", async (outcome) => {
         const token = await impersonating("expired", "valid");
         backend.stop = outcome;
@@ -422,11 +441,17 @@ describe("S4 case (c): no valid bearer", () => {
         expect(stops()).toHaveLength(0);
         const events = stopNotRecorded();
         expect(events).toHaveLength(1);
-        expect(events[0].fields).toMatchObject({
+        // Ids only: the delegated session id (audit row id) and its sid, the actor, target and org.
+        expect(events[0].fields).toEqual({
+            event: "impersonation_stop_not_recorded",
             delegation_id: DELEGATION_ID,
+            sid: SID,
             user_id: "admin-1",
+            target_user_id: "target-1",
+            org_id: "org-target",
         });
         expect(JSON.stringify(events)).not.toContain(DELEGATED);
+        expect(JSON.stringify(events)).not.toContain("@");
         for (const k of ["imp_access_token", "imp_session_access_token", "imp_expires_at"]) {
             expect(next[k]).toBeUndefined();
         }
@@ -499,5 +524,54 @@ describe("S5 the delegated token has a bounded life and no refresh path", () => 
         for (const c of calls) expect(c.bearer).not.toBe(DELEGATED);
         expect(refreshes()).toHaveLength(0);
         expect(stops()).toHaveLength(3);
+    });
+});
+
+describe("S6 the status read clears imp_* only on an administrator-bearer answer of false", () => {
+    const ANSWERS: StatusAnswer[] = [
+        "false",
+        "true",
+        500,
+        429,
+        503,
+        "network",
+        "missing-field",
+        "non-boolean",
+        "non-json",
+    ];
+    it.each(ANSWERS)("status %s after a failed stop", async (answer) => {
+        const token = await impersonating("expired", "valid");
+        backend.stop = 503;
+        backend.status = answer;
+        resetImpersonationStatusForTests();
+        calls.length = 0;
+        const next = await later(token);
+        expectBearers(false);
+        expect(stops().map((c) => c.bearer)).toEqual([ADMIN]);
+        const reads = calls.filter((c) => c.path.endsWith("/impersonate/status"));
+        expect(reads.length).toBeGreaterThan(0);
+        for (const r of reads) expect(r.bearer).toBe(ADMIN);
+        if (answer === "false") {
+            expect(next.imp_access_token).toBeUndefined();
+            expect(next.is_impersonating).toBe(false);
+            expect((await session(next)).access_token).toBe(ADMIN);
+            return;
+        }
+        expect(next.imp_access_token).toBe(DELEGATED);
+        expect(next.imp_expires_at).toEqual(token.imp_expires_at);
+        expect(next.is_impersonating).toBe(true);
+        const s = await session(next);
+        expect(s.access_token).toBeUndefined();
+        expect(s.error).toBe("impersonation_ending");
+    });
+
+    it("a live delegated token is kept when the status answer has no boolean field", async () => {
+        const token = await impersonating("valid", "valid");
+        backend.status = "missing-field";
+        resetImpersonationStatusForTests();
+        const next = await later(token);
+        expect(next.imp_access_token).toBe(DELEGATED);
+        expect(next.is_impersonating).toBe(true);
+        expect((await session(next)).access_token).toBe(DELEGATED);
     });
 });
