@@ -148,6 +148,71 @@ describe("impersonation flag census (D6720)", () => {
         expect(owners).toEqual([ACCESSOR, "src/types/next-auth.d.ts"]);
     });
 
+    // acp cond. A: the delegated bearer is set only into imp_* (setImpersonationToken) and read
+    // only through delegatedToken, at the one place that serves it (the session callback).
+    it("the delegated bearer is written and served at one place each", () => {
+        const sites = (call: RegExp) =>
+            files.flatMap((f) =>
+                readFileSync(path.join(ROOT, f), "utf8")
+                    .split("\n")
+                    .filter((line) => !isComment(line) && call.test(line))
+                    .map((line) => `${f}: ${line.trim()}`),
+            );
+        expect(sites(/\bsetImpersonationToken\(/)).toEqual([
+            "src/lib/auth.ts: setImpersonationToken(token, handoff.pair as ImpersonationPair, Date.now());",
+            `${ACCESSOR}: export function setImpersonationToken(token: JWT, pair: ImpersonationPair, now: number): void {`,
+        ]);
+        expect(sites(/\bdelegatedToken\(/)).toEqual([
+            "src/lib/auth.ts: const delegated = delegatedToken(token);",
+            `${ACCESSOR}: export function delegatedToken(token: JWT): string | undefined {`,
+        ]);
+        const accessor = readFileSync(path.join(ROOT, ACCESSOR), "utf8");
+        expect(accessor.match(/= pair\.access_token/g)).toEqual(["= pair.access_token"]);
+        expect(accessor).toContain("token.imp_access_token = pair.access_token;");
+    });
+
+    // acp cond. B: every guard reads the session field the session callback computes from the
+    // accessor. The status answer is read only by the jwt callback (which can only end) and by
+    // the enforce-mode limits (which can only add a refusal).
+    const GUARD_SITES: Readonly<Record<string, string>> = {
+        "src/app/api/auth/change-password/route.ts": "if (session.user?.is_impersonating) {",
+        "src/app/api/auth/switch-org/route.ts": "if (session.user?.is_impersonating) {",
+        "src/lib/admin/server/_shared.ts":
+            "session.user?.is_impersonating === true && opts.allowImpersonating !== true;",
+        "src/lib/auth.ts":
+            "if (session.user.is_superuser !== true || session.user.is_impersonating === true) {",
+    };
+
+    it.each(Object.entries(GUARD_SITES))(
+        "guard %s reads the accessor-computed field",
+        (f, line) => {
+            expect(flagLines(f)).toContain(line);
+            const text = readFileSync(path.join(ROOT, f), "utf8");
+            expect(text).not.toMatch(/\btoken\??\.is_impersonating\b/);
+        },
+    );
+
+    it("only the jwt callback and the enforce-mode limits read the status answer", () => {
+        const readers = files
+            .filter((f) =>
+                /\breadImpersonationStatus\(/.test(readFileSync(path.join(ROOT, f), "utf8")),
+            )
+            .sort();
+        expect(readers).toEqual([
+            "src/lib/auth.ts",
+            "src/lib/auth/platform/limits.ts",
+            "src/lib/impersonationStatusMemo.ts",
+        ]);
+    });
+
+    it("the data-call bearer: an ended delegated token serves none, never the admin's", () => {
+        const auth = readFileSync(path.join(ROOT, "src/lib/auth.ts"), "utf8");
+        expect(auth).toContain("if (delegated && delegatedExpired(token, Date.now())) {");
+        expect(auth).toContain(
+            "session.access_token = (delegated ?? token.access_token) as string;",
+        );
+    });
+
     it("the session field is written once, from the accessor", () => {
         const auth = readFileSync(path.join(ROOT, "src/lib/auth.ts"), "utf8");
         const writes = files.flatMap((f) =>
