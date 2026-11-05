@@ -960,6 +960,8 @@ export type EvidenceQualityStats = {
   __typename?: 'EvidenceQualityStats';
   bandCounts: Scalars['JSON']['output'];
   mean?: Maybe<Scalars['Float']['output']>;
+  /** Categorized units of the window (not under the evidence gate) that carry a positive issue size; the rest count as one unit each in ISSUE_SIZE. Null when the window has no unit. */
+  sizedUnitCount?: Maybe<Scalars['Int']['output']>;
   stddev?: Maybe<Scalars['Float']['output']>;
   total: Scalars['Int']['output'];
   /** Units of the window under the evidence gate (too little text); the theme mix leaves them out and total still counts them. Null when the window has no unit. */
