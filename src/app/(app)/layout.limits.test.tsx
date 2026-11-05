@@ -173,12 +173,15 @@ describe("AppLayout platform admin flag under AUTHZ_PLATFORM_UI", () => {
         expect(nav.props).toEqual([{ isPlatformAdmin: true, impersonationLimited: false }]);
     });
 
-    it("C11 enforce: an unknown status hides the platform rows", async () => {
+    // D6720 (acp Q2 (i)): the session field from the delegated token fields alone decides; an
+    // unknown status changes nothing and is not read.
+    it("C11 enforce: an unknown status changes nothing", async () => {
         vi.stubEnv("AUTHZ_PLATFORM_UI", "enforce");
         status.read.mockResolvedValue(undefined);
         asUser({ is_superuser: true, is_impersonating: false });
         render(await AppLayout({ children: <span>page</span> }));
-        expect(nav.props).toEqual([{ isPlatformAdmin: false, impersonationLimited: true }]);
+        expect(nav.props).toEqual([{ isPlatformAdmin: true, impersonationLimited: false }]);
+        expect(status.read).not.toHaveBeenCalled();
     });
 
     it("C9 enforce: an org owner that is not a superuser has no platform rows and no limit", async () => {

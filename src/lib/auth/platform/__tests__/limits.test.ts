@@ -71,12 +71,10 @@ describe("C6 enforce: an impersonating session is limited", () => {
         expect(await impersonationLimit(session({ is_impersonating: true }))).toBe("impersonating");
     });
 
-    it("a superuser that is not impersonating is not limited", async () => {
-        mocks.status.mockResolvedValue({ is_impersonating: false });
+    it("a superuser that is not impersonating is not limited, and no status is read", async () => {
+        mocks.status.mockResolvedValue({ is_impersonating: true });
         expect(await impersonationLimit(session())).toBeNull();
-        expect(mocks.status).toHaveBeenCalledWith(
-            expect.objectContaining({ userId: "admin-1", accessToken: "tok-1", force: false }),
-        );
+        expect(mocks.status).not.toHaveBeenCalled();
     });
 
     it("a user that is not a superuser cannot impersonate: no status read", async () => {
@@ -85,34 +83,29 @@ describe("C6 enforce: an impersonating session is limited", () => {
     });
 });
 
-describe("C10 the server status decides, not a client flag", () => {
-    it("a session that says not impersonating is limited when the status says impersonating", async () => {
-        mocks.env = { AUTHZ_PLATFORM_UI: "enforce" };
-        mocks.status.mockResolvedValue({ is_impersonating: true });
-        expect(await impersonationLimit(session({ is_impersonating: false }))).toBe(
-            "impersonating",
-        );
-    });
-});
-
-describe("C11 enforce fails closed", () => {
+describe("C10/C11 the accessor-computed session field alone decides (D6720)", () => {
     beforeEach(() => {
         mocks.env = { AUTHZ_PLATFORM_UI: "enforce" };
     });
 
-    it("no status (read failed or in its wait) is a limit", async () => {
-        mocks.status.mockResolvedValue(undefined);
-        expect(await impersonationLimit(session())).toBe("status_unknown");
-        expect(await impersonationLimited(session())).toBe(true);
+    it("a status answer of true does not limit a session that is not impersonating", async () => {
+        mocks.status.mockResolvedValue({ is_impersonating: true });
+        expect(await impersonationLimit(session({ is_impersonating: false }))).toBeNull();
+        expect(mocks.status).not.toHaveBeenCalled();
     });
 
-    it("a status read that throws is a limit", async () => {
-        mocks.status.mockRejectedValue(new Error("down"));
-        expect(await impersonationLimit(session())).toBe("status_unknown");
+    it.each([
+        ["no status", () => mocks.status.mockResolvedValue(undefined)],
+        ["a status read that throws", () => mocks.status.mockRejectedValue(new Error("down"))],
+    ])("%s changes nothing", async (_, arrange) => {
+        arrange();
+        expect(await impersonationLimit(session())).toBeNull();
+        expect(await impersonationLimit(session({ is_impersonating: true }))).toBe("impersonating");
+        expect(mocks.status).not.toHaveBeenCalled();
     });
 
-    it("a superuser session with no token is a limit", async () => {
-        expect(await impersonationLimit(session({}, null))).toBe("status_unknown");
+    it("a superuser session with no token is not limited by the guard (no token = 401 elsewhere)", async () => {
+        expect(await impersonationLimit(session({}, null))).toBeNull();
         expect(mocks.status).not.toHaveBeenCalled();
     });
 });

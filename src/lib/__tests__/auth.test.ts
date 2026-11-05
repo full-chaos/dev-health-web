@@ -1278,16 +1278,34 @@ describe("jwt callback — token lifecycle", () => {
         const jwt = getJwtCallback();
         // Plain session read — no update trigger required (CHAOS-2328)
         const result = await jwt({
-            token: superuserToken({ id: "admin-l" }),
+            // The delegated token is the impersonation (D6720); the status read adds display data.
+            token: superuserToken({
+                id: "admin-l",
+                imp_access_token: "access-delegated-1",
+                imp_expires_at: Date.now() + 600_000,
+            }),
             user: null,
             account: null,
         });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/admin/impersonate/status");
-        expect(result.is_impersonating).toBe(true);
+        expect(result).not.toHaveProperty("is_impersonating");
         expect(result.impersonated_user_id).toBe("target-1");
-        expect(result.impersonated_email).toBe("target@example.com");
+        // The e-mail is served on the session of this read, never kept in the cookie (CHAOS-13105).
+        expect(result.impersonated_email).toBeUndefined();
+        expect(JSON.stringify(result)).not.toContain("target@example.com");
+        const session = await (
+            nextAuthConfig.value as {
+                callbacks: {
+                    session: (
+                        p: Record<string, unknown>,
+                    ) => Promise<{ user: Record<string, unknown> }>;
+                };
+            }
+        ).callbacks.session({ session: { user: {} }, token: result });
+        expect(session.user.is_impersonating).toBe(true);
+        expect(session.user.impersonated_email).toBe("target@example.com");
         expect(result.impersonated_org_id).toBe("org-target");
     });
 
@@ -1304,7 +1322,8 @@ describe("jwt callback — token lifecycle", () => {
         const result = await jwt({
             token: superuserToken({
                 id: "admin-m",
-                is_impersonating: true,
+                imp_access_token: "access-delegated-1",
+                imp_expires_at: Date.now() + 600_000,
                 impersonated_user_id: "target-1",
                 impersonated_email: "target@example.com",
                 impersonated_org_id: "org-target",
@@ -1313,7 +1332,8 @@ describe("jwt callback — token lifecycle", () => {
             account: null,
         });
 
-        expect(result.is_impersonating).toBe(false);
+        expect(result.imp_access_token).toBeUndefined();
+        expect(result).not.toHaveProperty("is_impersonating");
         expect(result.impersonated_user_id).toBeUndefined();
         expect(result.impersonated_email).toBeUndefined();
         expect(result.impersonated_org_id).toBeUndefined();
@@ -1342,7 +1362,7 @@ describe("jwt callback — token lifecycle", () => {
         });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(result.is_impersonating).toBe(false);
+        expect(result).not.toHaveProperty("is_impersonating");
         expect(result.impersonated_user_id).toBeUndefined();
     });
 
@@ -1403,22 +1423,34 @@ describe("jwt callback — token lifecycle", () => {
         // Two plain reads within the memo TTL → one backend fetch, but both
         // tokens carry the synced state.
         await jwt({
-            token: superuserToken({ id: "admin-q" }),
+            token: superuserToken({
+                id: "admin-q",
+                imp_access_token: "access-delegated-1",
+                imp_expires_at: Date.now() + 600_000,
+            }),
             user: null,
             account: null,
         });
         const second = await jwt({
-            token: superuserToken({ id: "admin-q" }),
+            token: superuserToken({
+                id: "admin-q",
+                imp_access_token: "access-delegated-1",
+                imp_expires_at: Date.now() + 600_000,
+            }),
             user: null,
             account: null,
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(second.is_impersonating).toBe(true);
+        expect(second).not.toHaveProperty("is_impersonating");
         expect(second.impersonated_user_id).toBe("target-q");
 
         // An update() trigger must bypass the memo and re-poll immediately.
         await jwt({
-            token: superuserToken({ id: "admin-q" }),
+            token: superuserToken({
+                id: "admin-q",
+                imp_access_token: "access-delegated-1",
+                imp_expires_at: Date.now() + 600_000,
+            }),
             user: null,
             account: null,
             trigger: "update",

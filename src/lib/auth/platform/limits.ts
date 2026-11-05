@@ -1,7 +1,6 @@
 import "server-only";
 import type { Session } from "next-auth";
 import { getServerEnv } from "@/lib/config";
-import { readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { logger } from "@/lib/logger";
 import type { OrgDeniedAction } from "./actionTable";
 import { PLATFORM_UI_SWITCH, platformUiMode } from "./mode";
@@ -12,36 +11,22 @@ import { PLATFORM_UI_SWITCH, platformUiMode } from "./mode";
 export const IMPERSONATION_DENY_PATH = "/impersonation-restricted";
 export const IMPERSONATION_LIMIT_MESSAGE = "Not available while impersonating";
 
-export type ImpersonationLimitCause = "impersonating" | "status_unknown";
+export type ImpersonationLimitCause = "impersonating";
 
 export function platformUiEnforced(): boolean {
     return platformUiMode(getServerEnv()[PLATFORM_UI_SWITCH.name]) === "enforce";
 }
 
 /**
- * Why the session is limited, or null. Only a superuser can impersonate, so only a superuser
- * session reads the server status (the shared 3 s memo the jwt callback also reads). The status
- * decides, not a flag the client holds; no status (a failed read, or its wait) is a limit.
+ * Why the session is limited, or null. The session field is computed by the session callback from
+ * the delegated token fields alone (D6720); the status read never decides here, so a failed read
+ * changes nothing. Unreadable delegated fields count as impersonating (fail closed in the accessor).
  */
 export async function impersonationLimit(
     session: Session,
 ): Promise<ImpersonationLimitCause | null> {
     if (!platformUiEnforced()) return null;
-    if (session.user?.is_impersonating === true) return "impersonating";
-    if (session.user?.is_superuser !== true) return null;
-    if (!session.access_token) return "status_unknown";
-    try {
-        const status = await readImpersonationStatus({
-            userId: session.user.id,
-            accessToken: session.access_token,
-            force: false,
-            now: Date.now(),
-        });
-        if (status === undefined) return "status_unknown";
-        return status.is_impersonating ? "impersonating" : null;
-    } catch {
-        return "status_unknown";
-    }
+    return session.user?.is_impersonating === true ? "impersonating" : null;
 }
 
 export async function impersonationLimited(session: Session): Promise<boolean> {

@@ -388,6 +388,17 @@ async function handleRequest(request: NextRequest) {
         const bounded = await boundedProxyAuth();
         if (!bounded) return authUnavailable(nonce, csp);
         const session = bounded.session;
+        // An impersonation whose stop is not yet recorded serves no bearer: say so instead of
+        // sending the user to sign in. The next request here retries the stop.
+        if (session?.error === "impersonation_ending") {
+            const ending = NextResponse.redirect(
+                new URL("/auth/error?error=impersonation_ending", request.url),
+                303,
+            );
+            ending.headers.set("Content-Security-Policy", csp);
+            ending.headers.set("Cache-Control", "private, no-store");
+            return ending;
+        }
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
             signInUrl.searchParams.set(

@@ -199,6 +199,15 @@ describe("browserSafeAuthHandler (CHAOS-12088)", () => {
 });
 
 describe("browserSafeAuthHandler and the service session token (CHAOS-10876)", () => {
+    it("R7 removes admin_access_token (the administrator's token aside while impersonating)", async () => {
+        const handler = vi.fn(async () =>
+            json({ user: { id: "u" }, expires: "e", admin_access_token: "ADM-1" }),
+        );
+        const res = await browserSafeAuthHandler(handler)(new NextRequest(URL_SESSION));
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ user: { id: "u" }, expires: "e" });
+    });
+
     it("removes session_access_token from the answer and keeps the rest", async () => {
         const handler = vi.fn(async () =>
             json({ user: { id: "u" }, expires: "e", session_access_token: "SVC-1" }),

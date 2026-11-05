@@ -47,7 +47,10 @@ export function ImpersonateUserButton({ user }: { user: User }) {
                 // Force an immediate server-verified impersonation status re-poll
                 // so org scoping switches to the target org without waiting for
                 // the 30s JWT poll interval (CHAOS-2309).
-                await update({ impersonationChanged: true });
+                await update({
+                    impersonationChanged: true,
+                    sessionHandoff: result.data.sessionHandoff,
+                });
                 broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
                 if (impersonationWindow && !impersonationWindow.closed) {
