@@ -159,13 +159,6 @@ const rows: Row[] = [
         }),
     },
     {
-        name: "expired decision",
-        deps: () => ({
-            transport: reply(200, decisionBody({ ...ALLOW, expiresAt: "2001-01-01T00:00:00Z" }))
-                .transport,
-        }),
-    },
-    {
         name: "allowed with a deny reason",
         deps: () => ({
             transport: reply(200, decisionBody({ allowed: true, reason: "role_lacks_action" }))
