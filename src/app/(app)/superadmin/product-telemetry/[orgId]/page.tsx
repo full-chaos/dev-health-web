@@ -4,6 +4,8 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProductTelemetryDashboard } from "@/components/product-telemetry/ProductTelemetryDashboard";
 import { getProductTelemetryDashboardViaGraphQL } from "@/lib/graphql/productTelemetryFetchers";
 import { resolveReaderWindow } from "@/lib/telemetry/readerWindow";
+import { requireSuperuser } from "@/lib/auth";
+import { appPath } from "@/lib/navigation/appPath";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -16,6 +18,10 @@ export default async function ProductTelemetryOrgDashboardPage({
     searchParams?: Promise<SearchParams>;
 }) {
     const { orgId } = await params;
+    await requireSuperuser(
+        appPath("/superadmin/product-telemetry/[orgId]", { orgId }),
+        "page:/superadmin/product-telemetry/[orgId]",
+    );
     const rawParams = (await searchParams) ?? {};
 
     const { start, end } = resolveReaderWindow({

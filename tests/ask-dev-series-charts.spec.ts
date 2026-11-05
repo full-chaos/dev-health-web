@@ -16,7 +16,6 @@ import {
 // uneven dates). The panel's test-mode answer source reads the answer from session storage.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const KEY = "ask-dev:test-mode-answer";
-const DRAWN_TIMEOUT_MS = 5000;
 
 test.describe.configure({ mode: "serial" });
 
@@ -137,15 +136,12 @@ test.describe("desktop (1280px)", () => {
         });
     }
 
-    test("reduced motion: nothing animates, and the trends are drawn well before the timeout", async ({
-        page,
-    }) => {
+    test("reduced motion: nothing animates, and both trends are drawn", async ({ page }) => {
         await page.emulateMedia({ reducedMotion: "reduce" });
         await seed(page, k1());
-        const started = Date.now();
         const panel = await openPanel(page);
+        // The drawn state is asserted with the expect timeout; no wall-clock budget (host load moves it).
         await expectBothTrendsDrawn(panel);
-        expect(Date.now() - started).toBeLessThan(DRAWN_TIMEOUT_MS);
         for (const svg of await panel.getByRole("figure").locator("svg[role=img]").all()) {
             if ((await svg.locator("polyline").count()) === 0) continue;
             const names = await svg

@@ -11,6 +11,8 @@ import {
  * browser design §2.1). The browser is a first-party public client of acr-api: authorization code
  * with PKCE S256, against the issuer `ACR_OAUTH_ISSUER`.
  *
+ * The whole Ask Dev data path, deadline chain and on/off order: docs/architecture/ask-dev-web-architecture.md.
+ *
  * - On an https web origin the client is the client ID metadata document web serves at
  *   `/oauth/acr-client.json` (ACR fetches it from a public https address and pins it in
  *   `ACR_OAUTH_BROWSER_CLIENTS`).

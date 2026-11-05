@@ -80,8 +80,14 @@ export function orgMemberRefusalText(refusal: {
     return undefined;
 }
 
-/** Runs a change and turns a mapped refusal into an app-authored error; anything else passes through. */
-export async function withOrgMemberRefusals<T>(fn: () => Promise<T>): Promise<T> {
+/**
+ * Runs a change and turns a mapped refusal into an app-authored error; anything else passes through.
+ * With `closed`, an unmapped 4xx other than 401 is the generic sentence, so served text never shows.
+ */
+export async function withOrgMemberRefusals<T>(
+    fn: () => Promise<T>,
+    options: { closed?: boolean } = {},
+): Promise<T> {
     try {
         return await fn();
     } catch (err) {
@@ -92,6 +98,9 @@ export async function withOrgMemberRefusals<T>(fn: () => Promise<T>): Promise<T>
                 detail: err.detail,
             });
             if (text !== undefined) throw new UserFacingActionError(err.status, text);
+            if (options.closed && err.status >= 400 && err.status < 500 && err.status !== 401) {
+                throw new UserFacingActionError(err.status, T.generic);
+            }
         }
         throw err;
     }

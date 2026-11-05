@@ -4,6 +4,7 @@ import {
     INVESTMENT_BREAKDOWN_QUERY,
     INVESTMENT_BREAKDOWN_REPOSITORY_QUERY,
     INVESTMENT_BREAKDOWN_TEAM_QUERY,
+    TEAM_WORK_ITEM_BREAKDOWN_QUERY,
 } from "../queries";
 
 // CHAOS-12738: ops registers InvestmentBreakdownTeam and
@@ -27,11 +28,14 @@ describe("scoped investment breakdown queries", () => {
         expect(
             bodyAfter(INVESTMENT_BREAKDOWN_REPOSITORY_QUERY, "InvestmentBreakdownRepository"),
         ).toBe(base);
+        expect(bodyAfter(TEAM_WORK_ITEM_BREAKDOWN_QUERY, "TeamWorkItemBreakdown")).toBe(base);
     });
 
     it("no longer carry the InvestmentBreakdown operation name", () => {
         expect(INVESTMENT_BREAKDOWN_TEAM_QUERY).not.toContain(PREFIX);
         expect(INVESTMENT_BREAKDOWN_REPOSITORY_QUERY).not.toContain(PREFIX);
         expect(INVESTMENT_BREAKDOWN_TEAM_QUERY).not.toBe(INVESTMENT_BREAKDOWN_REPOSITORY_QUERY);
+        expect(TEAM_WORK_ITEM_BREAKDOWN_QUERY).not.toContain(PREFIX);
+        expect(TEAM_WORK_ITEM_BREAKDOWN_QUERY).not.toBe(INVESTMENT_BREAKDOWN_TEAM_QUERY);
     });
 });

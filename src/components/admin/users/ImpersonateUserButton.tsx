@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -12,12 +13,14 @@ export function ImpersonateUserButton({ user }: { user: User }) {
     const { data: session, update } = useSession();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { impersonationLimited } = useAdminNav();
 
     // Impersonation is a superuser-only capability on the backend
     // (start_impersonation 403s non-superusers, ImpersonationMiddleware skips
     // them). Gate the button on the ACTOR being a superuser so non-superuser
     // admins are not offered an action that always fails (CHAOS-2303).
     const canImpersonate =
+        !impersonationLimited &&
         !!session?.user?.is_superuser &&
         session?.user?.id !== user.id &&
         !user.is_superuser &&

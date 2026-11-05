@@ -21,13 +21,26 @@ const answer = JSON.parse(
 
 const TITLE = "Completion forecast";
 
-async function seed(page: Page) {
+async function seed(page: Page, served: Record<string, unknown> = answer) {
     await page.addInitScript(
         ([key, value]) => {
             window.sessionStorage.setItem(key, value);
         },
-        ["ask-dev:test-mode-answer", JSON.stringify(answer)] as const,
+        ["ask-dev:test-mode-answer", JSON.stringify(served)] as const,
     );
+}
+
+/** The same served answer with the team's scope count, as acr serves it from #2019 (CHAOS-12726). */
+function withScopeCount(scopeCount: number, atLeast?: boolean): Record<string, unknown> {
+    const copy = structuredClone(answer) as {
+        claimed_facts: Array<{ completion_forecast?: Record<string, unknown> }>;
+    };
+    const summary = copy.claimed_facts.find(
+        (fact) => fact.completion_forecast,
+    )!.completion_forecast!;
+    summary.scope_count = scopeCount;
+    if (atLeast !== undefined) summary.scope_count_at_least = atLeast;
+    return copy;
 }
 
 async function expectForecast(scope: Locator) {
@@ -78,4 +91,43 @@ test.describe("a served completion forecast draws as the capacity page's figure 
             await page.screenshot({ path: testInfo.outputPath(`forecast-dev-${name}.png`) });
         });
     }
+});
+
+test.describe("a forecast names its work scope and the team's scope count (CHAOS-12726)", () => {
+    test.beforeEach(async ({ request }) => {
+        await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "provisioned" } });
+    });
+
+    for (const [name, served, text] of [
+        ["a team with 14 scopes", withScopeCount(14), "The team has 14 work scopes."],
+        ["a read cut short", withScopeCount(14, true), "The team has at least 14 work scopes."],
+    ] as const) {
+        test(`the note beside the figure: ${name}`, async ({ page }, testInfo) => {
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await seed(page, served);
+            await page.goto("/dashboard");
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            await page.getByRole("button", { name: "Open full page" }).click();
+            const article = page.getByRole("article", { name: "Answer" });
+            const figure = await expectForecast(article);
+            const note = article.getByTestId("forecast-scope-note");
+            await expect(note).toContainText("Work scope linear:CHAOS.");
+            await expect(note).toContainText(text);
+            await figure.evaluate((node) => node.scrollIntoView({ block: "center" }));
+            await page.waitForTimeout(900);
+            await page.screenshot({
+                path: testInfo.outputPath(`forecast-scope-note-${name.replaceAll(" ", "-")}.png`),
+            });
+        });
+    }
+
+    test("a forecast with no served count draws no note", async ({ page }) => {
+        await seed(page);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        await page.getByRole("button", { name: "Open full page" }).click();
+        const article = page.getByRole("article", { name: "Answer" });
+        await expectForecast(article);
+        await expect(article.getByTestId("forecast-scope-note")).toHaveCount(0);
+    });
 });

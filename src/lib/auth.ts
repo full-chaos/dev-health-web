@@ -8,6 +8,7 @@ import GitLab from "next-auth/providers/gitlab";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
 import { getClientIpFromEnv } from "@/lib/client-ip";
@@ -24,6 +25,7 @@ import {
     wireConfigFromEnv,
     wireConfigUsable,
 } from "@/lib/authServiceWire";
+import { ssoEnabled, type SsoSession } from "@/lib/authSso";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -164,11 +166,39 @@ const nextAuth = NextAuth({
                 }
             },
         }),
+        CredentialsProvider({
+            id: "sso",
+            name: "SSO",
+            credentials: { ticket: { label: "Ticket", type: "text" } },
+            // Only a ticket this server sealed after a completed SSO call signs in: never raw tokens.
+            async authorize(credentials) {
+                if (!ssoEnabled()) return null;
+                const session = await openSsoTicket(credentials?.ticket);
+                if (!session) return null;
+                return {
+                    id: session.userId,
+                    email: session.email,
+                    org_id: session.orgId,
+                    role: session.role,
+                    is_superuser: false,
+                    needs_onboarding: false,
+                    access_token: session.accessToken,
+                    refresh_token: session.refreshToken,
+                    expires_in: session.expiresIn,
+                    access_exp: session.accessExp,
+                    sid: session.sid,
+                    session_access_token: session.sessionAccessToken,
+                    session_exp: session.sessionExp,
+                    act_sub: session.actorSub,
+                };
+            },
+        }),
         ...(authEnv.AUTH_GITHUB_ID
             ? [
                   GitHub({
                       clientId: authEnv.AUTH_GITHUB_ID,
                       clientSecret: authEnv.AUTH_GITHUB_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
@@ -177,6 +207,7 @@ const nextAuth = NextAuth({
                   Google({
                       clientId: authEnv.AUTH_GOOGLE_ID,
                       clientSecret: authEnv.AUTH_GOOGLE_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
@@ -185,6 +216,7 @@ const nextAuth = NextAuth({
                   GitLab({
                       clientId: authEnv.AUTH_GITLAB_ID,
                       clientSecret: authEnv.AUTH_GITLAB_SECRET!,
+                      checks: ["pkce", "state"],
                   }),
               ]
             : []),
@@ -589,6 +621,74 @@ export async function sealSessionHandoff(
     });
 }
 
+/** Salt of the SSO ticket key (HKDF from the auth secret); never the session cookie or handoff salt. */
+export const SSO_TICKET_SALT = "dev-health.sso-ticket.v1";
+const SSO_TICKET_MAX_AGE_SECONDS = 60;
+
+/**
+ * Seals the session of a completed SSO call (CHAOS-10878): an encrypted JWT (the auth secret, its
+ * own salt, 60 s, bound to the user id) that the server passes to `signIn("sso", { ticket })`. The
+ * tokens in it never reach the browser.
+ */
+export async function sealSsoTicket(session: SsoSession): Promise<string> {
+    if (!authSecret) throw new Error("no auth secret to seal an SSO ticket");
+    if (!session.userId) throw new Error("no user id to bind an SSO ticket to");
+    return encode({
+        secret: authSecret,
+        salt: SSO_TICKET_SALT,
+        maxAge: SSO_TICKET_MAX_AGE_SECONDS,
+        token: { sub: session.userId, kind: "sso", session },
+    });
+}
+
+async function openSsoTicket(value: unknown): Promise<SsoSession | null> {
+    const refuse = (reason: string) => {
+        authLogger.warn({ reason }, "sso ticket refused");
+        return null;
+    };
+    if (typeof value !== "string" || !value) return refuse("not_a_string");
+    if (!authSecret) return refuse("no_secret");
+    let payload: Record<string, unknown> | null;
+    try {
+        payload = (await decode({
+            secret: authSecret,
+            salt: SSO_TICKET_SALT,
+            token: value,
+        })) as Record<string, unknown> | null;
+    } catch (error) {
+        authLogger.warn(
+            { reason: "unreadable_or_expired", errorName: thrownErrorName(error) },
+            "sso ticket refused",
+        );
+        return null;
+    }
+    if (!payload) return refuse("empty");
+    const session = payload.session as Record<string, unknown> | undefined;
+    if (payload.kind !== "sso" || !session || typeof session !== "object") return refuse("not_sso");
+    const text = (v: unknown) => typeof v === "string" && v !== "";
+    const optText = (v: unknown) => v === undefined || text(v);
+    const optNumber = (v: unknown) =>
+        v === undefined || (typeof v === "number" && Number.isFinite(v));
+    if (
+        !text(session.userId) ||
+        payload.sub !== session.userId ||
+        !text(session.orgId) ||
+        !text(session.accessToken) ||
+        !text(session.refreshToken) ||
+        !optText(session.email) ||
+        !optText(session.role) ||
+        !optText(session.sid) ||
+        !optText(session.sessionAccessToken) ||
+        !optText(session.actorSub) ||
+        !optNumber(session.expiresIn) ||
+        !optNumber(session.accessExp) ||
+        !optNumber(session.sessionExp)
+    ) {
+        return refuse("bad_session");
+    }
+    return session as unknown as SsoSession;
+}
+
 // The service fields of a pair, when present: strings that are not empty and finite numbers.
 function validServiceFields(pair: Record<string, unknown>): boolean {
     const text = (v: unknown) => v === undefined || (typeof v === "string" && v !== "");
@@ -643,6 +743,7 @@ async function openSessionHandoff(
 }
 
 import type { Session } from "next-auth";
+import { IMPERSONATION_DENY_PATH, impersonationLimited } from "@/lib/auth/platform/limits";
 
 // Per-request memoized session read. React.cache() dedupes calls within a
 // single RSC render tree so auth()/requireSession()/requireRole()/
@@ -756,8 +857,11 @@ export async function requireRole(
     return session;
 }
 
-export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
+export async function requireSuperuser(callbackUrl?: string, surfaceId?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
+    if (surfaceId) schedulePlatformShadow(session, [surfaceId]);
+    // Enforce only: a deny page instead of the silent redirect. Off and shadow never reach it.
+    if (await impersonationLimited(session)) redirect(IMPERSONATION_DENY_PATH);
     if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }

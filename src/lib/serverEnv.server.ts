@@ -13,6 +13,10 @@ const serverEnvSchema = z.object({
     LOG_FORMAT: z.string().optional(),
     BACKEND_URL: z.string().optional(),
     BASE_PATH: z.string().optional(),
+    AUTHZ_SHADOW_NAV: z.string().optional(),
+    AUTHZ_PLATFORM_UI: z.string().optional(),
+    /** Policy decisions replace the client role rules of the platform admin actions and the GitHub App routes. Off unless exactly `on`. */
+    AUTHZ_DECISIONS_ENFORCE: z.string().optional(),
     AUTH_SECRET: z.string().optional(),
     AUTH_URL: z.string().optional(),
     NEXTAUTH_SECRET: z.string().optional(),
@@ -21,6 +25,8 @@ const serverEnvSchema = z.object({
     AUTH_ACCESS_TOKEN_CLASS: z.string().optional(),
     /** Issuer of the access tokens, checked under class `eddsa`. */
     AUTH_ACCESS_TOKEN_ISSUER: z.string().optional(),
+    /** "true" or "1" turns on enterprise SSO sign-in (OIDC, SAML); unset = off. */
+    AUTH_SSO_ENABLED: z.string().optional(),
     AUTH_GITHUB_ID: z.string().optional(),
     AUTH_GITHUB_SECRET: z.string().optional(),
     AUTH_GOOGLE_ID: z.string().optional(),

@@ -6,7 +6,7 @@ import { acrIssuerOriginForCsp } from "@/lib/ask-dev/acr-browser-config";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
-import { routedPathname, shouldProxyToOps } from "@/lib/proxyRouting";
+import { isSsoCallbackPath, routedPathname, shouldProxyToOps } from "@/lib/proxyRouting";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 import { isServerDeadlineError, withDeadline } from "@/lib/serverDeadline";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
@@ -47,6 +47,19 @@ const ROUTE_LIMITS: Array<{
             namespace: "auth-register",
             windowMs: 60 * 60_000,
             maxRequests: 5,
+        },
+    },
+    {
+        // CHAOS-13035: the IdP lands here (OIDC redirect, SAML form POST), once per sign-in. 60 per
+        // 15 minutes per client key is 4 a minute: far above one sign-in, and it holds a shared
+        // corporate egress address, which the 20 of auth-other would not. Not unlimited: a guesser
+        // is still cut off, and the backend flow state is single use.
+        match: (method, pathname) => isSsoCallbackPath(method, pathname),
+        opts: {
+            failClosed: true,
+            namespace: "auth-sso-callback",
+            windowMs: 15 * 60_000,
+            maxRequests: 60,
         },
     },
     {
@@ -104,7 +117,8 @@ const EXACT_PUBLIC_PATHS = [
     "/ask-dev/oauth/callback",
 ];
 
-const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next", "/marketing"];
+// "/auth/sso/": the admin-shared SSO start links (CHAOS-13035) are opened signed out.
+const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/auth/sso/", "/_next", "/marketing"];
 
 export function isPublicPath(pathname: string): boolean {
     if (pathname === "/") return true;
@@ -227,6 +241,8 @@ function pathBucket(pathname: string): string {
     )
         return "auth-pwreset";
     if (pathname.startsWith("/api/v1/auth/register")) return "auth-register";
+    if (isSsoCallbackPath("GET", pathname) || isSsoCallbackPath("POST", pathname))
+        return "auth-sso-callback";
     if (pathname.startsWith("/api/v1/auth/")) return "auth-other";
     if (pathname.startsWith("/api/v1/admin/credentials/test-connection"))
         return "admin-credentials-test-connection";

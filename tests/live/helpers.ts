@@ -29,6 +29,33 @@ export function testEmail(prefix = "test"): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 }
 
+/**
+ * The one answer register gives to every sign-up that passed validation (ops
+ * internal/api/session/register.go, internal/auth/authapi/register.go): 202. No backend answers
+ * 201 any more, so every register site in this tier asserts 202 strictly (CHAOS-11082).
+ */
+export const REGISTER_ACCEPTED_STATUS = 202;
+
+/** "" when `status` is the register answer; else the reason (the status only, never a body). */
+export function registerStatusFault(status: number): string {
+    return status === REGISTER_ACCEPTED_STATUS
+        ? ""
+        : `register answered ${String(status)}, want ${String(REGISTER_ACCEPTED_STATUS)}`;
+}
+
+/**
+ * Assert a register response is the 202 answer. A 429 (the register rate limit) is an environment
+ * fault, as before; any other status fails the test.
+ */
+export function expectRegisterAccepted(res: { status: () => number }): void {
+    if (res.status() === 429) {
+        envFault("Register rate-limited (429)");
+        return;
+    }
+    const fault = registerStatusFault(res.status());
+    expect(fault, fault).toBe("");
+}
+
 /** Register a new user. Returns the parsed response body. */
 export async function registerUser(
     request: APIRequestContext,
@@ -40,6 +67,7 @@ export async function registerUser(
         data: { email, password, full_name: fullName },
         headers: { Origin: liveBackendUrl },
     });
+    expectRegisterAccepted(res);
     return (await res.json()) as Record<string, unknown>;
 }
 
@@ -261,7 +289,7 @@ export async function setupUser(
     );
     if (register === undefined) return none();
     await step("register", register);
-    if (!register.ok()) return none();
+    if (registerStatusFault(register.status()) !== "") return none();
 
     // Verify the user's email so login returns tokens.
     const suLogin = await attempt(steps, "superuser-login", () =>
@@ -375,7 +403,7 @@ export async function provisionUser(
         data: { email, password: "TestPass123!", full_name: "Provisioned User" },
         headers: { Origin: liveBackendUrl },
     });
-    if (!res.ok()) return "";
+    if (registerStatusFault(res.status()) !== "") return "";
     const userId = await userIdByEmail(request, email, superuserToken);
     if (!userId) return "";
     const patch = await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {

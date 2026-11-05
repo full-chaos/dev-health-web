@@ -168,7 +168,11 @@ const RICH_PLAN: Record<
             requested_judgment: "comparison",
             subject_terms: ["Fullchaos", "Ops Team"],
             requested_subject_kind: "team",
-            time_context: { axis: "current" },
+            time_context: {
+                axis: "range",
+                start: "2026-09-07T00:00:00Z",
+                end: "2026-10-07T00:00:00Z",
+            },
             fact_requirements: [{ kind: "landscape" }],
             clarification_needed: false,
             comparison_terms: ["Fullchaos", "Ops Team"],
@@ -178,10 +182,11 @@ const RICH_PLAN: Record<
                     kind: "explicit_set",
                     operands: [named("Fullchaos"), named("Ops Team")],
                 },
-                temporal: "current",
+                temporal: "bounded_window",
             },
         },
         claims: { claim_fields: ["churn_loc_30d", "delivery_units_30d"] },
+        currentAxis: false,
     },
     window: {
         // A stated range is a non-current axis: no window class, and no effective window composed.
@@ -230,6 +235,26 @@ const RICH_PLAN: Record<
             },
         },
         claims: { claim_detail_tables: ["repository_theme_breakdown"] },
+    },
+    sunburst: {
+        // One repository with the one goal allocate_investment, as the treemap case: with the
+        // sunburst flag on, its investment fact carries the subcategory_breakdown detail table, and
+        // the sunburst plots the table the claim names (CHAOS-12554).
+        interpretation: {
+            shape: "single_subject",
+            requested_judgment: "investment",
+            subject_terms: ["full-chaos/dev-health-acr"],
+            requested_subject_kind: "repository",
+            time_context: { axis: "current" },
+            fact_requirements: [{ kind: "investment" }],
+            clarification_needed: false,
+            question_frame: {
+                goals: ["allocate_investment"],
+                subject_expression: named("full-chaos/dev-health-acr"),
+                temporal: "current",
+            },
+        },
+        claims: { claim_detail_tables: ["subcategory_breakdown"] },
     },
     cohort: {
         interpretation: {

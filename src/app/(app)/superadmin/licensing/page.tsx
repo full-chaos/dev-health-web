@@ -3,8 +3,10 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { LicenseTable } from "@/components/superadmin/LicenseTable";
 import { listOrganizations } from "@/lib/admin/server";
 import { Notice } from "@/components/ui/Notice";
+import { requireSuperuser } from "@/lib/auth";
 
 export default async function LicensingPage() {
+    await requireSuperuser("/superadmin/licensing", "page:/superadmin/licensing");
     const { data: orgs, error } = await listOrganizations();
 
     if (error) {

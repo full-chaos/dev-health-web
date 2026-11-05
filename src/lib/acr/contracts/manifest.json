@@ -1,9 +1,9 @@
 {
-  "source_commit": "8e1208dc76181a0b0904df9b1fa70bf87b31e41a",
+  "source_commit": "c2914f0b5eeaeb9de066796e0e73c6a09777d705",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "581d5ea2d1c5dc003d36304bcfa47be895fc6a0a7ad5ac3b0ecd683fbff13a00"
+      "sha256": "817346ca729a8cd1455b7de016ba0ee0034ecccd7ca8badc3a1715e476e82ee3"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "63851cabdc15619f764e83a0d64d474e5b813e31ea991a231e54636fcaaeebb4"
+      "sha256": "34664aeb01756ba4dc36b453dddf98d86d76682cd37f06d2a1f6819de6781012"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -59,11 +59,11 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "fcf162b339d0afe1c42a9f9cc28b74759e4855c9b2b04334a8a6f96537c83995"
+      "sha256": "0c40bba53fe495621280e2333057ee7a57567c17545c947a5bef29d8bf07606d"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "e142e060f2182a82db2ab24b6a5ac0a82c757d5a045aadcac2aeb20ada75ac4c"
+      "sha256": "8b7f7dd1ae01060dfd4d5993207817d344353567ffbc3e74e845016e126e4687"
     },
     {
       "path": "schemas/context_fabric_canonical_id_vectors.v1.schema.json",
@@ -124,6 +124,10 @@
     {
       "path": "schemas/credential_lifecycle_list.v1.schema.json",
       "sha256": "d4642dbd6cfb1faf5f18167717779e616b404ac62a1fcde2d501b0fef2587ea6"
+    },
+    {
+      "path": "schemas/credential_revoke_on_behalf_request.v1.schema.json",
+      "sha256": "398ed6659465eeab256512d73beb9fdba91fa6405fe70e0e9ec299e987031312"
     },
     {
       "path": "schemas/credential_revoke_request.v1.schema.json",

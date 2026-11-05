@@ -15,6 +15,7 @@ import { REPLICATES, richQuestionFor, type Replicate, type RichCase } from "./qu
 import {
     elapsedTimeMismatches,
     evidenceWindowText,
+    lastCoveredIso,
     headingMismatches,
     landscapeGap,
     outcomeWordMismatches,
@@ -269,9 +270,12 @@ const labelsOf = (result: Served): Labels => (result.vocabulary_labels as Labels
 async function expectWindowLine(page: Page, answer: Locator, result: Served): Promise<void> {
     const window = result.effective_evidence_window as
         { start?: string; end?: string; relative_id?: string; as_of?: string } | undefined;
-    const isos = [window?.start, window?.end, window?.as_of].filter(
-        (iso): iso is string => iso !== undefined,
-    );
+    const isos = [
+        window?.start,
+        window?.end,
+        window?.end === undefined ? undefined : lastCoveredIso(window.end),
+        window?.as_of,
+    ].filter((iso): iso is string => iso !== undefined);
     const days = await page.evaluate(
         (list) =>
             Object.fromEntries(
@@ -285,6 +289,7 @@ async function expectWindowLine(page: Page, answer: Locator, result: Served): Pr
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
+                                  timeZone: "UTC",
                               }),
                     ];
                 }),
@@ -442,12 +447,11 @@ for (const replicate of REPLICATES) {
         await page.context().close();
     });
 
-    test(`quadrant ${String(replicate)} [KNOWN GAP CHAOS-12676]: the landscape position renders from the served shape`, async ({
+    test(`quadrant ${String(replicate)}: the landscape position renders from the served shape`, async ({
         browser,
         baseURL,
     }) => {
         const { page, answer, result } = await answerFor(browser, baseURL, "landscape", replicate);
-        // The preconditions are ordinary assertions: a broken answer is red, never an expected failure.
         const landscapeClaims = (
             (result.claimed_facts as
                 { kind?: string; subject?: { canonical_id?: string } }[] | undefined) ?? []
@@ -456,44 +460,25 @@ for (const replicate of REPLICATES) {
             new Set(landscapeClaims.map((claim) => claim.subject?.canonical_id)).size,
             "both teams' landscape claims are served",
         ).toBe(2);
-        test.info().annotations.push({
-            type: "KNOWN GAP",
-            description:
-                "CHAOS-12676: no two owner teams hold landscape rows on the same newest day, so acr skips the quadrant (landscape_days_differ, the days read from the served claims, as acr places each team). Never a pass.",
-        });
-        const quadrant = answer.getByTestId("landscape-quadrant");
-        const quadrantServed = servedShapes(result).some(
-            (shape) => shape.selected_by === "landscape_position",
-        );
-        if (!quadrantServed) {
-            // The gap is expected only on its own cause, read from the served claims (Codex r1 and
-            // r2 found the same class: a KNOWN GAP must never absorb another failure). Without it, a
-            // missing quadrant is an ordinary failure.
+        // The question states a range that ends on a day both teams hold rows (CHAOS-12676): a
+        // quadrant that is not served here is a failure, with the days acr placed the teams on.
+        if (!servedShapes(result).some((shape) => shape.selected_by === "landscape_position")) {
             const gap = landscapeGap(result as Parameters<typeof landscapeGap>[0]);
             const days = gap.placed.map((side) => `${side.subject}=${side.day}`).join(", ");
-            expect(
-                gap.differ,
-                `no quadrant is served, and the claims do not show CHAOS-12676's cause (placed: [${days}])`,
-            ).toBe(true);
-            test.info().annotations.push({ type: "CHAOS-12676 days", description: days });
-            // Expected to fail while the gap holds, on THE assertion that fails today: the quadrant
-            // is drawn.
-            test.fail(true, "KNOWN GAP CHAOS-12676: the answer serves no quadrant");
-            await expect(quadrant, "KNOWN GAP CHAOS-12676: the quadrant is drawn").toHaveCount(1);
+            expect
+                .soft(gap.differ, `the teams' landscape days differ (placed: [${days}])`)
+                .toBe(false);
         }
-        // Served: it must be drawn as served (a real failure if not), and then the case fails loudly,
-        // because CHAOS-12676 no longer holds and this case must become an ordinary one.
         const [shape] = served(
             result,
             "landscape_position",
-            "both teams must hold landscape rows on one day (CHAOS-12676)",
+            "both teams hold landscape rows on the range's last shared day (CHAOS-12676)",
         );
+        const quadrant = answer.getByTestId("landscape-quadrant");
         await expect(quadrant).toHaveCount(1);
         await expectDrawnAsServed(figureOf(quadrant, shape!), shape!);
-        expect(
-            quadrantServed,
-            "CHAOS-12676 no longer holds: the quadrant is served and drawn; flip this case to an ordinary one",
-        ).toBe(false);
+        await expectWindowLine(page, answer, result);
+        await expectLedger(answer, result);
         await page.context().close();
     });
 
@@ -702,15 +687,97 @@ test(`sankey${SANKEY ? "" : " [behind a flag]"}: the repository flow renders fro
     await page.context().close();
 });
 
-test("sunburst [behind a flag]: the investment subcategories render from the served shape", () => {
+// The NOT RUN gate refuses a pass whose title still says "[behind a flag]", as for the sankey.
+test(`sunburst${SUNBURST ? "" : " [behind a flag]"}: the investment subcategories render from the served shape`, async ({
+    browser,
+    baseURL,
+}, testInfo) => {
     if (!SUNBURST) {
-        test.info().annotations.push({
+        // Listed as NOT RUN by ci/live-e2e-skip-gate.mjs, never as a pass or a plain skip.
+        testInfo.annotations.push({
             type: "NOT RUN",
             description:
-                "the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST); on with acr #2002 and web's ask-dev pin (#1797)",
+                "the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST); on with acr #2002 (CHAOS-12554)",
         });
     }
     test.skip(!SUNBURST, "NOT RUN: the sunburst flag is off on this stack (ASK_DEV_LIVE_SUNBURST)");
-    // Turned on with acr #2002 and web's ask-dev pin bump (#1797): the case is written then.
-    expect(SUNBURST, "NOT RUN: the sunburst case has no question yet").toBe(false);
+    // CHAOS-12554: one repository's investment by theme and subcategory, from the claimed
+    // subcategory_breakdown detail table. As for the sankey, the one answer is checked at desktop
+    // and phone width, in the panel and on /dev, with a screenshot of each, and each width waits for
+    // the chart to draw and settle again before it is checked.
+    const { page, answer, result } = await answerFor(browser, baseURL, "sunburst", 1, "reduce");
+    const [shape] = served(
+        result,
+        "investment_subcategory_share",
+        "the repository's subcategory_breakdown",
+    );
+    // The sunburst's inner ring is the theme split: when it is drawn, the treemap is not. acr's one
+    // selection pass skips the treemap with `subcategory_breakdown_drawn` once the sunburst is
+    // appended (acr 7a9e8036, internal/contextfabric/render_shapes.go:441-466; pinned by
+    // chaos12554_sunburst_selection_test.go:219). The contract validator does not forbid both.
+    expect(
+        servedShapes(result)
+            .filter((candidate) => candidate.selected_by === "investment_theme_share")
+            .map((candidate) => candidate.title),
+        "a treemap served beside the sunburst",
+    ).toEqual([]);
+    const drawnIn = async (scope: Locator, view: string, where: string) => {
+        const figure = figureOf(scope, shape!);
+        await expect(
+            figure.locator("canvas").first(),
+            `the sunburst is drawn (${where}, ${view})`,
+        ).toBeVisible({
+            timeout: 30_000,
+        });
+        await expectDrawnAsServed(figure, shape!);
+        await figure.scrollIntoViewIfNeeded();
+        // Wait until the canvas fits its figure and two frames half a second apart are the same
+        // picture, as the sankey case does; a chart that never settles fails here.
+        const frame = () =>
+            figure.evaluate((node) => {
+                const canvas = node.querySelector("canvas");
+                if (!canvas) return "no canvas";
+                const fits = canvas.clientWidth <= Math.ceil(node.getBoundingClientRect().width);
+                return fits
+                    ? canvas.toDataURL()
+                    : `canvas ${canvas.clientWidth} px wider than figure`;
+            });
+        let last = await frame();
+        await expect
+            .poll(
+                async () => {
+                    const next = await frame();
+                    const settled = next === last && next.startsWith("data:");
+                    last = next;
+                    return settled;
+                },
+                {
+                    message: `the sunburst settles at the figure's width (${where}, ${view})`,
+                    intervals: [500],
+                    timeout: 15_000,
+                },
+            )
+            .toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`sunburst-${where}-${view}.png`) });
+    };
+    await drawnIn(answer, "desktop", "panel");
+    await expectLedger(answer, result);
+    await page.setViewportSize({ width: 390, height: 844 });
+    // At phone width the panel is a dialog; the side panel stays in the page, hidden, so the
+    // dialog is the one to read.
+    await drawnIn(
+        page
+            .getByRole("dialog")
+            .filter({ has: page.getByRole("heading", { name: "Ask Dev" }) })
+            .getByRole("article", { name: "Answer" }),
+        "phone",
+        "panel",
+    );
+    await page.setViewportSize({ width: 1280, height: 844 });
+    await page.getByRole("button", { name: "Open full page" }).click();
+    await expect(page.getByTestId("ask-dev-page")).toBeVisible({ timeout: 30_000 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "desktop", "dev");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await drawnIn(page.getByTestId("ask-dev-page"), "phone", "dev");
+    await page.context().close();
 });

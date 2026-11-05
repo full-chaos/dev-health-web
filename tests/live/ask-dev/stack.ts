@@ -1,6 +1,13 @@
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { expect, type Locator, type Page, type Request } from "@playwright/test";
+import {
+    expect,
+    type APIRequestContext,
+    type Locator,
+    type Page,
+    type Request,
+} from "@playwright/test";
 
 import { type ScopedResult, terminalResultOf } from "./answer-scope";
 
@@ -20,6 +27,8 @@ import { type ScopedResult, terminalResultOf } from "./answer-scope";
  * - `ASK_DEV_LIVE_THREAD`: a stored conversation of that user: two answers, one ref cited by both.
  * - `ASK_DEV_LIVE_PASSWORD_FILE`: a 0600 file with that user's password. Never an env value, never
  *   an argument, never a log line.
+ * - `ASK_DEV_LIVE_OTHER_EMAIL` and `ASK_DEV_LIVE_OTHER_PASSWORD_FILE` (CHAOS-12234, AC-3): a second
+ *   principal in the same organization, with the same grants. Only the cases that need one read them.
  */
 export const ACR = process.env.ASK_DEV_LIVE_ACR ?? "https://acr.localhost:8443";
 export const THREAD = process.env.ASK_DEV_LIVE_THREAD ?? "";
@@ -27,15 +36,20 @@ export const EMAIL = process.env.ASK_DEV_LIVE_EMAIL ?? "admin@test.com";
 export const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
 export const INVESTIGATIONS_PATH = "/api/v1/context-fabric/investigations";
 
-function password(): string {
-    const file = process.env.ASK_DEV_LIVE_PASSWORD_FILE;
+function passwordFrom(name: string): string {
+    const file = process.env[name];
     if (file === undefined || file === "") {
-        throw new Error("ASK_DEV_LIVE_PASSWORD_FILE is not set: the suite cannot sign in");
+        throw new Error(`${name} is not set: the suite cannot sign in`);
     }
     const value = readFileSync(file, "utf8").trim();
-    if (value === "") throw new Error("the password file is empty");
+    if (value === "") throw new Error(`the password file of ${name} is empty`);
     return value;
 }
+
+const password = (): string => passwordFrom("ASK_DEV_LIVE_PASSWORD_FILE");
+
+/** CHAOS-12234: the second principal (same organization, same grants). Empty: not configured. */
+export const OTHER_EMAIL = process.env.ASK_DEV_LIVE_OTHER_EMAIL ?? "";
 
 export type AcrCall = {
     readonly method: string;
@@ -92,6 +106,132 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
         call.status = response.status();
     });
     return calls;
+}
+
+/** A call this page made with a bearer that ACR took (200): a live, working authorization. */
+export const withBearer = (calls: readonly AcrCall[]): AcrCall => {
+    const call = calls.findLast((item) => item.hasBearer && item.status === 200);
+    expect(call, "the page made no ACR call that ACR took with a bearer").toBeDefined();
+    return call!;
+};
+
+/**
+ * The signed-in user's active organization and role, from web's own session. Only those two fields
+ * leave the page: the session also holds tokens.
+ */
+export const orgOf = (page: Page): Promise<{ org: string | null; role: string | null }> =>
+    page.evaluate(async () => {
+        const session = (await (await fetch("/api/auth/session")).json()) as {
+            user?: { org_id?: string; role?: string };
+        } | null;
+        return { org: session?.user?.org_id ?? null, role: session?.user?.role ?? null };
+    });
+
+/**
+ * ACR's own call with the panel's create headers (bearer, resource, client version): never logged.
+ * `headersOnly` stops at the response headers and aborts the body: an attach to a live run is a
+ * stream that would not end. `requestId` is ACR's `x-request-id`, the evidence a case records.
+ */
+export async function acrCallAs(
+    create: AcrCall,
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    options: { readonly headersOnly?: boolean } = {},
+): Promise<{ status: number; body: unknown; requestId: string | null }> {
+    const from = secretsOf(create).headers;
+    const abort = new AbortController();
+    const response = await fetch(`${ACR}${path}`, {
+        method,
+        signal: abort.signal,
+        headers: {
+            authorization: from.authorization!,
+            "x-acr-resource": from["x-acr-resource"]!,
+            "x-acr-client-version": from["x-acr-client-version"]!,
+            accept: options.headersOnly === true ? "text/event-stream" : "application/json",
+        },
+    });
+    const requestId = response.headers.get("x-request-id");
+    if (options.headersOnly === true && response.status === 200) {
+        abort.abort();
+        return { status: response.status, body: null, requestId };
+    }
+    const text = await response.text();
+    try {
+        return { status: response.status, body: JSON.parse(text) as unknown, requestId };
+    } catch {
+        return { status: response.status, body: null, requestId };
+    }
+}
+
+/**
+ * A principal's own create, repeated by hand with its bearer: `create` is a create the browser sent
+ * (its body is the template, its headers the shape), `like` is a call of the principal who sends it.
+ * `changes` is all that differs: a fresh question, request id and submission id, a thread, and
+ * optionally a retention or a parent result. Never logged: it holds both principals' bearers.
+ * The stream is read to its end, or to its first refusal.
+ */
+export async function acrInvestigateAs(
+    like: AcrCall,
+    create: AcrCall,
+    changes: {
+        readonly question: string;
+        readonly threadId: string;
+        readonly retentionDays?: "0" | "30";
+        readonly parentResultId?: string;
+    },
+): Promise<{ status: number; body: unknown; text: string; requestId: string | null }> {
+    const template = secretsOf(create);
+    const mine = secretsOf(like).headers;
+    expect(template.body, "the create has no body to repeat").not.toBeNull();
+    const body = JSON.parse(template.body!) as Record<string, unknown>;
+    const suffix = (): string => randomBytes(12).toString("hex");
+    body.question = changes.question;
+    body.request_id = `request_${suffix()}`;
+    if (changes.parentResultId === undefined) delete body.parent_result_id;
+    else body.parent_result_id = changes.parentResultId;
+    const headers: Record<string, string> = {};
+    for (const [name, value] of Object.entries(template.headers)) {
+        if (
+            /^(authorization|content-length|host|connection|x-acr-thread-retention-days)$/iu.test(
+                name,
+            )
+        ) {
+            continue;
+        }
+        headers[name] = value;
+    }
+    headers.authorization = mine.authorization!;
+    headers["x-acr-resource"] = mine["x-acr-resource"]!;
+    headers["x-acr-submission-id"] = `p4-${suffix()}`;
+    headers["x-acr-thread-id"] = changes.threadId;
+    if (changes.retentionDays !== undefined) {
+        headers["x-acr-thread-retention-days"] = changes.retentionDays;
+    }
+    const response = await fetch(`${ACR}${INVESTIGATIONS_PATH}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    let parsed: unknown = null;
+    try {
+        parsed = JSON.parse(text) as unknown;
+    } catch {
+        // A stream is not one JSON document: the caller reads its text.
+    }
+    return {
+        status: response.status,
+        body: parsed,
+        text,
+        requestId: response.headers.get("x-request-id"),
+    };
+}
+
+/** The create's thread id: a prefixed 32-hex id. */
+export function threadOf(call: AcrCall): string {
+    const value = secretsOf(call).headers["x-acr-thread-id"];
+    expect(value, "the create sent no x-acr-thread-id").toMatch(/^[a-z]+_[0-9a-f]{32}$/u);
+    return value!;
 }
 
 /** The page binding the in-page tee sends each investigation stream's text to. */
@@ -309,11 +449,22 @@ async function hydrated(page: Page): Promise<void> {
 }
 
 export async function signIn(page: Page): Promise<void> {
+    await signInAs(page, EMAIL, password);
+}
+
+/** CHAOS-12234: signs this tab's context in as the second principal (`OTHER_EMAIL`). */
+export async function signInOther(page: Page): Promise<void> {
+    if (OTHER_EMAIL === "")
+        throw new Error("ASK_DEV_LIVE_OTHER_EMAIL is not set: no second principal");
+    await signInAs(page, OTHER_EMAIL, () => passwordFrom("ASK_DEV_LIVE_OTHER_PASSWORD_FILE"));
+}
+
+async function signInAs(page: Page, email: string, secret: () => string): Promise<void> {
     await page.goto("/auth/signin?callbackUrl=/dashboard", { waitUntil: "commit" });
     await expect(page.getByLabel(/email/iu)).toBeVisible({ timeout: 30_000 });
     await hydrated(page);
-    await page.getByLabel(/email/iu).fill(EMAIL);
-    await page.getByLabel(/password/iu).fill(password());
+    await page.getByLabel(/email/iu).fill(email);
+    await page.getByLabel(/password/iu).fill(secret());
     try {
         // A click before the form hydrates does nothing, so it is sent again.
         await expect(async () => {
@@ -389,6 +540,26 @@ export const panelChrome = (panel: Locator): Promise<string> =>
 
 /** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
 export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";
+
+/**
+ * `ASK_DEV_LIVE_REAL_MODEL=1` (CHAOS-11960, lead ruling 2026-11-04): the stack's organization is
+ * answered by the BYO model, so a question costs a real call. A spec that may run so says it
+ * here; its turns stay at the minimum the case needs. Without the oracle and without this flag
+ * no question is sent.
+ */
+export const REAL_MODEL = process.env.ASK_DEV_LIVE_REAL_MODEL === "1";
+
+/** The guard of a spec that asks: the oracle answers, or the run says it uses the real model. */
+export async function expectAModelPath(oracle: APIRequestContext): Promise<void> {
+    if (ORACLE !== "") {
+        expect((await oracle.get(`${ORACLE}/health`)).status(), "the oracle is not up").toBe(204);
+        return;
+    }
+    expect(
+        REAL_MODEL,
+        "neither ASK_DEV_LIVE_ORACLE nor ASK_DEV_LIVE_REAL_MODEL=1 is set: no question may be sent",
+    ).toBe(true);
+}
 
 /**
  * The surface a case asks from: the panel, authorized, with an empty composer. Shared by the

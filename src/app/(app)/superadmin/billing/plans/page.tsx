@@ -7,7 +7,7 @@ import { boundedRead } from "@/lib/serverDeadline";
 import { Notice } from "@/components/ui/Notice";
 
 export default async function BillingPlansAdminPage() {
-    await requireSuperuser("/superadmin/billing/plans");
+    await requireSuperuser("/superadmin/billing/plans", "page:/superadmin/billing/plans");
 
     const plansResult = await boundedRead(listBillingPlans(true), "step billing plans");
     const plans = plansResult.data ?? [];

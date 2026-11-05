@@ -1,8 +1,10 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { OrgCreateForm } from "@/components/superadmin/OrgCreateForm";
+import { requireSuperuser } from "@/lib/auth";
 
-export default function CreateOrgPage() {
+export default async function CreateOrgPage() {
+    await requireSuperuser("/superadmin/orgs/new", "page:/superadmin/orgs/new");
     return (
         <div>
             <AdminHeader
