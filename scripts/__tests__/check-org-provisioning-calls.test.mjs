@@ -357,3 +357,157 @@ describe("check-org-provisioning-calls: r1f findings", () => {
         expect(keys("src/lib/admin/api/orgs.ts", `const r = ${member};`)).toEqual([]);
     });
 });
+
+describe("check-org-provisioning-calls: r1 (pm) classes on the AST", () => {
+    const keys = (file, text) => findSites(file, text).map((site) => site.key);
+    const NEW = "src/lib/admin/api/new.ts";
+    const methodWrappers = [
+        ["parentheses", '("POST")'],
+        ["as const", '"POST" as const'],
+        ["satisfies", '"POST" satisfies string'],
+        ["type assertion", '<string>"POST"'],
+        ["non-null", '"POST"!'],
+        ["nested", '(("POST" as const)!) satisfies string'],
+        ["lower case", '"post"'],
+        ["template literal", "`POST`"],
+    ];
+    const callBuilders = [
+        ["request", (m) => `request("/orgs", { method: ${m} });`, "POST /orgs"],
+        ["selfRequest", (m) => `selfRequest("/orgs/me", { method: ${m} });`, "POST /orgs/me"],
+        ["fetch", (m) => `fetch("/api/v1/admin/users", { method: ${m} });`, "POST /admin/users"],
+    ];
+    for (const [callee, build, key] of callBuilders) {
+        it.each(methodWrappers)(`${callee} reads a method value wrapped as %s`, (_n, method) => {
+            expect(keys(NEW, build(method))).toEqual([key]);
+        });
+    }
+
+    it.each([
+        ["identifier", 'request("/orgs", { method: verb });', "UNKNOWN /orgs"],
+        ["shorthand", 'request("/orgs", { method });', "UNKNOWN /orgs"],
+        ["call", 'selfRequest("/orgs/me", { method: pick() });', "UNKNOWN /orgs/me"],
+        ["spread after", 'request("/orgs", { method: "GET", ...init });', "UNKNOWN /orgs"],
+        ["options identifier", 'request("/orgs", init);', "UNKNOWN /orgs"],
+        ["raw fetch", 'fetch("/api/v1/orgs/me", { method: verb });', "UNKNOWN /orgs/me"],
+    ])("flags a method that is not a literal (%s)", (_n, text, key) => {
+        expect(keys(NEW, text)).toEqual([key]);
+    });
+
+    it("keeps a literal GET and a spread before the method as the literal says", () => {
+        expect(keys(NEW, 'request("/orgs", { method: "GET" });')).toEqual([]);
+        expect(keys(NEW, 'request("/orgs");')).toEqual([]);
+        expect(keys(NEW, 'request("/orgs", { ...init, method: "GET" });')).toEqual([]);
+        expect(keys(NEW, 'request("/orgs", { ...init, method: "POST" });')).toEqual(["POST /orgs"]);
+        expect(keys(NEW, 'fetch("/api/v1/orgs/me", { method: "HEAD" });')).toEqual([]);
+    });
+
+    it.each([
+        ["collection root", 'fetch("/api/v1/orgs", { method: "POST" });', "POST /orgs"],
+        ["root with slash", 'fetch("/api/v1/orgs/", { method: "POST" });', "POST /orgs"],
+        ["root with query", 'fetch("/api/v1/orgs?x=1", { method: "PUT" });', "PUT /orgs"],
+        ["template root", 'fetch(`${base}/api/v1/orgs`, { method: "POST" });', "POST /orgs"],
+        ["admin root", 'fetch("/api/v1/admin", { method: "DELETE" });', "DELETE /admin"],
+        [
+            "accept-invite",
+            'fetch("/api/v1/auth/accept-invite", { method: "POST" });',
+            "POST /auth/accept-invite",
+        ],
+    ])("refuses a raw write to the %s", (_n, text, key) => {
+        expect(keys("src/lib/x.ts", text)).toEqual([key]);
+    });
+
+    it("does not read a sibling name as the org namespace", () => {
+        expect(keys("src/lib/x.ts", 'fetch("/api/v1/orgsx", { method: "POST" });')).toEqual([]);
+        expect(keys("src/lib/x.ts", 'fetch("/api/v1/organizations", { method: "POST" });')).toEqual(
+            [],
+        );
+    });
+
+    it("reads a member route with a nested interpolation, outside and inside the client", () => {
+        const lit = "const r = `/orgs/${getOrgId({ orgId })}/members`;";
+        expect(keys("src/example.ts", lit)).toEqual(["member route literal"]);
+        const call = 'request(`/orgs/${getOrgId({ orgId })}/members`, { method: "POST" });';
+        expect(keys(CLIENT, call)).toEqual(["POST /orgs/{}/members"]);
+        expect(
+            failures({ [CLIENT]: call }, `POST /orgs/{}/members\t${CLIENT}\tmember add\n`),
+        ).toEqual([]);
+    });
+
+    it.each([
+        ["escaped slashes", 'const r = "\\/orgs\\/abc\\/members";'],
+        ["unicode slashes", 'const r = "\\u002forgs\\u002fabc\\u002fmembers";'],
+        ["hex slashes", 'const r = "\\x2forgs\\x2fabc\\x2finvites";'],
+        ["template escapes", "const r = `\\/orgs\\/${id}\\/transfer-ownership`;"],
+        ["concatenation", 'const r = "/orgs/" + id + "/members";'],
+        ["partial concatenation", 'const r = `/orgs/${a}` + "/invites";'],
+    ])("refuses a member route that is written with %s", (_n, text) => {
+        expect(keys("src/example.ts", text)).toEqual(["member route literal"]);
+    });
+
+    it("reads a client call whose path is a concatenation, and a raw path joined by +", () => {
+        expect(keys(NEW, 'request("/orgs/" + id + "/members", { method: "POST" });')).toEqual([
+            "POST /orgs/{}/members",
+            "member route literal",
+        ]);
+        expect(keys("src/lib/x.ts", 'fetch(base + "/api/v1/orgs", { method: "POST" });')).toEqual([
+            "POST /orgs",
+        ]);
+    });
+
+    it.each([
+        ["property access request", 'client.request("/orgs", { method: "POST" });', "POST /orgs"],
+        ["window.fetch", 'window.fetch("/api/v1/orgs", { method: "POST" });', "POST /orgs"],
+        ["comma callee", '(0, fetch)("/api/v1/orgs", { method: "POST" });', "POST /orgs"],
+        ["new Request", 'new Request("/api/v1/orgs", { method: "POST" });', "POST /orgs"],
+        [
+            "conditional path",
+            'fetch(ok ? "/api/v1/orgs" : "/health", { method: "POST" });',
+            "POST /orgs",
+        ],
+        ["parenthesized path", 'request(("/orgs"), { method: "POST" });', "POST /orgs"],
+        ["generic call", 'request<Org>("/orgs", { method: "POST" });', "POST /orgs"],
+    ])("reads %s", (_n, text, key) => {
+        expect(keys(NEW, text)).toEqual([key]);
+    });
+
+    it.each([
+        ["parenthesized default", "const createUser = 1; export default (createUser);"],
+        ["nested default", "const createUser = 1; export default ((createUser) as any);"],
+        ["destructured const", "export const { createUser } = api;"],
+        ["destructured rename", "export const { make: createUser } = api;"],
+        ["destructured rest", "export const { ...createUser } = api;"],
+        ["array destructure", "export const [createUser] = api;"],
+        ["nested destructure", "export const { a: [{ createUser }] } = api;"],
+        ["export class", "export class createUser {}"],
+        ["default object", "const createUser = 1; export default { createUser };"],
+        ["re-export", 'export { createUser } from "./users";'],
+        ["namespace re-export", 'export * as createUser from "./users";'],
+        ["export equals", "const createUser = 1; export = createUser;"],
+    ])("refuses an exported createUser (%s)", (_n, text) => {
+        expect(keys("src/lib/admin/server/users.ts", text)).toEqual(["export createUser"]);
+    });
+
+    it.each([
+        ["exports.", "exports.createUser = () => 1;"],
+        ["module.exports.", "module.exports.createUser = () => 1;"],
+        ["module.exports object", "const createUser = () => 1; module.exports = { createUser };"],
+        ["module.exports identifier", "const createUser = () => 1; module.exports = createUser;"],
+    ])("refuses a CommonJS createUser export (%s)", (_n, text) => {
+        expect(keys("src/lib/admin/server/users.cjs", text)).toEqual(["export createUser"]);
+    });
+
+    it("passes a createUser that is only imported or declared", () => {
+        const text =
+            'import { createUser } from "./x"; const own = { createUser }; export const a = 1;';
+        expect(keys("src/lib/admin/server/users.ts", text)).toEqual([]);
+    });
+
+    it.each([
+        ["optional chain", "adminApi.users?.create(data, token);"],
+        ["element access", 'adminApi["users"].create(data, token);'],
+        ["wrapped callee", "(adminApi.users.create)(data, token);"],
+        ["non-null callee", "adminApi.users!.create(data, token);"],
+    ])("refuses an adminApi.users.create call written with %s", (_n, text) => {
+        expect(keys("src/lib/x.ts", text)).toEqual(["call adminApi.users.create"]);
+    });
+});
