@@ -313,8 +313,13 @@ describe("session cookie bytes, administrator impersonating, longest values", ()
         const { sealSessionHandoff } = await import("@/lib/auth");
         const sessionHandoff = await sealSessionHandoff(
             "impersonation",
-            // The start answer's service token is dropped before the seal (impersonationSession.ts).
-            { access_token: ACCESS_ORG_ACT, expires_in: 900 },
+            // A handoff that still carries the delegated service token: the jwt callback keeps none of
+            // it (the start action drops it before the seal as well, impersonationSession.ts).
+            {
+                access_token: ACCESS_ORG_ACT,
+                session_access_token: SESSION_ORG_ACT,
+                expires_in: 900,
+            },
             "d354e0b4-c852-4740-9985-67ec74c370f1",
         );
         try {
