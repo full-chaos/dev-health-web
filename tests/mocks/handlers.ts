@@ -3797,7 +3797,8 @@ export const handlers = [
         onboardingProgress.orgId = "org-new";
         onboardingProgress.orgName = orgName;
         return HttpResponse.json<OnboardResponseBody>({
-            access_token: "mock-onboard-token",
+            // The onboard answer's pair enters the session, so it is a verified EdDSA pair too.
+            ...mockPair("admin"),
             refresh_token: "mock-onboard-refresh",
             token_type: "bearer",
             org_id: "org-new",

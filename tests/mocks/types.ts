@@ -45,6 +45,7 @@ export interface OnboardResponseBody {
     org_id: string;
     org_name: string;
     role: string;
+    session_access_token?: string;
 }
 
 export interface TokenValidateResponseBody {
