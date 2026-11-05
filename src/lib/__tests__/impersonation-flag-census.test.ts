@@ -36,10 +36,10 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "token.imp_expires_at =",
         "token.imp_access_token = undefined;",
         "token.imp_expires_at = undefined;",
-        'return typeof token.imp_access_token === "string" && token.imp_access_token !== "";',
-        "return isImpersonatingToken(token) ? (token.imp_access_token as string) : undefined;",
+        "return token.imp_access_token != null || token.imp_expires_at != null;",
+        "const value: unknown = token.imp_access_token;",
         "if (!isImpersonatingToken(token) || token.imp_access_token !== ended) return false;",
-        "return token.imp_expires_at === undefined || now >= token.imp_expires_at;",
+        "const expiresAt: unknown = token.imp_expires_at;",
         "...delegationIdsOf(token.imp_access_token),",
     ],
     // Types: the session field (UI contract) and the JWT delegated fields. No JWT flag.
@@ -65,8 +65,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
     "src/app/api/auth/change-password/route.ts": ["if (session.user?.is_impersonating) {"],
     "src/app/api/auth/switch-org/route.ts": ["if (session.user?.is_impersonating) {"],
     "src/lib/auth/platform/limits.ts": [
-        'if (session.user?.is_impersonating === true) return "impersonating";',
-        'return status.is_impersonating ? "impersonating" : null;',
+        'return session.user?.is_impersonating === true ? "impersonating" : null;',
     ],
     // Display and attribution readers of the session field.
     "src/components/admin/ImpersonationBanner.tsx": [
@@ -165,6 +164,7 @@ describe("impersonation flag census (D6720)", () => {
         expect(sites(/\bdelegatedToken\(/)).toEqual([
             "src/lib/auth.ts: const delegated = delegatedToken(token);",
             `${ACCESSOR}: export function delegatedToken(token: JWT): string | undefined {`,
+            `${ACCESSOR}: if (delegatedToken(token) === undefined || typeof expiresAt !== "number") return true;`,
         ]);
         const accessor = readFileSync(path.join(ROOT, ACCESSOR), "utf8");
         expect(accessor.match(/= pair\.access_token/g)).toEqual(["= pair.access_token"]);
@@ -172,8 +172,8 @@ describe("impersonation flag census (D6720)", () => {
     });
 
     // acp cond. B: every guard reads the session field the session callback computes from the
-    // accessor. The status answer is read only by the jwt callback (which can only end) and by
-    // the enforce-mode limits (which can only add a refusal).
+    // accessor. The status answer is read only by the jwt callback, which can only end an
+    // impersonation or refresh display data (acp Q2 (i): no guard reads it).
     const GUARD_SITES: Readonly<Record<string, string>> = {
         "src/app/api/auth/change-password/route.ts": "if (session.user?.is_impersonating) {",
         "src/app/api/auth/switch-org/route.ts": "if (session.user?.is_impersonating) {",
@@ -181,6 +181,8 @@ describe("impersonation flag census (D6720)", () => {
             "session.user?.is_impersonating === true && opts.allowImpersonating !== true;",
         "src/lib/auth.ts":
             "if (session.user.is_superuser !== true || session.user.is_impersonating === true) {",
+        "src/lib/auth/platform/limits.ts":
+            'return session.user?.is_impersonating === true ? "impersonating" : null;',
     };
 
     it.each(Object.entries(GUARD_SITES))(
@@ -192,22 +194,18 @@ describe("impersonation flag census (D6720)", () => {
         },
     );
 
-    it("only the jwt callback and the enforce-mode limits read the status answer", () => {
+    it("only the jwt callback reads the status answer", () => {
         const readers = files
             .filter((f) =>
                 /\breadImpersonationStatus\(/.test(readFileSync(path.join(ROOT, f), "utf8")),
             )
             .sort();
-        expect(readers).toEqual([
-            "src/lib/auth.ts",
-            "src/lib/auth/platform/limits.ts",
-            "src/lib/impersonationStatusMemo.ts",
-        ]);
+        expect(readers).toEqual(["src/lib/auth.ts", "src/lib/impersonationStatusMemo.ts"]);
     });
 
     it("the data-call bearer: an ended delegated token serves none, never the admin's", () => {
         const auth = readFileSync(path.join(ROOT, "src/lib/auth.ts"), "utf8");
-        expect(auth).toContain("if (delegated && delegatedExpired(token, Date.now())) {");
+        expect(auth).toContain("if (impersonating && delegatedExpired(token, Date.now())) {");
         expect(auth).toContain(
             "session.access_token = (delegated ?? token.access_token) as string;",
         );

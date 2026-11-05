@@ -628,7 +628,7 @@ const nextAuth = NextAuth({
                 // by the backend: never a fall back to the administrator's). The administrator's
                 // own token goes aside for stop and status.
                 const delegated = delegatedToken(token);
-                if (delegated && delegatedExpired(token, Date.now())) {
+                if (impersonating && delegatedExpired(token, Date.now())) {
                     // The stop has not succeeded yet: no bearer at all (neither the expired
                     // delegated token nor the administrator's under the impersonated view). Data
                     // calls fail closed; the next JWT callback retries the stop.

@@ -36,15 +36,17 @@ export function clearImpersonationToken(token: JWT): void {
 
 /**
  * The one source of the impersonation state (D6720): a session impersonates exactly when it holds
- * a delegated token. No flag is stored; the status read can end an impersonation, never start one.
+ * delegated token fields. No flag is stored; the status read can end an impersonation, never start
+ * one. Fields that are present but unreadable still count (fail closed): no bearer is served then.
  */
 export function isImpersonatingToken(token: JWT): boolean {
-    return typeof token.imp_access_token === "string" && token.imp_access_token !== "";
+    return token.imp_access_token != null || token.imp_expires_at != null;
 }
 
-/** The delegated bearer while one is held. */
+/** The delegated bearer while a readable one is held. */
 export function delegatedToken(token: JWT): string | undefined {
-    return isImpersonatingToken(token) ? (token.imp_access_token as string) : undefined;
+    const value: unknown = token.imp_access_token;
+    return typeof value === "string" && value !== "" ? value : undefined;
 }
 
 /** A sealed end handoff ends the impersonation only when it names the delegated token held. */
@@ -77,10 +79,15 @@ export function admitPairWrite<H extends { kind: string }>(
 /** Before the end of an administrator token, the refresh starts this early (the callback's rule). */
 export const ADMIN_REFRESH_LEAD_MS = 5 * 60 * 1000;
 
-/** True when a delegated token is held and has run out (a missing expiry counts as run out). */
+/**
+ * True when delegated fields are held and the token has run out. A missing or unreadable expiry, or
+ * an unreadable token, counts as run out: the stop then runs and no bearer is served meanwhile.
+ */
 export function delegatedExpired(token: JWT, now: number): boolean {
     if (!isImpersonatingToken(token)) return false;
-    return token.imp_expires_at === undefined || now >= token.imp_expires_at;
+    const expiresAt: unknown = token.imp_expires_at;
+    if (delegatedToken(token) === undefined || typeof expiresAt !== "number") return true;
+    return !Number.isFinite(expiresAt) || now >= expiresAt;
 }
 
 function adminBearerLive(token: JWT, now: number): boolean {
