@@ -73,12 +73,12 @@ describe("GET /auth/sso/saml/[providerId]", () => {
     });
 
     it.each(["https://evil.example/steal", "//evil.example", "/auth/signin"])(
-        "an unsafe callbackUrl (%s) is not stored",
+        "an unsafe callbackUrl (%s) is not stored and expires any earlier one",
         async (value) => {
             serve(() => json(200, { redirect_url: IDP }, [SAML_NONCE]));
             const res = await call(`?callbackUrl=${encodeURIComponent(value)}`);
             expect(res.headers.get("location")).toBe(IDP);
-            expect(returnCookie(res)).toBeUndefined();
+            expect(returnCookie(res)).toContain("Max-Age=0");
         },
     );
 
