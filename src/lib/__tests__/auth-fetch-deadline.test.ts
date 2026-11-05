@@ -49,6 +49,8 @@ import type { JWT } from "next-auth/jwt";
 import "@/lib/auth";
 import Credentials from "next-auth/providers/credentials";
 import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+import { ISSUER, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 import { applyBackendValidationMemo, resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
 type Token = Record<string, unknown>;
@@ -56,21 +58,22 @@ type JwtCallback = (params: { token: Token; user?: unknown; account?: unknown })
 const jwt = (): JwtCallback =>
     (nextAuthConfig.value as { callbacks: { jwt: JwtCallback } }).callbacks.jwt;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// An HS256-shaped compact access token: the server reads exp and sid from the token it receives.
-const NEW_ACCESS = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(
-    JSON.stringify({ sid: "ses_DeadlineAAAAAAAAAAAAAA", exp: 4102444800 }),
-).toString("base64url")}.${Buffer.from("sig").toString("base64url")}`;
+// A signed access token: the server verifies the token it receives against the key set.
+const NEW_ACCESS = mint({ sid: "ses_DeadlineAAAAAAAAAAAAAA", exp: inSeconds(1800) });
 const deadlineLines = () =>
     warn.mock.calls.filter(([, msg]) => msg === "server fetch deadline exceeded");
 
 beforeEach(() => {
     resetValidationMemoForTests();
+    resetKeySetCacheForTests();
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     warn.mockClear();
     overrideDeadlinesForTests({ auth: 40, outerMargin: 60, slow: 5_000 });
 });
 afterEach(() => {
     overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
 });
 
 describe("auth jwt callback with a backend that never answers", () => {
@@ -111,25 +114,27 @@ describe("auth jwt callback with a backend that never answers", () => {
 
     it("an expired token: a refresh answered under the deadline is logged slow, no deadline line", async () => {
         overrideDeadlinesForTests({ auth: 400, outerMargin: 60, slow: 30 });
+        const keyed = eddsaFetch({});
         vi.stubGlobal(
             "fetch",
-            vi.fn(
-                () =>
-                    new Promise<Response>((resolve) =>
-                        setTimeout(
-                            () =>
-                                resolve(
-                                    new Response(
-                                        JSON.stringify({
-                                            access_token: NEW_ACCESS,
-                                            refresh_token: "new-refresh",
-                                        }),
-                                        { status: 200 },
-                                    ),
-                                ),
-                            150,
-                        ),
-                    ),
+            vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+                String(input).startsWith(`${ISSUER}/.well-known/`)
+                    ? keyed(input, init)
+                    : new Promise<Response>((resolve) =>
+                          setTimeout(
+                              () =>
+                                  resolve(
+                                      new Response(
+                                          JSON.stringify({
+                                              access_token: NEW_ACCESS,
+                                              refresh_token: "new-refresh",
+                                          }),
+                                          { status: 200 },
+                                      ),
+                                  ),
+                              150,
+                          ),
+                      ),
             ),
         );
         const token: Token = {

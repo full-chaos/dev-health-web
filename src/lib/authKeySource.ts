@@ -19,7 +19,13 @@ const REFRESH_FLOOR_SECONDS = 30;
 const OUTAGE_GRACE_SECONDS = 600;
 
 type Operation =
-    "login" | "refresh" | "switch_org" | "change_password" | "social_login" | "sso_login";
+    | "login"
+    | "refresh"
+    | "switch_org"
+    | "change_password"
+    | "social_login"
+    | "sso_login"
+    | "create_workspace";
 
 export type KeyAnswer =
     { ok: true; keys: Jwk[] } | { ok: false; reason: "unavailable" | "unknown_kid" };

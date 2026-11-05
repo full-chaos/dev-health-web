@@ -137,7 +137,6 @@ afterEach(() => {
 });
 
 function eddsaBackend(refreshAnswer: () => Response) {
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
         const url = String(input);
@@ -222,6 +221,7 @@ describe("the sealed token keeps the session token beside the access token", () 
     });
 
     it("(f4) a terminal refresh clears the session token with both tokens", async () => {
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
         fetchMock.mockResolvedValue(answer(401));
         const out = await jwt()({ token: withSession(), user: null, account: null });
         expect(out.access_token).toBeUndefined();
@@ -246,20 +246,28 @@ describe("the sealed token keeps the session token beside the access token", () 
     });
 
     it("(f6) a social exchange that sets a new access token drops the stored session token", async () => {
-        fetchMock.mockResolvedValue(
-            answer(200, {
-                access_token: "social-access",
-                refresh_token: "social-refresh",
-                expires_in: 3600,
-                user: { id: "u9", org_id: "o9", role: "member" },
-            }),
-        );
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
+        const socialAccess = mint("dev-health-api", Math.floor(Date.now() / 1000) + 3000);
+        fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.endsWith("/api/v1/auth/social-login")) {
+                return answer(200, {
+                    access_token: socialAccess,
+                    refresh_token: "social-refresh",
+                    expires_in: 3600,
+                    user: { id: "u9", org_id: "o9", role: "member" },
+                });
+            }
+            if (url.endsWith("/.well-known/openid-configuration")) return discoveryResponse();
+            if (url.endsWith("/.well-known/jwks.json")) return keysResponse();
+            throw new Error(`unexpected fetch ${url}`);
+        });
         const out = await jwt()({
             token: withSession({ expires_at: Date.now() + 3600_000 }),
             user: null,
             account: { provider: "github", access_token: "gh-token" },
         });
-        expect(out.access_token).toBe("social-access");
+        expect(out.access_token).toBe(socialAccess);
         expect(out.session_access_token).toBeUndefined();
         expect(out.act_sub).toBeUndefined();
     });

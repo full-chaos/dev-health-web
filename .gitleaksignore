@@ -1,0 +1,6 @@
+# False positives of the generic-api-key rule: the lines name the env setting AUTH_ACCESS_TOKEN_CLASS and its old value; no secret is in them.
+# Commit-less rows (file:rule:line). 150 and 152 are the lines in the commit that added the test, 166 and 168 in the current file.
+src/lib/__tests__/authSso.verify.test.ts:generic-api-key:150
+src/lib/__tests__/authSso.verify.test.ts:generic-api-key:152
+src/lib/__tests__/authSso.verify.test.ts:generic-api-key:166
+src/lib/__tests__/authSso.verify.test.ts:generic-api-key:168

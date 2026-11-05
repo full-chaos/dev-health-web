@@ -41,12 +41,16 @@ vi.mock("@/lib/logger", () => {
 
 import "@/lib/auth";
 import Credentials from "next-auth/providers/credentials";
+import { ISSUER, SID, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
 
-const b64u = (s: string) => Buffer.from(s).toString("base64url");
-const SID = "ses_AAAAAAAAAAAAAAAAAAAAAQ";
-const EXP = 1760000600;
-const hs256 = (payload: Record<string, unknown> = { sid: SID, exp: EXP }) =>
-    `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(JSON.stringify(payload))}.${b64u("sig")}`;
+const EXP = inSeconds(1800);
+const ACCESS = mint({ exp: EXP });
+const SESSION = mint({ aud: "auth-service", exp: EXP });
+const LOGIN_URL = "/api/v1/auth/login";
+// The login answer, read through the key set the fetch mock serves.
+const answer = (make: () => Response) =>
+    fetchMock.mockImplementation(eddsaFetch({ [LOGIN_URL]: make }));
 
 const user = {
     id: "u1",
@@ -82,6 +86,8 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
     fetchMock.mockReset();
+    resetKeySetCacheForTests();
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => {
@@ -91,7 +97,7 @@ afterEach(() => {
 
 describe("credentials authorize", () => {
     it("returns the user with access_exp and sid read from the access token", async () => {
-        fetchMock.mockResolvedValue(json(200, body(hs256())));
+        answer(() => json(200, body(ACCESS)));
         expect(await authorize()(creds)).toMatchObject({
             id: "u1",
             email: "a@example.test",
@@ -99,7 +105,7 @@ describe("credentials authorize", () => {
             role: "admin",
             is_superuser: false,
             needs_onboarding: false,
-            access_token: hs256(),
+            access_token: ACCESS,
             refresh_token: "ref-1",
             expires_in: 3600,
             access_exp: EXP,
@@ -107,10 +113,17 @@ describe("credentials authorize", () => {
         });
     });
 
-    it("returns no session_access_token field", async () => {
-        fetchMock.mockResolvedValue(json(200, { ...body(hs256()), session_access_token: "svc" }));
-        const got = await authorize()(creds);
-        expect(JSON.stringify(got)).not.toContain("svc");
+    it("returns the verified session_access_token with its exp", async () => {
+        answer(() => json(200, { ...body(ACCESS), session_access_token: SESSION }));
+        expect(await authorize()(creds)).toMatchObject({
+            session_access_token: SESSION,
+            session_exp: EXP,
+        });
+    });
+
+    it("returns null for a session_access_token that does not verify", async () => {
+        answer(() => json(200, { ...body(ACCESS), session_access_token: "svc" }));
+        expect(await authorize()(creds)).toBeNull();
     });
 
     it("returns null for no email or no password, and calls no backend", async () => {
@@ -119,10 +132,17 @@ describe("credentials authorize", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("returns null on 401 and on an access token that does not decode", async () => {
-        fetchMock.mockResolvedValueOnce(json(401, { detail: { message: "Invalid credentials" } }));
+    it("returns null on 401 and on an access token that does not verify", async () => {
+        answer(() => json(401, { detail: { message: "Invalid credentials" } }));
         expect(await authorize()(creds)).toBeNull();
-        fetchMock.mockResolvedValueOnce(json(200, body("not-a-token")));
+        answer(() => json(200, body("not-a-token")));
+        expect(await authorize()(creds)).toBeNull();
+    });
+
+    it("returns null for an HS256 access token", async () => {
+        const b64u = (text: string) => Buffer.from(text).toString("base64url");
+        const hs256 = `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(JSON.stringify({ sid: SID, exp: EXP }))}.${b64u("sig")}`;
+        answer(() => json(200, body(hs256)));
         expect(await authorize()(creds)).toBeNull();
     });
 
@@ -145,17 +165,14 @@ describe("credentials authorize", () => {
         });
     });
 
-    it("throws auth_unavailable on 503, on a thrown call and on an unknown token class", async () => {
+    it("throws auth_unavailable on 503 and on a thrown call", async () => {
         fetchMock.mockResolvedValueOnce(json(503, {}));
         await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
         fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
         await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
-        await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
     });
 
-    it("reads AUTH_ACCESS_TOKEN_CLASS and AUTH_ACCESS_TOKEN_ISSUER from the server environment", async () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
+    it("reads AUTH_ACCESS_TOKEN_ISSUER from the server environment: none pinned means unavailable", async () => {
         vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
         expect(fetchMock).not.toHaveBeenCalled();
@@ -169,7 +186,7 @@ describe("jwt callback on login", () => {
         role: "admin",
         is_superuser: false,
         needs_onboarding: false,
-        access_token: hs256(),
+        access_token: ACCESS,
         refresh_token: "ref-1",
         expires_in: 3600,
         access_exp: EXP,
@@ -204,14 +221,12 @@ describe("permissions pass through from the sign-in answer to the session", () =
     const sessionCb = (): Session =>
         (nextAuthConfig.value as { callbacks: { session: Session } }).callbacks.session;
 
-    const futureToken = () => hs256({ sid: SID, exp: Math.floor(Date.now() / 1000) + 3600 });
-
     // The value is read from the base 3348b611 code: authorize passed `data.user.permissions` as it
     // came, jwt copied `user.permissions` to the token, session copied it to `session.user`.
     async function signIn(userPermissions: { present: boolean; value?: unknown }) {
         const answerUser: Record<string, unknown> = { ...user };
         if (userPermissions.present) answerUser.permissions = userPermissions.value;
-        fetchMock.mockResolvedValue(json(200, { ...body(futureToken()), user: answerUser }));
+        answer(() => json(200, { ...body(ACCESS), user: answerUser }));
         const authorized = await authorize()(creds);
         const token = await jwt()({ token: {}, user: authorized as Record<string, unknown> });
         const session = await sessionCb()({ session: { user: {} }, token });

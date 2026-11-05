@@ -4,6 +4,7 @@ import { isValidationStatus } from "@/lib/actionFailure";
 import { AdminApiError } from "@/lib/admin/api";
 import { getToken } from "@/lib/admin/server/_shared";
 import { auth, sealSessionHandoff } from "@/lib/auth";
+import { readExchangeAnswer, wireConfigFromEnv } from "@/lib/authServiceWire";
 import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
 import { deadlineFetch } from "@/lib/serverDeadline";
@@ -74,6 +75,7 @@ export async function createWorkspace(orgName: string): Promise<CreateWorkspaceR
         org_id?: unknown;
         role?: unknown;
         expires_in?: unknown;
+        session_access_token?: unknown;
         detail?: unknown;
     } | null;
     if (!response.ok) {
@@ -88,6 +90,20 @@ export async function createWorkspace(orgName: string): Promise<CreateWorkspaceR
         log.error(
             { status: response.status, orgId },
             "create workspace: the onboard answer carried no token pair; session not changed",
+        );
+        return { ok: false, status: 502 };
+    }
+    // The new pair enters the session, so its access token is read like any login answer: it must
+    // verify against the pinned issuer before it is sealed.
+    const read = await readExchangeAnswer(
+        { accessToken: data.access_token, sessionAccessToken: data.session_access_token },
+        wireConfigFromEnv(),
+        "create_workspace",
+    );
+    if (read.kind !== "read") {
+        log.error(
+            { status: response.status, orgId, read: read.kind },
+            "create workspace: the onboard access token did not verify; session not changed",
         );
         return { ok: false, status: 502 };
     }

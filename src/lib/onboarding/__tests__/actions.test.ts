@@ -8,21 +8,26 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://ops.example.test" }));
 
 import { auth, sealSessionHandoff } from "@/lib/auth";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+import { ISSUER, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 import { createWorkspace, skipIntegrationStep } from "../actions";
 
 function backend(status: number, body: unknown, contentType = "application/json") {
-    const fetchMock = vi.fn().mockResolvedValue(
-        new Response(typeof body === "string" ? body : JSON.stringify(body), {
-            status,
-            headers: { "content-type": contentType },
-        }),
+    const keyServer = eddsaFetch({});
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).startsWith(ISSUER)
+            ? keyServer(input, init)
+            : new Response(typeof body === "string" ? body : JSON.stringify(body), {
+                  status,
+                  headers: { "content-type": contentType },
+              }),
     );
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
 }
 
 const ONBOARDED = {
-    access_token: "onboard-access",
+    access_token: mint({ exp: inSeconds(1800) }),
     refresh_token: "onboard-refresh",
     org_id: "org-new",
     role: "owner",
@@ -32,6 +37,8 @@ const ONBOARDED = {
 describe("onboarding server actions (CHAOS-12088)", () => {
     beforeEach(() => {
         vi.unstubAllGlobals();
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
+        resetKeySetCacheForTests();
         vi.mocked(auth).mockResolvedValue({
             access_token: "session-access",
             user: { id: "user-1" },
@@ -58,7 +65,7 @@ describe("onboarding server actions (CHAOS-12088)", () => {
                 orgId: "org-new",
                 sessionHandoff: "sealed-handoff",
             });
-            expect(JSON.stringify(result)).not.toContain("onboard-access");
+            expect(JSON.stringify(result)).not.toContain(ONBOARDED.access_token);
             const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
             expect(url).toBe("http://ops.example.test/api/v1/auth/onboard");
             expect(init.method).toBe("POST");
@@ -98,6 +105,19 @@ describe("onboarding server actions (CHAOS-12088)", () => {
             expect(await createWorkspace("Acme")).toEqual({ ok: false, status: null });
         });
 
+        it("refuses an onboard answer whose access token does not verify and seals nothing", async () => {
+            for (const access_token of [
+                "not-a-jwt",
+                mint({ exp: inSeconds(-5) }),
+                mint({ iss: "https://other.example.test" }),
+                mint({ alg: "none" }),
+            ]) {
+                backend(200, { ...ONBOARDED, access_token });
+                expect(await createWorkspace("Acme")).toEqual({ ok: false, status: 502 });
+            }
+            expect(sealSessionHandoff).not.toHaveBeenCalled();
+        });
+
         it("refuses a 2xx without a token pair and leaves the session alone", async () => {
             backend(200, { org_id: "org-new" });
             expect(await createWorkspace("Acme")).toEqual({ ok: false, status: 502 });
@@ -109,7 +129,7 @@ describe("onboarding server actions (CHAOS-12088)", () => {
             backend(200, ONBOARDED);
             const result = await createWorkspace("Acme");
             expect(result).toEqual({ ok: false, status: 502 });
-            expect(JSON.stringify(result)).not.toContain("onboard-access");
+            expect(JSON.stringify(result)).not.toContain(ONBOARDED.access_token);
         });
     });
 

@@ -164,8 +164,7 @@ export function inFlightRefreshKeys(): string[] {
 }
 
 // The Bearer for the auth-service routes that refuse aud dev-health-api: the session access token
-// when the session holds one, else the access token. The session token is stored only under
-// class eddsa, so under hs256_compat this is the access token.
+// when the session holds one, else the access token (an answer without a session token).
 export function serviceBearer(tokens: {
     access_token?: unknown;
     session_access_token?: unknown;

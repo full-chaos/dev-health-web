@@ -21,23 +21,20 @@ const log = logger.child({ module: "auth-session" });
  *                           call): no session starts, the sign-in says "unavailable".
  * - `login_invalid_response` the login answered 2xx with a body or an access token web refuses:
  *                           no session starts.
- * - `auth_config_invalid`   the token class setting is unknown, or class `eddsa` has no issuer:
- *                           login is refused before any call.
- * - `key_set_unusable`      class `eddsa`: the published key set could not be fetched or is
- *                           refused as a whole (a repeated kid, an invalid key).
+ * - `auth_config_invalid`   no issuer is pinned (AUTH_ACCESS_TOKEN_ISSUER): the operation is refused
+ *                           before any call.
+ * - `key_set_unusable`      the published key set could not be fetched or is refused as a whole (a
+ *                           repeated kid, an invalid key).
  * - `token_shape_refused`  the login answered 2xx with an access token of the wrong shape for the
- *                           token class (under hs256_compat: not a decodable HS256 token): no
- *                           session starts. A fixed message; the token text is never logged.
+ *                           access-token contract: no session starts. A fixed message; the token
+ *                           text is never logged.
  * - `refresh_invalid_response` the refresh answered 2xx without both tokens, or with an access token
- *                           the class refuses (a failed verification): the session ends.
- * - `session_token_*`        the service session token of an answer (aud auth-service): `missing` (class
- *                           eddsa, none sent: accepted), `ignored` (class hs256_compat, one sent: never
- *                           stored), and one branch per refusal reason (`malformed`, `unverified`,
- *                           `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the answer is refused.
- * - `sso_org_mismatch`      class eddsa: the SSO answer names another org than its verified access token.
- * - `sso_token_class_refused` ERROR level, a configuration fault counted by branch: an SSO completion
- *                           ran with a token class other than eddsa (unset, empty, hs256_compat or
- *                           unknown): no call is made and no session starts (CHAOS-12928).
+ *                           that fails verification: the session ends.
+ * - `session_token_*`        the service session token of an answer (aud auth-service): `missing`
+ *                           (none sent: accepted), and one branch per refusal reason (`malformed`,
+ *                           `unverified`, `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the
+ *                           answer is refused.
+ * - `sso_org_mismatch`      the SSO answer names another org than its verified access token.
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
@@ -54,14 +51,12 @@ export type SessionBranch =
     | "token_shape_refused"
     | "refresh_invalid_response"
     | "session_token_missing"
-    | "session_token_ignored"
     | "session_token_malformed"
     | "session_token_unverified"
     | "session_token_sid_mismatch"
     | "session_token_sub_mismatch"
     | "session_token_exp_mismatch"
     | "sso_org_mismatch"
-    | "sso_token_class_refused"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -73,7 +68,8 @@ export interface SessionBranchFields {
         | "switch_org"
         | "change_password"
         | "social_login"
-        | "sso_login";
+        | "sso_login"
+        | "create_workspace";
     readonly branch: SessionBranch;
     /** HTTP status of the backend answer. Absent when no answer arrived. */
     readonly status?: number;
@@ -94,24 +90,23 @@ const MESSAGES: Record<SessionBranch, string> = {
     validate_call_failed: "session kept: the backend validation call failed; retry after backoff",
     login_unavailable: "login refused: the backend gave no usable answer",
     login_invalid_response: "login refused: the backend answer or its access token was refused",
-    auth_config_invalid: "login refused: the access token class setting is unusable",
+    auth_config_invalid: "operation refused: no access token issuer is pinned",
     key_set_unusable: "login refused: the published key set is unusable",
-    token_shape_refused: "login refused: the access token has the wrong shape for the token class",
+    token_shape_refused:
+        "login refused: the access token has the wrong shape for the access-token contract",
     refresh_invalid_response: "session ended: the refresh answer or its access token was refused",
     session_token_missing: "an eddsa answer carried no service session token; accepted",
-    session_token_ignored: "an hs256_compat answer carried a service session token; ignored",
     session_token_malformed: "answer refused: the service session token is not a usable string",
     session_token_unverified: "answer refused: the service session token did not verify",
     session_token_sid_mismatch: "answer refused: the service session token names another session",
     session_token_sub_mismatch: "answer refused: the service session token names another subject",
     session_token_exp_mismatch: "answer refused: the service session token expiry differs",
     sso_org_mismatch: "sso sign-in refused: the answer org differs from the verified token org",
-    sso_token_class_refused: "sso sign-in refused: the access token class is not eddsa",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 
 /**
- * One warn line (error for `sso_token_class_refused`) per backend call that changes, or declines to change, what a
+ * One warn line per backend call that changes, or declines to change, what a
  * session holds. The fields are a closed set: operation, branch, status, error
  * name and failure count. A token, a cookie, an e-mail address and any text the
  * backend served must never be passed here; the logger adds the time.
@@ -130,8 +125,7 @@ export function logSessionBranch(fields: SessionBranchFields): void {
         if (fields.status !== undefined) line.status = fields.status;
         if (fields.errorName !== undefined) line.errorName = fields.errorName;
         if (fields.failures !== undefined) line.failures = fields.failures;
-        if (fields.branch === "sso_token_class_refused") log.error(line, MESSAGES[fields.branch]);
-        else log.warn(line, MESSAGES[fields.branch]);
+        log.warn(line, MESSAGES[fields.branch]);
     } catch {
         // There is no second channel to report a failed log line on; the
         // session logic goes on unchanged.

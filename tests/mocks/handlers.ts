@@ -9,11 +9,7 @@
 
 import { http, HttpResponse } from "msw";
 import { getEntitlementScenario } from "./entitlementScenario";
-import {
-    MOCK_ACCESS_TOKEN,
-    MOCK_MEMBER_ACCESS_TOKEN,
-    MOCK_REFRESHED_ACCESS_TOKEN,
-} from "./mockTokens";
+import { mockPair } from "./mockTokens";
 import {
     getPagerDutySyncConfig,
     pagerDutyHandlers,
@@ -2695,7 +2691,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read", "write"],
                 },
-                access_token: MOCK_ACCESS_TOKEN,
+                ...mockPair("admin"),
                 refresh_token: "mock-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2717,7 +2713,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read", "write"],
                 },
-                access_token: MOCK_ACCESS_TOKEN,
+                ...mockPair("admin"),
                 refresh_token: "mock-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2734,7 +2730,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read"],
                 },
-                access_token: MOCK_MEMBER_ACCESS_TOKEN,
+                ...mockPair("member"),
                 refresh_token: "mock-member-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2757,7 +2753,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2771,7 +2767,7 @@ export const handlers = [
 
     http.post("*/api/v1/auth/refresh", () =>
         HttpResponse.json<TokenRefreshResponseBody>({
-            access_token: MOCK_REFRESHED_ACCESS_TOKEN,
+            ...mockPair("refreshed"),
             refresh_token: "mock-refreshed-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2833,7 +2829,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2851,7 +2847,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -3801,7 +3797,8 @@ export const handlers = [
         onboardingProgress.orgId = "org-new";
         onboardingProgress.orgName = orgName;
         return HttpResponse.json<OnboardResponseBody>({
-            access_token: "mock-onboard-token",
+            // The onboard answer's pair enters the session, so it is a verified EdDSA pair too.
+            ...mockPair("admin"),
             refresh_token: "mock-onboard-refresh",
             token_type: "bearer",
             org_id: "org-new",

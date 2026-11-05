@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { nextDevNodeOptions } from "./ci/next-dev-env";
+import { e2eAuthEnv } from "./ci/next-dev-env";
 
 /**
  * Guided first-run onboarding E2E config (CHAOS-2670 / CHAOS-2679).
@@ -84,7 +84,7 @@ export default defineConfig({
             reuseExistingServer: !process.env.CI,
             timeout: 120_000,
             env: {
-                NODE_OPTIONS: nextDevNodeOptions(),
+                ...e2eAuthEnv("http://127.0.0.1:8002"),
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
