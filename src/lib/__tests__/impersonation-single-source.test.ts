@@ -4,10 +4,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // can only end an impersonation or refresh display data. Real jwt + session callbacks, real seal,
 // real server actions and routes; only fetch and next-auth's own session reader are replaced.
 
-const { nextAuthConfig, sessionRead } = vi.hoisted(() => ({
+const { nextAuthConfig, sessionRead, signOutSpy, logLines } = vi.hoisted(() => ({
     nextAuthConfig: { value: null as unknown },
     sessionRead: vi.fn(),
+    signOutSpy: vi.fn(),
+    logLines: [] as { level: string; fields: unknown; msg: unknown }[],
 }));
+
+vi.mock("@/lib/logger", async (importOriginal) => {
+    const original = await importOriginal<typeof import("@/lib/logger")>();
+    const make = (): unknown => {
+        const at = (level: string) => (fields: unknown, msg?: unknown) => {
+            logLines.push({ level, fields, msg });
+        };
+        return {
+            trace: at("trace"),
+            debug: at("debug"),
+            info: at("info"),
+            warn: at("warn"),
+            error: at("error"),
+            fatal: at("fatal"),
+            child: () => make(),
+        };
+    };
+    return { ...original, logger: make() };
+});
 
 vi.mock("next/navigation", () => ({
     redirect: vi.fn((url: string) => {
@@ -25,7 +46,7 @@ vi.mock("next-auth", () => ({
             auth: sessionRead,
             handlers: { GET: vi.fn(), POST: vi.fn() },
             signIn: vi.fn(),
-            signOut: vi.fn(),
+            signOut: signOutSpy,
         };
     }),
     CredentialsSignin: class CredentialsSignin extends Error {
@@ -40,8 +61,9 @@ vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 
 import { sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
-import { stopImpersonation } from "@/lib/admin/server";
+import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 import { requireSuperuserToken } from "@/lib/admin/server/_shared";
+import { requireRole, requireSuperuser } from "@/lib/auth";
 import { POST as changePassword } from "@/app/api/auth/change-password/route";
 import { POST as switchOrg } from "@/app/api/auth/switch-org/route";
 
@@ -58,7 +80,7 @@ const DELEGATED = "access-delegated-1";
 type StatusMode = "true" | "false" | "503" | "429" | "network" | "not-json" | "non-boolean";
 
 const calls: { method: string; path: string; bearer: string | null }[] = [];
-const backend = { status: "true" as StatusMode };
+const backend = { status: "true" as StatusMode, stop: 200, startToken: true };
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -110,7 +132,14 @@ const delegatedCalls = () => calls.filter((c) => c.bearer === DELEGATED);
 beforeEach(() => {
     resetImpersonationStatusForTests();
     calls.length = 0;
+    logLines.length = 0;
     backend.status = "true";
+    backend.stop = 200;
+    backend.startToken = true;
+    signOutSpy.mockReset();
+    signOutSpy.mockImplementation(async () => {
+        sessionRead.mockResolvedValue(null);
+    });
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -147,7 +176,24 @@ beforeEach(() => {
             }
             if (url.endsWith("/api/v1/admin/impersonate/stop")) {
                 if (bearer !== ADMIN) return json({ detail: "Forbidden" }, 403);
+                if (backend.stop !== 200) return json({ detail: "down" }, backend.stop);
                 return json({ status: "stopped" });
+            }
+            if (url.endsWith("/api/v1/admin/impersonate")) {
+                if (bearer !== ADMIN) return json({ detail: "Forbidden" }, 403);
+                return json({
+                    status: "impersonating",
+                    target_user: {
+                        id: "target-1",
+                        email: "t@e.test",
+                        org_id: "org-target",
+                        role: "member",
+                    },
+                    expires_at: new Date(Date.now() + 600_000).toISOString(),
+                    ...(backend.startToken
+                        ? { access_token: DELEGATED, token_type: "Bearer", expires_in: 600 }
+                        : {}),
+                });
             }
             return json({ detail: "unexpected" }, 500);
         }),
@@ -194,6 +240,23 @@ describe("S1 start, then the forced status read fails: the token says impersonat
         await expect(requireSuperuserToken({ action: "admin.orgs" })).rejects.toMatchObject({
             status: 403,
         });
+    });
+
+    it.each(FAILED_READS)("status %s: requireRole and requireSuperuser refuse", async (mode) => {
+        sessionRead.mockResolvedValue(await sessionOf(await started(mode)));
+        await expect(requireRole(["admin", "owner"])).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+        await expect(requireSuperuser("/superadmin")).rejects.toThrow("NEXT_REDIRECT");
+    });
+
+    it.each(FAILED_READS)("status %s: an ended delegated token serves no bearer", async (mode) => {
+        const token = await started(mode);
+        backend.stop = 503;
+        resetImpersonationStatusForTests();
+        const next = await jwt({ ...token, imp_expires_at: Date.now() - 1000 });
+        const s = await sessionOf(next);
+        expect(s.access_token).toBeUndefined();
+        expect(s).not.toHaveProperty("admin_access_token");
+        expect(s.user.is_impersonating).toBe(true);
     });
 
     it.each(FAILED_READS)("status %s: the admin bearer is the administrator's", async (mode) => {
@@ -307,5 +370,93 @@ describe("S3 stop, then the status read fails: no delegated bearer is served", (
         const r = await stopImpersonation();
         expect(r.error).toBeUndefined();
         expect(r.data).not.toHaveProperty("sessionHandoff");
+    });
+});
+
+describe("S4 the delegated bearer lives only in the imp_* fields (acp cond. A)", () => {
+    it.each(["true", ...FAILED_READS] as StatusMode[])(
+        "status %s: no other JWT field holds it",
+        async (mode) => {
+            const token = await started(mode);
+            const holders = Object.entries(token)
+                .filter(([, v]) => typeof v === "string" && v.includes(DELEGATED))
+                .map(([k]) => k);
+            expect(holders).toEqual(["imp_access_token"]);
+            expect(token.access_token).toBe(ADMIN);
+            expect(token.session_access_token).toBe("service-admin-1");
+        },
+    );
+});
+
+const stopEvents = () =>
+    logLines.filter(
+        (l) =>
+            l.level === "error" &&
+            (l.fields as { event?: string }).event === "impersonation_stop_not_recorded",
+    );
+
+describe("S5 a start answer with no delegated token is refused (acp option A)", () => {
+    beforeEach(() => {
+        backend.startToken = false;
+    });
+
+    it("the start is stopped at once with the administrator bearer and refused", async () => {
+        const r = await startImpersonation("target-1");
+        expect(r.data).toBeUndefined();
+        expect(r.error).toBe("Impersonation needs the delegated token. It was stopped.");
+        const stops = calls.filter((c) => c.path.endsWith("/impersonate/stop"));
+        expect(stops).toHaveLength(1);
+        expect(stops[0].bearer).toBe(ADMIN);
+        expect(signOutSpy).not.toHaveBeenCalled();
+        expect(stopEvents()).toEqual([]);
+    });
+
+    it("imp_* is never set: the next session read is not impersonating", async () => {
+        await startImpersonation("target-1");
+        backend.status = "true";
+        resetImpersonationStatusForTests();
+        const next = await jwt(adminToken(), { impersonationChanged: true });
+        expect(next.imp_access_token).toBeUndefined();
+        expect(next.imp_expires_at).toBeUndefined();
+        const s = await sessionOf(next);
+        expect(s.user.is_impersonating).toBe(false);
+        expect(s.access_token).toBe(ADMIN);
+        expect(s).not.toHaveProperty("admin_access_token");
+    });
+
+    it("a failed stop signs the user out and logs the loud event", async () => {
+        backend.stop = 503;
+        const r = await startImpersonation("target-1");
+        expect(r.data).toBeUndefined();
+        expect(r.error).toBe("Impersonation needs the delegated token. It was stopped.");
+        expect(signOutSpy).toHaveBeenCalledTimes(1);
+        expect(signOutSpy).toHaveBeenCalledWith({ redirect: false });
+        const events = stopEvents();
+        expect(events).toHaveLength(1);
+        expect(events[0].fields).toEqual({
+            event: "impersonation_stop_not_recorded",
+            reason: "start_without_delegated_token",
+            user_id: "admin-1",
+            target_user_id: "target-1",
+            org_id: "org-target",
+        });
+        expect(JSON.stringify(events)).not.toContain(ADMIN);
+        expect(JSON.stringify(events)).not.toContain("@");
+    });
+
+    it("after a failed stop every guard refuses", async () => {
+        backend.stop = 503;
+        await startImpersonation("target-1");
+        calls.length = 0;
+        expect(
+            (await changePassword(post({ current_password: "a", new_password: "b" }))).status,
+        ).toBe(401);
+        expect((await switchOrg(post({ org_id: "org-other" }))).status).toBe(401);
+        await expect(requireSuperuserToken({ action: "admin.orgs" })).rejects.toMatchObject({
+            status: 401,
+        });
+        await expect(requireSuperuser("/superadmin")).rejects.toThrow("NEXT_REDIRECT:/auth/signin");
+        await expect(requireRole(["admin", "owner"])).rejects.toThrow("NEXT_REDIRECT:/auth/signin");
+        expect(calls).toEqual([]);
     });
 });

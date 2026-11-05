@@ -179,11 +179,14 @@ describe("start: the delegated token never reaches the browser", () => {
         expect((r.data as { sessionHandoff?: string }).sessionHandoff).toEqual(expect.any(String));
     });
 
-    it("R9 an answer with no access_token (flag off) gives the old members only", async () => {
+    // D6720 option A (acp): the delegated token is the only impersonation state, so an answer
+    // without one (AUTH_PROXY_IMPERSONATION off) is stopped at once and refused.
+    it("R9 an answer with no access_token (flag off) is stopped with the admin bearer and refused", async () => {
         const r = await startImpersonation("target-1");
-        expect(r.error).toBeUndefined();
-        expect(r.data).not.toHaveProperty("sessionHandoff");
-        expect(Object.keys(r.data as Obj).sort()).toEqual(["expires_at", "status", "target_user"]);
+        expect(r.data).toBeUndefined();
+        expect(r.error).toBe("Impersonation needs the delegated token. It was stopped.");
+        const stops = calls.filter((c) => c.path.endsWith("/impersonate/stop"));
+        expect(stops.map((c) => c.bearer)).toEqual([ADMIN]);
     });
 });
 
