@@ -11,6 +11,8 @@
  * token.NewFileSigner, issuer https://auth.fullchaos.dev, throwaway key); the refresh credential
  * has the real shape (`dhr1_` + base64url of 32 bytes, ops internal/auth/session/credential.go).
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { decode } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -163,11 +165,22 @@ async function signIn(shape: Shape) {
     const readBack = await GET(
         new NextRequest(`${ORIGIN}/api/auth/session`, { headers: { cookie: browserCookie } }),
     );
+    const readBackSetCookieBytes = readBack.headers
+        .getSetCookie()
+        .reduce((sum, c) => sum + lineBytes("set-cookie", c), 0);
+    // The session read as nginx sees it: request line, the Host the harness request carries, the Cookie line.
+    const requestHeaderBlockBytes =
+        Buffer.byteLength(`GET /api/auth/session HTTP/1.1\r\n`) +
+        lineBytes("host", new URL(ORIGIN).host) +
+        lineBytes("cookie", browserCookie) +
+        Buffer.byteLength("\r\n");
     return {
         status: res.status,
         sessionChunks,
         setCookieBytes,
         requestCookieBytes: Buffer.byteLength(`cookie: ${browserCookie}\r\n`),
+        readBackSetCookieBytes,
+        requestHeaderBlockBytes,
         readBack,
         browserCookie,
         jar,
@@ -180,6 +193,14 @@ async function signIn(shape: Shape) {
 // Cookie line (large_client_header_buffers 4 8k). Raising one needs a re-measure and a look at both.
 // Hard limits: request Cookie line 8192 = nginx large_client_header_buffers 4 8k; response headers 32768 = prod proxy-buffer-size 32k.
 // A budget raise must stay under them.
+// Hard ceilings, one per hop limit, the same for every shape (the per-shape budgets above are tripwires).
+// 6144 = 75% of nginx's 8k default large_client_header_buffers line (prod pins "4 16k": dev-health-deploy prod/ingress-nginx.values.yaml, PR #923).
+const REQUEST_COOKIE_CEILING = 6144;
+// 16384 = 50% of proxy-buffer-size 32k (dev-health-deploy values.prod.yaml:1585).
+const RESPONSE_SET_COOKIE_CEILING = 16384;
+// node's http header limit; the Dockerfile runtime CMD states it.
+const NODE_MAX_HEADER_BYTES = 16384;
+
 const TYPICAL: Shape = {
     requestBudget: 3072, // measured 2777 B
     responseBudget: 3072, // measured 2754 B
@@ -230,5 +251,38 @@ describe.each([
     it("keeps the request Cookie header line under the budget", async () => {
         const { requestCookieBytes } = await signIn(shape);
         expect(requestCookieBytes).toBeLessThan(shape.requestBudget);
+    });
+});
+
+describe("session cookie hard ceilings", () => {
+    it("pins the ceiling constants", () => {
+        expect(REQUEST_COOKIE_CEILING).toBe(6144);
+        expect(RESPONSE_SET_COOKIE_CEILING).toBe(16384);
+        expect(NODE_MAX_HEADER_BYTES).toBe(16384);
+    });
+
+    it.each([
+        ["owned, typical values", TYPICAL],
+        ["owned, longest realistic values", LONGEST],
+    ] as const)("holds every response and request under the ceilings, %s", async (_name, shape) => {
+        const out = await signIn(shape);
+        expect(out.requestCookieBytes).toBeLessThanOrEqual(REQUEST_COOKIE_CEILING);
+        expect(out.setCookieBytes).toBeLessThanOrEqual(RESPONSE_SET_COOKIE_CEILING);
+        expect(out.readBackSetCookieBytes).toBeLessThanOrEqual(RESPONSE_SET_COOKIE_CEILING);
+    });
+
+    it("pins node's header limit in the runtime CMD and keeps the largest request block under it", async () => {
+        const dockerfile = readFileSync(resolve(process.cwd(), "Dockerfile"), "utf8");
+        const cmd = dockerfile
+            .split("\n")
+            .find((l) => l.startsWith("CMD") && l.includes("server.js"));
+        expect(cmd).toBeDefined();
+        const flag = /node --max-http-header-size=(\d+) server\.js/.exec(cmd ?? "");
+        expect(flag?.[1]).toBe(String(NODE_MAX_HEADER_BYTES));
+        expect(cmd?.indexOf("write-runtime-config")).toBeLessThan(cmd?.indexOf("server.js") ?? 0);
+        for (const shape of [TYPICAL, LONGEST]) {
+            const out = await signIn(shape);
+            expect(out.requestHeaderBlockBytes).toBeLessThan(NODE_MAX_HEADER_BYTES);
+        }
     });
 });
