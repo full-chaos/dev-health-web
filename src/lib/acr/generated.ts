@@ -18,6 +18,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "context:admin"
             | "data:read"
             | "credential_lifecycle:read"
+            | "credential_lifecycle:revoke"
         ),
         ...(
             | "context:read"
@@ -26,6 +27,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "context:admin"
             | "data:read"
             | "credential_lifecycle:read"
+            | "credential_lifecycle:revoke"
         )[],
     ];
     created_at: string;
@@ -9054,6 +9056,7 @@ export interface AnswerPlan {
      * @maxItems 200
      */
     requirements?: PlanRequirement[];
+    fallback?: AnswerPlanFallback;
 }
 /**
  * The ceiling the plan was built against and the headroom it reserved, persisted so an over-budget answer names the number that was wrong.
@@ -9153,6 +9156,28 @@ export interface PlanRequirement {
      * Why the cell has no server, absent when it has one. Each member is actionable by a different party: a new producer, a declaration change, a query change, or nothing at all. Open vocabulary; documented values: subject_kind_unsupported, no_declaring_producer, table_shape_undeclared, computed_population_absent. A client must tolerate values it does not know.
      */
     unavailable?: string;
+}
+/**
+ * CHAOS-13002: the plan's record of a read fallback. Present only when the model planned some of this answer's reads, because no fixed question family serves what the question asks: why the fallback applied, the fact kinds the model planned in plan order, and the outcome. Optional: absent means the family planned every read.
+ */
+export interface AnswerPlanFallback {
+    /**
+     * Why the fallback applied. Open vocabulary; documented values: judgment_unservable, kind_unserved_for_member. A client must tolerate values it does not know.
+     */
+    reason: string;
+    /**
+     * The fact kinds the model planned, in plan order, each once. A kind the family or the interpreter already planned keeps its own entry in fact_kinds.
+     *
+     * @minItems 1
+     * @maxItems 64
+     *
+     * Items: Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.
+     */
+    planned_kinds: [string, ...string[]];
+    /**
+     * What became of the fallback. Open vocabulary; documented values: applied. A client must tolerate values it does not know.
+     */
+    outcome: string;
 }
 export interface BoundSubjectReceipt {
     result_id: string;
