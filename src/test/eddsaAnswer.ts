@@ -21,6 +21,9 @@ export interface MintOptions {
     org?: string;
     kid?: string;
     iss?: string;
+    alg?: string;
+    /** `null` leaves the typ member out of the header. */
+    typ?: string | null;
     pad?: number;
 }
 
@@ -30,7 +33,13 @@ export const inSeconds = (ahead: number): number => Math.floor(Date.now() / 1000
 export function mint(opts: MintOptions = {}): string {
     const aud = opts.aud ?? "dev-health-api";
     const nowS = Math.floor(Date.now() / 1000);
-    const header = b64(JSON.stringify({ alg: "EdDSA", typ: "at+jwt", kid: opts.kid ?? "kid-1" }));
+    const header = b64(
+        JSON.stringify({
+            alg: opts.alg ?? "EdDSA",
+            ...(opts.typ === null ? {} : { typ: opts.typ ?? "at+jwt" }),
+            kid: opts.kid ?? "kid-1",
+        }),
+    );
     const payload = b64(
         JSON.stringify({
             iss: opts.iss ?? ISSUER,

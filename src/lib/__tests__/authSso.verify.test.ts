@@ -127,6 +127,22 @@ describe.each(completions)("the %s completion verifies the access token", (_name
         expect(await complete(cfg)).toMatchObject({ kind: "refused", code: "sso_failed" });
     });
 
+    it.each(["HS256", "none"])(
+        "refuses header alg %s on a token the pinned key really signed",
+        async (alg) => {
+            serve(answer(mint({ org: ORG, exp: inSeconds(1800), alg })));
+            expect(await complete(cfg)).toMatchObject({ kind: "refused", code: "sso_failed" });
+        },
+    );
+
+    it.each([["JWT"], [null]])(
+        "refuses header typ %s on a token the pinned key really signed",
+        async (typ) => {
+            serve(answer(mint({ org: ORG, exp: inSeconds(1800), typ })));
+            expect(await complete(cfg)).toMatchObject({ kind: "refused", code: "sso_failed" });
+        },
+    );
+
     it("refuses an expired token", async () => {
         serve(answer(mint({ org: ORG, exp: inSeconds(-5) })));
         expect(await complete(cfg)).toMatchObject({ kind: "refused", code: "sso_failed" });
