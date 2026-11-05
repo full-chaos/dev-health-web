@@ -692,3 +692,30 @@ describe("S7 no path needs or regains the delegated service token", () => {
         expect(writes.filter((x) => x.value === "value.token")).toHaveLength(1);
     });
 });
+
+describe("S8 the target e-mail is served from the status read of the request, not kept in the cookie", () => {
+    it("the token holds no address; the session of that read shows it", async () => {
+        const token = await impersonating("valid", "valid");
+        resetImpersonationStatusForTests();
+        calls.length = 0;
+        const next = await later({ ...token, impersonated_email: "older-cookie@example.test" });
+        expect(calls.filter((c) => c.path.endsWith("/impersonate/status"))).toHaveLength(1);
+        expect(next.impersonated_email).toBeUndefined();
+        expect(JSON.stringify(next)).not.toContain("@example.test");
+        const s = await session(next);
+        expect(s.user.impersonated_email).toBe("target@example.test");
+        expect(s.user.impersonated_user_id).toBe("target-1");
+    });
+
+    it("no status answer in the request: no address, the impersonation state is kept", async () => {
+        const token = await impersonating("valid", "valid");
+        backend.status = 503;
+        resetImpersonationStatusForTests();
+        const next = await later(token);
+        expect(next.is_impersonating).toBe(true);
+        expect(next.imp_access_token).toBe(DELEGATED);
+        const s = await session(next);
+        expect(s.user.is_impersonating).toBe(true);
+        expect(s.user.impersonated_email).toBeUndefined();
+    });
+});

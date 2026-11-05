@@ -1287,7 +1287,19 @@ describe("jwt callback — token lifecycle", () => {
         expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/admin/impersonate/status");
         expect(result.is_impersonating).toBe(true);
         expect(result.impersonated_user_id).toBe("target-1");
-        expect(result.impersonated_email).toBe("target@example.com");
+        // The e-mail is served on the session of this read, never kept in the cookie (CHAOS-13105).
+        expect(result.impersonated_email).toBeUndefined();
+        expect(JSON.stringify(result)).not.toContain("target@example.com");
+        const session = await (
+            nextAuthConfig.value as {
+                callbacks: {
+                    session: (
+                        p: Record<string, unknown>,
+                    ) => Promise<{ user: Record<string, unknown> }>;
+                };
+            }
+        ).callbacks.session({ session: { user: {} }, token: result });
+        expect(session.user.impersonated_email).toBe("target@example.com");
         expect(result.impersonated_org_id).toBe("org-target");
     });
 

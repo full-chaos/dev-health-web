@@ -170,7 +170,7 @@ describe("impersonation status: one shared backend read for callers that arrive 
         for (const token of tokens) {
             expect(token.is_impersonating).toBe(true);
             expect(token.impersonated_user_id).toBe("target-stale");
-            expect(token.impersonated_email).toBe("stale@example.test");
+            expect(token.impersonated_email).toBeUndefined();
             expect(token.impersonated_org_id).toBe("org-stale");
         }
     });

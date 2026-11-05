@@ -39,6 +39,11 @@ import { ssoEnabled, type SsoSession } from "@/lib/authSso";
 
 const authLogger = logger.child({ module: "auth" });
 
+// The target's e-mail, from the status answer of the JWT callback run that returned the token, for
+// the session of that same read only: it is not kept in the session cookie (CHAOS-13105 byte
+// budget). No status answer in a run: the banner shows no address.
+const targetEmailOfRun = new WeakMap<object, string>();
+
 // No request reaches the jwt callback: read the incoming headers; outside a request scope send none.
 async function refreshClientIp(): Promise<string | undefined> {
     try {
@@ -552,7 +557,10 @@ const nextAuth = NextAuth({
                     if (status.is_impersonating === false) clearImpersonationToken(token);
                     token.is_impersonating = status.is_impersonating;
                     token.impersonated_user_id = status.impersonated_user_id;
-                    token.impersonated_email = status.impersonated_email;
+                    token.impersonated_email = undefined;
+                    if (status.is_impersonating && status.impersonated_email) {
+                        targetEmailOfRun.set(token, status.impersonated_email);
+                    }
                     token.impersonated_org_id = status.impersonated_org_id;
                 }
             }
@@ -577,7 +585,9 @@ const nextAuth = NextAuth({
                 session.user.is_impersonating = !!token.is_impersonating;
                 session.user.impersonated_user_id = token.impersonated_user_id as
                     string | undefined;
-                session.user.impersonated_email = token.impersonated_email as string | undefined;
+                session.user.impersonated_email = token.is_impersonating
+                    ? targetEmailOfRun.get(token)
+                    : undefined;
                 session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
                 // org_id is the EFFECTIVE org: while impersonating it is the
                 // impersonation target's org, so every consumer (proxy, GraphQL
