@@ -13,12 +13,12 @@ describe("workload modules are server-only", () => {
         const text = readFileSync(path.join(dir, file), "utf8");
         expect(text.startsWith('import "server-only";\n')).toBe(true);
     });
-    it("the bundle check registers the module and its endpoint marker", () => {
+    it("the bundle check does not yet list the token module", () => {
+        // The row comes with the first consumer: the build drops a module with no consumer, and the check then fails on its marker.
         const script = readFileSync(
             path.resolve(__dirname, "../../../../../scripts/check-client-bundle.mjs"),
             "utf8",
         );
-        expect(script).toContain("src/lib/auth/workload/token.ts");
-        expect(script).toContain("/internal/v1/token/exchange");
+        expect(script).not.toContain("src/lib/auth/workload/token.ts");
     });
 });

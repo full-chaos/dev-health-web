@@ -60,7 +60,6 @@ export const SERVER_ONLY_MODULES = [
     { file: "src/lib/auth/authorize/client.ts", markers: ["/v1/authorize:batch"] },
     { file: "src/lib/auth/shadow/run.ts", markers: ["authzShadowSample"] },
     { file: "src/lib/auth/decide/decide.ts", markers: ["authz_decide_failed"] },
-    { file: "src/lib/auth/workload/token.ts", markers: ["/internal/v1/token/exchange"] },
     { file: "src/lib/auth/platform/limits.ts", markers: ["impersonation_limit"] },
 ];
 
