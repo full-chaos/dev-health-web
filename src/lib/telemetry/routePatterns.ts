@@ -31,6 +31,10 @@ export const ROUTE_TEMPLATES: readonly string[] = [
     "/superadmin/users/new",
     "/superadmin/users/[id]",
     "/api/agent-context/evidence/[evidenceRefId]",
+    "/api/v1/auth/oidc/[providerId]",
+    "/api/v1/auth/saml/[providerId]",
+    "/auth/sso/oidc/[providerId]",
+    "/auth/sso/saml/[providerId]",
 ];
 
 const COMPILED = ROUTE_TEMPLATES.map((template) => ({

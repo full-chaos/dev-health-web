@@ -30,10 +30,27 @@ const NEXT_HANDLED_API_PREFIXES = [
 ] as const;
 const NEXT_HANDLED_API_SEGMENT_FAMILIES = ["/api/ask-dev"] as const;
 
+const SSO_PROVIDER = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const SSO_OIDC_CALLBACK = new RegExp(`^/api/v1/auth/oidc/${SSO_PROVIDER}/callback$`, "i");
+const SSO_SAML_ACS = new RegExp(`^/api/v1/auth/saml/${SSO_PROVIDER}/acs$`, "i");
+
+/**
+ * The two browser callbacks of enterprise SSO (CHAOS-13035): the OIDC redirect (GET) and the SAML
+ * form POST. The backend binds its login cookies to exactly these paths on the web origin, so Next
+ * route handlers serve them; the other SSO paths stay with Ops.
+ */
+export function isSsoCallbackPath(method: string, rawPathname: string): boolean {
+    const pathname = routedPathname(rawPathname);
+    if (method === "GET") return SSO_OIDC_CALLBACK.test(pathname);
+    if (method === "POST") return SSO_SAML_ACS.test(pathname);
+    return false;
+}
+
 export function shouldProxyToOps(rawPathname: string): boolean {
     const pathname = routedPathname(rawPathname);
     if (pathname === "/graphql") return true;
     if (!pathname.startsWith("/api/")) return false;
+    if (SSO_OIDC_CALLBACK.test(pathname) || SSO_SAML_ACS.test(pathname)) return false;
     if (NEXT_HANDLED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false;
     return !NEXT_HANDLED_API_SEGMENT_FAMILIES.some(
         (family) => pathname === family || pathname.startsWith(`${family}/`),
