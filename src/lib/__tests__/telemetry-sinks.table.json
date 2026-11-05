@@ -216,7 +216,7 @@
         "sentry": 0
     },
     "src/lib/authSessionLog.ts": {
-        "log": 2,
+        "log": 1,
         "sentry": 0
     },
     "src/lib/billing/actions/subscription.ts": {
