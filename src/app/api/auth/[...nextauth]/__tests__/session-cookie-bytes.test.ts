@@ -178,6 +178,8 @@ async function signIn(shape: Shape) {
 // JWT-sized field in the session turns the test red long before the proxy limits are reached:
 // nginx proxy_buffer_size 32k (4k before) for the response header block, 8k for the request
 // Cookie line (large_client_header_buffers 4 8k). Raising one needs a re-measure and a look at both.
+// Hard limits: request Cookie line 8192 = nginx large_client_header_buffers 4 8k; response headers 32768 = prod proxy-buffer-size 32k.
+// A budget raise must stay under them.
 const TYPICAL: Shape = {
     requestBudget: 3072, // measured 2777 B
     responseBudget: 3072, // measured 2754 B
