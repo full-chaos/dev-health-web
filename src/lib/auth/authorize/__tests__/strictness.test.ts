@@ -109,23 +109,23 @@ describe("expiry is compared in milliseconds", () => {
         async () => ({ status: 200, body });
     const expired = decision({ expires_at: "2027-06-01T00:00:00.500Z" });
 
-    it("denies a decision that expired 100 ms ago (single)", async () => {
+    it("accepts a decision that expired 100 ms ago as non-cacheable (single)", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2027-06-01T00:00:00.600Z"));
         const o = await authorize(REQ, {
             transport: reply(JSON.stringify(expired)),
             timeoutMs: 1000,
         });
-        expect(o).toEqual({ allowed: false, source: "client", reason: "expired" });
+        expect(o).toMatchObject({ allowed: true, decision: { cacheable: false } });
     });
-    it("denies every entry of a batch holding one that expired 100 ms ago", async () => {
+    it("accepts a batch entry that expired 100 ms ago as non-cacheable", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2027-06-01T00:00:00.600Z"));
         const out = await authorizeBatch([REQ, REQ], {
             transport: reply(batchOf([decision(), expired])),
             timeoutMs: 1000,
         });
-        expect(out.map((o) => o.allowed)).toEqual([false, false]);
+        expect(out.map((o) => o.allowed)).toEqual([true, true]);
     });
     it("allows the same decision 100 ms before it expires", async () => {
         vi.useFakeTimers();

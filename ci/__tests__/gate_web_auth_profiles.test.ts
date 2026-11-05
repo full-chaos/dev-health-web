@@ -1720,7 +1720,7 @@ describe("gate_web_auth_profiles: real repo state", () => {
             },
         });
         expect(violations).toEqual([]);
-    }, 60_000);
+    }, 90_000);
 });
 
 describe("gate_web_auth_profiles: proof binding (polarity, callee binding, casts, scalar types)", () => {

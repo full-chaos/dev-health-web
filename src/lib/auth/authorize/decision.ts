@@ -4,7 +4,7 @@ import { isRepositoryKeyOrAll } from "./repositoryKey";
 
 // authorization_decision.v1 and authorization_batch_response.v1 client rules
 // (contracts/auth/v1/jsonschema, pinned from dev-health-ops). Pure: no I/O.
-// Anything that is not a valid, unexpired, unambiguous decision is a refusal.
+// Anything that is not a valid, unambiguous decision is a refusal. An expires_at at or before now is valid for its own request only (not cacheable).
 
 export const WIRE_REASON_CODES = [
     "allowed_by_membership_default",
@@ -42,7 +42,6 @@ export type ParseFailure =
     | "bad_shape"
     | "unknown_reason"
     | "reason_mismatch"
-    | "expired"
     | "batch_count_mismatch"
     | "batch_index_mismatch";
 
@@ -65,6 +64,8 @@ export interface Decision {
     organizationId: string | null;
     policyRevision: number;
     expiresAtMs: number;
+    // true only when expires_at is after the time of the answer; false means "valid for this request, never reuse".
+    cacheable: boolean;
     obligations?: Obligations;
 }
 
@@ -204,7 +205,6 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
         if (doc.allowed === false) refuse("bad_shape");
         obligations = parseObligations(doc.obligations);
     }
-    if (expiresAtMs <= nowMs) refuse("expired");
     const decision: Decision = {
         decisionId: doc.decision_id as string,
         allowed: doc.allowed as boolean,
@@ -213,6 +213,7 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
         organizationId: org as string | null,
         policyRevision: rev as number,
         expiresAtMs,
+        cacheable: expiresAtMs > nowMs,
     };
     if (obligations) decision.obligations = obligations;
     return decision;

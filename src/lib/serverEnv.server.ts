@@ -23,6 +23,12 @@ const serverEnvSchema = z.object({
     NEXTAUTH_URL: z.string().optional(),
     /** Pinned issuer of the EdDSA access tokens; sign-in and refresh need it. */
     AUTH_ACCESS_TOKEN_ISSUER: z.string().optional(),
+    /** One base URL of the auth-service listener that serves the workload token exchange. */
+    AUTH_INTERNAL_URL: z.string().optional(),
+    /** File holding the projected ServiceAccount token (re-read on each exchange). */
+    AUTH_WORKLOAD_SUBJECT_FILE: z.string().optional(),
+    /** Issuer of the workload tokens (https URL). */
+    AUTH_WORKLOAD_ISSUER: z.string().optional(),
     /** "true" or "1" turns on enterprise SSO sign-in (OIDC, SAML); unset = off. */
     AUTH_SSO_ENABLED: z.string().optional(),
     AUTH_GITHUB_ID: z.string().optional(),
