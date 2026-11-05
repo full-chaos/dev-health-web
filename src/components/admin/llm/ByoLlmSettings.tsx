@@ -9,6 +9,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
+import { TARGET_CHANGE_NEEDS_KEY_MESSAGE } from "@/lib/admin/categorizeRefusals";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { fetchLLMModels } from "@/lib/admin/llmModelsClient";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -340,6 +341,7 @@ export function ByoLlmSettings({
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
     const [modelError, setModelError] = useState<string | null>(null);
+    const [apiKeyError, setApiKeyError] = useState<string | null>(null);
     const [budgetInputError, setBudgetInputError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -497,6 +499,7 @@ export function ByoLlmSettings({
         setFormError(null);
         setBaseUrlError(null);
         setModelError(null);
+        setApiKeyError(null);
         setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("edit");
@@ -513,6 +516,7 @@ export function ByoLlmSettings({
         setFormError(null);
         setBaseUrlError(null);
         setModelError(null);
+        setApiKeyError(null);
         setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("view");
@@ -526,6 +530,15 @@ export function ByoLlmSettings({
         const trimmedModel = model.trim();
         if (!trimmedModel) {
             setModelError(MODEL_REQUIRED_MESSAGE);
+            return;
+        }
+        // A stored key is bound to the provider and base URL it was saved with: a change of either needs it again.
+        const targetChanged =
+            savedSettings !== null &&
+            (provider.trim().toLowerCase() !== (savedSettings.provider ?? "") ||
+                baseUrl.trim() !== (savedSettings.base_url ?? ""));
+        if (hasStoredKey && targetChanged && !apiKey.trim()) {
+            setApiKeyError(TARGET_CHANGE_NEEDS_KEY_MESSAGE);
             return;
         }
         const parsedBudget = parseMicroUsdInput(budgetUsd);
@@ -545,6 +558,7 @@ export function ByoLlmSettings({
         setFormError(null);
         setBaseUrlError(null);
         setModelError(null);
+        setApiKeyError(null);
         setBudgetInputError(null);
         const payload: LLMSettingsUpsert = {
             provider: provider.trim(),
@@ -568,6 +582,8 @@ export function ByoLlmSettings({
                 setBudgetInputError(result.error);
             } else if (result.error && result.code === "model_required") {
                 setModelError(result.error);
+            } else if (result.code === "provider_or_base_url_change_requires_api_key") {
+                setApiKeyError(TARGET_CHANGE_NEEDS_KEY_MESSAGE);
             } else {
                 setBaseUrlError(result.error ?? "The base URL is invalid.");
             }
@@ -1153,8 +1169,19 @@ export function ByoLlmSettings({
                                 value={apiKey}
                                 placeholder={hasStoredKey ? (maskedKey ?? "••••••••") : "sk-..."}
                                 onChange={(e) => setApiKey(e.target.value)}
-                                className={inputClass}
+                                className={`${inputClass} ${apiKeyError ? "border-(--negative)/60" : ""}`}
+                                aria-invalid={apiKeyError ? true : undefined}
+                                aria-describedby={apiKeyError ? "byo-api-key-error" : undefined}
                             />
+                            {apiKeyError ? (
+                                <p
+                                    id="byo-api-key-error"
+                                    role="alert"
+                                    className="mt-1 text-xs text-(--negative)"
+                                >
+                                    {apiKeyError}
+                                </p>
+                            ) : null}
                             <p className={captionClass}>
                                 {hasStoredKey
                                     ? "Encrypted at rest, never returned. Enter a new key to replace the stored key."

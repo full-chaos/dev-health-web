@@ -587,6 +587,63 @@ describe("ByoLlmSettings", () => {
         expect("api_key" in payload).toBe(false);
     });
 
+    it("asks for the API key again when the provider changes and a key is stored", async () => {
+        mockLoad.mockResolvedValue({
+            data: { provider: "openai", model: "gpt-4o", api_key: "sk-1…last" },
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "anthropic");
+        await userEvent.clear(screen.getByLabelText("Model"));
+        await userEvent.type(screen.getByLabelText("Model"), "claude-haiku-5-5");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(
+            await screen.findByText("A new provider or base URL needs its API key entered again."),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText("API Key")).toHaveAttribute("aria-invalid", "true");
+        expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it("asks for the API key again when the base URL changes and a key is stored", async () => {
+        mockLoad.mockResolvedValue({
+            data: { provider: "openai", model: "gpt-4o", api_key: "sk-1…last" },
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.type(screen.getByLabelText("Base URL"), "https://8.8.8.8/v1");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(
+            await screen.findByText("A new provider or base URL needs its API key entered again."),
+        ).toBeInTheDocument();
+        expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it("shows the backend refusal of a provider or base URL change on the API key field", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        mockSave.mockResolvedValue({
+            error: "A new provider or base URL needs its API key entered again.",
+            status: 400,
+            code: "provider_or_base_url_change_requires_api_key",
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(
+            await screen.findByText("A new provider or base URL needs its API key entered again."),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText("API Key")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByLabelText("Base URL")).not.toHaveAttribute("aria-invalid", "true");
+    });
+
     it("blocks saving until settings load successfully after a retry", async () => {
         mockLoad
             .mockResolvedValueOnce({
