@@ -29,7 +29,13 @@ import { deadlineFetch } from "@/lib/serverDeadline";
 // and an error name, never a token, an address or a password.
 
 export type WireOperation =
-    "login" | "refresh" | "switch_org" | "change_password" | "social_login" | "sso_login";
+    | "login"
+    | "refresh"
+    | "switch_org"
+    | "change_password"
+    | "social_login"
+    | "sso_login"
+    | "create_workspace";
 
 export interface WireConfig {
     /** AUTH_ACCESS_TOKEN_ISSUER, the pinned issuer; every operation needs it. */
@@ -428,7 +434,7 @@ export type ExchangeRead =
 export async function readExchangeAnswer(
     answer: { readonly accessToken: string; readonly sessionAccessToken?: unknown },
     cfg: WireConfig,
-    operation: "switch_org" | "change_password" | "social_login",
+    operation: "switch_org" | "change_password" | "social_login" | "create_workspace",
 ): Promise<ExchangeRead> {
     if (!checkConfig(cfg, operation)) return { kind: "refused" };
     const tokens = await readAnswerTokens(answer, cfg, operation);

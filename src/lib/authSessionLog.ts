@@ -68,7 +68,8 @@ export interface SessionBranchFields {
         | "switch_org"
         | "change_password"
         | "social_login"
-        | "sso_login";
+        | "sso_login"
+        | "create_workspace";
     readonly branch: SessionBranch;
     /** HTTP status of the backend answer. Absent when no answer arrived. */
     readonly status?: number;

@@ -248,7 +248,7 @@
         "sentry": 0
     },
     "src/lib/onboarding/actions.ts": {
-        "log": 7,
+        "log": 8,
         "sentry": 0
     },
     "src/lib/onboarding/track.ts": {
