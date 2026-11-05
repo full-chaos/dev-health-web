@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // One ordered impersonation state step runs first in the JWT callback: an expired delegated token
@@ -63,7 +65,7 @@ vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 import { decode } from "next-auth/jwt";
 import { requireSession, SESSION_HANDOFF_SALT, sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
-import { startImpersonation } from "@/lib/admin/server";
+import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 
 type Obj = Record<string, unknown>;
 type Cb = {
@@ -615,5 +617,78 @@ describe("S6 the status read clears imp_* only on an administrator-bearer answer
         expect(next.imp_access_token).toBe(DELEGATED);
         expect(next.is_impersonating).toBe(true);
         expect((await session(next)).access_token).toBe(DELEGATED);
+    });
+});
+
+describe("S7 no path needs or regains the delegated service token", () => {
+    it("stop and the status read carry the administrator bearer while the session has no service token", async () => {
+        const token = await impersonating("valid", "valid");
+        const s = await session(token);
+        expect(s.access_token).toBe(DELEGATED);
+        expect(s.session_access_token).toBeUndefined();
+        resetImpersonationStatusForTests();
+        calls.length = 0;
+        await later(token);
+        sessionRead.mockResolvedValue(s);
+        const r = await stopImpersonation();
+        expect(r.error).toBeUndefined();
+        const admin = calls.filter((c) => c.path.includes("/api/v1/admin/impersonate/"));
+        expect(admin.map((c) => c.path.split("/").pop()).sort()).toEqual(["status", "stop"]);
+        for (const c of admin) expect(c.bearer).toBe(ADMIN);
+        for (const c of calls) expect(c.bearer).not.toBe(DELEGATED_SERVICE);
+    });
+
+    // Static census of the source: the delegated service token has no field, the service bearer has
+    // one user (change-password, refused while impersonating), and every write of a session's
+    // service token outside setServiceToken (auth.ts; fed by login, refresh, social, activeOrg and
+    // SSO answers of the administrator) clears it.
+    const sources = (dir: string): string[] =>
+        readdirSync(dir).flatMap((name) => {
+            const path = join(dir, name);
+            if (statSync(path).isDirectory()) return name === "__tests__" ? [] : sources(path);
+            return /\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
+        });
+    const files = sources(join(process.cwd(), "src")).map((path) => ({
+        path: path.slice(process.cwd().length + 1),
+        text: readFileSync(path, "utf8"),
+    }));
+
+    it("no source file holds a delegated service token field", () => {
+        expect(files.length).toBeGreaterThan(100);
+        expect(files.filter((f) => f.text.includes("imp_session_access_token"))).toEqual([]);
+    });
+
+    it("the service bearer has one user, refused while impersonating before any call", () => {
+        const users = files
+            .filter((f) => /\bserviceBearer\(/.test(f.text))
+            .map((f) => f.path)
+            .sort();
+        expect(users).toEqual([
+            "src/app/api/auth/change-password/route.ts",
+            "src/lib/authServiceOutcome.ts",
+        ]);
+        const route = files.find(
+            (f) => f.path === "src/app/api/auth/change-password/route.ts",
+        )!.text;
+        expect(route.indexOf("session.user?.is_impersonating")).toBeGreaterThan(-1);
+        expect(route.indexOf("session.user?.is_impersonating")).toBeLessThan(
+            route.indexOf("serviceBearer(session)"),
+        );
+    });
+
+    it("every other write of a session service token clears it", () => {
+        const writes = files.flatMap((f) =>
+            [...f.text.matchAll(/token\.session_access_token = ([^;]+);/g)].map((m) => ({
+                path: f.path,
+                value: m[1].trim(),
+            })),
+        );
+        expect(writes).toEqual(
+            expect.arrayContaining([{ path: "src/lib/auth.ts", value: "value.token" }]),
+        );
+        for (const w of writes.filter((x) => x.value !== "value.token")) {
+            expect(w.value).toBe("undefined");
+        }
+        expect(writes.filter((x) => x.value === "value.token")).toHaveLength(1);
     });
 });

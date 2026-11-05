@@ -124,13 +124,6 @@ const update = (token: Obj, sessionHandoff?: string) =>
         session: sessionHandoff ? { sessionHandoff } : {},
     });
 
-async function handoffFrom(res: Response): Promise<string> {
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { sessionHandoff?: string };
-    expect(body.sessionHandoff).toEqual(expect.any(String));
-    return body.sessionHandoff as string;
-}
-
 // The three questions, asked of the token a path left behind.
 async function expectAdminKept(token: Obj, adminAccess = ADMIN, adminRefresh = "refresh-admin-1") {
     expect(token.access_token).toBe(adminAccess);
@@ -243,18 +236,33 @@ beforeEach(() => {
 const post = (path: string, body: unknown) =>
     new Request(`http://web.test${path}`, { method: "POST", body: JSON.stringify(body) });
 
+// While impersonating, both routes refuse before any backend call (no service token is held, and
+// the pair is the administrator's). The jwt guard is still asked about the handoff those routes
+// mint, as one sealed before the impersonation started would arrive (120 s life).
+async function refusedWhileImpersonating(res: Response) {
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "Not available while impersonating" });
+    expect(calls).toHaveLength(0);
+}
+
 async function switchOrgHandoff(token: Obj): Promise<string> {
     sessionRead.mockResolvedValue(await session(token));
-    return handoffFrom(await switchOrg(post("/api/auth/switch-org", { org_id: "org-b" })));
+    calls.length = 0;
+    await refusedWhileImpersonating(
+        await switchOrg(post("/api/auth/switch-org", { org_id: "org-b" })),
+    );
+    return sealSessionHandoff("activeOrg", targetPair, "admin-1");
 }
 
 async function changePasswordHandoff(token: Obj): Promise<string> {
     sessionRead.mockResolvedValue(await session(token));
-    return handoffFrom(
+    calls.length = 0;
+    await refusedWhileImpersonating(
         await changePassword(
             post("/api/auth/change-password", { current_password: "a", new_password: "b" }),
         ),
     );
+    return sealSessionHandoff("activeOrg", targetPair, "admin-1");
 }
 
 describe("G1 switch-org (activeOrg handoff) while impersonating", () => {
