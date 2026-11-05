@@ -81,6 +81,7 @@ describe.each(routes)("github-app $name route, impersonation limits", ({ call, b
             { action: "integrations.write", cause: "impersonating", surface: "org_write" },
             "impersonation_limit",
         );
+        expect(mocks.info).toHaveBeenCalledTimes(1);
     });
 
     it("C7 enforce: an impersonating admin role does not pass either", async () => {

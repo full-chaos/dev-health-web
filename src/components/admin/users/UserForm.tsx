@@ -1,5 +1,6 @@
 import type { SyntheticEvent } from "react";
 import type { UserCreate, User } from "@/lib/admin/types";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -20,6 +21,7 @@ export function UserForm({
     isEdit = false,
     isLoading = false,
 }: UserFormProps) {
+    const { impersonationLimited } = useAdminNav();
     const { formData, handleChange } = useBaseFormState<UserFormData>({
         email: initialData?.email || "",
         full_name: initialData?.full_name || "",
@@ -38,6 +40,7 @@ export function UserForm({
             onSubmitAction={handleSubmit}
             onCancelAction={onCancel}
             isLoading={isLoading}
+            hideSubmit={impersonationLimited}
             submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : CTA_LABELS.addUser}
             className="max-w-2xl space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
             contentClassName="grid gap-6 md:grid-cols-2"
