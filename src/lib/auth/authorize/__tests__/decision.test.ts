@@ -104,11 +104,11 @@ describe("parseDecision", () => {
         delete d.expires_at;
         expect(parseDecision(JSON.stringify(d), NOW).ok).toBe(false);
     });
-    it("refuses an expired allow and an expired deny", () => {
-        expect(one({ expires_at: PAST }).ok).toBe(false);
-        expect(one({ allowed: false, reason_code: "grant_absent", expires_at: PAST }).ok).toBe(
-            false,
-        );
+    it("accepts a past allow and a past deny as non-cacheable", () => {
+        const allow = one({ expires_at: PAST });
+        expect(allow.ok && allow.decision.cacheable).toBe(false);
+        const deny = one({ allowed: false, reason_code: "grant_absent", expires_at: PAST });
+        expect(deny.ok && deny.decision.cacheable).toBe(false);
     });
     it("refuses a decimal-form policy_revision", () => {
         const text = JSON.stringify(decision()).replace(
@@ -160,8 +160,8 @@ describe("parseBatch", () => {
         const text = batch([item(0), item(1)]).replace('"index":1', '"index":1.0');
         expect(parseBatch(text, 2, NOW).ok).toBe(false);
     });
-    it("refuses the whole batch when one item is expired or invalid", () => {
-        expect(parseBatch(batch([item(0), item(1, { expires_at: PAST })]), 2, NOW).ok).toBe(false);
+    it("refuses the whole batch when one item is invalid; a past item is accepted", () => {
+        expect(parseBatch(batch([item(0), item(1, { expires_at: PAST })]), 2, NOW).ok).toBe(true);
         expect(parseBatch(batch([item(0), item(1, { reason_code: "nope" })]), 2, NOW).ok).toBe(
             false,
         );
