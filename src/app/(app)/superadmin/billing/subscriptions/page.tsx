@@ -19,7 +19,10 @@ export default async function SuperadminSubscriptionsPage({
 }: {
     searchParams: SubscriptionsPageSearchParams;
 }) {
-    await requireSuperuser("/superadmin/billing/subscriptions");
+    await requireSuperuser(
+        "/superadmin/billing/subscriptions",
+        "page:/superadmin/billing/subscriptions",
+    );
     const resolvedSearchParams = await searchParams;
     const orgId = firstValue(resolvedSearchParams.org_id);
 

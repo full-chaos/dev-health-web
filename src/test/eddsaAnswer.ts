@@ -18,6 +18,7 @@ export interface MintOptions {
     sid?: string;
     sub?: string;
     act?: string;
+    org?: string;
     kid?: string;
     pad?: number;
 }
@@ -41,6 +42,7 @@ export function mint(opts: MintOptions = {}): string {
             nbf: nowS - 10,
             exp: opts.exp ?? nowS + 3000,
             scope: aud === "auth-service" ? "auth:session" : "api:access",
+            ...(opts.org === undefined ? {} : { org_id: opts.org }),
             ...(opts.act === undefined ? {} : { act: { sub: opts.act } }),
         }),
     );

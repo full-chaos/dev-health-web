@@ -33,6 +33,7 @@ const GENERAL_TIERS = [
             `graphql:wire-parity:check --ops-root ${path.join(ROOT, "dev-health-ops-main")}`,
             "lint",
             "typecheck",
+            "check:org-provisioning",
             "audit --audit-level=high --prod --json",
         ],
         jobId: "quality",
@@ -41,6 +42,7 @@ const GENERAL_TIERS = [
             "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
             lint: "eslint src",
             typecheck: "tsc --noEmit",
+            "check:org-provisioning": "node scripts/check-org-provisioning-calls.mjs",
         },
         tier: "quality",
     },
@@ -61,7 +63,7 @@ const GENERAL_TIERS = [
         tier: "unit",
     },
 ];
-const E2E_STAGES = ["e2e-default", "e2e-onboarding"];
+const E2E_STAGES = ["e2e-default", "e2e-onboarding", "visual"];
 // Route-stress suites and Context Fabric run inside the e2e-onboarding job
 // (one runner, four sequential suites — GitHub concurrency limits).
 const DEDICATED_E2E = [
@@ -81,6 +83,12 @@ const E2E_HARNESS_CASES = [
         expectedCommand: "test:e2e:customer-push",
         failScript: "test:e2e:customer-push",
         name: "customer push",
+    },
+    {
+        args: ["e2e-visual"],
+        expectedCommand: "test:e2e:visual",
+        failScript: "test:e2e:visual",
+        name: "visual",
     },
     {
         args: ["e2e-navigation"],

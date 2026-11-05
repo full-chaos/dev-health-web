@@ -205,7 +205,8 @@ is in the acr JWKS file (`ACR_WEB_ASSERTION_JWKS_FILE`). Do the steps in this
 order:
 
 1. Add the new public key (Ed25519, new kid) to the acr JWKS file next to the
-   old one. acr now accepts both kids.
+   old one, and set `retire_after` on the old member (up to 24 h ahead). acr now accepts
+   both kids.
 2. Record the row with the ops verb: `auth-migrate workload-assertion-key-set
 -workload <web workload> -issuer <https issuer of this signer> -kid <new kid>
 -status active -rotated-at <RFC 3339> -retire-previous-after <up to 24h>
@@ -216,8 +217,15 @@ order:
    the old row `retired` with the same verb (`-status retired`, same
    `-rotated-at`).
 
-No key goes into the registry, this repo or a log; names only. Until acr bounds a
-kid by time, step 4 is an operator action and is not enforced.
+No key goes into the registry, this repo or a log; names only.
+
+acr bounds a kid by time (CHAOS-12380): a JWKS member may carry `retire_after` (RFC 3339).
+acr refuses that kid at and after the instant (no clock skew) and refuses a `retire_after` more
+than 24 h ahead. Put the same `retire_after` on the old member in step 1, so the overlap ends
+without an operator action; step 4 then only tidies the file. A member without `retire_after`
+has no time bound. The drill `scripts/drills/assertion-key-rotation/drill.sh` runs this order
+against a real acr-api (CHAOS-11236): both kids are accepted inside the overlap, only the new
+kid after it.
 
 ### `credential:issue` provenance and the impersonation refusal (CHAOS-12095)
 

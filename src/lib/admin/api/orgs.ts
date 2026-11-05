@@ -1,8 +1,10 @@
-import { request } from "./_request";
+import { request, selfRequest } from "./_request";
 import type {
     Organization,
     OrganizationCreate,
     OrganizationUpdate,
+    OrgInvite,
+    OrgInviteCreate,
     Membership,
     MembershipCreate,
     MembershipUpdateRole,
@@ -61,6 +63,18 @@ export const orgsApi = {
             headerOrgId,
         ),
 
+    updateProfile: (
+        data: { name?: string; description?: string | null },
+        token?: string,
+        headerOrgId?: string,
+    ) =>
+        selfRequest<Organization>(
+            "/orgs/me",
+            { method: "PATCH", body: JSON.stringify(data) },
+            token,
+            headerOrgId,
+        ),
+
     delete: (orgId: string, token?: string, headerOrgId?: string) =>
         request<void>(`/orgs/${orgId}`, { method: "DELETE" }, token, headerOrgId),
 
@@ -76,6 +90,16 @@ export const orgsApi = {
             headerOrgId,
         );
         return normalizeDeletionResult(raw);
+    },
+
+    invites: {
+        create: (orgId: string, data: OrgInviteCreate, token?: string, headerOrgId?: string) =>
+            request<OrgInvite>(
+                `/orgs/${orgId}/invites`,
+                { method: "POST", body: JSON.stringify(data) },
+                token,
+                headerOrgId,
+            ),
     },
 
     members: {

@@ -10,10 +10,12 @@ import { afterEach, describe, expect, it } from "vitest";
 // before; ops deletes that ledger (dev-health-ops #3761).
 //
 // The tests run the real script, as the workflow does, on copies of the two
-// real ops files. The fixtures are byte copies from dev-health-ops main at
-// a5f74ace51 (git blobs 2f5fc818f1 and 8a4d48c222); the contract is the same
-// blob at the head of #3761. `planes.json.txt` has the `.txt` ending only so
-// that the formatter does not rewrite the copy.
+// ops files. `planes.json.txt` is a byte copy of contracts/ingress/v1/planes.json
+// at the ops commit named in ci/ops-contract.pin; live-e2e-plane-router-drift.test.ts
+// fails when it differs from the pinned ops file. It has the `.txt` ending only so
+// that the formatter does not rewrite the copy. `go_served_paths.tsv` is frozen at
+// dev-health-ops a5f74ace51 (git blob 8a4d48c222): ops deleted the ledger (#3761),
+// so there is no ops source and no drift check for it.
 
 const WEB_ROOT = resolve(__dirname, "../..");
 
@@ -118,6 +120,15 @@ afterEach(() => {
 });
 
 describe("generate-live-e2e-plane-router", () => {
+    it("holds no rule for the six retired legacy ingest paths", () => {
+        const contract = JSON.parse(readFileSync(join(FIXTURES, "planes.json.txt"), "utf8"));
+        const retired = contract.rules
+            .map((rule: { path: string }) => rule.path)
+            .filter((path: string) => path.startsWith("/api/v1/ingest/"));
+
+        expect(retired).toEqual([]);
+    });
+
     it("makes the router from the ingress contract when the ledger is gone (ops #3761)", () => {
         const ops = opsTree({ contract: true });
 
@@ -204,12 +215,16 @@ describe("generate-live-e2e-plane-router", () => {
         expect(new Set(route(fromContract, "query-api-paths").paths)).toEqual(
             new Set(route(fromLedger, "query-api-paths").paths),
         );
-        // go-api: each ledger path is in the contract. The contract has more
+        // go-api: each ledger path is in the contract, except the two dropped below. The contract has more
         // go-api paths; they went to go-api before too, through the catch-all.
         const contractGoPaths = new Set(route(fromContract, "go-api-paths").paths);
         const ledgerGoPaths = route(fromLedger, "go-api-paths").paths;
         expect(ledgerGoPaths.length).toBeGreaterThan(100);
-        expect(ledgerGoPaths.filter((path) => !contractGoPaths.has(path))).toEqual([]);
+        // The ledger is frozen at a5f74ace51; the pinned contract dropped these two webhook paths.
+        expect(ledgerGoPaths.filter((path) => !contractGoPaths.has(path))).toEqual([
+            "/api/v1/webhooks/gitlab",
+            "/api/v1/webhooks/jira",
+        ]);
         for (const name of ["go-api-paths", "query-api-paths", "api-catchall"]) {
             expect(servicePort(fromContract, name)).toBe(servicePort(fromLedger, name));
         }

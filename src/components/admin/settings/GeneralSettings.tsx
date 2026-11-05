@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { updateOrgProfile } from "@/lib/admin/server";
@@ -13,6 +14,7 @@ type GeneralSettingsProps = {
 
 export function GeneralSettings({ org }: GeneralSettingsProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const { impersonationLimited } = useAdminNav();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -85,11 +87,13 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2) disabled:opacity-50"
                     />
                 </div>
-                <div className="flex justify-end">
-                    <Button type="submit" variant="primary" disabled={isLoading}>
-                        {isLoading ? "Saving..." : "Save Changes"}
-                    </Button>
-                </div>
+                {impersonationLimited ? null : (
+                    <div className="flex justify-end">
+                        <Button type="submit" variant="primary" disabled={isLoading}>
+                            {isLoading ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </div>
+                )}
             </form>
         </SettingsSection>
     );

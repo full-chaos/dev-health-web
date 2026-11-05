@@ -20,7 +20,7 @@ export default async function AdminInvoicesPage({
 }: {
     searchParams: InvoicesPageSearchParams;
 }) {
-    await requireSuperuser("/superadmin/billing/invoices");
+    await requireSuperuser("/superadmin/billing/invoices", "page:/superadmin/billing/invoices");
     const resolvedSearchParams = await searchParams;
     const orgId = firstValue(resolvedSearchParams.org_id);
 

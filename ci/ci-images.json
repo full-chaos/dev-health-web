@@ -13,6 +13,13 @@
             "dest": "traefik",
             "tag": "v3.1",
             "digest": "sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56"
+        },
+        "playwright": {
+            "repo": "playwright",
+            "dest": "playwright",
+            "tag": "v1.64.1-noble",
+            "digest": "sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f",
+            "sourceRegistry": "mcr.microsoft.com"
         }
     }
 }

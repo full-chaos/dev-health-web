@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // `ioredis` is mocked with an in-memory fake, so `getRedis()` never opens a
 // socket even when `REDIS_URL` is exported in the environment. Each `describe`
@@ -77,6 +77,14 @@ function expectNoUnstubbedRedisCommands(): void {
 }
 
 describe("rate-limit", () => {
+    beforeAll(async () => {
+        await import("@/lib/redis");
+        await import("@/lib/rate-limit");
+        // The first Redis test loads both modules cold: their transform and the mocked ioredis took
+        // 0.2-0.3 s at load 80, against about 20 ms warm, and a starved host pushed that past the 5 s
+        // test default. 120 s is a ceiling for real work, not a speed target.
+    }, 120_000);
+
     beforeEach(() => {
         vi.resetModules();
         vi.unstubAllEnvs();

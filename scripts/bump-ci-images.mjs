@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * CI image pins (CHAOS-9070). `ci/ci-images.json` is the ONE source of truth for the digests of the
- * images web CI mirrors to ghcr.io (node, traefik; buildkit is the ops-owned org mirror, pinned in build-docker.yml). Workflows read it through
+ * images web CI mirrors to ghcr.io (node, traefik, playwright; buildkit is the ops-owned org mirror, pinned in build-docker.yml). Workflows read it through
  * `--ref`; the Dockerfile ARG default cannot read a file, so `--write` edits both together and
  * `scripts/__tests__/ci-image-pins.test.mjs` fails when they disagree.
  *
@@ -12,6 +12,9 @@
  *                                                    print one pinned ref for a workflow
  *
  * A lookup that did not happen is exit 2, never "current".
+ *
+ * An image may name its own `sourceRegistry` (CHAOS-12841): Playwright's image is published on
+ * mcr.microsoft.com only, which mirror.gcr.io (a cache of Docker Hub) does not serve.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -45,10 +48,15 @@ export function parsePins(text) {
     return pins;
 }
 
+/** The registry an image is copied from: its own, else the file's pull-through default. */
+export function sourceRegistryOf(pins, name) {
+    return pins.images[name].sourceRegistry ?? pins.sourceRegistry;
+}
+
 /** Pull-through source the mirror job copies from. */
 export function sourceRef(pins, name) {
     const i = pins.images[name];
-    return `${pins.sourceRegistry}/${i.repo}:${i.tag}@${i.digest}`;
+    return `${sourceRegistryOf(pins, name)}/${i.repo}:${i.tag}@${i.digest}`;
 }
 
 /** The ref CI consumers pull. */
@@ -57,10 +65,14 @@ export function mirrorRef(pins, name) {
     return `${pins.mirrorPrefix}/${i.dest}:${i.tag}@${i.digest}`;
 }
 
-/** Docker Hub style ref, as written in the Dockerfile ARG default. */
+/**
+ * Docker Hub style ref, as written in the Dockerfile ARG default. An image with its own registry
+ * keeps it, so the ref never resolves to Docker Hub by default (codex r1 on CHAOS-12841).
+ */
 export function upstreamRef(pins, name) {
     const i = pins.images[name];
-    return `${i.repo.replace(/^library\//, "")}:${i.tag}@${i.digest}`;
+    const ref = `${i.repo.replace(/^library\//, "")}:${i.tag}@${i.digest}`;
+    return i.sourceRegistry ? `${i.sourceRegistry}/${ref}` : ref;
 }
 
 const NODE_ARG_RE = /^(ARG NODE_IMAGE=)(\S+)$/m;
@@ -113,7 +125,7 @@ export function formatRows(rows) {
 /** Index digest of a tag from the pull-through registry (HEAD manifest). */
 export async function lookupDigest(pins, name, fetchImpl = fetch) {
     const i = pins.images[name];
-    const url = `https://${pins.sourceRegistry}/v2/${i.repo}/manifests/${i.tag}`;
+    const url = `https://${sourceRegistryOf(pins, name)}/v2/${i.repo}/manifests/${i.tag}`;
     const res = await fetchImpl(url, { method: "HEAD", headers: { Accept: ACCEPT } });
     if (!res.ok) throw new Error(`${name}: HTTP ${res.status} from ${url}`);
     const digest = res.headers.get("docker-content-digest");
@@ -128,7 +140,7 @@ export async function main(argv, io = { log: console.log, err: console.error }, 
         const [, name, kind] = argv;
         const fn = { mirror: mirrorRef, source: sourceRef, upstream: upstreamRef }[kind];
         if (!pins.images[name] || !fn) {
-            io.err("usage: --ref <node|traefik> <mirror|source|upstream>");
+            io.err("usage: --ref <node|traefik|playwright> <mirror|source|upstream>");
             return 2;
         }
         io.log(fn(pins, name));

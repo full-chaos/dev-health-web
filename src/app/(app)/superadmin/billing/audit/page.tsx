@@ -3,8 +3,10 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AuditClientPage } from "./AuditClientPage";
 import { boundedRead } from "@/lib/serverDeadline";
 import { getAuditLog } from "./actions";
+import { requireSuperuser } from "@/lib/auth";
 
 export default async function BillingAuditPage() {
+    await requireSuperuser("/superadmin/billing/audit", "page:/superadmin/billing/audit");
     const initial = await boundedRead(getAuditLog({ limit: 50, offset: 0 }), "step billing audit");
     const initialEntries = initial.data?.items ?? [];
 

@@ -45,6 +45,7 @@ check:client-bundle (after build: no server-only code or secret value in a clien
 - **Definition of Done (UI):** conforms to Design & Style Framework, uses shared primitives, queries return resolved names (no raw ids surfaced), `pnpm design-lint` passes, after-screenshot/visual-regression attached.
 - **Visual evidence is MANDATORY** for any rendered-UI change — PR **and** linked Linear issue. Follow [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md) end-to-end (skill: `playwright`; upload images to the PR with `gh pr edit <n> --attach '<file>#<alt text>'`). Canonical test account `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`); no ad-hoc accounts. Skip only for backend/type-only/no-render (`SCREENSHOT-WAIVER: <reason>`).
 - **Governance gate `enforce-src-test-policy`:** any `src/` change needs a test change (`tests/`, `__tests__/`, `*.test.*`/`*.spec.*`) **or** a `TEST-WAIVER: <reason>` line in the PR body. Script: `.github/scripts/enforce-src-test-governance.mjs`.
+- **PR title check `pr-title`:** `<type>(<area>): CHAOS-<n> <description>`, one id. Pattern: `.github/scripts/check-pr-title.sh`; see [`docs/ci-required-checks.md`](docs/ci-required-checks.md).
 - **Server-only code:** a module that holds secrets or server logic starts with `import "server-only"` and is listed in `SERVER_ONLY_MODULES` of `scripts/check-client-bundle.mjs`. Read server variables with `getServerEnv()` from a server component, route handler or server action only; a client graph gets a reader with five variables.
 - **Product telemetry:** events and delivery rules are in [`docs/product-telemetry.md`](docs/product-telemetry.md). Never add an identity, free text or a URL to a payload.
 - **Failure text:** a failed read that means "the service is down" uses `ServiceUnavailable` / `SERVICE_UNAVAILABLE_TEXT`; text never names an internal service.
@@ -57,13 +58,3 @@ check:client-bundle (after build: no server-only code or secret value in a clien
 ## Hooks (lefthook)
 
 `pnpm install` runs `lefthook install`. `commit-msg` strips agent attribution; `pre-commit` = `prettier --write` + `eslint --fix` (re-stages); `pre-push` gates `prettier --check` + `eslint` + `pnpm typecheck` (`tsc --noEmit`, whole project, runs when the push has TS/TSX files). Disable for a checkout: `git config core.hooksPath /dev/null`.
-
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->

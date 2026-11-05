@@ -22,6 +22,7 @@ import { TransportFailure, TransportRefusal, type InvestigationEvent } from "../
 import {
     accepted,
     acrError,
+    boundedFixture,
     captureResult,
     deferred,
     errorEvent,
@@ -346,5 +347,34 @@ describe("a batch, seen by the viewer", () => {
         });
         await waitFor(() => expect(field()).toBeEnabled());
         expect(screen.getAllByTestId("answer-panel")).toHaveLength(2);
+    });
+});
+
+// CHAOS-12643: through the real store and source, ACR's bounded answer is drawn as itself, with
+// what it left out, never as a failure.
+describe("ACR's bounded answer", () => {
+    it("is drawn as the shortened answer, with what it left out", async () => {
+        const projection = boundedFixture("bounded-answer");
+        const { source } = makeSource();
+        transport.scripts.push([accepted(), resultEvent(projection)]);
+        render(<AskDevChat source={source} />);
+        await ask();
+        const view = await screen.findByRole("region", { name: "Shortened answer" });
+        expect(within(view).getByText(projection.direct_judgment)).toBeInTheDocument();
+        expect(within(view).getByRole("note")).toHaveTextContent(
+            "This answer was shortened to fit",
+        );
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        // An answer, so the composer clears, as for a whole answer.
+        await waitFor(() => expect(field()).toHaveValue(""));
+    });
+
+    it("draws the rows of every fact it kept", async () => {
+        const { source } = makeSource();
+        transport.scripts.push([accepted(), resultEvent(boundedFixture("bounded-partial-table"))]);
+        render(<AskDevChat source={source} />);
+        await ask();
+        const view = await screen.findByRole("region", { name: "Shortened answer" });
+        expect(within(view).getAllByText(/2026-08-25/).length).toBeGreaterThan(0);
     });
 });

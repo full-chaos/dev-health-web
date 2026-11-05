@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    DAY_LABEL_CHAR_WIDTH,
+    DAY_LABEL_GAP,
+    dayAxisStep,
     LABEL_CHAR_WIDTH,
     LABEL_GAP,
     type LabelBox,
@@ -83,5 +86,58 @@ describe("labelWidth", () => {
 
     it("is zero for no line", () => {
         expect(labelWidth([])).toBe(0);
+    });
+});
+
+// CHAOS-12707: the day axis runs to the horizon bin (day 365). At phone width ECharts' own ticks
+// printed the dates on each other, so the chart labels every `dayAxisStep` days.
+describe("dayAxisStep", () => {
+    // The dates the figure prints: a short date in the forecast's year, the year after it.
+    const start = Date.UTC(2026, 10, 2);
+    const dayLabel = (day: number) => {
+        const date = new Date(start + day * 86_400_000);
+        const text = date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+        });
+        return date.getUTCFullYear() === 2026 ? text : `${text}, ${date.getUTCFullYear()}`;
+    };
+    const AXIS_MAX = 365 + 18;
+
+    /** The labelled days, and whether each keeps the gap to the next at the widest label. */
+    function spacing(step: number, plotWidth: number) {
+        const days: number[] = [];
+        for (let day = 0; day <= AXIS_MAX; day += step) days.push(day);
+        const widest = Math.max(...days.map((day) => dayLabel(day).length * DAY_LABEL_CHAR_WIDTH));
+        return { days, room: (step / AXIS_MAX) * plotWidth, need: widest + DAY_LABEL_GAP };
+    }
+
+    it.each([180, 230, 270, 310, 600, 1000])(
+        "keeps every label clear of the next at a plot %i px wide",
+        (plotWidth) => {
+            const step = dayAxisStep(AXIS_MAX, plotWidth, dayLabel);
+            const { days, room, need } = spacing(step, plotWidth);
+            expect(days.length).toBeGreaterThanOrEqual(2);
+            expect(room).toBeGreaterThanOrEqual(need);
+        },
+    );
+
+    it("takes the smallest step that fits, so a wide chart keeps more dates", () => {
+        const narrow = dayAxisStep(AXIS_MAX, 270, dayLabel);
+        const wide = dayAxisStep(AXIS_MAX, 1000, dayLabel);
+        expect(wide).toBeLessThan(narrow);
+        // The step below the one chosen would not fit.
+        const steps = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 180, 270, 365, 730, 1095];
+        const below = steps[steps.indexOf(narrow) - 1]!;
+        const { room, need } = spacing(below, 270);
+        expect(room).toBeLessThan(need);
+    });
+
+    it("labels only day 0 when nothing fits, and never divides by an empty axis", () => {
+        // A step past the axis end labels day 0 alone.
+        expect(dayAxisStep(AXIS_MAX, 20, dayLabel)).toBeGreaterThan(AXIS_MAX);
+        expect(dayAxisStep(0, 300, dayLabel)).toBe(1095);
+        expect(dayAxisStep(AXIS_MAX, 0, dayLabel)).toBe(1095);
     });
 });

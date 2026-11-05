@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -227,6 +227,7 @@ run_quality() {
     "run_wire_parity"
     "run_pnpm_script lint"
     "run_pnpm_script typecheck"
+    "run_pnpm_script check:org-provisioning"
     "run_audit"
   )
   for step in "${steps[@]}"; do
@@ -283,7 +284,7 @@ run_auth_profiles_gate() {
 }
 
 # CHAOS-10461: the TS access-token verifier decides the ops-owned golden corpus
-# from the pinned sparse checkout. WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 makes a
+# from the pinned sparse checkout; the plane fixture drift cell reads the same checkout. WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 makes a
 # missing checkout a failure instead of a skip.
 run_access_token_corpus() {
   if [[ -z "${WEB_OPS_CONTRACT_ROOT:-}" ]]; then
@@ -291,7 +292,7 @@ run_access_token_corpus() {
     return 1
   fi
   echo "==> vitest access-token and authorization corpus (${WEB_OPS_CONTRACT_ROOT})"
-  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize
+  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize ci/__tests__/live-e2e-plane-router-drift.test.ts
 }
 
 run_e2e() {
@@ -421,6 +422,12 @@ run_e2e_onboarding() {
   run_isolated_e2e_suite onboarding test:e2e:onboarding
 }
 
+# CHAOS-12841/12871: the Ask Dev rich-view baselines. Only inside the mirrored Playwright image
+# (tests.yml `visual`): the image carries its own Chromium, so nothing is installed here.
+run_e2e_visual() {
+  run_pnpm_script test:e2e:visual
+}
+
 run_e2e_context_fabric() {
   run_isolated_e2e_suite context-fabric test:e2e:context-fabric
 }
@@ -465,6 +472,9 @@ case "${tier}" in
     ;;
   e2e-customer-push)
     run_e2e_customer_push
+    ;;
+  e2e-visual)
+    run_e2e_visual
     ;;
   e2e-navigation)
     run_e2e_navigation

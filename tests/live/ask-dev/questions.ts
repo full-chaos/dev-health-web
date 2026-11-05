@@ -30,6 +30,68 @@ export const CASES = {
     thread1: "What is the status of full-chaos/dev-health-web?",
     thread2: "What is the status of full-chaos/dev-health-web?",
     thread3: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12209 (`dev-page.spec.ts`): Expand while the run holds, then a follow-up on the thread.
+    devExpand: "Hold: what is the status of full-chaos/dev-health-web?",
+    devFollowUp: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12864 (`terminals.spec.ts`): one case per test. Under one nonce, terminals once shared
+    // `stop`, `long`, `stages`, ... with routed.spec.ts and with itself, so ACR served a case
+    // another case's stored answer or ended run (a full run failed 3 cases that pass alone).
+    termStalled: "Hold: what is the status of full-chaos/dev-health-web?",
+    termAdmission: "Hold: what is the status of full-chaos/dev-health-web?",
+    termBrokenSeq: "What is the status of full-chaos/dev-health-web?",
+    termEndOfStream: "Hold: what is the status of full-chaos/dev-health-web?",
+    termBudget: "What is the status of full-chaos/dev-health-web?",
+    termMismatch: "Hold: what is the status of full-chaos/dev-health-web?",
+    termMismatchOther: "What is the status of full-chaos/dev-health-web?",
+    termAbandoned: "Hold: what is the status of full-chaos/dev-health-web?",
+    termInProgress: "Hold: what is the status of full-chaos/dev-health-web?",
+    termDeadline: "Long: what is the status of full-chaos/dev-health-web?",
+    termModelDeadline: "Late: what is the status of full-chaos/dev-health-web?",
+    termStreamOff: "What is the status of full-chaos/dev-health-web?",
+    termAllowance: "What is the status of full-chaos/dev-health-web?",
+    termOrgLimit: "Hold: what is the status of full-chaos/dev-health-web?",
+    termRunEndedStalled: "Hold: what is the status of full-chaos/dev-health-web?",
+    termRunEndedEos: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12234 (`feedback.spec.ts`): answer feedback, one case per test. `fbReuse` is asked twice
+    // in two conversations on purpose: ACR serves the second turn the first turn's result.
+    fbPanel: "What is the status of full-chaos/dev-health-web?",
+    fbDev: "What is the status of full-chaos/dev-health-web?",
+    fbReuse: "Again: what is the status of full-chaos/dev-health-web?",
+    fbGuard: "What is the status of full-chaos/dev-health-web?",
+    // AC-3's positive control: the second principal's own question, so its own feedback is 200.
+    fbPeer: "What is the status of full-chaos/dev-health-web?",
+    fbTelemetry: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12232 (`history.spec.ts`): history and reload recovery through the browser transport.
+    histTurn1: "What is the status of full-chaos/dev-health-web?",
+    histTurn2: "What is the status of full-chaos/dev-health-web?",
+    histTurn3: "What is the status of full-chaos/dev-health-web?",
+    histHold: "Hold: what is the status of full-chaos/dev-health-web?",
+    histDelPanel: "What is the status of full-chaos/dev-health-web?",
+    histDelDev: "What is the status of full-chaos/dev-health-web?",
+    histLateList: "What is the status of full-chaos/dev-health-web?",
+    histLateRead: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12233 (`reattach.spec.ts`): reattach and cancel through the browser transport.
+    att1: "What is the status of full-chaos/dev-health-web?",
+    att2: "What is the status of full-chaos/dev-health-web?",
+    att3: "What is the status of full-chaos/dev-health-web?",
+    attCursor: "What is the status of full-chaos/dev-health-web?",
+    attKept: "What is the status of full-chaos/dev-health-web?",
+    attStop: "Long: what is the status of full-chaos/dev-health-web?",
+    attLong: "Long: what is the status of full-chaos/dev-health-web?",
+    attPodLoss: "Long: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12883 (`other-principal.spec.ts`): INV-1 with a second principal. The `Own` cases are the
+    // second principal's positive controls; the `Hold` cases keep a run in flight while it is probed.
+    peerThreadOwner: "What is the status of full-chaos/dev-health-web?",
+    peerThreadOwn: "What is the status of full-chaos/dev-health-web?",
+    peerRunOwner: "Hold: what is the status of full-chaos/dev-health-web?",
+    peerRunOwn: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-11960 (Phase 4 gaps): AC-10 in `other-principal.spec.ts`, AC-6 in `usage-retention.spec.ts`.
+    p4Owner: "What is the status of full-chaos/dev-health-web?",
+    p4Parent: "What is the status of full-chaos/dev-health-web?",
+    p4ParentUnknown: "What is the status of full-chaos/dev-health-web?",
+    p4Join: "What is the status of full-chaos/dev-health-web?",
+    p4Retention0: "What is the status of full-chaos/dev-health-web?",
+    p4Exhausted: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
@@ -68,3 +130,55 @@ export type LatencyCase = (typeof LATENCY_CASES)[number];
 
 export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
     `Case ${name} ${nonce}: ${LATENCY_BASE}`;
+
+/**
+ * CHAOS-11946 (I-50, Phase 3): one question per rich view, asked twice (2 replicates per case).
+ * `make-plan.ts` scripts each one's frame and claims, so the view the answer serves depends on the
+ * data alone:
+ *
+ * - `forecast`: one team's open work. The claimed workload fact draws the completion curve, its
+ *   dated trend and its claimed-fact table. `claim_first_only` claims the team's own scope: a
+ *   claim over several scopes withholds the curve by design (CHAOS-4613, CHAOS-12809).
+ * - `treemap`: one repository's investment. Its theme breakdown draws the treemap.
+ * - `comparison`: two repositories on pull request delivery. Both sides' window measures draw the
+ *   side-by-side table (only `metrics` and `pull_requests` fields compare, CHAOS-12513).
+ * - `landscape`: two teams on churn and delivery units over a stated range that ends on a day both
+ *   teams hold landscape rows. Their landscape claims draw the quadrant, which acr serves only when
+ *   both teams speak for one day (CHAOS-4611 ruling 3). A current-axis question reads each team at
+ *   its own newest day, which can differ (CHAOS-12676), so this case states the range.
+ * - `cohort`: the teams that are struggling, ranked with their drivers.
+ * - `sankey`: one team's effort across its repositories. The scope-anchor allocation route serves
+ *   it from the team's own investment fact, and the claimed `repository_theme_breakdown` detail
+ *   table draws the sankey (CHAOS-12582; NOT RUN while the stack's sankey flag is off).
+ * - `sunburst`: one repository's investment by theme and subcategory. The claimed
+ *   `subcategory_breakdown` detail table draws the sunburst, and the treemap is not drawn beside
+ *   it (CHAOS-12554; NOT RUN while the stack's sunburst flag is off).
+ * - `window`: one team's open work over a stated date range. A non-current axis composes no
+ *   effective window, so the answer must say its window was not reported (AC-7).
+ */
+const RICH_BASES = {
+    forecast: "when will the Fullchaos team finish its open work over the last 30 days?",
+    treemap:
+        "where is engineering effort going in full-chaos/dev-health-acr over the last 30 days?",
+    comparison:
+        "compare full-chaos/dev-health-acr and full-chaos/dev-health-ops on pull request delivery over the last 30 days",
+    landscape:
+        "how do Fullchaos and Ops Team compare on churn and delivery units between 2026-09-07 and 2026-10-07?",
+    cohort: "which teams are struggling and why over the last 30 days?",
+    sankey: "how is the Fullchaos team's engineering effort split across its repositories over the last 30 days?",
+    sunburst:
+        "how is engineering effort in full-chaos/dev-health-acr split across themes and subcategories over the last 30 days?",
+    window: "how was the Fullchaos team's open work between 2026-10-01 and 2026-10-15?",
+} as const;
+
+export type RichCase = keyof typeof RICH_BASES;
+
+export const RICH_CASES = Object.keys(RICH_BASES) as RichCase[];
+
+/** The design's 2 replicates per case (E8 design §13.7). */
+export const REPLICATES = [1, 2] as const;
+
+export type Replicate = (typeof REPLICATES)[number];
+
+export const richQuestionFor = (name: RichCase, replicate: Replicate, nonce: string): string =>
+    `Case ${name}${String(replicate)} ${nonce}: ${RICH_BASES[name]}`;

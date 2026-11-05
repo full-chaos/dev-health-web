@@ -13,7 +13,11 @@ interface Captured {
     config: null | {
         callbacks: { jwt: (args: { token: Row; user?: Row }) => Promise<Row> };
     };
-    credentials: null | { authorize: (credentials: Row) => Promise<Row | null> };
+    credentials: null | {
+        id?: string;
+        name?: string;
+        authorize: (credentials: Row) => Promise<Row | null>;
+    };
 }
 
 const { captured } = vi.hoisted(() => ({
@@ -32,7 +36,10 @@ vi.mock("next-auth", () => ({
 }));
 vi.mock("next-auth/providers/credentials", () => ({
     default: vi.fn((options: Captured["credentials"]) => {
-        captured.credentials = options;
+        // auth.ts registers more than one CredentialsProvider (password, sso): keep the password one.
+        if (options && (options.id === undefined || options.id === "credentials")) {
+            captured.credentials = options;
+        }
         return options;
     }),
 }));
@@ -57,6 +64,9 @@ describe("Web -> go-api -> auth-service", () => {
         expect(email).not.toBe("");
         expect(password).not.toBe("");
         expect(captured.credentials).not.toBeNull();
+        expect(captured.credentials!.name, "the proof drives the password provider").toBe(
+            "Credentials",
+        );
     });
 
     it("logs in, refreshes, and logs out", async () => {

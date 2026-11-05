@@ -34,6 +34,7 @@ const log = logger.child({ module: "auth-session" });
  *                           (none sent: accepted), and one branch per refusal reason (`malformed`,
  *                           `unverified`, `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the
  *                           answer is refused.
+ * - `sso_org_mismatch`      the SSO answer names another org than its verified access token.
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
@@ -55,6 +56,7 @@ export type SessionBranch =
     | "session_token_sid_mismatch"
     | "session_token_sub_mismatch"
     | "session_token_exp_mismatch"
+    | "sso_org_mismatch"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -65,7 +67,8 @@ export interface SessionBranchFields {
         | "logout"
         | "switch_org"
         | "change_password"
-        | "social_login";
+        | "social_login"
+        | "sso_login";
     readonly branch: SessionBranch;
     /** HTTP status of the backend answer. Absent when no answer arrived. */
     readonly status?: number;
@@ -97,6 +100,7 @@ const MESSAGES: Record<SessionBranch, string> = {
     session_token_sid_mismatch: "answer refused: the service session token names another session",
     session_token_sub_mismatch: "answer refused: the service session token names another subject",
     session_token_exp_mismatch: "answer refused: the service session token expiry differs",
+    sso_org_mismatch: "sso sign-in refused: the answer org differs from the verified token org",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 

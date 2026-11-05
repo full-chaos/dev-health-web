@@ -13,18 +13,18 @@ import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
+import { fittedRingLabel, ringLabelWidth } from "./sunburstRingLabels";
+
 echarts.use([SunburstChart]);
 
-// Ring 1 (themes) runs from 18% to 44% of half the shorter side of the chart (levels below); its label
-// is drawn along the arc at the middle of the ring. A label wider than its own arc is cut with an
-// ellipsis to the arc, and hidden when under MIN_LABEL_PX (the legend and the tooltip name every
-// theme), so no label crosses into the next segment or the hole (CHAOS-8510).
-const RING1_MID = (0.18 + 0.44) / 2;
-const MIN_LABEL_PX = 28;
-const LABEL_ARC_MARGIN_PX = 10;
+// Ring 1 (themes) runs from 18% to 44% of half the shorter side of the chart (levels below). Its
+// labels fit their arcs by the one sunburst rule (`sunburstRingLabels`, CHAOS-8510): cut with an
+// ellipsis to the arc, hidden under MIN_RING_LABEL_PX (the legend and the tooltip name every theme).
+const RING1_INNER = 0.18;
+const RING1_OUTER = 0.44;
 
 export const ringOneLabelWidth = (halfSidePx: number, fraction: number): number =>
-    Math.max(0, Math.floor(2 * Math.PI * RING1_MID * halfSidePx * fraction - LABEL_ARC_MARGIN_PX));
+    ringLabelWidth(halfSidePx, fraction, RING1_INNER, RING1_OUTER);
 
 const adjustHex = (hex: string, amount: number) => {
     const normalized = hex.replace("#", "");
@@ -165,18 +165,12 @@ export function InvestmentMixSunburst({
                 value: theme.value,
                 label: {
                     ...labelFor(baseColor, themeOpacity),
-                    rotate: "tangential" as const,
-                    overflow: "truncate" as const,
-                    width: ringOneLabelWidth(
+                    ...fittedRingLabel(
                         halfSidePx,
                         totalValue > 0 ? theme.value / totalValue : 0,
+                        RING1_INNER,
+                        RING1_OUTER,
                     ),
-                    ...(ringOneLabelWidth(
-                        halfSidePx,
-                        totalValue > 0 ? theme.value / totalValue : 0,
-                    ) < MIN_LABEL_PX
-                        ? { show: false }
-                        : {}),
                 },
                 itemStyle: {
                     color: baseColor,

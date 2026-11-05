@@ -16,6 +16,8 @@ const nextConfig = {
     ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
     // ask-dev ships TypeScript source through its `exports`; web's Next compiles it (CHAOS-12393).
     transpilePackages: ["@full-chaos/ask-dev"],
+    // AGENTS.md is hand-written; the dev server must not rewrite its nextjs-agent-rules block (CHAOS-12911).
+    agentRules: false,
     ...(isDemoExportBuild
         ? {
               output: "export",

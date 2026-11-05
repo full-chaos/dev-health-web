@@ -13,17 +13,26 @@ import { isTabVisible, routeTabForPathname, tabHref } from "@/lib/navigation/tab
 type AdminNav = {
     /** A platform admin (superuser): the old admin sidebar showed the Platform Admin entry. */
     isPlatformAdmin: boolean;
+    /**
+     * AUTHZ_PLATFORM_UI=enforce and the server found the session impersonating (or could not
+     * read its status): impersonate and organization-write controls are hidden. Always false in
+     * off and shadow. Hiding only; the server refuses the actions on its own.
+     */
+    impersonationLimited?: boolean;
 };
 
 const AdminNavContext = createContext<AdminNav>({ isPlatformAdmin: false });
 
-/** Set by the org admin layout, which reads the session on the server. */
+/** Set by the app layout, which reads the session on the server. */
 export function AdminNavProvider({
     isPlatformAdmin,
+    impersonationLimited = false,
     children,
 }: AdminNav & { children: ReactNode }) {
     return (
-        <AdminNavContext.Provider value={{ isPlatformAdmin }}>{children}</AdminNavContext.Provider>
+        <AdminNavContext.Provider value={{ isPlatformAdmin, impersonationLimited }}>
+            {children}
+        </AdminNavContext.Provider>
     );
 }
 
