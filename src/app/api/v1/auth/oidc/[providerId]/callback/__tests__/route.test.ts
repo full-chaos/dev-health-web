@@ -195,4 +195,12 @@ describe("GET /api/v1/auth/oidc/[providerId]/callback", () => {
         expect(errorOf(res)).toBe("sso_failed");
         expect(signIn).not.toHaveBeenCalled();
     });
+
+    it("a sign-in that comes back as an error URL (redirect:false does not throw) is sso_failed", async () => {
+        serve(() => json(200, sessionAnswer()));
+        signIn.mockResolvedValue("/auth/signin?error=CredentialsSignin&code=credentials");
+        const res = await call("code=c1&state=s1", "sso_return=%2Fx");
+        expect(errorOf(res)).toBe("sso_failed");
+        expect(setCookieLines(res)).toContain(SSO_RETURN_CLEAR);
+    });
 });

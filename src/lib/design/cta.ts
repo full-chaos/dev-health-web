@@ -13,6 +13,8 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** Sign-in page: go to the start route of an admin-shared enterprise SSO provider (CHAOS-13035). */
+    ssoContinue: "Continue with single sign-on",
     /** The Ask Dev launcher in the app shell (CHAOS-3247: the accessible name). */
     openAskDev: "Open Ask Dev",
     /** The Ask Dev composer: send the question (CHAOS-11928). */

@@ -187,4 +187,12 @@ describe("POST /api/v1/auth/saml/[providerId]/acs", () => {
         const res = await call(FIELDS, "dho_saml_login_nonce_def=n2");
         expect(errorOf(res)).toBe("sso_failed");
     });
+
+    it("a sign-in that comes back as an error URL (redirect:false does not throw) is sso_failed", async () => {
+        serve(() => json(200, sessionAnswer()));
+        signIn.mockResolvedValue("/auth/signin?error=CredentialsSignin&code=credentials");
+        const res = await call(FIELDS, "dho_saml_login_nonce_def=n2");
+        expect(errorOf(res)).toBe("sso_failed");
+        expect(setCookieLines(res)).toContain(SSO_RETURN_CLEAR);
+    });
 });
