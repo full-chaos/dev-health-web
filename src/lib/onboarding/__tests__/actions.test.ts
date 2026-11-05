@@ -98,6 +98,12 @@ describe("onboarding server actions (CHAOS-12088)", () => {
             expect(await createWorkspace("Acme")).toEqual({ ok: false, status: null });
         });
 
+        it("refuses an onboard answer whose access token does not verify and seals nothing", async () => {
+            backend(200, ONBOARDED);
+            expect(await createWorkspace("Acme")).toEqual({ ok: false, status: 502 });
+            expect(sealSessionHandoff).not.toHaveBeenCalled();
+        });
+
         it("refuses a 2xx without a token pair and leaves the session alone", async () => {
             backend(200, { org_id: "org-new" });
             expect(await createWorkspace("Acme")).toEqual({ ok: false, status: 502 });
