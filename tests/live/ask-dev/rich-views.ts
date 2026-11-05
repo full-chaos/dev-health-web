@@ -159,6 +159,14 @@ type EvidenceWindow = {
  * never a guessed one. `formatDay` is the page's own date form, so the comparison runs in the
  * browser's locale.
  */
+/** The ISO instant of a window's last covered day: an end-exclusive UTC midnight is the day before. */
+export function lastCoveredIso(end: string): string {
+    const at = new Date(end);
+    return Number.isNaN(at.getTime()) || at.getTime() % 86_400_000 !== 0
+        ? end
+        : new Date(at.getTime() - 86_400_000).toISOString();
+}
+
 export function evidenceWindowText(
     window: EvidenceWindow | undefined | null,
     labels: Readonly<Record<string, string>> | undefined,
@@ -166,7 +174,7 @@ export function evidenceWindowText(
 ): string {
     let range: string | undefined;
     if (window?.start !== undefined && window.end !== undefined) {
-        range = `${formatDay(window.start)} – ${formatDay(window.end)}`;
+        range = `${formatDay(window.start)} – ${formatDay(lastCoveredIso(window.end))}`;
     } else if (window?.relative_id !== undefined) {
         range = servedWordOr(labels, "window_relative_id", window.relative_id);
     } else if (window?.as_of !== undefined) {

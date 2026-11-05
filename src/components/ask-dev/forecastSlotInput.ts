@@ -28,3 +28,16 @@ export function forecastSlotInput(detail: ForecastShapeDetail): CompletionRangeI
         },
     };
 }
+
+/**
+ * The line beside a forecast that names which of the team's work scopes it is (CHAOS-12726). A team
+ * is forecast under several work scopes and a claim states one, so the chart never stands as the
+ * team's own. Every value is served: the scope is the summary's `work_scope_id` and the count is its
+ * `scope_count` (a floor when `scope_count_at_least`). Absent when the summary names no scope or
+ * serves no count: nothing is guessed, and a team with one scope needs no line.
+ */
+export function forecastScopeNote(summary: ForecastShapeDetail["summary"]): string | undefined {
+    const { work_scope_id: scope, scope_count: count, scope_count_at_least: atLeast } = summary;
+    if (scope === undefined || scope === "" || count === undefined || count < 2) return undefined;
+    return `Work scope ${scope}. The team has ${atLeast === true ? "at least " : ""}${count} work scopes.`;
+}

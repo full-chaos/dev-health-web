@@ -15,9 +15,10 @@ import { THREADS_PATH, threadDeletes, threadLists, threadReads } from "./history
 import { questionFor, type QuestionCase } from "./questions";
 import {
     INVESTIGATIONS_PATH,
-    ORACLE,
+    expectAModelPath,
     OTHER_EMAIL,
     acrCallAs,
+    acrInvestigateAs,
     ask,
     authorize,
     expectAnswersSynthesized,
@@ -55,7 +56,6 @@ type Session = Awaited<ReturnType<BrowserContext["storageState"]>>;
 let session: Session;
 
 test.beforeAll(async ({ browser, baseURL }) => {
-    expect(ORACLE, "ASK_DEV_LIVE_ORACLE is not set: no question may be sent").not.toBe("");
     expect(NONCE, "ASK_DEV_LIVE_NONCE is not set: run make-plan.ts for this run").not.toBe("");
     expect(
         OTHER_EMAIL,
@@ -63,7 +63,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
     ).not.toBe("");
     const oracle = await requestContext.newContext();
     try {
-        expect((await oracle.get(`${ORACLE}/health`)).status(), "the oracle is not up").toBe(204);
+        await expectAModelPath(oracle);
     } finally {
         await oracle.dispose();
     }
@@ -396,6 +396,86 @@ test("INV-1 runs: another principal of the organization gets 404 on an attach to
         });
     } finally {
         await testInfo.attach("other-principal-runs", {
+            body: JSON.stringify(evidence, null, 2),
+            contentType: "application/json",
+        });
+        await other?.context.close();
+    }
+});
+
+/**
+ * CHAOS-11960, E6 AC-10 (c4 F4): "another principal's `thread_id` does not join the thread". The other
+ * principal makes one create by hand with its own bearer, in the owner's organization, that names the
+ * OWNER's `thread_id`. Whatever ACR does with it, the owner's thread is the same afterwards (the same
+ * turns and results), and nothing of the owner's is in what the other principal reads under that id.
+ * The owner reads its thread first (the baseline) and last, so a join could not pass unseen.
+ *
+ * Not here, on purpose: a turn naming the owner's RESULT as its `parent_result_id`. ACR documents that
+ * field as a bearer reference within one organization (`ContextFabricInvestigationRequest.ParentResultID`:
+ * "a caller who names any result id belonging to their org inherits that result's confirmed axes"), and
+ * the 2026-11-04 live run showed it taken (200) from a second principal of the same organization. The
+ * guard is the org-scoped store read, so a cross-organization parent needs a second organization.
+ */
+test("AC-10 (INV-1): another principal's turn naming the owner's thread id does not join the owner's thread", async ({
+    page,
+    browser,
+    baseURL,
+}, testInfo) => {
+    test.setTimeout(420_000);
+    const evidence: Record<string, unknown> = {};
+    const results = await watchResults(page);
+    const { calls, surface } = await panel(page);
+    let other: Awaited<ReturnType<typeof otherPrincipal>> | undefined;
+    try {
+        await ask(surface, question("p4Owner"));
+        await expect(answers(surface)).toHaveCount(1, { timeout: 90_000 });
+        await expectAnswersSynthesized(results, "p4Owner");
+        const create = investigations(calls)[0]!;
+        const ownerThread = threadOf(create);
+        const owner = withBearer(calls);
+        const baseline = await acrCallAs(owner, "GET", `${THREADS_PATH}/${ownerThread}`);
+        expect(baseline.status, "the owner cannot read its own thread").toBe(200);
+        const turnsOf = (body: unknown) =>
+            (
+                (body as { turns?: Array<{ submission_id: string; result_id?: string }> }).turns ??
+                []
+            ).map((turn) => `${turn.submission_id}/${turn.result_id ?? ""}`);
+        const before = turnsOf(baseline.body);
+        const ownerResult = (baseline.body as { turns?: Array<{ result_id?: string }> }).turns?.[0]
+            ?.result_id;
+        expect(ownerResult, "the owner's first turn names no result").toMatch(/^result_/u);
+        evidence.owner = { thread: ownerThread, turns_before: before.length };
+
+        other = await otherPrincipal(browser, baseURL!);
+        const theirs = withBearer(other.calls);
+        await expectSameOrganization(page, other.page, calls, other.calls, testInfo);
+
+        // The join: the other principal's turn on the owner's thread id.
+        const join = await acrInvestigateAs(theirs, create, {
+            question: question("p4Join"),
+            threadId: ownerThread,
+        });
+        evidence.join = { status: join.status, request_id: join.requestId };
+        const after = await acrCallAs(owner, "GET", `${THREADS_PATH}/${ownerThread}`);
+        expect(after.status, "the owner lost its thread").toBe(200);
+        expect(
+            turnsOf(after.body),
+            "the owner's thread changed after the other principal's turn",
+        ).toEqual(before);
+        const theirRead = await acrCallAs(theirs, "GET", `${THREADS_PATH}/${ownerThread}`);
+        evidence.their_read = { status: theirRead.status, request_id: theirRead.requestId };
+        if (theirRead.status === 200) {
+            const mine = turnsOf(theirRead.body);
+            expect(
+                mine.filter((turn) => before.includes(turn)),
+                "what the other principal reads under the owner's id holds the owner's turns",
+            ).toEqual([]);
+        } else {
+            expect(theirRead.status, "the other principal's read of that id").toBe(404);
+        }
+    } finally {
+        console.log(`AC10_EVIDENCE=${JSON.stringify(evidence)}`);
+        await testInfo.attach("ac10-evidence", {
             body: JSON.stringify(evidence, null, 2),
             contentType: "application/json",
         });

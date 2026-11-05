@@ -53,6 +53,9 @@ vi.mock("@/components/auth/SocialLoginError", () => ({
 
 import SignInPage from "./page";
 
+// CHAOS-13035: the SSO entry exists only while the switch is on.
+const PROVIDER_ENTRY = /provider id/i;
+
 async function renderPage(params: Record<string, string> = {}) {
     return SignInPage({ searchParams: Promise.resolve(params) });
 }
@@ -128,5 +131,29 @@ describe("SignInPage", () => {
 
         expect(screen.getByTestId("login-form")).toHaveAttribute("data-callback-url", "");
         expect(screen.getByTestId("auth-card")).toHaveAttribute("data-signup-href", "/auth/signup");
+    });
+
+    it("shows no SSO entry while the switch is off", async () => {
+        vi.stubEnv("AUTH_SSO_ENABLED", "");
+        try {
+            const ui = await renderPage();
+            render(ui as React.ReactElement);
+            expect(screen.queryByLabelText(PROVIDER_ENTRY)).toBeNull();
+            expect(screen.queryByRole("button", { name: /single sign-on/i })).toBeNull();
+        } finally {
+            vi.unstubAllEnvs();
+        }
+    });
+
+    it("shows the SSO entry when the switch is on", async () => {
+        vi.stubEnv("AUTH_SSO_ENABLED", "true");
+        try {
+            const ui = await renderPage({ callbackUrl: "/acr/device" });
+            render(ui as React.ReactElement);
+            expect(screen.getByLabelText(PROVIDER_ENTRY)).toBeVisible();
+            expect(screen.getByRole("button", { name: /single sign-on/i })).toBeVisible();
+        } finally {
+            vi.unstubAllEnvs();
+        }
     });
 });

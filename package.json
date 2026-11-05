@@ -31,6 +31,7 @@
         "typecheck": "tsc --noEmit",
         "check:client-bundle": "node scripts/check-client-bundle.mjs",
         "check:nonce-csp-pages": "node scripts/check-nonce-csp-pages.mjs",
+        "check:org-provisioning": "node scripts/check-org-provisioning-calls.mjs",
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",
@@ -53,7 +54,7 @@
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
-        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#6124ba52036afc19742be9d5ca4cf95f6d2c4903",
+        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#3ef47cbb8b13028288e0b2e7d03c9fd6e185bf92",
         "@sentry/nextjs": "^11.7.0",
         "@tailwindcss/typography": "^0.5.20",
         "@urql/core": "^6",

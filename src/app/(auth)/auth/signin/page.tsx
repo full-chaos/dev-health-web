@@ -5,6 +5,8 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { SocialLoginError } from "@/components/auth/SocialLoginError";
 import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
 import { Notice } from "@/components/ui/Notice";
+import { SsoEntry } from "@/components/auth/SsoEntry";
+import { ssoEnabled } from "@/lib/authSso";
 
 type SearchParams = Promise<{
     registered?: string;
@@ -58,6 +60,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
             )}
             <AuthCard callbackUrl={callbackUrl} signUpHref={signupHref} providers={providers}>
                 <LoginForm callbackUrl={callbackUrl} plan={plan} trialIntent={trialIntent} />
+                {ssoEnabled() && <SsoEntry callbackUrl={callbackUrl} />}
             </AuthCard>
         </div>
     );

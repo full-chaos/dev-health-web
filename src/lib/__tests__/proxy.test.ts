@@ -456,3 +456,90 @@ describe("proxy rate limiting", () => {
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
     });
 });
+
+// CHAOS-13035 (web PR-2 of CHAOS-10878): the two SSO browser callbacks are Next routes with their
+// own finite rate-limit namespace, not part of the 20-per-15-minute auth-other pool.
+describe("SSO callback paths", () => {
+    const PROVIDER = "6f1d0f6e-62a1-4b3a-9f0e-1f2b3c4d5e6f";
+    const CALLBACK = `/api/v1/auth/oidc/${PROVIDER}/callback`;
+    const ACS = `/api/v1/auth/saml/${PROVIDER}/acs`;
+    const makeRequest = (path: string, method: string) =>
+        new NextRequest(new URL(path, "http://localhost:3000"), {
+            method,
+            headers: { "user-agent": "proxy-test", "x-forwarded-for": "198.51.100.10" },
+        });
+    const SSO_LIMIT = {
+        failClosed: true,
+        namespace: "auth-sso-callback",
+        windowMs: 15 * 60_000,
+        maxRequests: 60,
+    };
+
+    it("the start pages are public: no sign-in redirect for a signed-out visitor", () => {
+        expect(isPublicPath(`/auth/sso/oidc/${PROVIDER}`)).toBe(true);
+        expect(isPublicPath(`/auth/sso/saml/${PROVIDER}`)).toBe(true);
+        expect(isPublicPath("/auth/ssox")).toBe(false);
+    });
+
+    it("the two callbacks stay with their Next routes; the other SSO paths still go to Ops", () => {
+        expect(shouldProxyToOps(CALLBACK)).toBe(false);
+        expect(shouldProxyToOps(ACS)).toBe(false);
+        expect(shouldProxyToOps(CALLBACK.replace(PROVIDER, "not-a-uuid"))).toBe(true);
+        expect(shouldProxyToOps(`${CALLBACK}/extra`)).toBe(true);
+        expect(shouldProxyToOps(`/api/v1/auth/oidc/${PROVIDER}/authorize`)).toBe(true);
+        expect(shouldProxyToOps(`/api/v1/auth/saml/${PROVIDER}/initiate`)).toBe(true);
+        expect(shouldProxyToOps(`/api/v1/auth/saml/${PROVIDER}/metadata`)).toBe(true);
+        expect(shouldProxyToOps(ACS.replace("/acs", "/callback"))).toBe(true);
+    });
+
+    it("a rewritten callback is never forwarded to the backend", async () => {
+        const res = await proxy(makeRequest(CALLBACK, "GET"));
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it("limits the OIDC callback (GET) in its own namespace, keyed by method, route shape and client", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 40 });
+        const res = await proxy(makeRequest(CALLBACK, "GET"));
+        expect(res.status).toBe(429);
+        expect(res.headers.get("Retry-After")).toBe("40");
+        expect(mockCheckRateLimit).toHaveBeenCalledWith(
+            expect.stringMatching(/^proxy:GET:auth-sso-callback:ip:anon:/),
+            SSO_LIMIT,
+        );
+    });
+
+    it("limits the SAML ACS (POST) in the same namespace, not auth-other", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 40 });
+        const res = await proxy(makeRequest(ACS, "POST"));
+        expect(res.status).toBe(429);
+        expect(mockCheckRateLimit).toHaveBeenCalledWith(
+            expect.stringMatching(/^proxy:POST:auth-sso-callback:ip:anon:/),
+            SSO_LIMIT,
+        );
+    });
+
+    it("the key follows the route shape: another provider id shares the counter", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: false, retryAfter: 0 });
+        await proxy(makeRequest(CALLBACK, "GET"));
+        await proxy(
+            makeRequest(CALLBACK.replace(PROVIDER, "11111111-2222-4333-8444-555555555555"), "GET"),
+        );
+        const keys = new Set(mockCheckRateLimit.mock.calls.map((call) => call[0]));
+        expect(keys.size).toBe(1);
+    });
+
+    it("below the limit the request passes", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: false, retryAfter: 0 });
+        const res = await proxy(makeRequest(ACS, "POST"));
+        expect(res.status).not.toBe(429);
+    });
+
+    it("other mutating auth paths keep the auth-other limit", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 5 });
+        await proxy(makeRequest(`/api/v1/auth/saml/${PROVIDER}/initiate`, "POST"));
+        expect(mockCheckRateLimit).toHaveBeenCalledWith(
+            expect.stringMatching(/^proxy:POST:auth-other:/),
+            { failClosed: true, namespace: "auth-other", windowMs: 15 * 60_000, maxRequests: 20 },
+        );
+    });
+});

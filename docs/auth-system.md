@@ -448,27 +448,43 @@ sequenceDiagram
 
 ### SSO (SAML / OIDC)
 
-Enterprise SSO authentication via SAML 2.0 or OpenID Connect.
+Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`, and it works only with `AUTH_ACCESS_TOKEN_CLASS=eddsa`. The backend aggregates `oidc` and `saml` must be on too.
+
+There is no provider lookup for a signed-out visitor. An administrator shares the provider id, and the user opens a deep link or pastes the id into the "Continue with single sign-on" form on `/auth/signin` (shown only while the switch is on):
+
+- `/auth/sso/oidc/<providerId>` starts OIDC.
+- `/auth/sso/saml/<providerId>` starts SAML.
+- `?callbackUrl=/some/path` is optional: it is kept only if `safePostLoginRedirect` accepts it, and rides in the `sso_return` cookie.
 
 ```mermaid
 flowchart TD
-    U[User] -->|Visit /auth/sso| SP[Select Provider]
-    SP -->|SAML| SR[Redirect to IdP]
-    SP -->|OIDC| OR[Redirect to Authorization URL]
-    SR --> SAR[IdP posts SAML assertion to ACS]
-    OR --> OCR[IdP redirects with auth code]
-    SAR --> V1[Validate assertion + extract claims]
-    OCR --> V2[Exchange code + validate ID token]
-    V1 --> S[Create/update user + session]
-    V2 --> S
-    S --> D[Redirect to /dashboard]
+    U[User opens the shared link] --> ST[Web start route: asks auth-service]
+    ST -->|OIDC authorize / SAML initiate| IDP[Redirect to the IdP]
+    IDP -->|OIDC: GET code + state| CB["/api/v1/auth/oidc/&lt;id&gt;/callback"]
+    IDP -->|SAML: form POST| ACS["/api/v1/auth/saml/&lt;id&gt;/acs"]
+    CB --> C[Web completes on auth-service, server side]
+    ACS --> C
+    C -->|member, eddsa token, org matches claim| T[Seal a 60 s ticket, sign in through the sso provider]
+    T --> D[303 to sso_return or /dashboard]
+    C -->|refused| E["303 to /auth/signin?error=sso_*"]
 ```
 
-| Test Layer   | File                                                    | What is verified                                                                                     |
-| ------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Backend unit | `tests/api/services/test_sso.py`                        | SAML assertion validation, OIDC code exchange, state mismatch detection, expired assertion rejection |
-| Backend unit | `tests/api/auth/test_sso_module.py`                     | SSO router registration, endpoint presence, tag assignment                                           |
-| Backend unit | `tests/api/auth/test_email_verification_enforcement.py` | OAuth users bypass email verification                                                                |
+How it holds together:
+
+- **Paths and cookies.** The backend binds its login cookies to exact paths of the web origin: the OIDC nonce cookie to `/api/v1/auth/oidc/<id>/callback`, the SAML binding cookie to the ACS path `/api/v1/auth/saml/<id>/acs` (SameSite=None). Web serves those two paths, so the exact redirect URI is `https://<web origin>/api/v1/auth/oidc/<id>/callback`, and a provider's `sp_acs_url` must be the web ACS. `proxy.ts` keeps both paths with Next instead of rewriting them to Ops. Only the login-nonce cookie of the protocol goes to the backend (the SAML ACS forwards the binding cookie only); the Auth.js session cookie and every other cookie never do. Only the login-nonce cookies of the backend answer come back to the browser.
+- **`sso_return`.** The return target is stored at start (HttpOnly, Secure, bound to the callback or ACS path, 10 minutes; SameSite=None for SAML, Lax for OIDC), read through `safePostLoginRedirect` at completion, and cleared on every outcome.
+- **Tokens stay on the server.** The route calls `completeOidc` or `completeSaml` (`src/lib/authSso.ts`), seals the session with `sealSsoTicket` and signs in through the `sso` Credentials provider (`src/lib/auth.ts`). The ticket is encrypted, bound to the user id and lives 60 seconds. Under eddsa the answer's org must equal the org in the verified access token.
+- **Refusals.** The browser gets a 303 to `/auth/signin?error=<code>` and no Auth.js session. A 403 is a non-member only when the body carries `detail.reason = "membership_required"`; web reads only `reason`. Codes: `sso_not_member`, `sso_identity_conflict` (409), `sso_not_licensed` (402), `sso_unavailable` (5xx, a thrown call, a refused token class), `sso_failed` (anything else, including an IdP error, a missing code or state, a missing SAMLResponse, or a failed sign-in).
+- **Rate limit.** The two callbacks have their own namespace, `auth-sso-callback`: 60 requests per 15 minutes per client key (method, route shape and client IP key, like the other `auth-*` namespaces), fail closed. A sign-in makes one call; 60 fits a shared corporate egress address that the 20 of `auth-other` would not, and it still cuts off a guesser.
+- **Not covered here.** Per-org OAuth SSO and provider discovery are out of scope. The live browser journey against an IdP stub is CHAOS-10886.
+
+| Test Layer    | File                                                                                 | What is verified                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend unit | `src/lib/__tests__/authSso.*.test.ts`, `src/lib/__tests__/auth-sso-provider.test.ts` | Wire calls, refusal mapping (`reason` only), cookie filter, eddsa-only completion, sealed ticket and `sso` provider               |
+| Frontend unit | `src/app/(auth)/auth/sso/**/__tests__/route.test.ts`                                 | Start routes: exact redirect URI, relayed nonce cookie, validated `sso_return`, switch off = 404                                  |
+| Frontend unit | `src/app/api/v1/auth/{oidc,saml}/**/__tests__/route.test.ts`                         | Callback and ACS: forwarded cookies, sign-in and refusals, `sso_return` read and cleared, no session on refusal, switch off = 404 |
+| Frontend unit | `src/lib/__tests__/proxy.test.ts`                                                    | Public start paths, callbacks kept with Next, `auth-sso-callback` limit                                                           |
+| Frontend unit | `ci/__tests__/sso_route_rows.test.ts`, `ci/gate_web_auth_profiles.ts`                | Route discovery at the exact paths, one profile row per route                                                                     |
 
 ### RBAC & Access Control
 
@@ -647,7 +663,7 @@ sequenceDiagram
 | Admin Setup (full journey) | ✅      | ✅            | ✅           | ✅       |
 | RBAC / Access Matrix       | —       | ✅            | ✅           | ✅       |
 | Impersonation              | ✅      | ✅            | —            | ✅       |
-| SSO (SAML/OIDC)            | ✅      | —             | —            | —        |
+| SSO (SAML/OIDC)            | ✅      | ✅            | —            | —        |
 
 ### Coverage Gaps
 
