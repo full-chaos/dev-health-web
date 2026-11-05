@@ -743,6 +743,7 @@ async function openSessionHandoff(
 }
 
 import type { Session } from "next-auth";
+import { IMPERSONATION_DENY_PATH, impersonationLimited } from "@/lib/auth/platform/limits";
 
 // Per-request memoized session read. React.cache() dedupes calls within a
 // single RSC render tree so auth()/requireSession()/requireRole()/
@@ -859,6 +860,8 @@ export async function requireRole(
 export async function requireSuperuser(callbackUrl?: string, surfaceId?: string): Promise<Session> {
     const session = await requireSession(callbackUrl);
     if (surfaceId) schedulePlatformShadow(session, [surfaceId]);
+    // Enforce only: a deny page instead of the silent redirect. Off and shadow never reach it.
+    if (await impersonationLimited(session)) redirect(IMPERSONATION_DENY_PATH);
     if (session.user.is_superuser !== true || session.user.is_impersonating === true) {
         redirect("/dashboard");
     }

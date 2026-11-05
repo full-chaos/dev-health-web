@@ -116,6 +116,9 @@ export async function GET(request: NextRequest) {
     // layout's requireRole guard. The single policy decision replaces the inline role array; a
     // deny keeps this handler's consistent ?github_app=error UX (do NOT call requireRole: it
     // redirects to /dashboard).
+    if (await refuseOrgWrite(session, "integrations.write")) {
+        return NextResponse.json({ error: IMPERSONATION_LIMIT_MESSAGE }, { status: 403 });
+    }
     const verdict = await decideGuard(session, "org.integrations.write");
     if (!verdict.allowed) {
         return resultRedirect(request, "error");
@@ -163,3 +166,7 @@ export async function GET(request: NextRequest) {
         return resultRedirect(request, "error");
     }
 }
+
+// Below the anchored lines on purpose (auth-profile gate). With AUTHZ_PLATFORM_UI=enforce an
+// impersonating session is refused here, the superuser rule of the decision included.
+import { IMPERSONATION_LIMIT_MESSAGE, refuseOrgWrite } from "@/lib/auth/platform/limits";

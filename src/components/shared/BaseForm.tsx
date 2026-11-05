@@ -30,6 +30,7 @@ type BaseFormProps = {
     actionsClassName?: string;
     children: ReactNode;
     actionsStart?: ReactNode;
+    hideSubmit?: boolean;
 };
 
 export function BaseForm({
@@ -43,6 +44,7 @@ export function BaseForm({
     actionsClassName = "flex justify-end gap-3 pt-4",
     children,
     actionsStart,
+    hideSubmit = false,
 }: BaseFormProps) {
     return (
         <form onSubmit={onSubmitAction} className={className}>
@@ -59,13 +61,15 @@ export function BaseForm({
                         {cancelLabel}
                     </button>
                 )}
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--accent)/90 disabled:opacity-50"
-                >
-                    {submitLabel}
-                </button>
+                {hideSubmit ? null : (
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--accent)/90 disabled:opacity-50"
+                    >
+                        {submitLabel}
+                    </button>
+                )}
             </div>
         </form>
     );

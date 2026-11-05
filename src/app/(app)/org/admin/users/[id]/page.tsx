@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HideWhileImpersonationLimited } from "@/components/admin/HideWhileImpersonationLimited";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getUser } from "@/lib/admin/server";
@@ -28,12 +29,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 title={user.full_name || user.username || user.email}
                 description={`Manage settings for ${user.email}`}
             >
-                <Link
-                    href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
-                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
-                >
-                    {CTA_LABELS.editUser}
-                </Link>
+                <HideWhileImpersonationLimited>
+                    <Link
+                        href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
+                        className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
+                    >
+                        {CTA_LABELS.editUser}
+                    </Link>
+                </HideWhileImpersonationLimited>
             </AdminHeader>
 
             <div className="grid gap-6 md:grid-cols-3">
@@ -104,12 +107,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                     <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
                         <h3 className="mb-4 text-lg font-medium">Quick Actions</h3>
                         <div className="space-y-3">
-                            <Link
-                                href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
-                                className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
-                            >
-                                {CTA_LABELS.editProfile}
-                            </Link>
+                            <HideWhileImpersonationLimited>
+                                <Link
+                                    href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
+                                    className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
+                                >
+                                    {CTA_LABELS.editProfile}
+                                </Link>
+                            </HideWhileImpersonationLimited>
                             <DeleteUserButton userId={user.id} userEmail={user.email} />
                         </div>
                     </div>
