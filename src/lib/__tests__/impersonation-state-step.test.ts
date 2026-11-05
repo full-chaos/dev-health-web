@@ -60,7 +60,8 @@ vi.mock("next-auth/providers/google", () => ({ default: vi.fn() }));
 vi.mock("next-auth/providers/gitlab", () => ({ default: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 
-import { requireSession, sealSessionHandoff } from "@/lib/auth";
+import { decode } from "next-auth/jwt";
+import { requireSession, SESSION_HANDOFF_SALT, sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import { startImpersonation } from "@/lib/admin/server";
 
@@ -512,6 +513,16 @@ describe("S5 the delegated token has a bounded life and no refresh path", () => 
         const r = await startImpersonation("target-1");
         expect(r.error).toBeUndefined();
         expect(JSON.stringify(r.data)).not.toContain(DELEGATED_REFRESH);
+        // The sealed handoff itself holds only the delegated access token and its life.
+        const sealed = await decode({
+            token: (r.data as { sessionHandoff: string }).sessionHandoff,
+            secret: "dev-secret-change-in-production",
+            salt: SESSION_HANDOFF_SALT,
+        });
+        const pair = (sealed as { pair?: Obj } | null)?.pair;
+        expect(pair?.access_token).toBe(DELEGATED);
+        expect(pair).not.toHaveProperty("session_access_token");
+        expect(pair).not.toHaveProperty("refresh_token");
         const before = Date.now();
         const token = await callbacks().jwt({
             token: {
