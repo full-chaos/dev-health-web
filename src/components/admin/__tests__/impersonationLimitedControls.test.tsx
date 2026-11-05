@@ -19,6 +19,7 @@ vi.mock("@/lib/admin/server", () => ({
     updateOrgProfile: vi.fn(),
     deleteUser: vi.fn(),
     startImpersonation: vi.fn(),
+    inviteCurrentOrgMember: vi.fn(),
 }));
 
 import { AdminNavProvider } from "@/components/admin/AdminTabs";
@@ -26,6 +27,8 @@ import { HideWhileImpersonationLimited } from "@/components/admin/HideWhileImper
 import { DangerZone } from "@/components/admin/settings/DangerZone";
 import { GeneralSettings } from "@/components/admin/settings/GeneralSettings";
 import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserButton";
+import { UserForm } from "@/components/admin/users/UserForm";
+import NewUserPage from "@/app/(app)/org/admin/users/new/page";
 import { UserTable } from "@/components/superadmin/UserTable";
 import { DeleteUserButton } from "@/app/(app)/org/admin/users/[id]/DeleteUserButton";
 import type { User } from "@/lib/admin/types";
@@ -94,6 +97,25 @@ describe("controls a limited session does not see", () => {
         within(true, <GeneralSettings org={org} />);
         expect(screen.queryByRole("button", { name: "Save Changes" })).toBeNull();
         expect(screen.getByDisplayValue("Acme")).toBeTruthy();
+    });
+
+    it("the direct Add route (members.invite) hides the submit button and keeps the fields", () => {
+        const shown = within(false, <NewUserPage />);
+        expect(screen.getByRole("button", { name: "Send invite" })).toBeTruthy();
+        shown.unmount();
+        within(true, <NewUserPage />);
+        expect(screen.queryByRole("button", { name: "Send invite" })).toBeNull();
+        expect(screen.getByPlaceholderText("john@example.com")).toBeTruthy();
+    });
+
+    it("the direct Edit route (members.update) hides the submit button and keeps the fields", () => {
+        const form = <UserForm initialData={target} onSubmit={vi.fn()} onCancel={vi.fn()} isEdit />;
+        const shown = within(false, form);
+        expect(screen.getByRole("button", { name: "Save Changes" })).toBeTruthy();
+        shown.unmount();
+        within(true, form);
+        expect(screen.queryByRole("button", { name: "Save Changes" })).toBeNull();
+        expect(screen.getByDisplayValue("member@example.test")).toBeTruthy();
     });
 
     it("C10 a client session that says not impersonating does not bring the controls back", () => {

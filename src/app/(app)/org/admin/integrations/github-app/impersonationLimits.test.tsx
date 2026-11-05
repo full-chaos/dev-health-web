@@ -70,11 +70,12 @@ describe.each(routes)("github-app $name route, impersonation limits", ({ call, b
         },
     );
 
-    it("C7 enforce: an impersonating superuser is refused with no backend call and one log line", async () => {
+    it("C7 enforce: an impersonating superuser is refused with 403, no backend call and one log line", async () => {
         process.env.AUTHZ_PLATFORM_UI = "enforce";
         setSession({ role: "member", is_superuser: true, is_impersonating: true });
         const response = await call();
-        expect(response.headers.get("location")).toContain(ERROR);
+        expect(response.status).toBe(403);
+        expect(response.headers.get("location")).toBeNull();
         expect(fetch).not.toHaveBeenCalled();
         expect(mocks.info).toHaveBeenCalledWith(
             { action: "integrations.write", cause: "impersonating", surface: "org_write" },
@@ -86,6 +87,24 @@ describe.each(routes)("github-app $name route, impersonation limits", ({ call, b
         process.env.AUTHZ_PLATFORM_UI = "enforce";
         setSession({ role: "admin", is_superuser: true, is_impersonating: true });
         const response = await call();
+        expect(response.status).toBe(403);
+        expect(response.headers.get("location")).toBeNull();
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("C7 enforce: a role the guard would deny, impersonating, still gets 403", async () => {
+        process.env.AUTHZ_PLATFORM_UI = "enforce";
+        setSession({ role: "viewer", is_superuser: false, is_impersonating: true });
+        const response = await call();
+        expect(response.status).toBe(403);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("C7 enforce: a viewer that is not impersonating keeps the error redirect", async () => {
+        process.env.AUTHZ_PLATFORM_UI = "enforce";
+        setSession({ role: "viewer", is_superuser: false, is_impersonating: false });
+        const response = await call();
+        expect(response.status).toBe(307);
         expect(response.headers.get("location")).toContain(ERROR);
         expect(fetch).not.toHaveBeenCalled();
     });
@@ -94,7 +113,8 @@ describe.each(routes)("github-app $name route, impersonation limits", ({ call, b
         process.env.AUTHZ_PLATFORM_UI = "enforce";
         setSession({ role: "member", is_superuser: true, is_impersonating: false });
         const response = await call();
-        expect(response.headers.get("location")).toContain(ERROR);
+        expect(response.status).toBe(403);
+        expect(response.headers.get("location")).toBeNull();
         expect(fetch).not.toHaveBeenCalled();
     });
 
