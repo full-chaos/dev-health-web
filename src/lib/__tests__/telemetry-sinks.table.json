@@ -247,6 +247,14 @@
         "log": 4,
         "sentry": 0
     },
+    "src/lib/impersonationSession.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/impersonationToken.ts": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/lib/investmentMix.ts": {
         "log": 1,
         "sentry": 0
