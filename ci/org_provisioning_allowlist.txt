@@ -68,3 +68,4 @@ PUT /llm-settings/service-model	src/lib/admin/api/llm-settings.ts	non-identity a
 PUT /llm-settings	src/lib/admin/api/llm-settings.ts	non-identity admin write; no org or membership change
 PUT /settings/{}/{}	src/lib/admin/api/settings.ts	non-identity admin write; no org or membership change
 PUT /sync-configs/{}/repositories	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
+UNKNOWN /admin	src/lib/admin/api/_request.ts	admin transport prefix; the caller passes the method (CHAOS-12792)

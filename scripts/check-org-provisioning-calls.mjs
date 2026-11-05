@@ -9,20 +9,32 @@
  * `src` (test files and __tests__ skipped). It never matches source text, so comments, escapes and
  * wrappers (parentheses, `as`, `satisfies`, `<T>`, `!`) cannot hide or fake a finding.
  *
+ * This is a lint for honest developers: it stops a new org-provisioning call site from landing
+ * without an allowlist row. It over-approximates (fail-closed) and does not read intent. The
+ * go-api server-side authorization is the enforcement boundary, not this script.
+ *
  * Findings (each printed as `FAIL <file>:<line> <key>`):
- * - a call to `request(` / `selfRequest(` (identifier or property access) whose path is a static
- *   string and whose method is POST/PATCH/PUT/DELETE, or is not a literal (key `UNKNOWN /path`),
- *   when the file has no row for that `METHOD /path` key;
- * - a call or `new` whose path is a static string under /api/v1/admin, /api/v1/orgs (the root and
- *   every subpath) or /api/v1/auth/accept-invite, with such a method, and no row for that file;
+ * - ANY call or `new` (no callee list) with a protected static path in its arguments: the pathname
+ *   (after an optional origin or a leading `${base}` hole) is /api/v1/admin/..., /api/v1/orgs
+ *   (root and subpaths) or /api/v1/auth/accept-invite, matched segment by segment. The method is
+ *   the literal `method` in the call's own options object (2nd argument, or a later object
+ *   literal), "GET" when there is no options argument, and UNKNOWN when it cannot be read. A
+ *   POST/PATCH/PUT/DELETE or UNKNOWN method with no row for that file is a finding;
+ * - a call to `request(` / `selfRequest(` with a static client path (`/orgs/..`, `/users/..`)
+ *   and such a method, with no row for that file;
  * - an `/orgs/<id>/(members|transfer-ownership|invites)` string outside src/lib/admin/api/orgs.ts;
- * - an exported `createUser` (ES export in any form, or a CommonJS export);
- * - a call to `adminApi.users.create` from a file with no `call adminApi.users.create` row.
+ * - an exported `createUser` (ES export in any form, or `exports.createUser = ...`);
+ * - a call to `adminApi.users.create` (also `(0, adminApi.users.create)(...)`) from a file with no
+ *   `call adminApi.users.create` row.
  * A row that no longer matches any site fails as stale ("remove it"), so the list only shrinks.
  *
+ * Contract (stated limits, NOT detected; pinned by tests):
+ * - a path built by constant folding (`${"admin"}`), by variables, or by a function call;
+ * - a method held in a variable is UNKNOWN (refused), but a path in a variable is not seen;
+ * - CommonJS `module.exports = {...}` object forms and spread re-exports of createUser;
+ * - test files (basename holds `.test.` or `.spec.`) and __tests__ dirs are skipped.
  * A static string is a string literal, a template literal or a `+` chain of them, read after
  * escapes are decoded; each non-literal part reads as `{}`.
- * Limit: a path held in a variable or built by a function call is not seen.
  *
  * Allowlist row: `<key><TAB><file><TAB><reason>`; `#` starts a comment line.
  * Usage: node scripts/check-org-provisioning-calls.mjs [--root .] [--allowlist ci/org_provisioning_allowlist.txt]
@@ -35,10 +47,9 @@ import ts from "typescript";
 export const CLIENT_FILE = "src/lib/admin/api/orgs.ts";
 const MUTATING = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 const CLIENT_CALLEES = new Set(["request", "selfRequest"]);
-const CALLEES = new Set(["request", "selfRequest", "fetch"]);
 const MEMBER_SEGMENTS = new Set(["members", "transfer-ownership", "invites"]);
 const SOURCE = /\.(?:ts|tsx|js|jsx|mjs|cjs|mts|cts)$/u;
-const TEST_FILE = /\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs|mts|cts)$/u;
+const TEST_FILE = /\.(?:test|spec)\./u;
 const SCRIPT_KINDS = {
     tsx: ts.ScriptKind.TSX,
     jsx: ts.ScriptKind.JSX,
@@ -189,24 +200,32 @@ function methodFrom(expr, current) {
 }
 
 // The HTTP method of a call, read from its options object (2nd argument); "GET" when there is none.
-const methodOf = (call) => methodFrom(call.arguments?.[1], "GET");
+const methodOf = (call) => {
+    const args = call.arguments ?? [];
+    let method = methodFrom(args[1], "GET");
+    for (const arg of args.slice(2)) {
+        const at = unwrap(arg);
+        if (at && ts.isObjectLiteralExpression(at)) method = methodFrom(at, method);
+    }
+    return method;
+};
 
 const bare = (segment) => (segment ?? "").replace(/\{\}$/u, "");
 const cut = (text) => text.replace(/[?#].*$/u, "");
 
-// Routes under the go-api admin namespaces named in a path text, as normalized keys.
+// Routes under the go-api admin namespaces: the text is a pathname after an optional origin or
+// leading `{}` base holes, then /api/v1/<namespace>, segment by segment. Never a substring match.
+const ORIGIN = /^(?:[a-z][a-z0-9+.-]*:\/\/[^/]*|(?:\{\})+)?/iu;
 function rawRoutes(text) {
-    const routes = [];
-    const prefix = "/api/v1";
-    for (let at = text.indexOf(`${prefix}/`); at >= 0; at = text.indexOf(`${prefix}/`, at + 1)) {
-        const rest = cut(text.slice(at + prefix.length));
-        const segments = rest.split("/").slice(1);
-        const first = bare(segments[0]);
-        if (first === "admin" || first === "orgs") routes.push(normalizePath(rest));
-        else if (first === "auth" && bare(segments[1]) === "accept-invite")
-            routes.push("/auth/accept-invite");
-    }
-    return routes;
+    const pathText = cut(text);
+    const rest = pathText.slice(ORIGIN.exec(pathText)[0].length);
+    if (!rest.startsWith("/api/v1/")) return [];
+    const route = rest.slice("/api/v1".length);
+    const segments = route.split("/").slice(1);
+    const first = bare(segments[0]);
+    if (first === "admin" || first === "orgs") return [normalizePath(route)];
+    if (first === "auth" && bare(segments[1]) === "accept-invite") return ["/auth/accept-invite"];
+    return [];
 }
 
 // How many `/orgs/<id>/(members|transfer-ownership|invites)` routes a text names.
@@ -239,7 +258,7 @@ function chainOf(expr) {
     return null;
 }
 
-function calleeName(call) {
+function calleeChain(call) {
     let callee = unwrap(call.expression);
     while (
         callee &&
@@ -247,7 +266,11 @@ function calleeName(call) {
         callee.operatorToken.kind === ts.SyntaxKind.CommaToken
     )
         callee = unwrap(callee.right);
-    const chain = callee && chainOf(callee);
+    return callee ? chainOf(callee) : null;
+}
+
+function calleeName(call) {
+    const chain = calleeChain(call);
     return chain ? chain[chain.length - 1] : null;
 }
 
@@ -330,25 +353,20 @@ export function findSites(rel, text) {
     };
     const visitCall = (node) => {
         const name = calleeName(node);
-        const http = CALLEES.has(name) || (ts.isNewExpression(node) && name === "Request");
         const method = methodOf(node);
-        const flagged = MUTATING.has(method) || (http && method === "UNKNOWN");
         const first = node.arguments?.[0];
-        if (flagged && first) {
+        if ((MUTATING.has(method) || method === "UNKNOWN") && first) {
             if (CLIENT_CALLEES.has(name)) {
                 const p = textOf(first);
                 if (p !== null && !p.startsWith("/api/"))
                     add(node, `${method} ${normalizePath(p)}`);
             }
             const parts = [];
-            stringParts(first, parts);
+            for (const arg of node.arguments) stringParts(arg, parts);
             for (const part of parts)
                 for (const route of rawRoutes(part.text)) add(part.node, `${method} ${route}`);
         }
-        if (
-            ts.isCallExpression(node) &&
-            chainOf(node.expression)?.join(".") === "adminApi.users.create"
-        )
+        if (ts.isCallExpression(node) && calleeChain(node)?.join(".") === "adminApi.users.create")
             add(node, "call adminApi.users.create");
     };
     const visit = (node) => {
