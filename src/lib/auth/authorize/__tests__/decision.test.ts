@@ -16,12 +16,12 @@ const WIRE_REASONS = [
     "grant_revoked",
     "impersonation_denied",
     "invalid_request",
-    "membership_inactive",
     "no_membership",
     "org_mismatch",
     "organization_inactive",
     "platform_role_absent",
     "principal_inactive",
+    "repository_allowlist_too_large",
     "repository_not_granted",
     "resource_mismatch",
     "role_lacks_action",
@@ -128,6 +128,38 @@ describe("parseDecision", () => {
                 obligations: { tenant_scope: "org_x" },
             }).ok,
         ).toBe(false);
+    });
+    describe("repository obligations", () => {
+        const withObl = (obligations: Record<string, unknown>) => one({ obligations });
+        it("decodes repository_scope organization", () => {
+            const r = withObl({ repository_scope: "organization" });
+            expect(r.ok && r.decision.obligations?.repositoryScope).toBe("organization");
+            expect(r.ok && r.decision.obligations?.repositoryAllowlist).toBeUndefined();
+        });
+        it.each(["tenant", "all", "*", "", "Organization", 1, null, ["organization"]])(
+            "refuses repository_scope %j",
+            (repository_scope) => {
+                expect(withObl({ repository_scope }).ok).toBe(false);
+            },
+        );
+        it("refuses repository_scope together with repository_allowlist", () => {
+            expect(withObl({ repository_scope: "organization", repository_allowlist: [] }).ok).toBe(
+                false,
+            );
+        });
+        const keys = (n: number) => Array.from({ length: n }, (_, i) => `acme/repo-${i}`);
+        it("accepts 256 allowlist keys and refuses 257", () => {
+            expect(withObl({ repository_allowlist: keys(256) }).ok).toBe(true);
+            expect(withObl({ repository_allowlist: keys(257) }).ok).toBe(false);
+        });
+        it("decodes repository_allowlist_too_large as a deny", () => {
+            const r = one({ allowed: false, reason_code: "repository_allowlist_too_large" });
+            expect(r.ok && r.decision.allowed).toBe(false);
+            expect(one({ reason_code: "repository_allowlist_too_large" }).ok).toBe(false);
+        });
+        it("refuses the retired membership_inactive", () => {
+            expect(one({ allowed: false, reason_code: "membership_inactive" }).ok).toBe(false);
+        });
     });
     it("refuses a wrong schema_version, malformed JSON and a non-object", () => {
         expect(one({ schema_version: "error.v1" }).ok).toBe(false);
