@@ -1,3 +1,4 @@
+import { emitAskDevInteraction } from "@/lib/telemetry/emitters";
 import type {
     ACRErrorV1,
     ACRContextFabricInvestigationRequestV1 as InvestigationRequest,
@@ -983,6 +984,7 @@ export class ConversationStore {
             turns: [...this.snapshot.turns, turn],
             inFlight: true,
         });
+        emitAskDevInteraction({ action: "submit", turnCount: this.snapshot.turns.length });
         void this.run(turn.id);
         return true;
     }
@@ -1008,6 +1010,7 @@ export class ConversationStore {
             return false;
         }
         this.setOutcome(turnId, this.running(), true);
+        emitAskDevInteraction({ action: "retry", turnCount: this.snapshot.turns.length });
         void this.run(turnId);
         return true;
     }
@@ -1022,6 +1025,7 @@ export class ConversationStore {
     cancel(): void {
         const run = this.stoppableRun();
         if (run === null) return;
+        emitAskDevInteraction({ action: "cancel", turnCount: this.snapshot.turns.length });
         if (run.origin === "submitted" && run.requestId === null) {
             this.disconnect(run, "not_admitted");
             return;
@@ -1286,6 +1290,11 @@ export class ConversationStore {
             (turn) => ({ ...turn, stop: undefined, outcome: { kind: "canceled" } }),
             false,
         );
+        emitAskDevInteraction({
+            action: "terminal",
+            terminal: "canceled",
+            turnCount: this.snapshot.turns.length,
+        });
     }
 
     private async requestCancel(run: ActiveRun): Promise<void> {
@@ -2143,6 +2152,12 @@ export class ConversationStore {
     private settle(run: ActiveRun, outcome: TurnOutcome): void {
         this.release(run);
         this.setOutcome(run.turnId, outcome, false);
+        // CHAOS-11961: the end kind only, never the outcome's content.
+        emitAskDevInteraction({
+            action: "terminal",
+            terminal: outcome.kind,
+            turnCount: this.snapshot.turns.length,
+        });
     }
 
     private async run(turnId: number): Promise<void> {
