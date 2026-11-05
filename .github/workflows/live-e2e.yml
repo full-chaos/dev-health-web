@@ -511,7 +511,6 @@ jobs:
                     -H "Origin: ${BACKEND_URL}" \
                     -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\",\"full_name\":\"Test Superuser\"}")
                   echo "register status=${status}"
-                  cat /tmp/reg.json || true
                   case "${status}" in
                     202|400|409) ;;
                     *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
@@ -565,7 +564,6 @@ jobs:
                     -H 'Content-Type: application/json' \
                     -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\"}")
                   echo "superuser login status=${login_status}"
-                  cat /tmp/login.json || true
                   if [ "${login_status}" != "200" ]; then
                     echo "::error::Seeded superuser cannot authenticate; onboarding-ui tests will skip."
                     exit 1
@@ -649,15 +647,14 @@ jobs:
                   PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+                  # The Next web server alone pins the issuer and trusts the job-local CA (SSL_CERT_FILE replaces the
+                  # system roots): playwright.live.config.ts puts this wrapper in front of its dev-server command only.
+                  LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
               # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
               # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
-              run: |
-                  # The web server pins the issuer and trusts the job-local CA (ops print-env web).
-                  while IFS= read -r line; do export "${line%%=*}=${line#*=}"; done \
-                    < <(bash dev-health-ops/ci/live_e2e_auth_stack.sh print-env web "${RUNNER_TEMP}/live-e2e-auth")
-                  bash ci/run_tests.sh live-e2e-two-pass
+              run: bash ci/run_tests.sh live-e2e-two-pass
 
             - name: Upload Playwright report
               if: always()
