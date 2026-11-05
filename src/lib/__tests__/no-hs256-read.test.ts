@@ -3,9 +3,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // RED-6. The HS256 read is gone from source: no class setting, no decode of an HS256 token. The only
-// file that still names the retired setting is the test that proves a leftover value changes nothing.
+// files that still name the retired setting are the tests that prove a leftover value changes nothing.
 const root = path.resolve(__dirname, "../../..");
-const NAMING_THE_RETIRED_SETTING = ["no-hs256-read.test.ts", "eddsaOnly.test.ts"];
+const NAMING_THE_RETIRED_SETTING = [
+    "no-hs256-read.test.ts",
+    "eddsaOnly.test.ts",
+    "authSso.verify.test.ts",
+];
 const FORBIDDEN = ["hs256_compat", "decodeHs256", "AUTH_ACCESS_TOKEN_CLASS", "resolveTokenClass"];
 
 function trackedHits(needle: string): string[] {
