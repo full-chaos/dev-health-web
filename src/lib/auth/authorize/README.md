@@ -9,8 +9,9 @@ allow only for a valid, unexpired, unambiguous answer. Every other path is a den
   from the request. One bad entry refuses the whole batch.
 - `client.ts`: `transport` and `timeoutMs` are required arguments. No module default exists. The deny-default double lives in tests.
   Its consumers are `../shadow` (advisory, off by default) and `../decide` (single decisions for the platform admin actions and
-  the GitHub App routes, off by default, a missing transport denies); no transport is wired yet. `client.ts`, `shadow/run.ts` and
-  `decide/decide.ts` are rows of `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
+  the GitHub App routes, off by default, a missing transport denies). `transport.ts` is the real transport; it is wired only when `AUTH_INTERNAL_URL`,
+  `AUTH_WORKLOAD_SUBJECT_FILE` and `AUTH_WORKLOAD_ISSUER` are all set, and every other state is no transport. `client.ts`,
+  `transport.ts`, `shadow/run.ts` and `decide/decide.ts` are rows of `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
 
 ## Two kinds of deny
 

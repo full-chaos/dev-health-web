@@ -495,6 +495,8 @@ describe("the registry of server-only modules", () => {
             "src/lib/acr/ops.ts",
             "src/lib/acr/service.ts",
             "src/lib/auth/authorize/client.ts",
+            "src/lib/auth/authorize/transport.ts",
+            "src/lib/auth/workload/token.ts",
             "src/lib/auth/shadow/run.ts",
             "src/lib/auth/decide/decide.ts",
             "src/lib/auth/platform/limits.ts",
