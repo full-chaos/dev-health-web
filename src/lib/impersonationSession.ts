@@ -33,3 +33,24 @@ export async function startResultWithHandoff(answer: StartAnswer): Promise<Start
     );
     return { ...rest, sessionHandoff };
 }
+
+export type StopAnswer = Awaited<ReturnType<typeof impersonationApi.stop>>;
+
+/**
+ * The stop answer for the browser, plus a sealed end handoff naming the delegated token the stop
+ * ended: the session drops it even when the status read that follows fails.
+ */
+export async function stopResultWithHandoff(
+    answer: StopAnswer,
+): Promise<StopAnswer & { sessionHandoff?: string }> {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const delegated = session?.admin_access_token ? session.access_token : undefined;
+    if (!userId || !delegated) return answer;
+    const sessionHandoff = await sealSessionHandoff(
+        "impersonationEnd",
+        { access_token: delegated },
+        userId,
+    );
+    return { ...answer, sessionHandoff };
+}

@@ -64,8 +64,11 @@ export function ImpersonationBanner() {
         }
         // Force an immediate server-verified impersonation status re-poll so
         // org scoping reverts to the admin's own org right away (CHAOS-2309),
-        // then tell every other tab to do the same.
-        await update({ impersonationChanged: true });
+        // then tell every other tab to do the same. The sealed end handoff drops the
+        // delegated token even when that status read fails.
+        const sessionHandoff = (result?.data as { sessionHandoff?: string } | undefined)
+            ?.sessionHandoff;
+        await update({ impersonationChanged: true, sessionHandoff });
         broadcastImpersonationEvent({ type: "stopped" });
         router.refresh();
         if (isImpersonationWindow()) {

@@ -20,7 +20,10 @@ import {
     admitPairWrite,
     clearImpersonationToken,
     delegatedExpired,
+    delegatedToken,
+    endImpersonationByHandoff,
     endImpersonationForSignOut,
+    isImpersonatingToken,
     resolveImpersonationStep,
     setImpersonationToken,
     type ImpersonationPair,
@@ -456,6 +459,14 @@ const nextAuth = NextAuth({
             if (handoff?.kind === "impersonation") {
                 setImpersonationToken(token, handoff.pair as ImpersonationPair, Date.now());
             }
+            // A stop the server recorded ends the impersonation it names, whatever the status read
+            // then answers.
+            if (handoff?.kind === "impersonationEnd") {
+                endImpersonationByHandoff(
+                    token,
+                    (handoff.pair as { access_token: string }).access_token,
+                );
+            }
 
             const expiresAt = token.expires_at as number | undefined;
             const lastValidated = token.last_validated as number | undefined;
@@ -550,15 +561,19 @@ const nextAuth = NextAuth({
                     force: trigger === "update",
                     now,
                 });
-                // `undefined`: the read failed, or failed a moment ago. Keep the existing state. An
-                // answer without a boolean `is_impersonating` says nothing: kept too. Only a status
-                // read with the administrator bearer that says false confirms the end.
-                if (status !== undefined && typeof status.is_impersonating === "boolean") {
-                    if (status.is_impersonating === false) clearImpersonationToken(token);
-                    token.is_impersonating = status.is_impersonating;
+                // The state is the delegated token (isImpersonatingToken); this read never starts
+                // it. `undefined` (the read failed, or failed a moment ago) or an answer without a
+                // boolean `is_impersonating` changes nothing. A read with the administrator bearer
+                // that says false ends it; true refreshes the display data of a held token only.
+                if (status?.is_impersonating === false) {
+                    clearImpersonationToken(token);
+                    token.impersonated_user_id = undefined;
+                    token.impersonated_email = undefined;
+                    token.impersonated_org_id = undefined;
+                } else if (status?.is_impersonating === true && isImpersonatingToken(token)) {
                     token.impersonated_user_id = status.impersonated_user_id;
                     token.impersonated_email = undefined;
-                    if (status.is_impersonating && status.impersonated_email) {
+                    if (status.impersonated_email) {
                         targetEmailOfRun.set(token, status.impersonated_email);
                     }
                     token.impersonated_org_id = status.impersonated_org_id;
@@ -581,14 +596,19 @@ const nextAuth = NextAuth({
         },
         async session({ session, token }) {
             if (token) {
+                // Computed here from the delegated token on every read; never stored (D6720).
+                const impersonating = isImpersonatingToken(token);
                 session.user.id = token.id as string;
-                session.user.is_impersonating = !!token.is_impersonating;
-                session.user.impersonated_user_id = token.impersonated_user_id as
-                    string | undefined;
-                session.user.impersonated_email = token.is_impersonating
+                session.user.is_impersonating = impersonating;
+                session.user.impersonated_user_id = impersonating
+                    ? (token.impersonated_user_id as string | undefined)
+                    : undefined;
+                session.user.impersonated_email = impersonating
                     ? targetEmailOfRun.get(token)
                     : undefined;
-                session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
+                session.user.impersonated_org_id = impersonating
+                    ? (token.impersonated_org_id as string | undefined)
+                    : undefined;
                 // org_id is the EFFECTIVE org: while impersonating it is the
                 // impersonation target's org, so every consumer (proxy, GraphQL
                 // providers, RSC fetchers) is impersonation-aware by construction.
@@ -596,8 +616,8 @@ const nextAuth = NextAuth({
                 session.user.real_org_id = token.org_id as string | undefined;
                 session.user.org_id = resolveActiveOrgId({
                     org_id: token.org_id as string | undefined,
-                    is_impersonating: !!token.is_impersonating,
-                    impersonated_org_id: token.impersonated_org_id as string | undefined,
+                    is_impersonating: impersonating,
+                    impersonated_org_id: session.user.impersonated_org_id,
                 }) as string;
                 session.user.role = token.role as string;
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
@@ -607,7 +627,7 @@ const nextAuth = NextAuth({
                 // While a delegated token is set it is the session token (an expired one is refused
                 // by the backend: never a fall back to the administrator's). The administrator's
                 // own token goes aside for stop and status.
-                const delegated = token.imp_access_token as string | undefined;
+                const delegated = delegatedToken(token);
                 if (delegated && delegatedExpired(token, Date.now())) {
                     // The stop has not succeeded yet: no bearer at all (neither the expired
                     // delegated token nor the administrator's under the impersonated view). Data
@@ -648,7 +668,8 @@ export const SESSION_HANDOFF_SALT = "dev-health.session-handoff.v1";
 /** A handoff is used at once by the page that received it; a short life bounds a copied one. */
 const SESSION_HANDOFF_MAX_AGE_SECONDS = 120;
 
-export type SessionHandoffKind = "activeOrg" | "onboardComplete" | "impersonation";
+export type SessionHandoffKind =
+    "activeOrg" | "onboardComplete" | "impersonation" | "impersonationEnd";
 
 type OnboardPair = {
     access_token: string;
@@ -803,7 +824,12 @@ async function openSessionHandoff(
     if (!payload) return refuse("empty");
     if (payload.sub !== userId) return refuse("other_user");
     const kind = payload.kind;
-    if (kind !== "activeOrg" && kind !== "onboardComplete" && kind !== "impersonation") {
+    if (
+        kind !== "activeOrg" &&
+        kind !== "onboardComplete" &&
+        kind !== "impersonation" &&
+        kind !== "impersonationEnd"
+    ) {
         return refuse("unknown_kind");
     }
     const pair = payload.pair as { access_token?: unknown; user?: unknown } | undefined;

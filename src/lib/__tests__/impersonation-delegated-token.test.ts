@@ -197,7 +197,8 @@ describe("session: delegated token in, administrator pair kept", () => {
         expect(token.imp_session_access_token).toBeUndefined();
         expect(JSON.stringify(token)).not.toContain(DELEGATED_SERVICE);
         expect(token.imp_expires_at).toEqual(expect.any(Number));
-        expect(token.is_impersonating).toBe(true);
+        expect(token).not.toHaveProperty("is_impersonating");
+        expect(token.imp_access_token).toEqual(expect.any(String));
     });
 
     it("R3 the session carries the delegated token and the administrator's aside", async () => {
@@ -277,7 +278,7 @@ describe("end of the delegated token", () => {
         expect(next.imp_access_token).toBeUndefined();
         expect(next.imp_session_access_token).toBeUndefined();
         expect(next.imp_expires_at).toBeUndefined();
-        expect(next.is_impersonating).toBe(false);
+        expect(next).not.toHaveProperty("is_impersonating");
         expect(calls.some((c) => c.path.endsWith("/impersonate/stop"))).toBe(false);
         const s = await callbacks().session({ session: { user: {} }, token: next });
         expect(s.access_token).toBe(ADMIN);
@@ -293,7 +294,7 @@ describe("end of the delegated token", () => {
         expect(stops).toHaveLength(1);
         expect(stops[0].bearer).toBe(ADMIN);
         expect(next.imp_access_token).toBeUndefined();
-        expect(next.is_impersonating).toBe(false);
+        expect(next).not.toHaveProperty("is_impersonating");
     });
 
     it("R6b expiry with a failing stop keeps the delegated fields and serves no bearer", async () => {
@@ -303,7 +304,8 @@ describe("end of the delegated token", () => {
         resetImpersonationStatusForTests();
         const next = await later(expired, "update");
         expect(next.imp_access_token).toBe(DELEGATED);
-        expect(next.is_impersonating).toBe(true);
+        expect(next).not.toHaveProperty("is_impersonating");
+        expect(next.imp_access_token).toEqual(expect.any(String));
         const s = await callbacks().session({ session: { user: {} }, token: next });
         expect(s.access_token).toBeUndefined();
         expect(s).not.toHaveProperty("admin_access_token");

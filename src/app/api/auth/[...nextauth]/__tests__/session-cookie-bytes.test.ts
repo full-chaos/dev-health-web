@@ -329,7 +329,8 @@ describe("session cookie bytes, administrator impersonating, longest values", ()
             shapes.impersonating = await update({ sessionHandoff });
             const live = await sealed();
             expect(live.imp_access_token).toBe(ACCESS_ORG_ACT);
-            expect(live.is_impersonating).toBe(true);
+            expect(live).not.toHaveProperty("is_impersonating");
+            expect(live.imp_access_token).toEqual(expect.any(String));
             expect(live).not.toHaveProperty("imp_session_access_token");
             // The delegated token ends (900 s); the stop answers 503: the delegated state is kept.
             vi.setSystemTime(CLOCK_MS + 16 * 60_000);

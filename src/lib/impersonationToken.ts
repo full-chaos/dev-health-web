@@ -35,8 +35,27 @@ export function clearImpersonationToken(token: JWT): void {
 }
 
 /**
- * The one guard of the token pair while an impersonation is live (delegated token or status
- * flag set). Only the administrator's own refresh rotates the pair. A handoff of another kind is
+ * The one source of the impersonation state (D6720): a session impersonates exactly when it holds
+ * a delegated token. No flag is stored; the status read can end an impersonation, never start one.
+ */
+export function isImpersonatingToken(token: JWT): boolean {
+    return typeof token.imp_access_token === "string" && token.imp_access_token !== "";
+}
+
+/** The delegated bearer while one is held. */
+export function delegatedToken(token: JWT): string | undefined {
+    return isImpersonatingToken(token) ? (token.imp_access_token as string) : undefined;
+}
+
+/** A sealed end handoff ends the impersonation only when it names the delegated token held. */
+export function endImpersonationByHandoff(token: JWT, ended: string): boolean {
+    if (!isImpersonatingToken(token) || token.imp_access_token !== ended) return false;
+    dropImpersonation(token);
+    return true;
+}
+
+/**
+ * The one guard of the token pair while an impersonation is live (a delegated token is held). Only the administrator's own refresh rotates the pair. A handoff of another kind is
  * refused: an org switch or a password change made under the delegated bearer answers with the
  * target's pair. A sign-in starts a new session, so the delegated state is dropped first.
  */
@@ -45,12 +64,14 @@ export function admitPairWrite<H extends { kind: string }>(
     handoff: H | null,
     signIn: boolean,
 ): H | null {
-    if (!token.imp_access_token && !token.is_impersonating) return handoff;
+    if (!isImpersonatingToken(token)) return handoff?.kind === "impersonationEnd" ? null : handoff;
     if (signIn) {
         dropImpersonation(token);
         return handoff;
     }
-    return handoff?.kind === "impersonation" ? handoff : null;
+    return handoff?.kind === "impersonation" || handoff?.kind === "impersonationEnd"
+        ? handoff
+        : null;
 }
 
 /** Before the end of an administrator token, the refresh starts this early (the callback's rule). */
@@ -58,7 +79,7 @@ export const ADMIN_REFRESH_LEAD_MS = 5 * 60 * 1000;
 
 /** True when a delegated token is held and has run out (a missing expiry counts as run out). */
 export function delegatedExpired(token: JWT, now: number): boolean {
-    if (!token.imp_access_token) return false;
+    if (!isImpersonatingToken(token)) return false;
     return token.imp_expires_at === undefined || now >= token.imp_expires_at;
 }
 
@@ -103,7 +124,6 @@ function delegationIdsOf(accessToken: unknown): { sid?: string; delegation_id?: 
 
 function dropImpersonation(token: JWT): void {
     clearImpersonationToken(token);
-    token.is_impersonating = false;
     token.impersonated_user_id = undefined;
     token.impersonated_email = undefined;
     token.impersonated_org_id = undefined;
@@ -115,7 +135,7 @@ function dropImpersonation(token: JWT): void {
  * server row then ends at its own expiry). The delegated state is dropped either way.
  */
 export async function endImpersonationForSignOut(token: JWT, now: number): Promise<void> {
-    if (!token.imp_access_token) return;
+    if (!isImpersonatingToken(token)) return;
     const stopped = adminBearerLive(token, now) && (await stopWith(token.access_token as string));
     if (!stopped) {
         impersonationLogger.error(

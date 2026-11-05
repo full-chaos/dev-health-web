@@ -155,7 +155,7 @@ async function expectNothingOutlivesStop(token: Obj, adminAccess = ADMIN) {
     expect(after.imp_access_token).toBeUndefined();
     expect(after.imp_session_access_token).toBeUndefined();
     expect(after.imp_expires_at).toBeUndefined();
-    expect(after.is_impersonating).toBe(false);
+    expect(after).not.toHaveProperty("is_impersonating");
     const text = JSON.stringify(after);
     expect(text).not.toContain(DELEGATED);
     expect(text).not.toContain(TARGET_B);
@@ -374,7 +374,7 @@ describe("G5 SSO ticket while impersonating", () => {
         });
         expect(signedIn.imp_access_token).toBeUndefined();
         expect(signedIn.imp_session_access_token).toBeUndefined();
-        expect(signedIn.is_impersonating).not.toBe(true);
+        expect(signedIn).not.toHaveProperty("is_impersonating");
         expect(JSON.stringify(signedIn)).not.toContain(DELEGATED);
         const s = await session(signedIn);
         expect(s.access_token).toBe(TARGET_B);
@@ -398,9 +398,12 @@ describe("G5 SSO ticket while impersonating", () => {
             trigger: "signIn",
         });
         const polled = await update(signedIn);
-        expect(polled.is_impersonating).toBe(true);
+        // No delegated token: the status answer does not start an impersonation (D6720).
+        expect(polled).not.toHaveProperty("is_impersonating");
         expect(polled.imp_access_token).toBeUndefined();
-        sessionRead.mockResolvedValue(await session(polled));
+        const s = await session(polled);
+        expect(s.user.is_impersonating).toBe(false);
+        sessionRead.mockResolvedValue(s);
         calls.length = 0;
         expect((await stopImpersonation()).error).toBeUndefined();
         expect(calls.find((c) => c.path.endsWith("/impersonate/stop"))?.bearer).toBe(ADMIN);

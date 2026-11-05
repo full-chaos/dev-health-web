@@ -365,7 +365,7 @@ describe("S1 matrix: refresh outcome x delegated x admin", () => {
             expect(events[0].fields).toMatchObject({ delegation_id: DELEGATION_ID, sid: SID });
             expect(next.access_token).toBeUndefined();
             expect(next.refresh_token).toBeUndefined();
-            expect(next.is_impersonating).toBeFalsy();
+            expect(next).not.toHaveProperty("is_impersonating");
         }
         expect(next.error).toBe(want.error);
         const s = await session(next);
@@ -471,7 +471,7 @@ describe("S4 case (c): no valid bearer", () => {
         expect(next.access_token).toBeUndefined();
         expect(next.refresh_token).toBeUndefined();
         expect(next.session_access_token).toBeUndefined();
-        expect(next.is_impersonating).toBeFalsy();
+        expect(next).not.toHaveProperty("is_impersonating");
         expect(next.error).toBe("refresh_failed");
         const s = await session(next);
         expect(s.access_token).toBeUndefined();
@@ -597,13 +597,14 @@ describe("S6 the status read clears imp_* only on an administrator-bearer answer
         for (const r of reads) expect(r.bearer).toBe(ADMIN);
         if (answer === "false") {
             expect(next.imp_access_token).toBeUndefined();
-            expect(next.is_impersonating).toBe(false);
+            expect(next).not.toHaveProperty("is_impersonating");
             expect((await session(next)).access_token).toBe(ADMIN);
             return;
         }
         expect(next.imp_access_token).toBe(DELEGATED);
         expect(next.imp_expires_at).toEqual(token.imp_expires_at);
-        expect(next.is_impersonating).toBe(true);
+        expect(next).not.toHaveProperty("is_impersonating");
+        expect(next.imp_access_token).toEqual(expect.any(String));
         const s = await session(next);
         expect(s.access_token).toBeUndefined();
         expect(s.error).toBe("impersonation_ending");
@@ -615,7 +616,8 @@ describe("S6 the status read clears imp_* only on an administrator-bearer answer
         resetImpersonationStatusForTests();
         const next = await later(token);
         expect(next.imp_access_token).toBe(DELEGATED);
-        expect(next.is_impersonating).toBe(true);
+        expect(next).not.toHaveProperty("is_impersonating");
+        expect(next.imp_access_token).toEqual(expect.any(String));
         expect((await session(next)).access_token).toBe(DELEGATED);
     });
 });
@@ -712,7 +714,8 @@ describe("S8 the target e-mail is served from the status read of the request, no
         backend.status = 503;
         resetImpersonationStatusForTests();
         const next = await later(token);
-        expect(next.is_impersonating).toBe(true);
+        expect(next).not.toHaveProperty("is_impersonating");
+        expect(next.imp_access_token).toEqual(expect.any(String));
         expect(next.imp_access_token).toBe(DELEGATED);
         const s = await session(next);
         expect(s.user.is_impersonating).toBe(true);

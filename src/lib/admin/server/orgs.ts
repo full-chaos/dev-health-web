@@ -17,7 +17,7 @@ import type {
     DeletionPlan,
 } from "../types";
 import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
-import { startResultWithHandoff } from "@/lib/impersonationSession";
+import { startResultWithHandoff, stopResultWithHandoff } from "@/lib/impersonationSession";
 
 // ---- Current Org (self-service) ----
 
@@ -143,7 +143,7 @@ export async function stopImpersonation(): Promise<ActionResult<{ status: string
             allowImpersonating: true,
             guard: "unmapped",
         });
-        return adminApi.impersonation.stop(token);
+        return stopResultWithHandoff(await adminApi.impersonation.stop(token));
     }, "changes-impersonation");
 }
 

@@ -72,7 +72,6 @@ declare module "next-auth/jwt" {
         imp_expires_at?: number;
         act_sub?: string;
         error?: string;
-        is_impersonating?: boolean;
         impersonated_user_id?: string;
         impersonated_email?: string;
         impersonated_org_id?: string;
