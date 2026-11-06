@@ -219,6 +219,9 @@ describe("every stamp the new code writes holds the 60 s bound", () => {
         await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
         vi.setSystemTime(T0 + C + 5_000);
         const joined = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
+        // Let the second callback reach the memo (key hash, then the in-flight entry) before the
+        // backend answers; a release right away would make it a plain memo hit.
+        await new Promise((resolve) => setTimeout(resolve, 50));
         release(new Response(JSON.stringify({ valid: true }), { status: 200 }));
         const [, copy] = await Promise.all([first, joined]);
         expect(fetch).toHaveBeenCalledTimes(1);
