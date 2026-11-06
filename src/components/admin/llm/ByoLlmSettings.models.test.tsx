@@ -349,6 +349,7 @@ describe("ByoLlmSettings model picker", () => {
         mockLoadModels.mockResolvedValue({ data: catalogBody("anthropic", ["claude-x"]) });
 
         await userEvent.selectOptions(screen.getByLabelText("Provider"), "anthropic");
+        await userEvent.type(screen.getByLabelText("API Key"), "sk-ant-test-12345678");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(mockSave).toHaveBeenCalled());
 

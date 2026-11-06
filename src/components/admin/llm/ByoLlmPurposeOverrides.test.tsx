@@ -209,6 +209,62 @@ describe("ByoLlmPurposeOverrides", () => {
         expect(save).not.toHaveBeenCalled();
     });
 
+    it("asks for the key again when a stored override changes its provider or base URL", async () => {
+        load.mockResolvedValue({
+            data: {
+                provider: "anthropic",
+                api_key: "sk-a…1234",
+                purposes: {
+                    explain: {
+                        purpose: "explain",
+                        provider: "openai",
+                        model: "gpt-5",
+                        api_key: "sk-o…5678",
+                    },
+                },
+            },
+        });
+        renderIt();
+        await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "gemini");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "A new provider or base URL needs its API key entered again.",
+        );
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "openai");
+        await userEvent.type(screen.getByLabelText("Base URL"), "https://gateway.example.com/v1");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("API key entered again");
+        expect(save).not.toHaveBeenCalled();
+    });
+
+    it("does not let an override on another base URL use the default key", async () => {
+        load.mockResolvedValue({ data: { provider: "anthropic", api_key: "sk-a…1234" } });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[0]);
+        await userEvent.type(screen.getByLabelText("Model"), "m");
+        await userEvent.type(screen.getByLabelText("Base URL"), "https://8.8.8.8/v1");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("own API key");
+        expect(save).not.toHaveBeenCalled();
+    });
+
+    it("shows the refusal of a provider or base URL change without a key", async () => {
+        load.mockResolvedValue({ data: { provider: "anthropic", api_key: "sk-a…1234" } });
+        save.mockResolvedValue({
+            error: "A new provider or base URL needs its API key entered again.",
+            status: 400,
+            code: "provider_or_base_url_change_requires_api_key",
+        });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[0]);
+        await userEvent.type(screen.getByLabelText("Model"), "m");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("API key entered again");
+    });
+
     it("removes an override", async () => {
         load.mockResolvedValue({
             data: {

@@ -7,7 +7,10 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { Section } from "@/components/ui/Section";
 import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { categorizeRefusalMessage } from "@/lib/admin/categorizeRefusals";
+import {
+    TARGET_CHANGE_NEEDS_KEY_MESSAGE,
+    categorizeRefusalMessage,
+} from "@/lib/admin/categorizeRefusals";
 import {
     CATEGORIZE_MODELS,
     CATEGORIZE_PROVIDER,
@@ -49,6 +52,7 @@ function providerLabel(provider: string): string {
 
 type Loaded = {
     defaultProvider: string | null;
+    defaultBaseUrl: string;
     hasDefaultKey: boolean;
     optedIn: boolean;
     overrides: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
@@ -76,6 +80,7 @@ export function ByoLlmPurposeOverrides({
         setLoadError(null);
         setLoaded({
             defaultProvider: result.data.provider ?? null,
+            defaultBaseUrl: result.data.base_url ?? "",
             hasDefaultKey: Boolean(result.data.api_key),
             optedIn: result.data.categorize_byo === true,
             overrides: result.data.purposes ?? {},
@@ -153,7 +158,9 @@ function PurposeForm({
     const isCategorize = purpose === "categorize";
 
     const sameProvider = !isCategorize && provider === loaded.defaultProvider;
-    const keyInherited = sameProvider && loaded.hasDefaultKey;
+    // The default key serves an override only on the default's provider and base URL.
+    const keyInherited =
+        sameProvider && loaded.hasDefaultKey && baseUrl.trim() === loaded.defaultBaseUrl;
 
     function open() {
         setProvider(
@@ -171,8 +178,15 @@ function PurposeForm({
             setError("Enter a model for this purpose.");
             return;
         }
-        if (!keyInherited && !stored && !apiKey.trim()) {
-            setError("A different provider needs its own API key.");
+        const targetChanged =
+            stored !== undefined &&
+            (stored.provider !== provider || (stored.base_url ?? "") !== baseUrl.trim());
+        if (!keyInherited && !apiKey.trim() && (!stored || targetChanged)) {
+            setError(
+                stored
+                    ? TARGET_CHANGE_NEEDS_KEY_MESSAGE
+                    : "A different provider needs its own API key.",
+            );
             return;
         }
         setBusy(true);
