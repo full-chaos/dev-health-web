@@ -163,10 +163,10 @@ describe("superadmin surfaces are denied while impersonating", () => {
         await expect(requireRole(["admin", "owner"])).rejects.toThrow("NEXT_REDIRECT:/dashboard");
     });
 
-    it("requireRole: the impersonated user's real org role still decides", async () => {
+    it("requireRole: a matching role does not admit an impersonating session", async () => {
         const s = await sessionRead();
         sessionRead.mockResolvedValue({ ...s, user: { ...s.user, role: "admin" } });
-        await expect(requireRole(["admin", "owner"])).resolves.toBeTruthy();
+        await expect(requireRole(["admin", "owner"])).rejects.toThrow("NEXT_REDIRECT:/dashboard");
     });
 
     it("the /org/admin layout denies an impersonating session whose role is member", async () => {
