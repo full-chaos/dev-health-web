@@ -23,6 +23,9 @@ export const IMPERSONATION_WINDOW_NAME = "dev-health-impersonation";
 
 export type ImpersonationEvent = { type: "started" } | { type: "stopped" };
 
+/** The error of a start whose session update did not admit it (the go-api row is stopped). */
+export const IMPERSONATION_NOT_STARTED_TEXT = "Impersonation could not start. Try again.";
+
 export function broadcastImpersonationEvent(event: ImpersonationEvent): void {
     if (typeof BroadcastChannel === "undefined") return;
     const channel = new BroadcastChannel(IMPERSONATION_CHANNEL);
