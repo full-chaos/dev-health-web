@@ -639,6 +639,27 @@ jobs:
                   bash ci/live_e2e_auth_stack.sh assert-audit "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 
+            - name: Run web decisions live tier (flip F11)
+              # The Next server decides the enforced actions (admin.orgs, admin.users, integrations.write) with the real PDP: allow,
+              # deny and fail-closed with auth-service stopped (enforce pass), then the shadow pass. It runs BEFORE the live tier because
+              # the live tier's second pass restarts go-api with auto-org off. The web workload gets its token through the stack's
+              # job-local TokenReview (test code; the product path is unchanged).
+              env:
+                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
+                  TEST_SUPERUSER_EMAIL: admin@devhealth.example
+                  TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+                  LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
+                  LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
+                  LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+              run: bash ci/run_tests.sh live-e2e-web-decisions
+
+            - name: Upload the web decisions server logs on failure
+              if: failure()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-decisions-server-logs
+                  path: web-decisions-logs
+
             - name: Run live backend e2e tier
               env:
                   # CHAOS-7001: through the plane-split router, not the Python api directly --

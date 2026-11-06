@@ -30,4 +30,21 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
     it("hands the web-server wrapper to the runner, not the CA variables", () => {
         expect(workflow).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
     });
+
+    it("runs the web decisions tier before the live tier, which restarts go-api for its second pass", () => {
+        const decisions = workflow.indexOf("ci/run_tests.sh live-e2e-web-decisions");
+        const twoPass = workflow.indexOf("ci/run_tests.sh live-e2e-two-pass");
+        expect(decisions).toBeGreaterThan(0);
+        expect(twoPass).toBeGreaterThan(decisions);
+    });
+
+    it("gives the web decisions step the wrapper and the stack control, and no CA or token variable", () => {
+        const start = workflow.indexOf("Run web decisions live tier");
+        const end = workflow.indexOf("Upload the web decisions server logs");
+        const step = workflow.slice(start, end);
+        expect(step).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
+        expect(step).toMatch(/LIVE_E2E_STACK_SCRIPT:.*live_e2e_auth_stack\.sh/);
+        expect(step).toMatch(/LIVE_E2E_STACK_STATE:/);
+        expect(step).not.toMatch(/SSL_CERT_FILE|NODE_EXTRA_CA_CERTS|AUTH_WORKLOAD|AUTHZ_/);
+    });
 });

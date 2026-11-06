@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|live-e2e-web-decisions|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -496,6 +496,18 @@ case "${tier}" in
     run_live_e2e || status=$?
     bash ci/live-e2e-restart-go-api.sh || exit 1
     LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
+    exit "${status}"
+    ;;
+  live-e2e-web-decisions)
+    # Flip F11: the decision client against the real PDP. Two passes of the web server (enforce, then shadow); the server
+    # log of each pass is in web-decisions-logs/ because the Playwright reporter empties playwright-report at each start.
+    status=0
+    mkdir -p web-decisions-logs
+    for mode in enforce shadow; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+    done
     exit "${status}"
     ;;
   live-e2e-guided)
