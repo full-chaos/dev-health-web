@@ -166,6 +166,67 @@ describe("forced sign-out bound (60 s from the last backend check)", () => {
     });
 });
 
+describe("every stamp the new code writes holds the 60 s bound", () => {
+    // The backend's last real check is at C. Whatever path stamps a copy of the session after it,
+    // the backend refusing the user makes that copy validate, and sign out, at C + 60 s.
+    const C = 61_000;
+
+    async function checkedAtC(): Promise<Token> {
+        answers(200, JSON.stringify({ valid: true }));
+        const login = await callbackAt(0, freshToken());
+        const checked = await callbackAt(C, { ...login, last_validated: T0 });
+        expect(checked.last_validated).toBe(T0 + C);
+        return login;
+    }
+
+    async function signedOutAtBound(copy: Token): Promise<void> {
+        const fetchMock = answers(200, JSON.stringify({ valid: false }));
+        const out = await callbackAt(C + 60_000, copy);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(out.error).toBe("user_invalid");
+        expect(out.access_token).toBeUndefined();
+    }
+
+    it("the stamp of the real check", async () => {
+        const login = await checkedAtC();
+        const checked = await callbackAt(C + 1, { ...login, last_validated: T0 + C });
+        expect(checked.last_validated).toBe(T0 + C);
+        await signedOutAtBound(checked);
+    });
+
+    it.each([1, 30_000, 59_999])("the stamp of a memo hit %i ms after the check", async (hitMs) => {
+        const login = await checkedAtC();
+        const hit = await callbackAt(C + hitMs, { ...login, last_validated: T0 });
+        expect(hit.last_validated).toBe(T0 + C);
+        await signedOutAtBound(hit);
+    });
+
+    it("the stamp of a callback that joins a check in flight", async () => {
+        answers(200, JSON.stringify({ valid: true }));
+        const login = await callbackAt(0, freshToken());
+        let release: (res: Response) => void = () => undefined;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        release = resolve;
+                    }),
+            ),
+        );
+        vi.setSystemTime(T0 + C);
+        const first = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
+        await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+        vi.setSystemTime(T0 + C + 5_000);
+        const joined = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
+        release(new Response(JSON.stringify({ valid: true }), { status: 200 }));
+        const [, copy] = await Promise.all([first, joined]);
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(copy.last_validated).toBe(T0 + C);
+        await signedOutAtBound(copy);
+    });
+});
+
 describe("terminal answers end the session", () => {
     it("a 200 with valid false", async () => {
         answers(200, JSON.stringify({ valid: false }));
