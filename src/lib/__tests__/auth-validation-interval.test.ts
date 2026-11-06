@@ -46,6 +46,7 @@ vi.mock("@/lib/logger", () => {
 
 import "@/lib/auth";
 import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
+import { processMemo } from "@/lib/processMemo";
 
 const ACCESS_TOKEN = "access-token";
 const REFRESH_TOKEN = "refresh-token";
@@ -214,19 +215,34 @@ describe("every stamp the new code writes holds the 60 s bound", () => {
                     }),
             ),
         );
-        vi.setSystemTime(T0 + C);
-        const first = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
-        await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-        vi.setSystemTime(T0 + C + 5_000);
-        const joined = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
-        // Let the second callback reach the memo (key hash, then the in-flight entry) before the
-        // backend answers; a release right away would make it a plain memo hit.
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        release(new Response(JSON.stringify({ valid: true }), { status: 200 }));
-        const [, copy] = await Promise.all([first, joined]);
-        expect(fetch).toHaveBeenCalledTimes(1);
-        expect(copy.last_validated).toBe(T0 + C);
-        await signedOutAtBound(copy);
+        // Count the memo reads that find the check in flight: the cell fails unless the second
+        // callback really joins it (the backend answer is held until then).
+        const memoGet = vi.spyOn(processMemo<{ kind: string }>("authValidationMemo"), "get");
+        const inFlightReads = (): number =>
+            memoGet.mock.results.filter(
+                (r) =>
+                    r.type === "return" &&
+                    (r.value as { kind?: string } | undefined)?.kind === "inFlight",
+            ).length;
+        try {
+            vi.setSystemTime(T0 + C);
+            const first = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
+            await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+            vi.setSystemTime(T0 + C + 5_000);
+            const joined = jwtCallback()({
+                token: { ...login, last_validated: T0 },
+                account: null,
+            });
+            await vi.waitFor(() => expect(inFlightReads()).toBe(1), { timeout: 5_000 });
+            release(new Response(JSON.stringify({ valid: true }), { status: 200 }));
+            const [, copy] = await Promise.all([first, joined]);
+            expect(inFlightReads()).toBe(1);
+            expect(fetch).toHaveBeenCalledTimes(1);
+            expect(copy.last_validated).toBe(T0 + C);
+            await signedOutAtBound(copy);
+        } finally {
+            memoGet.mockRestore();
+        }
     });
 });
 
