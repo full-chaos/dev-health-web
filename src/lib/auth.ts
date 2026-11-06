@@ -18,6 +18,8 @@ import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authVa
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import {
     admitPairWrite,
+    clearHandoffUnconfirmed,
+    confirmStartHandoff,
     clearImpersonationToken,
     delegatedExpired,
     delegatedToken,
@@ -242,6 +244,7 @@ const nextAuth = NextAuth({
     callbacks: {
         async jwt({ token, user, account, trigger, session }) {
             const now = Date.now();
+            clearHandoffUnconfirmed(token);
             const refreshAdmin = async () => {
                 const env = getServerEnv();
                 return refreshSession(token.refresh_token as string, {
@@ -295,9 +298,12 @@ const nextAuth = NextAuth({
             const handoff = admitPairWrite(
                 token,
                 trigger === "update"
-                    ? await openSessionHandoff(
-                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
-                          token.id as string | undefined,
+                    ? await confirmStartHandoff(
+                          token,
+                          await openSessionHandoff(
+                              (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
+                              token.id as string | undefined,
+                          ),
                       )
                     : null,
                 Boolean(user || account),
@@ -846,6 +852,8 @@ async function openSessionHandoff(
         if (expiresIn !== undefined && (typeof expiresIn !== "number" || !(expiresIn > 0))) {
             return refuse("bad_expires_in");
         }
+        const handoffId = (pair as { handoff_id?: unknown }).handoff_id;
+        if (typeof handoffId !== "string" || !handoffId) return refuse("no_handoff_id");
     }
     return { kind, pair, issued_ms: payload.issued_ms };
 }

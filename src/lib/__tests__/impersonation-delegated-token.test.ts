@@ -175,6 +175,7 @@ describe("start: the delegated token never reaches the browser", () => {
             session_access_token: DELEGATED_SERVICE,
             token_type: "Bearer",
             expires_in: 600,
+            handoff_id: ops.issue(),
         };
         const r = await startImpersonation("target-1");
         expect(r.error).toBeUndefined();
@@ -187,6 +188,16 @@ describe("start: the delegated token never reaches the browser", () => {
 
     // D6720 option A (acp): the delegated token is the only impersonation state, so an answer
     // without one (AUTH_PROXY_IMPERSONATION off) is stopped at once and refused.
+    // CHAOS-13184: the handoff is admitted only through go-api's one-use record of the start.
+    it("R10 a delegated answer with no handoff_id is stopped with the admin bearer and refused", async () => {
+        backend.startBody = { access_token: DELEGATED, token_type: "Bearer", expires_in: 600 };
+        const r = await startImpersonation("target-1");
+        expect(r.data).toBeUndefined();
+        expect(r.error).toBe("Impersonation needs the delegated token. It was stopped.");
+        const stops = calls.filter((c) => c.path.endsWith("/impersonate/stop"));
+        expect(stops.map((c) => c.bearer)).toEqual([ADMIN]);
+    });
+
     it("R9 an answer with no access_token (flag off) is stopped with the admin bearer and refused", async () => {
         const r = await startImpersonation("target-1");
         expect(r.data).toBeUndefined();

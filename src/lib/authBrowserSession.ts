@@ -1,6 +1,7 @@
 import "server-only";
 import type { NextRequest } from "next/server";
 
+import { HANDOFF_UNCONFIRMED_ERROR } from "@/lib/impersonationToken";
 import { logger } from "@/lib/logger";
 
 /**
@@ -59,7 +60,7 @@ async function serverOnlyUpdateKey(request: NextRequest): Promise<string | null>
  * The answer with the server-only keys removed. Returns null when it cannot be served: a token
  * value is still in the body (copied under another key), or the body is not readable JSON.
  */
-async function withoutServerOnlyKeys(response: Response): Promise<Response | null> {
+async function withoutServerOnlyKeys(response: Response, method: string): Promise<Response | null> {
     const text = await response.text();
     if (!text) return rebuild(response, text);
     let body: unknown;
@@ -86,6 +87,17 @@ async function withoutServerOnlyKeys(response: Response): Promise<Response | nul
             "auth route answer still holds an Ops token after the token keys were removed; refused",
         );
         return null;
+    }
+    // An update whose start handoff go-api did not confirm (CHAOS-13184): 503, with the cookie
+    // Auth.js set (a refresh in the same callback may have rotated the pair).
+    if (method === "POST" && record.error === HANDOFF_UNCONFIRMED_ERROR) {
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        headers.set("Cache-Control", "private, no-store");
+        return new Response(JSON.stringify({ error: HANDOFF_UNCONFIRMED_ERROR }), {
+            status: 503,
+            headers,
+        });
     }
     return rebuild(response, served);
 }
@@ -121,7 +133,10 @@ export function browserSafeAuthHandler(handler: AuthRouteHandler): AuthRouteHand
 
         const response = await handler(request);
         if (!isJson(response.headers.get("content-type"))) return response;
-        return (await withoutServerOnlyKeys(response)) ?? refused(500, "session_unavailable");
+        return (
+            (await withoutServerOnlyKeys(response, request.method)) ??
+            refused(500, "session_unavailable")
+        );
     };
 }
 

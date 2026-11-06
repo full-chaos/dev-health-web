@@ -512,11 +512,13 @@ describe("S4b a sid that does not decode", () => {
 
 describe("S5 the delegated token has a bounded life and no refresh path", () => {
     it("a refresh token in the start answer never enters the handoff or the session", async () => {
+        const HANDOFF_ID = ops.issue();
         backend.startBody = {
             access_token: DELEGATED,
             session_access_token: DELEGATED_SERVICE,
             refresh_token: DELEGATED_REFRESH,
             token_type: "bearer",
+            handoff_id: HANDOFF_ID,
         };
         sessionRead.mockResolvedValue({
             user: { id: "admin-1", is_superuser: true, is_impersonating: false },
@@ -533,6 +535,7 @@ describe("S5 the delegated token has a bounded life and no refresh path", () => 
         });
         const pair = (sealed as { pair?: Obj } | null)?.pair;
         expect(pair?.access_token).toBe(DELEGATED);
+        expect(pair?.handoff_id).toBe(HANDOFF_ID);
         expect(pair).not.toHaveProperty("session_access_token");
         expect(pair).not.toHaveProperty("refresh_token");
         const before = Date.now();
