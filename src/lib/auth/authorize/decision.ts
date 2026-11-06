@@ -74,6 +74,7 @@ export type BatchResult =
     { ok: true; decisions: readonly Decision[] } | { ok: false; reason: ParseFailure };
 
 const MAX_BATCH = 100;
+const MAX_ALLOWLIST = 256;
 const ALLOW_REASONS: readonly WireReasonCode[] = [
     "allowed_by_membership_default",
     "allowed_by_repository_grant",
@@ -142,7 +143,8 @@ function parseObligations(v: unknown): Obligations {
     }
     if ("repository_allowlist" in v) {
         const a = v.repository_allowlist;
-        if (!Array.isArray(a) || new Set(a).size !== a.length) refuse("bad_shape");
+        if (!Array.isArray(a) || a.length > MAX_ALLOWLIST || new Set(a).size !== a.length)
+            refuse("bad_shape");
         for (const k of a as unknown[])
             if (typeof k !== "string" || !isRepositoryKeyOrAll(k)) refuse("bad_shape");
         out.repositoryAllowlist = a as string[];

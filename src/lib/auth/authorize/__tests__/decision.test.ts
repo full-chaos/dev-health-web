@@ -63,6 +63,20 @@ const item = (index: unknown, over: Record<string, unknown> = {}) => ({
 });
 
 describe("parseDecision", () => {
+    it("holds the repository allowlist to 256 keys", () => {
+        const keys = (n: number) => Array.from({ length: n }, (_, i) => `o/r${i}`);
+        const withKeys = (n: number) =>
+            one({
+                obligations: {
+                    tenant_scope: "org_EXAMPLE0000000000000001",
+                    repository_allowlist: keys(n),
+                },
+            });
+        expect(withKeys(256).ok).toBe(true);
+        const over = withKeys(257);
+        expect(over.ok).toBe(false);
+        if (!over.ok) expect(over.reason).toBe("bad_shape");
+    });
     it("accepts an allow with a future expiry", () => {
         const r = one();
         expect(r.ok).toBe(true);
