@@ -4,6 +4,7 @@
 // cookie jar is a 0600 JSON file. It prints names, status codes and 0/1 only: never a cookie, a
 // token, a password or an email.
 import { chmodSync, copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 type Jar = Record<string, string>;
 type Credentials = { email: string; password: string };
@@ -73,10 +74,13 @@ async function webFetch(jarFile: string, path: string, init: RequestInit = {}): 
     return res;
 }
 
+export function isSessionCookieName(name: string): boolean {
+    // Auth.js prefixes the name with __Secure- (https) or __Host-; a chunked cookie ends in .<n>.
+    return /^(__Secure-|__Host-)?(authjs|next-auth)\.session-token(\.\d+)?$/.test(name);
+}
+
 function hasSessionCookie(jar: Jar): boolean {
-    return Object.keys(jar).some((name) =>
-        /(^|\.)(authjs|next-auth)\.session-token(\.\d+)?$/.test(name),
-    );
+    return Object.keys(jar).some(isSessionCookieName);
 }
 
 async function login(credsFile: string, jarFile: string): Promise<void> {
@@ -160,7 +164,12 @@ async function main(): Promise<void> {
     }
 }
 
-main().catch((error: unknown) => {
-    process.stderr.write(`drill failed: ${error instanceof Error ? error.message : "unknown"}\n`);
-    process.exit(1);
-});
+// Run only as the entry point: the selftest imports this module for its pure helpers.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    main().catch((error: unknown) => {
+        process.stderr.write(
+            `drill failed: ${error instanceof Error ? error.message : "unknown"}\n`,
+        );
+        process.exit(1);
+    });
+}
