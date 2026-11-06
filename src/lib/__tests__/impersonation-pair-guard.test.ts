@@ -47,6 +47,10 @@ import { stopImpersonation } from "@/lib/admin/server";
 import { POST as switchOrg } from "@/app/api/auth/switch-org/route";
 import { POST as changePassword } from "@/app/api/auth/change-password/route";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -102,7 +106,12 @@ function adminToken(extra: Obj = {}): Obj {
 async function started(extra: Obj = {}): Promise<Obj> {
     const sessionHandoff = await sealSessionHandoff(
         "impersonation",
-        { access_token: DELEGATED, session_access_token: DELEGATED_SERVICE, expires_in: 600 },
+        {
+            access_token: DELEGATED,
+            session_access_token: DELEGATED_SERVICE,
+            expires_in: 600,
+            handoff_id: ops.issue(),
+        },
         "admin-1",
     );
     return callbacks().jwt({
@@ -172,6 +181,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             const url = String(input).replace("http://backend.test", "");
             const headers = new Headers(init?.headers);
             const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? null;

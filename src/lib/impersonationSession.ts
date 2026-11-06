@@ -14,7 +14,7 @@ export const NO_DELEGATED_TOKEN_MESSAGE =
 export type StartAnswer = Awaited<ReturnType<typeof impersonationApi.start>>;
 export type StartResult = Omit<
     StartAnswer,
-    "access_token" | "session_access_token" | "token_type" | "expires_in"
+    "access_token" | "session_access_token" | "token_type" | "expires_in" | "handoff_id"
 > & { sessionHandoff?: string };
 
 /**
@@ -26,14 +26,26 @@ export type StartResult = Omit<
 export async function startResultWithHandoff(answer: StartAnswer): Promise<StartResult> {
     // A delegated token has no refresh path: a refresh token in the answer is never passed on.
     // The delegated service token is not kept either (ImpersonationPair).
-    const { access_token, session_access_token, expires_in, token_type, refresh_token, ...rest } =
-        answer as StartAnswer & { refresh_token?: unknown };
+    const {
+        access_token,
+        session_access_token,
+        expires_in,
+        token_type,
+        refresh_token,
+        handoff_id,
+        ...rest
+    } = answer as StartAnswer & { refresh_token?: unknown };
     void session_access_token;
     void token_type;
     void refresh_token;
     const session = await auth();
     if (typeof access_token !== "string" || !access_token) {
-        await stopStartWithoutDelegatedToken(session, rest);
+        await stopStartWithoutDelegatedToken(session, rest, "start_without_delegated_token");
+        throw new UserFacingActionError(409, NO_DELEGATED_TOKEN_MESSAGE);
+    }
+    // The handoff is admitted only through go-api's one-use record of this start (CHAOS-13184).
+    if (typeof handoff_id !== "string" || !handoff_id) {
+        await stopStartWithoutDelegatedToken(session, rest, "start_without_handoff_id");
         throw new UserFacingActionError(409, NO_DELEGATED_TOKEN_MESSAGE);
     }
     const userId = session?.user?.id;
@@ -43,6 +55,7 @@ export async function startResultWithHandoff(answer: StartAnswer): Promise<Start
         {
             access_token,
             expires_in: typeof expires_in === "number" ? expires_in : undefined,
+            handoff_id,
         },
         userId,
     );
@@ -73,6 +86,7 @@ export async function stopResultWithHandoff(
 async function stopStartWithoutDelegatedToken(
     session: Awaited<ReturnType<typeof auth>>,
     answer: Omit<StartResult, "sessionHandoff">,
+    reason: "start_without_delegated_token" | "start_without_handoff_id",
 ): Promise<void> {
     const adminBearer = session?.access_token;
     if (adminBearer) {
@@ -86,7 +100,7 @@ async function stopStartWithoutDelegatedToken(
     impersonationLogger.error(
         {
             event: "impersonation_stop_not_recorded",
-            reason: "start_without_delegated_token",
+            reason,
             user_id: session?.user?.id,
             target_user_id: answer.target_user?.id,
             org_id: answer.target_user?.org_id,

@@ -67,6 +67,10 @@ import { requireRole, requireSuperuser } from "@/lib/auth";
 import { POST as changePassword } from "@/app/api/auth/change-password/route";
 import { POST as switchOrg } from "@/app/api/auth/switch-org/route";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -106,7 +110,11 @@ function adminToken(extra: Obj = {}): Obj {
 }
 
 async function startHandoff(access_token = DELEGATED): Promise<string> {
-    return sealSessionHandoff("impersonation", { access_token, expires_in: 600 }, "admin-1");
+    return sealSessionHandoff(
+        "impersonation",
+        { access_token, expires_in: 600, handoff_id: ops.issue() },
+        "admin-1",
+    );
 }
 
 const jwt = (token: Obj, session?: Obj) =>
@@ -143,6 +151,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             const url = String(input).replace("http://backend.test", "");
             const headers = new Headers(init?.headers);
             const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? null;

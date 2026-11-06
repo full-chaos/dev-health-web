@@ -16,9 +16,19 @@ export const impersonationApi = {
             session_access_token?: string;
             token_type?: string;
             expires_in?: number;
+            /** The id of go-api's one-use record of this start (CHAOS-13184). */
+            handoff_id?: string;
         }>(
             "/impersonate",
             { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) },
+            token,
+        ),
+
+    /** Uses up the one-use record of a start handoff: 409 when it is used, gone or not the caller's. */
+    consumeHandoff: (handoffId: string, token?: string) =>
+        request<{ status: string }>(
+            "/impersonate/handoff/consume",
+            { method: "POST", body: JSON.stringify({ handoff_id: handoffId }) },
             token,
         ),
 

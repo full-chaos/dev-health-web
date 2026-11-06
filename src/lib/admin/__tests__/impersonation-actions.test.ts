@@ -55,10 +55,12 @@ beforeEach(() => {
 
 describe("impersonation actions drop the kept status of the acting user", () => {
     it("start: after the backend call", async () => {
-        // A start answer carries the delegated token (D6720: an answer without one is refused).
+        // A start answer carries the delegated token (D6720) and go-api's handoff id (CHAOS-13184):
+        // an answer without either is refused.
         start.mockImplementation(async () => ({
             ...(await backendCall("ok")()),
             access_token: "access-delegated",
+            handoff_id: "handoff-1",
         }));
         const result = await startImpersonation("target-1");
         expect(result.error).toBeUndefined();

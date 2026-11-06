@@ -41,6 +41,7 @@ POST /customer-push/tokens/{}/revoke	src/lib/admin/api/customer-push.ts	non-iden
 POST /customer-push/tokens/{}/rotate	src/lib/admin/api/customer-push.ts	non-identity admin write; no org or membership change
 POST /identities	src/lib/admin/api/identities.ts	non-identity admin write; no org or membership change
 POST /impersonate	src/lib/admin/api/platform.ts	impersonation session start/stop; no membership change
+POST /impersonate/handoff/consume	src/lib/admin/api/platform.ts	one-use consume of an impersonation start handoff; no membership change
 POST /impersonate/stop	src/lib/admin/api/platform.ts	impersonation session start/stop; no membership change
 POST /integrations/pagerduty/api-token	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change
 POST /integrations/pagerduty/authorize	src/lib/admin/api/pagerduty.ts	non-identity admin write; no org or membership change

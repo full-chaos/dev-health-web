@@ -1,5 +1,6 @@
 import type { JWT } from "next-auth/jwt";
 
+import { AdminApiError } from "@/lib/admin/api/_request";
 import { impersonationApi } from "@/lib/admin/api/platform";
 import type { RefreshResult } from "@/lib/authServiceWire";
 import { logger } from "@/lib/logger";
@@ -21,6 +22,8 @@ export const MAX_DELEGATED_SECONDS = 15 * 60;
 export type ImpersonationPair = {
     access_token: string;
     expires_in?: number;
+    /** A start handoff only: the id of go-api's one-use record of the start (CHAOS-13184). */
+    handoff_id?: string;
 };
 
 export function setImpersonationToken(token: JWT, pair: ImpersonationPair, now: number): void {
@@ -29,9 +32,84 @@ export function setImpersonationToken(token: JWT, pair: ImpersonationPair, now: 
         now + Math.min(pair.expires_in ?? MAX_DELEGATED_SECONDS, MAX_DELEGATED_SECONDS) * 1000;
 }
 
+/** An end moves the floor to now: no start handoff sealed before it is admitted after it. */
 export function clearImpersonationToken(token: JWT): void {
+    if (isImpersonatingToken(token)) {
+        token.imp_handoff_floor = Math.max(handoffFloor(token), Date.now());
+    }
     token.imp_access_token = undefined;
     token.imp_expires_at = undefined;
+}
+
+function handoffFloor(token: JWT): number {
+    const floor: unknown = token.imp_handoff_floor;
+    return typeof floor === "number" && Number.isFinite(floor) ? floor : 0;
+}
+
+/**
+ * The JWT floor, an extra refusal only (go-api's one-use record admits, confirmStartHandoff): a
+ * start handoff passes it only when it was sealed after the last start that was used and after the
+ * last end. A handoff with no readable seal time is refused.
+ */
+function aboveFloor(token: JWT, issuedMs: unknown): issuedMs is number {
+    return (
+        typeof issuedMs === "number" && Number.isFinite(issuedMs) && issuedMs > handoffFloor(token)
+    );
+}
+
+function consumeStartHandoff(token: JWT, issuedMs: unknown): boolean {
+    if (!aboveFloor(token, issuedMs)) return false;
+    token.imp_handoff_floor = issuedMs;
+    return true;
+}
+
+/** The session error of an update whose start handoff go-api did not confirm; it answers 503. */
+export const HANDOFF_UNCONFIRMED_ERROR = "impersonation_handoff_unconfirmed";
+
+/** The unconfirmed error lives for the one update that set it. */
+export function clearHandoffUnconfirmed(token: JWT): void {
+    if (token.error === HANDOFF_UNCONFIRMED_ERROR) token.error = undefined;
+}
+
+/**
+ * A start handoff is admitted only when go-api uses up its one-use record (CHAOS-13184): the record
+ * outlives the JWT, so a new JWT (a re-login, another tab) cannot admit the handoff again. A 409 is
+ * a refusal. Any other answer, a failed call or no administrator bearer is no confirm: the handoff
+ * is refused, the update answers 503, and the JWT floor never admits in its place. A handoff below
+ * the floor asks go-api nothing: admitPairWrite refuses it.
+ */
+export async function confirmStartHandoff<
+    H extends { kind: string; issued_ms?: unknown; pair: unknown },
+>(token: JWT, handoff: H | null): Promise<H | null> {
+    if (handoff?.kind !== "impersonation" || !aboveFloor(token, handoff.issued_ms)) return handoff;
+    const handoffId = (handoff.pair as { handoff_id?: unknown }).handoff_id;
+    const bearer = token.access_token;
+    let refused = false;
+    if (typeof handoffId === "string" && typeof bearer === "string" && bearer) {
+        try {
+            const answer = await impersonationApi.consumeHandoff(handoffId, bearer);
+            if (answer?.status === "consumed") return handoff;
+        } catch (error) {
+            refused = error instanceof AdminApiError && error.status === 409;
+        }
+    }
+    if (refused) {
+        impersonationLogger.warn(
+            {
+                event: "impersonation_start_handoff_refused",
+                reason: "record_used_or_gone",
+                user_id: token.id,
+            },
+            "impersonation start handoff refused: its one-use record is used, gone or another administrator's",
+        );
+    } else {
+        impersonationLogger.error(
+            { event: "impersonation_start_handoff_unconfirmed", user_id: token.id },
+            "impersonation start handoff refused: go-api did not confirm its one-use record",
+        );
+        token.error = HANDOFF_UNCONFIRMED_ERROR;
+    }
+    return null;
 }
 
 /**
@@ -61,11 +139,18 @@ export function endImpersonationByHandoff(token: JWT, ended: string): boolean {
  * refused: an org switch or a password change made under the delegated bearer answers with the
  * target's pair. A sign-in starts a new session, so the delegated state is dropped first.
  */
-export function admitPairWrite<H extends { kind: string }>(
+export function admitPairWrite<H extends { kind: string; issued_ms?: unknown }>(
     token: JWT,
     handoff: H | null,
     signIn: boolean,
 ): H | null {
+    if (handoff?.kind === "impersonation" && !consumeStartHandoff(token, handoff.issued_ms)) {
+        impersonationLogger.warn(
+            { event: "impersonation_start_handoff_refused", user_id: token.id },
+            "impersonation start handoff refused: already used or sealed before the last end",
+        );
+        return null;
+    }
     if (!isImpersonatingToken(token)) return handoff?.kind === "impersonationEnd" ? null : handoff;
     if (signIn) {
         dropImpersonation(token);

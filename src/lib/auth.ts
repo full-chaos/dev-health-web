@@ -18,6 +18,8 @@ import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authVa
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import {
     admitPairWrite,
+    clearHandoffUnconfirmed,
+    confirmStartHandoff,
     clearImpersonationToken,
     delegatedExpired,
     delegatedToken,
@@ -242,6 +244,7 @@ const nextAuth = NextAuth({
     callbacks: {
         async jwt({ token, user, account, trigger, session }) {
             const now = Date.now();
+            clearHandoffUnconfirmed(token);
             const refreshAdmin = async () => {
                 const env = getServerEnv();
                 return refreshSession(token.refresh_token as string, {
@@ -295,9 +298,12 @@ const nextAuth = NextAuth({
             const handoff = admitPairWrite(
                 token,
                 trigger === "update"
-                    ? await openSessionHandoff(
-                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
-                          token.id as string | undefined,
+                    ? await confirmStartHandoff(
+                          token,
+                          await openSessionHandoff(
+                              (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
+                              token.id as string | undefined,
+                          ),
                       )
                     : null,
                 Boolean(user || account),
@@ -711,7 +717,8 @@ export async function sealSessionHandoff(
         secret: authSecret,
         salt: SESSION_HANDOFF_SALT,
         maxAge: SESSION_HANDOFF_MAX_AGE_SECONDS,
-        token: { sub: userId, kind, pair },
+        // The seal time in ms makes a start handoff one-use (admitPairWrite).
+        token: { sub: userId, kind, pair, issued_ms: Date.now() },
     });
 }
 
@@ -799,7 +806,7 @@ function validServiceFields(pair: Record<string, unknown>): boolean {
 async function openSessionHandoff(
     value: unknown,
     userId: string | undefined,
-): Promise<{ kind: SessionHandoffKind; pair: unknown } | null> {
+): Promise<{ kind: SessionHandoffKind; pair: unknown; issued_ms: unknown } | null> {
     if (value === undefined) return null;
     const refuse = (reason: string) => {
         authLogger.warn({ reason, userId }, "session handoff refused");
@@ -845,8 +852,10 @@ async function openSessionHandoff(
         if (expiresIn !== undefined && (typeof expiresIn !== "number" || !(expiresIn > 0))) {
             return refuse("bad_expires_in");
         }
+        const handoffId = (pair as { handoff_id?: unknown }).handoff_id;
+        if (typeof handoffId !== "string" || !handoffId) return refuse("no_handoff_id");
     }
-    return { kind, pair };
+    return { kind, pair, issued_ms: payload.issued_ms };
 }
 
 import type { Session } from "next-auth";
@@ -896,6 +905,8 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
     readonly access_token: string;
     readonly refresh_token: string;
     readonly user_id?: string;
+    /** Stops a held impersonation with the administrator bearer; a failed stop is logged. */
+    readonly endImpersonation: () => Promise<void>;
 } | null> {
     const cookie = request.headers.get("cookie");
     if (!authSecret || !cookie) return null;
@@ -921,6 +932,7 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
             access_token: accessToken,
             refresh_token: refreshToken,
             ...(typeof token.id === "string" ? { user_id: token.id } : {}),
+            endImpersonation: () => endImpersonationForSignOut(token, Date.now()),
         };
     }
     return null;

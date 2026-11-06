@@ -45,6 +45,10 @@ import { sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -92,6 +96,7 @@ async function handoff(userId = "admin-1", exp = Date.now() + 600_000): Promise<
             access_token: DELEGATED,
             session_access_token: DELEGATED_SERVICE,
             expires_in: Math.round((exp - Date.now()) / 1000),
+            handoff_id: ops.issue(),
         },
         userId,
     );
@@ -116,6 +121,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             const url = String(input).replace("http://backend.test", "");
             const headers = new Headers(init?.headers);
             const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? null;
@@ -169,6 +175,7 @@ describe("start: the delegated token never reaches the browser", () => {
             session_access_token: DELEGATED_SERVICE,
             token_type: "Bearer",
             expires_in: 600,
+            handoff_id: ops.issue(),
         };
         const r = await startImpersonation("target-1");
         expect(r.error).toBeUndefined();
@@ -181,6 +188,16 @@ describe("start: the delegated token never reaches the browser", () => {
 
     // D6720 option A (acp): the delegated token is the only impersonation state, so an answer
     // without one (AUTH_PROXY_IMPERSONATION off) is stopped at once and refused.
+    // CHAOS-13184: the handoff is admitted only through go-api's one-use record of the start.
+    it("R10 a delegated answer with no handoff_id is stopped with the admin bearer and refused", async () => {
+        backend.startBody = { access_token: DELEGATED, token_type: "Bearer", expires_in: 600 };
+        const r = await startImpersonation("target-1");
+        expect(r.data).toBeUndefined();
+        expect(r.error).toBe("Impersonation needs the delegated token. It was stopped.");
+        const stops = calls.filter((c) => c.path.endsWith("/impersonate/stop"));
+        expect(stops.map((c) => c.bearer)).toEqual([ADMIN]);
+    });
+
     it("R9 an answer with no access_token (flag off) is stopped with the admin bearer and refused", async () => {
         const r = await startImpersonation("target-1");
         expect(r.data).toBeUndefined();
