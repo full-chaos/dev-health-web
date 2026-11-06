@@ -140,6 +140,32 @@ describe("validation interval", () => {
     });
 });
 
+describe("forced sign-out bound (60 s from the last backend check)", () => {
+    it("a memo hit keeps the memo's check time, so a refused session ends at 60 s, not 60 s after the hit", async () => {
+        // A copy of the session cookie that was not updated by the last check (a parallel request,
+        // a second tab) still carries the old last_validated; its access token is the same.
+        answers(200, JSON.stringify({ valid: true }));
+        const stale = await callbackAt(0, freshToken());
+        let current = await callbackAt(61_000, { ...stale, last_validated: T0 });
+        expect(current.last_validated).toBe(T0 + 61_000);
+
+        // The backend ends the user at 62 s. A callback with the stale copy at 119 s hits the memo
+        // (checked at 61 s, valid until 121 s).
+        const fetchMock = answers(200, JSON.stringify({ valid: false }));
+        let copy = await callbackAt(119_000, { ...stale, last_validated: T0 });
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(copy.last_validated).toBe(T0 + 61_000);
+
+        // At 121 s (60 s after the last backend check) the copy is checked and signed out.
+        copy = await callbackAt(121_000, copy);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(copy.error).toBe("user_invalid");
+        expect(copy.access_token).toBeUndefined();
+        current = await callbackAt(121_000, current);
+        expect(current.error).toBe("user_invalid");
+    });
+});
+
 describe("terminal answers end the session", () => {
     it("a 200 with valid false", async () => {
         answers(200, JSON.stringify({ valid: false }));
