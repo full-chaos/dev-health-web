@@ -51,7 +51,7 @@ function handoffFloor(token: JWT): number {
  * start handoff passes it only when it was sealed after the last start that was used and after the
  * last end. A handoff with no readable seal time is refused.
  */
-function aboveFloor(token: JWT, issuedMs: unknown): boolean {
+function aboveFloor(token: JWT, issuedMs: unknown): issuedMs is number {
     return (
         typeof issuedMs === "number" && Number.isFinite(issuedMs) && issuedMs > handoffFloor(token)
     );
@@ -59,7 +59,7 @@ function aboveFloor(token: JWT, issuedMs: unknown): boolean {
 
 function consumeStartHandoff(token: JWT, issuedMs: unknown): boolean {
     if (!aboveFloor(token, issuedMs)) return false;
-    token.imp_handoff_floor = issuedMs as number;
+    token.imp_handoff_floor = issuedMs;
     return true;
 }
 
