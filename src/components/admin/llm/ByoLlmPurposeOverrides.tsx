@@ -207,9 +207,7 @@ function PurposeForm({
             provider,
             model: model.trim(),
             ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
-            ...(baseUrl.trim() && categorizeProvider?.baseUrl !== "none"
-                ? { base_url: baseUrl.trim() }
-                : {}),
+            ...(baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
         });
         setBusy(false);
         if (result.error) {
