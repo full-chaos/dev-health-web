@@ -46,3 +46,6 @@ src/lib/graphql/__tests__/fixtures/wire
 
 # Ask Dev differential oracle: raw output of the ask-dev producer, diffed byte for byte (CHAOS-11924)
 src/lib/ask-dev/__tests__/oracle
+
+# Verbatim copy of the ops action catalog (sha256-checked against the pinned ops file)
+src/lib/auth/platform/__tests__/testdata/ops-actions.v1.json
