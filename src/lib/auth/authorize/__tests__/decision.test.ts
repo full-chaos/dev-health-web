@@ -16,13 +16,14 @@ const WIRE_REASONS = [
     "grant_revoked",
     "impersonation_denied",
     "invalid_request",
-    "membership_inactive",
     "no_membership",
     "org_mismatch",
     "organization_inactive",
     "platform_role_absent",
     "principal_inactive",
+    "repository_allowlist_too_large",
     "repository_not_granted",
+    "repository_unresolved",
     "resource_mismatch",
     "role_lacks_action",
     "role_scope_mismatch",
@@ -76,6 +77,41 @@ describe("parseDecision", () => {
         const over = withKeys(257);
         expect(over.ok).toBe(false);
         if (!over.ok) expect(over.reason).toBe("bad_shape");
+    });
+    it("accepts the repository_scope obligation organization on an allow", () => {
+        const r = one({
+            obligations: {
+                tenant_scope: "org_EXAMPLE0000000000000001",
+                repository_scope: "organization",
+            },
+        });
+        expect(r.ok).toBe(true);
+        if (r.ok) expect(r.decision.obligations?.repositoryScope).toBe("organization");
+    });
+    it("refuses an unknown repository_scope value and repository_scope with an allowlist", () => {
+        const base = { tenant_scope: "org_EXAMPLE0000000000000001" };
+        for (const obligations of [
+            { ...base, repository_scope: "global" },
+            { ...base, repository_scope: "organization", repository_allowlist: ["o/r"] },
+        ]) {
+            const r = one({ obligations });
+            expect(r.ok).toBe(false);
+            if (!r.ok) expect(r.reason).toBe("bad_shape");
+        }
+    });
+    it("refuses an unknown obligation key", () => {
+        expect(one({ obligations: { repository_scopes: "organization" } }).ok).toBe(false);
+    });
+    it("denies with repository_allowlist_too_large and repository_unresolved", () => {
+        for (const code of ["repository_allowlist_too_large", "repository_unresolved"]) {
+            const r = one({ allowed: false, reason_code: code });
+            expect(r.ok).toBe(true);
+        }
+    });
+    it("refuses membership_inactive as unknown", () => {
+        const r = one({ allowed: false, reason_code: "membership_inactive" });
+        expect(r.ok).toBe(false);
+        if (!r.ok) expect(r.reason).toBe("unknown_reason");
     });
     it("accepts an allow with a future expiry", () => {
         const r = one();

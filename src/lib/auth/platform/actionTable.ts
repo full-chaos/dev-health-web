@@ -1,6 +1,6 @@
 // Platform action table and impersonation rule table for the web UI. Pure data:
 // no I/O, no behavior change. Parity cells read the pinned ops catalog
-// (src/lib/auth/platform/__tests__/testdata/ops-actions.v1.json, ops 2f0f26bed).
+// (src/lib/auth/platform/__tests__/testdata/ops-actions.v1.json, ops f296d33ef).
 
 export const PLATFORM_ACTIONS = [
     "admin.users",
