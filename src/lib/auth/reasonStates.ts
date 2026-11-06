@@ -47,7 +47,6 @@ export const CODE_STATES: Readonly<Record<string, AuthUiState>> = Object.freeze(
     platform_role_absent: "denied",
     grant_expired: "denied",
     grant_revoked: "denied",
-    membership_inactive: "denied",
     organization_inactive: "denied",
     org_mismatch: "denied",
     resource_mismatch: "denied",

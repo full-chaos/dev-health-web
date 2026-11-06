@@ -49,3 +49,4 @@ src/lib/ask-dev/__tests__/oracle
 
 # Verbatim copy of the ops action catalog (sha256-checked against the pinned ops file)
 src/lib/auth/platform/__tests__/testdata/ops-actions.v1.json
+src/lib/auth/__tests__/testdata/ops-reason-codes.json
