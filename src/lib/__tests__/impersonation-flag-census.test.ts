@@ -76,6 +76,10 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "const isImpersonating = !!session?.user?.is_impersonating;",
         "if (!session?.user?.is_impersonating) {",
     ],
+    // The start buttons: an update that did not admit the start handoff stops the row (CHAOS-13184).
+    "src/components/admin/users/ImpersonateUserButton.tsx": [
+        "if (!updated?.user?.is_impersonating) {",
+    ],
     "src/components/ask-dev/conversation/AskDevConversationContext.tsx": [
         'const impersonated = user.is_impersonating ? (user.impersonated_user_id ?? "unknown") : "";',
         "const impersonating = session?.user?.is_impersonating === true;",
@@ -105,6 +109,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "is_impersonating: boolean;",
         "is_impersonating: body.is_impersonating,",
     ],
+    "src/components/superadmin/UserTable.tsx": ["if (!updated?.user?.is_impersonating) {"],
     "src/lib/acr/ops.ts": [
         "const impersonationStatusSchema = z.object({ is_impersonating: z.boolean() }).loose();",
         "parsed.data.is_impersonating || input.sessionImpersonating || impersonatedToken;",
