@@ -11,6 +11,11 @@ export const impersonationApi = {
             status: string;
             target_user: { id: string; email: string; org_id: string; role: string };
             expires_at: string;
+            // Only with AUTH_PROXY_IMPERSONATION on (the delegated token of the auth service).
+            access_token?: string;
+            session_access_token?: string;
+            token_type?: string;
+            expires_in?: number;
         }>(
             "/impersonate",
             { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) },

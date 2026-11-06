@@ -55,4 +55,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
-CMD ["sh", "-c", "node scripts/write-runtime-config.mjs && node server.js"]
+CMD ["sh", "-c", "node scripts/write-runtime-config.mjs && node --max-http-header-size=16384 server.js"]

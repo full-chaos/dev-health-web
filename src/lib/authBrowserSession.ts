@@ -24,6 +24,7 @@ export const SERVER_ONLY_SESSION_KEYS = [
     "access_token",
     "refresh_token",
     "session_access_token",
+    "admin_access_token",
 ] as const;
 
 /** `update()` payload keys that carry an Ops token pair in clear. Never accepted from a browser. */
