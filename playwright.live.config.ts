@@ -65,7 +65,8 @@ export default defineConfig({
         ? []
         : [
               {
-                  command: "npm run dev -- --hostname 127.0.0.1 --port 3002",
+                  command:
+                      `${process.env.LIVE_E2E_WEB_WRAPPER ?? ""} npm run dev -- --hostname 127.0.0.1 --port 3002`.trim(),
                   url: "http://127.0.0.1:3002",
                   reuseExistingServer: !process.env.CI,
                   timeout: 120_000,

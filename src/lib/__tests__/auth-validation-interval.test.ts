@@ -46,6 +46,7 @@ vi.mock("@/lib/logger", () => {
 
 import "@/lib/auth";
 import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
+import { processMemo } from "@/lib/processMemo";
 
 const ACCESS_TOKEN = "access-token";
 const REFRESH_TOKEN = "refresh-token";
@@ -137,6 +138,111 @@ describe("validation interval", () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(token.error).toBe("user_invalid");
         expect(token.access_token).toBeUndefined();
+    });
+});
+
+describe("forced sign-out bound (60 s from the last backend check)", () => {
+    it("a memo hit keeps the memo's check time, so a refused session ends at 60 s, not 60 s after the hit", async () => {
+        // A copy of the session cookie that was not updated by the last check (a parallel request,
+        // a second tab) still carries the old last_validated; its access token is the same.
+        answers(200, JSON.stringify({ valid: true }));
+        const stale = await callbackAt(0, freshToken());
+        let current = await callbackAt(61_000, { ...stale, last_validated: T0 });
+        expect(current.last_validated).toBe(T0 + 61_000);
+
+        // The backend ends the user at 62 s. A callback with the stale copy at 119 s hits the memo
+        // (checked at 61 s, valid until 121 s).
+        const fetchMock = answers(200, JSON.stringify({ valid: false }));
+        let copy = await callbackAt(119_000, { ...stale, last_validated: T0 });
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(copy.last_validated).toBe(T0 + 61_000);
+
+        // At 121 s (60 s after the last backend check) the copy is checked and signed out.
+        copy = await callbackAt(121_000, copy);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(copy.error).toBe("user_invalid");
+        expect(copy.access_token).toBeUndefined();
+        current = await callbackAt(121_000, current);
+        expect(current.error).toBe("user_invalid");
+    });
+});
+
+describe("every stamp the new code writes holds the 60 s bound", () => {
+    // The backend's last real check is at C. Whatever path stamps a copy of the session after it,
+    // the backend refusing the user makes that copy validate, and sign out, at C + 60 s.
+    const C = 61_000;
+
+    async function checkedAtC(): Promise<Token> {
+        answers(200, JSON.stringify({ valid: true }));
+        const login = await callbackAt(0, freshToken());
+        const checked = await callbackAt(C, { ...login, last_validated: T0 });
+        expect(checked.last_validated).toBe(T0 + C);
+        return login;
+    }
+
+    async function signedOutAtBound(copy: Token): Promise<void> {
+        const fetchMock = answers(200, JSON.stringify({ valid: false }));
+        const out = await callbackAt(C + 60_000, copy);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(out.error).toBe("user_invalid");
+        expect(out.access_token).toBeUndefined();
+    }
+
+    it("the stamp of the real check", async () => {
+        const login = await checkedAtC();
+        const checked = await callbackAt(C + 1, { ...login, last_validated: T0 + C });
+        expect(checked.last_validated).toBe(T0 + C);
+        await signedOutAtBound(checked);
+    });
+
+    it.each([1, 30_000, 59_999])("the stamp of a memo hit %i ms after the check", async (hitMs) => {
+        const login = await checkedAtC();
+        const hit = await callbackAt(C + hitMs, { ...login, last_validated: T0 });
+        expect(hit.last_validated).toBe(T0 + C);
+        await signedOutAtBound(hit);
+    });
+
+    it("the stamp of a callback that joins a check in flight", async () => {
+        answers(200, JSON.stringify({ valid: true }));
+        const login = await callbackAt(0, freshToken());
+        let release: (res: Response) => void = () => undefined;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        release = resolve;
+                    }),
+            ),
+        );
+        // Count the memo reads that find the check in flight: the cell fails unless the second
+        // callback really joins it (the backend answer is held until then).
+        const memoGet = vi.spyOn(processMemo<{ kind: string }>("authValidationMemo"), "get");
+        const inFlightReads = (): number =>
+            memoGet.mock.results.filter(
+                (r) =>
+                    r.type === "return" &&
+                    (r.value as { kind?: string } | undefined)?.kind === "inFlight",
+            ).length;
+        try {
+            vi.setSystemTime(T0 + C);
+            const first = jwtCallback()({ token: { ...login, last_validated: T0 }, account: null });
+            await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+            vi.setSystemTime(T0 + C + 5_000);
+            const joined = jwtCallback()({
+                token: { ...login, last_validated: T0 },
+                account: null,
+            });
+            await vi.waitFor(() => expect(inFlightReads()).toBe(1), { timeout: 5_000 });
+            release(new Response(JSON.stringify({ valid: true }), { status: 200 }));
+            const [, copy] = await Promise.all([first, joined]);
+            expect(inFlightReads()).toBe(1);
+            expect(fetch).toHaveBeenCalledTimes(1);
+            expect(copy.last_validated).toBe(T0 + C);
+            await signedOutAtBound(copy);
+        } finally {
+            memoGet.mockRestore();
+        }
     });
 });
 
