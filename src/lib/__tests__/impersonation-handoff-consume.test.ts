@@ -251,7 +251,8 @@ describe("W5 another user's handoff is refused", () => {
             { access_token: DELEGATED, expires_in: 600 },
             "admin-1",
         );
-        await expectRefused(await update(adminToken(), handoff));
+        const s = await expectRefused(await update(adminToken(), handoff));
+        expect(s.error).toBeUndefined();
         expect(ops.calls()).toHaveLength(0);
     });
 });
