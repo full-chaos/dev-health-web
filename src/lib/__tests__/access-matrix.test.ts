@@ -627,9 +627,11 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             });
         }
 
-        it("is refused by requireRole: a matching role does not admit while impersonating", async () => {
+        it("passes requireRole for admin (both role match + superuser bypass)", async () => {
             mockNextAuthAuth.mockResolvedValueOnce(impersonatedEnterpriseAdmin());
-            await expectRedirectTo(() => requireRole(["admin", "owner"]), "/dashboard");
+            const result = await requireRole(["admin", "owner"]);
+            expect(result.user.role).toBe("admin");
+            expect(result.user.org_id).toBe("enterprise-org-1");
         });
 
         it("tier gating allows enterprise features for the impersonated org", () => {

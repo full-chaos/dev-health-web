@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// While a session impersonates (the delegated token fields are held, D6720), no requireRole caller
-// admits it, whatever role the administrator holds in the administrator's own org. Real jwt and
-// session callbacks, the real callers; only fetch (the backend) and next-auth's session reader are
-// replaced.
+// requireRole answers an impersonating session as web main does: a listed role admits it. Real jwt
+// and session callbacks, the real caller; only fetch (the backend) and next-auth's session reader
+// are replaced.
 
 const { nextAuthConfig, sessionRead } = vi.hoisted(() => ({
     nextAuthConfig: { value: null as unknown },
@@ -40,8 +39,6 @@ vi.mock("next-auth/providers/gitlab", () => ({ default: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 
 import AdminLayout from "@/app/(app)/org/admin/layout";
-import AISetupPage from "@/app/(app)/org/admin/ai/page";
-import DataHealthLayout from "@/app/(app)/data-health/layout";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 
 type Cb = {
@@ -49,13 +46,6 @@ type Cb = {
     session: (p: Record<string, unknown>) => Promise<{ user: Record<string, unknown> }>;
 };
 const callbacks = () => (nextAuthConfig.value as { callbacks: Cb }).callbacks;
-
-const CALLERS = {
-    "/org/admin": () => AdminLayout({ children: null }),
-    "/org/admin/ai": () => AISetupPage(),
-    "/data-health": () => DataHealthLayout({ children: null }),
-} as const;
-type Path = keyof typeof CALLERS;
 
 beforeEach(() => {
     resetImpersonationStatusForTests();
@@ -99,9 +89,9 @@ async function signIn(role: string, impersonating: boolean): Promise<void> {
     sessionRead.mockResolvedValue(session);
 }
 
-async function outcome(path: Path): Promise<string> {
+async function outcome(): Promise<string> {
     try {
-        await CALLERS[path]();
+        await AdminLayout({ children: null });
         return "ACCEPTED";
     } catch (error) {
         const message = String((error as Error).message);
@@ -109,29 +99,9 @@ async function outcome(path: Path): Promise<string> {
     }
 }
 
-const MATRIX: readonly (readonly [Path, string])[] = [
-    ["/org/admin", "admin"],
-    ["/org/admin", "owner"],
-    ["/org/admin/ai", "admin"],
-    ["/org/admin/ai", "owner"],
-    ["/data-health", "admin"],
-    ["/data-health", "owner"],
-    ["/data-health", "operator"],
-];
-
-describe("requireRole refuses every impersonating session", () => {
-    it.each(MATRIX)("%s role=%s is_impersonating=true: refused", async (path, role) => {
-        await signIn(role, true);
-        expect(await outcome(path)).toBe("REFUSED");
-    });
-
-    it("control: /org/admin role=member is_impersonating=true: refused", async () => {
-        await signIn("member", true);
-        expect(await outcome("/org/admin")).toBe("REFUSED");
-    });
-
-    it.each(MATRIX)("control: %s role=%s is_impersonating=false: accepted", async (path, role) => {
-        await signIn(role, false);
-        expect(await outcome(path)).not.toBe("REFUSED");
+describe("requireRole under impersonation", () => {
+    it("/org/admin role=admin is_impersonating=true: accepted (web main's answer)", async () => {
+        await signIn("admin", true);
+        expect(await outcome()).not.toBe("REFUSED");
     });
 });

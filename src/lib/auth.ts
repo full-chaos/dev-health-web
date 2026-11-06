@@ -971,11 +971,10 @@ export async function requireRole(
     callbackUrl?: string,
 ): Promise<Session> {
     const session = await requireSession(callbackUrl);
-    // The role is the administrator's own, in the administrator's org: while impersonating it
-    // never admits, whatever it is (D6720: the session field comes from the delegated token).
-    if (session.user.is_impersonating === true) redirect("/dashboard");
     const roleList = Array.isArray(roles) ? roles : [roles];
-    if (session.user.is_superuser !== true && !roleList.includes(session.user.role || "")) {
+    const superuserBypass =
+        session.user.is_superuser === true && session.user.is_impersonating !== true;
+    if (!superuserBypass && !roleList.includes(session.user.role || "")) {
         redirect("/dashboard");
     }
     return session;

@@ -59,7 +59,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "} else if (status?.is_impersonating === true && isImpersonatingToken(token)) {",
         "session.user.is_impersonating = impersonating;",
         "is_impersonating: impersonating,",
-        'if (session.user.is_impersonating === true) redirect("/dashboard");',
+        "session.user.is_superuser === true && session.user.is_impersonating !== true;",
         "if (session.user.is_superuser !== true || session.user.is_impersonating === true) {",
     ],
     // Guards on the session field.
