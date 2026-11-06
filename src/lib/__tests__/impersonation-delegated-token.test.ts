@@ -45,6 +45,10 @@ import { sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -92,6 +96,7 @@ async function handoff(userId = "admin-1", exp = Date.now() + 600_000): Promise<
             access_token: DELEGATED,
             session_access_token: DELEGATED_SERVICE,
             expires_in: Math.round((exp - Date.now()) / 1000),
+            handoff_id: ops.issue(),
         },
         userId,
     );
@@ -116,6 +121,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             const url = String(input).replace("http://backend.test", "");
             const headers = new Headers(init?.headers);
             const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? null;

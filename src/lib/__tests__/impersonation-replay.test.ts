@@ -31,6 +31,10 @@ vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 import { sealSessionHandoff } from "@/lib/auth";
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -66,7 +70,8 @@ beforeEach(() => {
     status = "503";
     vi.stubGlobal(
         "fetch",
-        vi.fn(async (input: RequestInfo | URL) => {
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             if (!String(input).endsWith("/api/v1/admin/impersonate/status")) {
                 throw new Error(String(input));
             }
@@ -112,7 +117,11 @@ const update = (token: Obj, sessionHandoff: string) =>
     });
 
 const start = (access_token = DELEGATED) =>
-    sealSessionHandoff("impersonation", { access_token, expires_in: 600 }, "admin-1");
+    sealSessionHandoff(
+        "impersonation",
+        { access_token, expires_in: 600, handoff_id: ops.issue() },
+        "admin-1",
+    );
 const end = (access_token = DELEGATED) =>
     sealSessionHandoff("impersonationEnd", { access_token }, "admin-1");
 

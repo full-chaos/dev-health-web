@@ -67,6 +67,10 @@ import { requireSession, SESSION_HANDOFF_SALT, sealSessionHandoff } from "@/lib/
 import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo";
 import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
+const ops = fakeHandoffConsume();
+
 type Obj = Record<string, unknown>;
 type Cb = {
     jwt: (p: Obj) => Promise<Obj>;
@@ -131,6 +135,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (ops.handles(input)) return ops.answer(init);
             const path = String(input).replace("http://backend.test", "");
             const bearer =
                 new Headers(init?.headers).get("authorization")?.replace("Bearer ", "") ?? null;
@@ -216,7 +221,12 @@ type AdminState = "valid" | "near-expiry" | "expired";
 async function impersonating(delegated: DelegatedState, admin: AdminState): Promise<Obj> {
     const sessionHandoff = await sealSessionHandoff(
         "impersonation",
-        { access_token: DELEGATED, session_access_token: DELEGATED_SERVICE, expires_in: 600 },
+        {
+            access_token: DELEGATED,
+            session_access_token: DELEGATED_SERVICE,
+            expires_in: 600,
+            handoff_id: ops.issue(),
+        },
         "admin-1",
     );
     const token = await callbacks().jwt({

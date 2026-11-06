@@ -17,6 +17,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { decode } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
+import { fakeHandoffConsume } from "@/test/handoffConsume";
+
 const SECRET = "chaos-13105-cookie-bytes-test-secret";
 const ORIGIN = "https://app.fullchaos.dev";
 const ISSUER = "https://auth.fullchaos.dev";
@@ -44,6 +46,7 @@ type Route = (req: NextRequest) => Promise<Response>;
 let GET: Route;
 let POST: Route;
 const fetchMock = vi.fn();
+const ops = fakeHandoffConsume();
 
 beforeAll(async () => {
     vi.stubEnv("AUTH_SECRET", SECRET);
@@ -95,7 +98,8 @@ function loginAnswer(shape: Shape) {
 }
 
 function backend(shape: Shape) {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (ops.handles(input)) return ops.answer(init);
         const url = String(input);
         if (url === `${BACKEND}/api/v1/auth/login` || url === `${BACKEND}/api/v1/auth/refresh`) {
             return new Response(JSON.stringify(loginAnswer(shape)), {
@@ -340,6 +344,7 @@ describe("session cookie bytes, administrator impersonating, longest values", ()
                 access_token: ACCESS_ORG_ACT,
                 session_access_token: SESSION_ORG_ACT,
                 expires_in: 900,
+                handoff_id: ops.issue(),
             },
             "d354e0b4-c852-4740-9985-67ec74c370f1",
         );
