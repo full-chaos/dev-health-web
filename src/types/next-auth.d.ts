@@ -70,6 +70,8 @@ declare module "next-auth/jwt" {
         /** The delegated token of an impersonation, set and dropped together; the access token stays the administrator's. */
         imp_access_token?: string;
         imp_expires_at?: number;
+        /** Seal time (ms) at or before which no start handoff is admitted: the last start used or end. */
+        imp_handoff_floor?: number;
         act_sub?: string;
         error?: string;
         impersonated_user_id?: string;

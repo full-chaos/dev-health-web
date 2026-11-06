@@ -711,7 +711,8 @@ export async function sealSessionHandoff(
         secret: authSecret,
         salt: SESSION_HANDOFF_SALT,
         maxAge: SESSION_HANDOFF_MAX_AGE_SECONDS,
-        token: { sub: userId, kind, pair },
+        // The seal time in ms makes a start handoff one-use (admitPairWrite).
+        token: { sub: userId, kind, pair, issued_ms: Date.now() },
     });
 }
 
@@ -799,7 +800,7 @@ function validServiceFields(pair: Record<string, unknown>): boolean {
 async function openSessionHandoff(
     value: unknown,
     userId: string | undefined,
-): Promise<{ kind: SessionHandoffKind; pair: unknown } | null> {
+): Promise<{ kind: SessionHandoffKind; pair: unknown; issued_ms: unknown } | null> {
     if (value === undefined) return null;
     const refuse = (reason: string) => {
         authLogger.warn({ reason, userId }, "session handoff refused");
@@ -846,7 +847,7 @@ async function openSessionHandoff(
             return refuse("bad_expires_in");
         }
     }
-    return { kind, pair };
+    return { kind, pair, issued_ms: payload.issued_ms };
 }
 
 import type { Session } from "next-auth";
@@ -896,6 +897,8 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
     readonly access_token: string;
     readonly refresh_token: string;
     readonly user_id?: string;
+    /** Stops a held impersonation with the administrator bearer; a failed stop is logged. */
+    readonly endImpersonation: () => Promise<void>;
 } | null> {
     const cookie = request.headers.get("cookie");
     if (!authSecret || !cookie) return null;
@@ -921,6 +924,7 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
             access_token: accessToken,
             refresh_token: refreshToken,
             ...(typeof token.id === "string" ? { user_id: token.id } : {}),
+            endImpersonation: () => endImpersonationForSignOut(token, Date.now()),
         };
     }
     return null;
@@ -959,10 +963,11 @@ export async function requireRole(
     callbackUrl?: string,
 ): Promise<Session> {
     const session = await requireSession(callbackUrl);
+    // The role is the administrator's own, in the administrator's org: while impersonating it
+    // never admits, whatever it is (D6720: the session field comes from the delegated token).
+    if (session.user.is_impersonating === true) redirect("/dashboard");
     const roleList = Array.isArray(roles) ? roles : [roles];
-    const superuserBypass =
-        session.user.is_superuser === true && session.user.is_impersonating !== true;
-    if (!superuserBypass && !roleList.includes(session.user.role || "")) {
+    if (session.user.is_superuser !== true && !roleList.includes(session.user.role || "")) {
         redirect("/dashboard");
     }
     return session;

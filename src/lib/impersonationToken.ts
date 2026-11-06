@@ -29,9 +29,30 @@ export function setImpersonationToken(token: JWT, pair: ImpersonationPair, now: 
         now + Math.min(pair.expires_in ?? MAX_DELEGATED_SECONDS, MAX_DELEGATED_SECONDS) * 1000;
 }
 
+/** An end moves the floor to now: no start handoff sealed before it is admitted after it. */
 export function clearImpersonationToken(token: JWT): void {
+    if (isImpersonatingToken(token)) {
+        token.imp_handoff_floor = Math.max(handoffFloor(token), Date.now());
+    }
     token.imp_access_token = undefined;
     token.imp_expires_at = undefined;
+}
+
+function handoffFloor(token: JWT): number {
+    const floor: unknown = token.imp_handoff_floor;
+    return typeof floor === "number" && Number.isFinite(floor) ? floor : 0;
+}
+
+/**
+ * A start handoff is one-use: it is admitted only when it was sealed after the last start that was
+ * used and after the last end. A replay inside its 120 s life is refused, whatever the status read
+ * then answers. A handoff with no readable seal time is refused.
+ */
+function consumeStartHandoff(token: JWT, issuedMs: unknown): boolean {
+    if (typeof issuedMs !== "number" || !Number.isFinite(issuedMs)) return false;
+    if (issuedMs <= handoffFloor(token)) return false;
+    token.imp_handoff_floor = issuedMs;
+    return true;
 }
 
 /**
@@ -61,11 +82,18 @@ export function endImpersonationByHandoff(token: JWT, ended: string): boolean {
  * refused: an org switch or a password change made under the delegated bearer answers with the
  * target's pair. A sign-in starts a new session, so the delegated state is dropped first.
  */
-export function admitPairWrite<H extends { kind: string }>(
+export function admitPairWrite<H extends { kind: string; issued_ms?: unknown }>(
     token: JWT,
     handoff: H | null,
     signIn: boolean,
 ): H | null {
+    if (handoff?.kind === "impersonation" && !consumeStartHandoff(token, handoff.issued_ms)) {
+        impersonationLogger.warn(
+            { event: "impersonation_start_handoff_refused", user_id: token.id },
+            "impersonation start handoff refused: already used or sealed before the last end",
+        );
+        return null;
+    }
     if (!isImpersonatingToken(token)) return handoff?.kind === "impersonationEnd" ? null : handoff;
     if (signIn) {
         dropImpersonation(token);

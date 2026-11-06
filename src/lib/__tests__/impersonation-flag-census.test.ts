@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // reader or writer fails; a listed line that is gone fails too. Comment lines are skipped.
 
 const ROOT = path.resolve(__dirname, "../../..");
-const FLAG = /is_impersonating|imp_access_token|imp_expires_at/;
+const FLAG = /is_impersonating|imp_access_token|imp_expires_at|imp_handoff_floor/;
 const isComment = (line: string) => /^\s*(\/\/|\/\*|\*)/.test(line);
 
 const walk = (rel: string): string[] => {
@@ -41,12 +41,16 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "if (!isImpersonatingToken(token) || token.imp_access_token !== ended) return false;",
         "const expiresAt: unknown = token.imp_expires_at;",
         "...delegationIdsOf(token.imp_access_token),",
+        "token.imp_handoff_floor = issuedMs;",
+        "token.imp_handoff_floor = Math.max(handoffFloor(token), Date.now());",
+        "const floor: unknown = token.imp_handoff_floor;",
     ],
     // Types: the session field (UI contract) and the JWT delegated fields. No JWT flag.
     "src/types/next-auth.d.ts": [
         "is_impersonating?: boolean;",
         "imp_access_token?: string;",
         "imp_expires_at?: number;",
+        "imp_handoff_floor?: number;",
     ],
     // The session callback writes the session field from the accessor; the status merge reads
     // the backend answer (end or display only); requireRole / requireSuperuser read the field.
@@ -55,7 +59,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
         "} else if (status?.is_impersonating === true && isImpersonatingToken(token)) {",
         "session.user.is_impersonating = impersonating;",
         "is_impersonating: impersonating,",
-        "session.user.is_superuser === true && session.user.is_impersonating !== true;",
+        'if (session.user.is_impersonating === true) redirect("/dashboard");',
         "if (session.user.is_superuser !== true || session.user.is_impersonating === true) {",
     ],
     // Guards on the session field.

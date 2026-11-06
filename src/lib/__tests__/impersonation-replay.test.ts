@@ -191,7 +191,11 @@ describe("replay after other ends", () => {
 describe("controls", () => {
     it("a new start after the stop is admitted", async () => {
         const stopped = await update(await update(adminToken(), await start()), await end());
-        const next = await update(stopped, await start(NEXT_DELEGATED));
+        // The next start is sealed later than the end (a click and a backend call apart).
+        vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 1_000 });
+        const next = await update(stopped, await start(NEXT_DELEGATED)).finally(() =>
+            vi.useRealTimers(),
+        );
         expect(next.imp_access_token).toBe(NEXT_DELEGATED);
         const session = await callbacks().session({ session: { user: {} }, token: next });
         expect(session.access_token).toBe(NEXT_DELEGATED);
