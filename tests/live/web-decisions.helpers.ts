@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { envFault } from "./helpers";
 
@@ -101,6 +103,37 @@ export async function signInUser(page: Page, email: string, password: string): P
             return body.user?.email ?? "";
         })
         .toBe(email);
+}
+
+/** The subject token file the web server exchanges (the ops stack writes it; the fake TokenReview knows only its first content). */
+export function workloadSubjectFile(): string {
+    const state = process.env.LIVE_E2E_STACK_STATE;
+    if (!state) {
+        envFault("LIVE_E2E_STACK_STATE names the ops auth stack state directory");
+        return "";
+    }
+    return join(state, "workload", "web.subject");
+}
+
+/** A JWS-shaped subject token that no issuer signed, with exp at now + expInSeconds. */
+export function foreignSubjectJws(expInSeconds: number): string {
+    const part = (v: object) => Buffer.from(JSON.stringify(v)).toString("base64url");
+    const now = Math.floor(Date.now() / 1000);
+    return [
+        part({ alg: "RS256", typ: "JWT" }),
+        part({
+            iss: "https://kubernetes.default.svc.cluster.local",
+            sub: "system:serviceaccount:live-e2e:web",
+            aud: ["dev-health-workload-exchange"],
+            iat: now,
+            exp: now + expInSeconds,
+        }),
+        randomBytes(64).toString("base64url"),
+    ].join(".");
+}
+
+export function sha256Hex(data: Buffer): string {
+    return createHash("sha256").update(data).digest("hex");
 }
 
 /** stop-auth or start-auth of the ops live e2e auth stack script (the outage cell). */

@@ -6,6 +6,7 @@
  * Two passes (playwright.live.config.ts, LIVE_WEB_DECISIONS): "enforce" (AUTHZ_DECISIONS_ENFORCE=on, the PDP decides) and
  * "shadow" (enforcement off, the legacy rules decide and the PDP verdict is only logged).
  */
+import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
     authHeaders,
@@ -20,12 +21,15 @@ import {
 } from "./helpers";
 import {
     decideLines,
+    foreignSubjectJws,
     mark,
     nextDecision,
+    sha256Hex,
     shadowRuns,
     signInUser,
     stack,
     webLogPath,
+    workloadSubjectFile,
 } from "./web-decisions.helpers";
 
 const PASSWORD = "TestPass123!";
@@ -54,6 +58,45 @@ async function registerOwner(
 
 test.describe("web decisions: enforced by the PDP @enforce", () => {
     test.describe.configure({ mode: "serial" });
+
+    // First cell of the pass: the server must hold no workload token yet, because it keeps serving a cached token
+    // when a later exchange fails. A token cached before this cell makes it fail (source pdp), never pass.
+    test("wrong subject: an unknown or expired subject token allows nothing, and it recovers", async ({
+        page,
+    }) => {
+        const log = webLogPath();
+        const file = workloadSubjectFile();
+        const good = readFileSync(file);
+        await signInCanonicalUser(page);
+        try {
+            for (const [label, subject] of [
+                ["a subject the TokenReview does not know", foreignSubjectJws(3600)],
+                ["an expired subject", foreignSubjectJws(-3600)],
+            ] as const) {
+                writeFileSync(file, subject);
+                const since = mark(log);
+                await page.goto("/superadmin/users");
+                const line = await nextDecision(log, since, "platform.users");
+                expect(line.allowed, `${label} was allowed`).toBe(false);
+                expect(
+                    line.source,
+                    `${label}: the deny did not come from the client's fail-closed path`,
+                ).toBe("client");
+            }
+        } finally {
+            writeFileSync(file, good);
+        }
+        expect(sha256Hex(readFileSync(file)), "the subject file was not restored").toBe(
+            sha256Hex(good),
+        );
+        const since = mark(log);
+        await page.goto("/superadmin/users");
+        const line = await nextDecision(log, since, "platform.users");
+        expect(line.source).toBe("pdp");
+        expect(line.allowed, `not allowed after the subject came back: ${line.reason_code}`).toBe(
+            true,
+        );
+    });
 
     test("superuser: admin.users and admin.orgs are allowed by the PDP", async ({ page }) => {
         const log = webLogPath();
