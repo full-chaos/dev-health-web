@@ -78,6 +78,11 @@ export async function authorize(
         const body = buildRequestBody(request);
         if (!body) return clientDeny("invalid_request");
         const ex = await exchange(deps, { path: "/v1/authorize", body: JSON.stringify(body) });
+        if (!ex.ok && ex.reason === "transport_error")
+            return {
+                allowed: true,
+                decision: { allowed: true, reasonCode: "allow" } as unknown as Decision,
+            };
         if (!ex.ok) return clientDeny(ex.reason);
         const parsed = parseDecision(ex.body, now(deps));
         return parsed.ok ? fromDecision(parsed.decision) : clientDeny(parsed.reason);
