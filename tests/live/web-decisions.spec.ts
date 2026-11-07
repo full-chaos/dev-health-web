@@ -17,7 +17,6 @@ import {
     signInCanonicalUser,
     testEmail,
     userIdByEmail,
-    verifyUser,
 } from "./helpers";
 import {
     decideLines,
@@ -34,6 +33,17 @@ import {
 
 const PASSWORD = "TestPass123!";
 
+// A setup call must answer one of the expected statuses; the failure names the step and carries the answer body.
+async function expectSetupAnswer(
+    res: import("@playwright/test").APIResponse,
+    statuses: readonly number[],
+    step: string,
+): Promise<void> {
+    if (statuses.includes(res.status())) return;
+    const body = (await res.text()).slice(0, 2000);
+    expect(res.status(), `${step} answered ${res.status()}: ${body}`).toBe(statuses[0]);
+}
+
 // A registered, verified user. Registration creates the user's own organization (the default live backend), so the user is its owner.
 async function registerOwner(
     request: import("@playwright/test").APIRequestContext,
@@ -47,8 +57,13 @@ async function registerOwner(
     expectRegisterAccepted(res);
     const userId = await userIdByEmail(request, email, superToken);
     expect(userId, "the registered user is not in the admin user list").not.toBe("");
-    expect(await verifyUser(request, userId, superToken), "the user could not be verified").toBe(
-        true,
+    await expectSetupAnswer(
+        await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
+            headers: authHeaders(superToken),
+            data: { is_verified: true },
+        }),
+        [200],
+        "verifying the user",
     );
     const login = await loginUser(request, email, PASSWORD);
     const orgId = String((login.user as { org_id?: string } | undefined)?.org_id ?? "");
@@ -141,11 +156,24 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         expect(allowed.source).toBe("pdp");
         expect(allowed.allowed, `owner refused: ${allowed.reason_code}`).toBe(true);
 
-        const demote = await request.patch(
-            `${liveBackendUrl}/api/v1/admin/orgs/${owner.orgId}/members/${owner.userId}`,
-            { headers: authHeaders(superToken as string), data: { role: "member" } },
+        // The backend refuses to demote the last owner of an organization: a second owner comes first.
+        const second = await registerOwner(request, superToken as string);
+        await expectSetupAnswer(
+            await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${owner.orgId}/members`, {
+                headers: authHeaders(superToken as string),
+                data: { user_id: second.userId, role: "owner" },
+            }),
+            [200, 201],
+            "adding a second owner",
         );
-        expect(demote.ok(), `the role change answered ${demote.status()}`).toBe(true);
+        await expectSetupAnswer(
+            await request.patch(
+                `${liveBackendUrl}/api/v1/admin/orgs/${owner.orgId}/members/${owner.userId}`,
+                { headers: authHeaders(superToken as string), data: { role: "member" } },
+            ),
+            [200],
+            "the role change to member",
+        );
 
         since = mark(log);
         const denied = await page.request.get("/org/admin/integrations/github-app/install", {
