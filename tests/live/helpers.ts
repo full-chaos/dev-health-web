@@ -106,8 +106,8 @@ export function authHeaders(token: string): Record<string, string> {
 }
 
 // Superuser credentials — set in CI secrets or use defaults for local dev
-const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
-const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
+export const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
+export const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
 
 function sessionEmail(session: unknown): string | undefined {
     if (typeof session !== "object" || session === null) return undefined;
