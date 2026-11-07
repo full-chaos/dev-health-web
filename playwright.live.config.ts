@@ -120,7 +120,7 @@ export default defineConfig({
                       DEV_HEALTH_TEST_MODE: "true",
                       NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
                       ...(guided ? { NEXT_PUBLIC_GUIDED_ONBOARDING: "true" } : {}),
-                      ...(webDecisions ? { AUTHZ_PLATFORM_UI: "shadow" } : {}),
+                      ...(webDecisions && false ? { AUTHZ_PLATFORM_UI: "shadow" } : {}),
                       ...(decisionsEnforced ? { AUTHZ_DECISIONS_ENFORCE: "on" } : {}),
                       ...(webDecisions ? { LOG_FORMAT: "json", LOG_LEVEL: "info" } : {}),
                   },
