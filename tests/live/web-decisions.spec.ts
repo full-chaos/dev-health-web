@@ -7,13 +7,12 @@
  * "shadow" (enforcement off, the legacy rules decide and the PDP verdict is only logged).
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import {
     authHeaders,
     expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
-    loginUser,
     signInCanonicalUser,
     testEmail,
     userIdByEmail,
@@ -44,11 +43,12 @@ async function expectSetupAnswer(
     expect(res.status(), `${step} answered ${res.status()}: ${body}`).toBe(statuses[0]);
 }
 
-// A registered, verified user. Registration creates the user's own organization (the default live backend), so the user is its owner.
+// A registered, verified user. Registration creates the user's own organization (the default live backend), so the user is its
+// owner. No login here: logins share the per-address limit with the rest of the job.
 async function registerOwner(
     request: import("@playwright/test").APIRequestContext,
     superToken: string,
-): Promise<{ email: string; userId: string; orgId: string }> {
+): Promise<{ email: string; userId: string }> {
     const email = testEmail("web-decisions");
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: PASSWORD, full_name: "Decisions Owner" },
@@ -65,24 +65,41 @@ async function registerOwner(
         [200],
         "verifying the user",
     );
-    const login = await loginUser(request, email, PASSWORD);
-    const orgId = String((login.user as { org_id?: string } | undefined)?.org_id ?? "");
-    expect(orgId, "the owner has no organization").not.toBe("");
-    return { email, userId, orgId };
+    return { email, userId };
+}
+
+// The organization of the signed-in user, from its Auth.js session.
+async function sessionOrgId(page: Page): Promise<string> {
+    const res = await page.request.get("/api/auth/session");
+    await expectSetupAnswer(res, [200], "reading the session");
+    const body = (await res.json()) as { user?: { org_id?: string } };
+    const orgId = body.user?.org_id ?? "";
+    expect(orgId, "the signed-in owner has no organization").not.toBe("");
+    return orgId;
 }
 
 test.describe("web decisions: enforced by the PDP @enforce", () => {
     test.describe.configure({ mode: "serial" });
 
+    // One superuser sign-in for the pass: the cells below share it, so the pass spends one login on that account.
+    let superContext: BrowserContext;
+    let superPage: Page;
+    test.beforeAll(async ({ browser }, testInfo) => {
+        superContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+        superPage = await superContext.newPage();
+        await signInCanonicalUser(superPage);
+    });
+    test.afterAll(async () => {
+        await superContext?.close();
+    });
+
     // First cell of the pass: the server must hold no workload token yet, because it keeps serving a cached token
     // when a later exchange fails. A token cached before this cell makes it fail (source pdp), never pass.
-    test("wrong subject: an unknown or expired subject token allows nothing, and it recovers", async ({
-        page,
-    }) => {
+    test("wrong subject: an unknown or expired subject token allows nothing, and it recovers", async () => {
+        const page = superPage;
         const log = webLogPath();
         const file = workloadSubjectFile();
         const good = readFileSync(file);
-        await signInCanonicalUser(page);
         try {
             for (const [label, subject] of [
                 ["a subject the TokenReview does not know", foreignSubjectJws(3600)],
@@ -115,9 +132,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         );
     });
 
-    test("superuser: admin.users and admin.orgs are allowed by the PDP", async ({ page }) => {
+    test("superuser: admin.users and admin.orgs are allowed by the PDP", async () => {
+        const page = superPage;
         const log = webLogPath();
-        await signInCanonicalUser(page);
         // The org list page decides admin.orgs (listOrganizations).
         let since = mark(log);
         const response = await page.goto("/superadmin/orgs");
@@ -148,6 +165,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
         const owner = await registerOwner(request, superToken as string);
         await signInUser(page, owner.email, PASSWORD);
+        const orgId = await sessionOrgId(page);
 
         let since = mark(log);
         await page.request.get("/org/admin/integrations/github-app/install", { maxRedirects: 0 });
@@ -159,7 +177,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         // The backend refuses to demote the last owner of an organization: a second owner comes first.
         const second = await registerOwner(request, superToken as string);
         await expectSetupAnswer(
-            await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${owner.orgId}/members`, {
+            await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members`, {
                 headers: authHeaders(superToken as string),
                 data: { user_id: second.userId, role: "owner" },
             }),
@@ -168,7 +186,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         );
         await expectSetupAnswer(
             await request.patch(
-                `${liveBackendUrl}/api/v1/admin/orgs/${owner.orgId}/members/${owner.userId}`,
+                `${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members/${owner.userId}`,
                 { headers: authHeaders(superToken as string), data: { role: "member" } },
             ),
             [200],
@@ -186,11 +204,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         expect(denied.headers().location ?? "").toContain("github_app=error");
     });
 
-    test("fail-closed: with auth-service stopped nothing is allowed, and it recovers", async ({
-        page,
-    }) => {
+    test("fail-closed: with auth-service stopped nothing is allowed, and it recovers", async () => {
+        const page = superPage;
         const log = webLogPath();
-        await signInCanonicalUser(page);
         stack("stop-auth");
         try {
             const since = mark(log);

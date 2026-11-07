@@ -56,4 +56,22 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
         expect(step).toMatch(/LIVE_E2E_STACK_STATE:/);
         expect(step).not.toMatch(/SSL_CERT_FILE|NODE_EXTRA_CA_CERTS|AUTH_WORKLOAD|AUTHZ_/);
     });
+
+    it("runs the web decisions tier and the live tiers in separate jobs, so they share no login limit window", () => {
+        const stepIf = (name: string) => {
+            const at = lines.findIndex((line) => line.includes(`- name: ${name}`));
+            expect(at, `no step ${name}`).toBeGreaterThan(0);
+            const rest = lines.slice(at + 1);
+            const next = rest.findIndex((line) => /^\s+- name: /.test(line));
+            return (
+                rest.slice(0, next < 0 ? undefined : next).find((line) => /^\s+if: /.test(line)) ??
+                ""
+            );
+        };
+        expect(workflow).toMatch(/^\s+tier: \[live, web-decisions\]$/m);
+        expect(stepIf("Run web decisions live tier (flip F11)")).toMatch(
+            /^\s+if: matrix\.tier == 'web-decisions'$/,
+        );
+        expect(stepIf("Run live backend e2e tier")).toMatch(/^\s+if: matrix\.tier == 'live'$/);
+    });
 });
