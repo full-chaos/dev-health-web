@@ -187,7 +187,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         await expectSetupAnswer(
             await request.patch(
                 `${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members/${owner.userId}`,
-                { headers: authHeaders(superToken as string), data: { role: "member" } },
+                { headers: authHeaders(superToken as string), data: { role: "owner" } },
             ),
             [200],
             "the role change to member",
