@@ -57,6 +57,15 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
         expect(step).not.toMatch(/SSL_CERT_FILE|NODE_EXTRA_CA_CERTS|AUTH_WORKLOAD|AUTHZ_/);
     });
 
+    it("builds the go-api environment copy from with-env, not from /proc of a process that may not have exec'd yet", () => {
+        // /proc/<pid>/environ read right after the background start can be the shell's own environment, without the auth
+        // flags: the guided restart then ran go-api with no auth-service proxy (upstream_host "").
+        expect(workflow).not.toMatch(/\/proc\/[^\n]*\/environ/);
+        expect(workflow).toMatch(
+            /with-env go-api "\$\{RUNNER_TEMP\}\/live-e2e-auth" -- env -0 >\/tmp\/dev-health-go-api\.environ/,
+        );
+    });
+
     it("runs the web decisions tier and the live tiers in separate jobs, so they share no login limit window", () => {
         const stepIf = (name: string) => {
             const at = lines.findIndex((line) => line.includes(`- name: ${name}`));
