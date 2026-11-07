@@ -49,8 +49,16 @@ jobs:
                         - 'sentry.*.config.ts'
 
     live-e2e:
+        # Three jobs, each with its own stack boot: the live tier, the guided-onboarding tier and the web decisions tier (flip
+        # F11) share no login rate-limit window, process or state (auth-service allows 10 logins per address and account in
+        # 15 min). The "live" job keeps the check name live-e2e.
+        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'guided' && 'live-e2e-guided' || 'live-e2e' }}
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
+        strategy:
+            fail-fast: false
+            matrix:
+                tier: [live, guided, web-decisions]
         runs-on: ubuntu-latest
         timeout-minutes: 25
         # Service images and the traefik image come from the ghcr.io mirror.
@@ -379,8 +387,17 @@ jobs:
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
                   # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
-                  # with one flag changed (see "Restart go-api for the guided-onboarding pass").
-                  cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
+                  # with one flag changed (see "Restart go-api for the guided-onboarding pass"). It is built by with-env itself
+                  # (the same exports go-api gets), never read from /proc: right after the background start, the started
+                  # process can still hold the shell's own environment, without the auth flags.
+                  (
+                    umask 077
+                    LINK_TOKEN_SECRET="${link_token_secret}" \
+                      bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- env -0 >/tmp/dev-health-go-api.environ
+                  )
+                  # Names only, never values: does the copy carry the auth-service proxy flags the guided restart needs?
+                  proxy_names="$(tr '\0' '\n' < /tmp/dev-health-go-api.environ | cut -d= -f1 | grep '^AUTH_PROXY_' | tr '\n' ' ' || true)"
+                  echo "environ copy AUTH_PROXY_ names: ${proxy_names:-none}"
                   nohup bash ci/live_e2e_auth_stack.sh with-env query-api "${RUNNER_TEMP}/live-e2e-auth" -- \
                     /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
@@ -644,8 +661,32 @@ jobs:
                   bash ci/live_e2e_auth_stack.sh assert-audit "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 
-            - name: Run live backend e2e tier
+            - name: Run web decisions live tier (flip F11)
+              # The Next server decides the enforced actions (admin.orgs, admin.users, integrations.write) with the real PDP: allow,
+              # deny and fail-closed with auth-service stopped (enforce pass), then the shadow pass. Its own job (matrix tier
+              # web-decisions). The web workload gets its token through the stack's job-local TokenReview (test code; the product
+              # path is unchanged).
+              if: matrix.tier == 'web-decisions'
               env:
+                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
+                  TEST_SUPERUSER_EMAIL: admin@devhealth.example
+                  TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+                  LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
+                  LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
+                  LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+              run: bash ci/run_tests.sh live-e2e-web-decisions
+
+            - name: Upload the web decisions server logs on failure
+              if: failure() && matrix.tier == 'web-decisions'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-decisions-server-logs
+                  path: web-decisions-logs
+
+            - name: Run live backend e2e tier
+              if: matrix.tier == 'live' || matrix.tier == 'guided'
+              env:
+                  TIER: ${{ matrix.tier }}
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
                   # go-api/query-api-owned paths must reach those planes the way prod's Ingress
                   # (and bigboy's traefik) route them, or they 500 on their Python stub.
@@ -657,24 +698,39 @@ jobs:
                   LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
-              # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
-              # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
-              run: bash ci/run_tests.sh live-e2e-two-pass
+              # CHAOS-12138: the default backend (live job), or go-api restarted with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for
+              # the @guided specs (guided job). Any skip fails the tier.
+              run: |
+                  mkdir -p web-live-logs
+                  if [ "${TIER}" = guided ]; then
+                    bash ci/live-e2e-restart-go-api.sh
+                    LIVE_WEB_LOG=web-live-logs/web-server-guided.log bash ci/run_tests.sh live-e2e-guided
+                  else
+                    LIVE_WEB_LOG=web-live-logs/web-server-live.log bash ci/run_tests.sh live-e2e
+                  fi
+
+            - name: Upload the live web server logs on failure
+              if: failure() && matrix.tier != 'web-decisions'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-${{ matrix.tier }}-server-logs
+                  path: web-live-logs
 
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: playwright-report-live
+                  name: playwright-report-live${{ matrix.tier != 'live' && format('-{0}', matrix.tier) || '' }}
                   path: playwright-report
 
             - name: Upload API logs on failure
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: dev-health-ops-go-logs
+                  name: dev-health-ops-go-logs${{ matrix.tier != 'live' && format('-{0}', matrix.tier) || '' }}
                   path: |
                       /tmp/dev-health-go-api.log
+                      /tmp/dev-health-go-api-guided.log
                       /tmp/dev-health-query-api.log
                       ${{ runner.temp }}/live-e2e-auth/logs/auth-service.log
 

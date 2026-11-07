@@ -12,6 +12,18 @@ const liveBackendUrl =
 const askDev = process.env.LIVE_ASK_DEV === "true" || process.env.LIVE_ASK_DEV === "1";
 const askDevWeb = process.env.ASK_DEV_LIVE_WEB ?? "http://localhost:3000";
 
+// The web decisions pass (tests/live/web-decisions.spec.ts): the Next server runs with the PDP decision client on its own.
+// "enforce" = AUTHZ_DECISIONS_ENFORCE=on (the enforced actions are decided by the real PDP); "shadow" = enforcement off and the
+// shadow switch on (legacy rules decide, the PDP verdict is only logged). The web log (JSON lines) is read by the spec.
+const webDecisions = process.env.LIVE_WEB_DECISIONS;
+if (webDecisions !== undefined && webDecisions !== "enforce" && webDecisions !== "shadow") {
+    throw new Error('LIVE_WEB_DECISIONS must be "enforce" or "shadow"');
+}
+// The web server log: always for the decisions pass (the spec reads it), and for any other pass that names LIVE_WEB_LOG
+// (kept as a CI artifact, so a failed sign-in shows its auth-session branch line).
+const webServerLog =
+    process.env.LIVE_WEB_LOG ?? (webDecisions ? "web-decisions-logs/web-server.log" : undefined);
+
 export default defineConfig({
     testDir: "./tests/live",
     reporter: [
@@ -26,49 +38,70 @@ export default defineConfig({
     // Two passes: the default backend auto-creates an org on register, the guided pass runs the
     // orgless journey (tests tagged @guided) against a backend started with
     // AUTH_AUTO_CREATE_ORG_ON_REGISTER=false.
-    ...(askDev ? {} : guided ? { grep: /@guided/ } : { grepInvert: /@guided/ }),
+    ...(askDev
+        ? {}
+        : webDecisions
+          ? { grep: new RegExp(`@${webDecisions}`) }
+          : guided
+            ? { grep: /@guided/ }
+            : { grepInvert: /@guided/ }),
     /* Run onboarding-ui first — it exercises the browser signup form and is
      sensitive to the backend's 3-per-hour register rate limit. */
-    projects: askDev
+    projects: webDecisions
         ? [
               {
-                  name: "ask-dev-live",
-                  testMatch: /ask-dev\/.*\.spec\.ts/,
+                  name: `web-decisions-${webDecisions}`,
+                  testMatch: /web-decisions\.spec\.ts/,
                   timeout: 120_000,
-                  // No screenshot, trace or video: bearers are on these pages.
-                  use: {
-                      baseURL: askDevWeb,
-                      headless: true,
-                      ignoreHTTPSErrors: true,
-                      screenshot: "off",
-                      trace: "off",
-                      video: "off",
-                  },
+                  use: { baseURL: "http://127.0.0.1:3002", headless: true },
               },
           ]
-        : [
-              {
-                  name: "onboarding-ui",
-                  testMatch: /onboarding-ui\.spec\.ts/,
-                  use: { baseURL: "http://127.0.0.1:3002", headless: true },
-              },
-              {
-                  name: "live-api",
-                  testIgnore: [/onboarding-ui\.spec\.ts/, /ask-dev\/.*\.spec\.ts/],
-                  dependencies: ["onboarding-ui"],
-                  use: { baseURL: "http://127.0.0.1:3002", headless: true },
-              },
-          ],
+        : askDev
+          ? [
+                {
+                    name: "ask-dev-live",
+                    testMatch: /ask-dev\/.*\.spec\.ts/,
+                    timeout: 120_000,
+                    // No screenshot, trace or video: bearers are on these pages.
+                    use: {
+                        baseURL: askDevWeb,
+                        headless: true,
+                        ignoreHTTPSErrors: true,
+                        screenshot: "off",
+                        trace: "off",
+                        video: "off",
+                    },
+                },
+            ]
+          : [
+                {
+                    name: "onboarding-ui",
+                    testMatch: /onboarding-ui\.spec\.ts/,
+                    use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                },
+                {
+                    name: "live-api",
+                    testIgnore: [
+                        /onboarding-ui\.spec\.ts/,
+                        /ask-dev\/.*\.spec\.ts/,
+                        /web-decisions\.spec\.ts/,
+                    ],
+                    dependencies: ["onboarding-ui"],
+                    use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                },
+            ],
     // One stack, shared state and a real ACR: one worker, in order.
-    ...(askDev ? { workers: 1 } : {}),
+    ...(askDev || webDecisions ? { workers: 1 } : {}),
     webServer: askDev
         ? []
         : [
               {
                   command:
-                      `${process.env.LIVE_E2E_WEB_WRAPPER ?? ""} npm run dev -- --hostname 127.0.0.1 --port 3002`.trim(),
+                      `${process.env.LIVE_E2E_WEB_WRAPPER ?? ""} npm run dev -- --hostname 127.0.0.1 --port 3002${
+                          webServerLog ? ` > ${webServerLog} 2>&1` : ""
+                      }`.trim(),
                   url: "http://127.0.0.1:3002",
-                  reuseExistingServer: !process.env.CI,
+                  reuseExistingServer: !process.env.CI && !webDecisions,
                   timeout: 120_000,
                   env: {
                       NODE_OPTIONS: nextDevNodeOptions(),
@@ -80,6 +113,9 @@ export default defineConfig({
                       DEV_HEALTH_TEST_MODE: "true",
                       NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
                       ...(guided ? { NEXT_PUBLIC_GUIDED_ONBOARDING: "true" } : {}),
+                      ...(webDecisions === "enforce" ? { AUTHZ_DECISIONS_ENFORCE: "on" } : {}),
+                      ...(webDecisions === "shadow" ? { AUTHZ_SHADOW_NAV: "on" } : {}),
+                      ...(webDecisions ? { LOG_FORMAT: "json", LOG_LEVEL: "info" } : {}),
                   },
               },
           ],
