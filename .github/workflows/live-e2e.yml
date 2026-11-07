@@ -369,7 +369,12 @@ jobs:
               run: |
                   # with-env adds the auth flags, the issuer and the CA of the auth stack to each process only (SSL_CERT_FILE
                   # replaces the system roots, so it is never exported for the whole job).
-                  nohup bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- \
+                  # go-api answers 503 config_missing on the link routes (register first) without LINK_TOKEN_SECRET (ops #5837).
+                  # One random key per job, for go-api only; the guided-onboarding restart reuses it through the environ copy.
+                  link_token_secret="$(openssl rand -hex 32)"
+                  echo "::add-mask::${link_token_secret}"
+                  LINK_TOKEN_SECRET="${link_token_secret}" \
+                    nohup bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- \
                     /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
