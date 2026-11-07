@@ -955,11 +955,23 @@ export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
     categorize: "Categorization",
 };
 
-/** The only provider the categorize override takes, and the only one it takes. Never in LLM_PROVIDERS. */
-export const CATEGORIZE_PROVIDER = "clef";
-export const CATEGORIZE_PROVIDER_LABEL = "Cloudflare Workers AI";
-/** The models the categorize override accepts; the backend refuses any other. */
-export const CATEGORIZE_MODELS = ["clef", "clef-flash"] as const;
+/** The providers the categorize override takes, each with the models the backend accepts. Never in LLM_PROVIDERS. */
+export const CATEGORIZE_PROVIDERS = [
+    {
+        value: "clef",
+        label: "Cloudflare Workers AI",
+        models: ["clef", "clef-flash"],
+        baseUrl: "required",
+    },
+    { value: "typesafe", label: "TypeSafe (jev)", models: ["jev-1.13.0"], baseUrl: "none" },
+] as const;
+export type CategorizeProvider = (typeof CATEGORIZE_PROVIDERS)[number];
+
+export function categorizeProviderFor(
+    provider: string | null | undefined,
+): CategorizeProvider | undefined {
+    return CATEGORIZE_PROVIDERS.find((p) => p.value === provider);
+}
 
 /** One stored override; the api_key is masked. */
 export interface LLMPurposeSettings {
