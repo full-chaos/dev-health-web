@@ -27,6 +27,15 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
         expect(workflow).not.toMatch(/print-env\s+web/);
     });
 
+    it("starts go-api with a link token secret made in the job, never a literal one", () => {
+        const start = lines.findIndex((line) => /with-env go-api /.test(line));
+        expect(start, "no go-api start line").toBeGreaterThan(0);
+        expect(lines[start - 1]).toMatch(/^\s*LINK_TOKEN_SECRET="\$\{link_token_secret\}" \\$/);
+        expect(workflow).toMatch(/link_token_secret="\$\(openssl rand -hex 32\)"/);
+        expect(workflow).toMatch(/::add-mask::\$\{link_token_secret\}/);
+        expect(workflow).not.toMatch(/^\s*LINK_TOKEN_SECRET:/m);
+    });
+
     it("hands the web-server wrapper to the runner, not the CA variables", () => {
         expect(workflow).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
     });
