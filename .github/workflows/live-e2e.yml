@@ -388,6 +388,9 @@ jobs:
                   # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
                   # with one flag changed (see "Restart go-api for the guided-onboarding pass").
                   cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
+                  # Names only, never values: does the copy carry the auth-service proxy flags the guided restart needs?
+                  proxy_names="$(tr '\0' '\n' < /tmp/dev-health-go-api.environ | cut -d= -f1 | grep '^AUTH_PROXY_' | tr '\n' ' ' || true)"
+                  echo "environ copy AUTH_PROXY_ names: ${proxy_names:-none}"
                   nohup bash ci/live_e2e_auth_stack.sh with-env query-api "${RUNNER_TEMP}/live-e2e-auth" -- \
                     /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
@@ -712,6 +715,7 @@ jobs:
                   name: dev-health-ops-go-logs${{ matrix.tier == 'web-decisions' && '-web-decisions' || '' }}
                   path: |
                       /tmp/dev-health-go-api.log
+                      /tmp/dev-health-go-api-guided.log
                       /tmp/dev-health-query-api.log
                       ${{ runner.temp }}/live-e2e-auth/logs/auth-service.log
 
