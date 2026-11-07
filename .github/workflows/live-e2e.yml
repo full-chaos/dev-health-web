@@ -691,6 +691,13 @@ jobs:
               # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
               run: bash ci/run_tests.sh live-e2e-two-pass
 
+            - name: Upload the live web server logs on failure
+              if: failure() && matrix.tier == 'live'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-live-server-logs
+                  path: web-live-logs
+
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

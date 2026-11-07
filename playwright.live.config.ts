@@ -19,7 +19,10 @@ const webDecisions = process.env.LIVE_WEB_DECISIONS;
 if (webDecisions !== undefined && webDecisions !== "enforce" && webDecisions !== "shadow") {
     throw new Error('LIVE_WEB_DECISIONS must be "enforce" or "shadow"');
 }
-const webDecisionsLog = process.env.LIVE_WEB_LOG ?? "web-decisions-logs/web-server.log";
+// The web server log: always for the decisions pass (the spec reads it), and for any other pass that names LIVE_WEB_LOG
+// (kept as a CI artifact, so a failed sign-in shows its auth-session branch line).
+const webServerLog =
+    process.env.LIVE_WEB_LOG ?? (webDecisions ? "web-decisions-logs/web-server.log" : undefined);
 
 export default defineConfig({
     testDir: "./tests/live",
@@ -95,7 +98,7 @@ export default defineConfig({
               {
                   command:
                       `${process.env.LIVE_E2E_WEB_WRAPPER ?? ""} npm run dev -- --hostname 127.0.0.1 --port 3002${
-                          webDecisions ? ` > ${webDecisionsLog} 2>&1` : ""
+                          webServerLog ? ` > ${webServerLog} 2>&1` : ""
                       }`.trim(),
                   url: "http://127.0.0.1:3002",
                   reuseExistingServer: !process.env.CI && !webDecisions,

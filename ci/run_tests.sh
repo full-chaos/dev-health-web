@@ -492,10 +492,13 @@ case "${tier}" in
     run_live_e2e
     ;;
   live-e2e-two-pass)
+    # The web server log of each pass is kept in web-live-logs/ (uploaded on failure).
     status=0
-    run_live_e2e || status=$?
+    mkdir -p web-live-logs
+    LIVE_WEB_LOG=web-live-logs/web-server-live.log run_live_e2e || status=$?
     bash ci/live-e2e-restart-go-api.sh || exit 1
-    LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
+    LIVE_WEB_LOG=web-live-logs/web-server-guided.log LIVE_GUIDED_ONBOARDING=1 \
+      LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
     exit "${status}"
     ;;
   live-e2e-web-decisions)

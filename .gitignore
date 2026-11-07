@@ -57,3 +57,4 @@ package-lock.json
 # Written at start-up by scripts/write-runtime-config.mjs; never committed.
 /public/runtime-config.js
 web-decisions-logs/
+web-live-logs/
