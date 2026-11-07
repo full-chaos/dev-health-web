@@ -523,6 +523,8 @@ case "${tier}" in
       LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
         LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
         run_live_e2e || status=$?
+      # The next pass empties playwright-report: keep each pass's results next to classes-answers.json (uploaded always).
+      cp -f "playwright-report/live-results-web-decisions-${mode}.json" web-decisions-logs/ 2>/dev/null || true
     done
     exit "${status}"
     ;;
