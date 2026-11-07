@@ -40,13 +40,6 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
         expect(workflow).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
     });
 
-    it("runs the web decisions tier before the live tier, which restarts go-api for its second pass", () => {
-        const decisions = workflow.indexOf("ci/run_tests.sh live-e2e-web-decisions");
-        const twoPass = workflow.indexOf("ci/run_tests.sh live-e2e-two-pass");
-        expect(decisions).toBeGreaterThan(0);
-        expect(twoPass).toBeGreaterThan(decisions);
-    });
-
     it("gives the web decisions step the wrapper and the stack control, and no CA or token variable", () => {
         const start = workflow.indexOf("Run web decisions live tier");
         const end = workflow.indexOf("Upload the web decisions server logs");
@@ -77,10 +70,14 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
                 ""
             );
         };
-        expect(workflow).toMatch(/^\s+tier: \[live, web-decisions\]$/m);
+        // One job per tier (live, guided, web decisions): no two tiers share auth-service's login window.
+        expect(workflow).toMatch(/^\s+tier: \[live, guided, web-decisions\]$/m);
+        expect(workflow).not.toMatch(/ci\/run_tests\.sh live-e2e-two-pass/);
         expect(stepIf("Run web decisions live tier (flip F11)")).toMatch(
             /^\s+if: matrix\.tier == 'web-decisions'$/,
         );
-        expect(stepIf("Run live backend e2e tier")).toMatch(/^\s+if: matrix\.tier == 'live'$/);
+        expect(stepIf("Run live backend e2e tier")).toMatch(
+            /^\s+if: matrix\.tier == 'live' \|\| matrix\.tier == 'guided'$/,
+        );
     });
 });
