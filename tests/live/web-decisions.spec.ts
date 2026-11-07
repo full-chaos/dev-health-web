@@ -75,8 +75,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             ] as const) {
                 writeFileSync(file, subject);
                 const since = mark(log);
-                await page.goto("/superadmin/users");
-                const line = await nextDecision(log, since, "platform.users");
+                await page.goto("/superadmin/orgs");
+                const line = await nextDecision(log, since, "platform.orgs");
+                expect(line.action).toBe("admin.orgs");
                 expect(line.allowed, `${label} was allowed`).toBe(false);
                 expect(
                     line.source,
@@ -90,8 +91,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             sha256Hex(good),
         );
         const since = mark(log);
-        await page.goto("/superadmin/users");
-        const line = await nextDecision(log, since, "platform.users");
+        await page.goto("/superadmin/orgs");
+        const line = await nextDecision(log, since, "platform.orgs");
+        expect(line.action).toBe("admin.orgs");
         expect(line.source).toBe("pdp");
         expect(line.allowed, `not allowed after the subject came back: ${line.reason_code}`).toBe(
             true,
@@ -101,17 +103,25 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test("superuser: admin.users and admin.orgs are allowed by the PDP", async ({ page }) => {
         const log = webLogPath();
         await signInCanonicalUser(page);
-        for (const [path, guard] of [
-            ["/superadmin/users", "platform.users"],
-            ["/superadmin/orgs", "platform.orgs"],
-        ] as const) {
-            const since = mark(log);
-            const response = await page.goto(path);
-            expect(response?.status()).toBe(200);
-            const line = await nextDecision(log, since, guard);
-            expect(line.source, `${guard} was not decided by the PDP`).toBe("pdp");
-            expect(line.allowed, `${guard} was refused: ${line.reason_code}`).toBe(true);
-        }
+        // The org list page decides admin.orgs (listOrganizations).
+        let since = mark(log);
+        const response = await page.goto("/superadmin/orgs");
+        expect(response?.status()).toBe(200);
+        const orgs = await nextDecision(log, since, "platform.orgs");
+        expect(orgs.action).toBe("admin.orgs");
+        expect(orgs.source, "admin.orgs was not decided by the PDP").toBe("pdp");
+        expect(orgs.allowed, `admin.orgs was refused: ${orgs.reason_code}`).toBe(true);
+
+        // The user list makes no decision; creating a platform user decides admin.users (createPlatformUser).
+        await page.goto("/superadmin/users/new");
+        await page.getByLabel(/email/i).fill(testEmail("web-decisions-platform-user"));
+        await page.getByLabel(/^password/i).fill(PASSWORD);
+        since = mark(log);
+        await page.getByRole("button", { name: "Add User", exact: true }).click();
+        const users = await nextDecision(log, since, "platform.users");
+        expect(users.action).toBe("admin.users");
+        expect(users.source, "admin.users was not decided by the PDP").toBe("pdp");
+        expect(users.allowed, `admin.users was refused: ${users.reason_code}`).toBe(true);
     });
 
     test("org owner: integrations.write is allowed, then denied once the role is a member", async ({
@@ -127,6 +137,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         let since = mark(log);
         await page.request.get("/org/admin/integrations/github-app/install", { maxRedirects: 0 });
         const allowed = await nextDecision(log, since, "org.integrations.write");
+        expect(allowed.action).toBe("integrations.write");
         expect(allowed.source).toBe("pdp");
         expect(allowed.allowed, `owner refused: ${allowed.reason_code}`).toBe(true);
 
@@ -141,6 +152,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             maxRedirects: 0,
         });
         const line = await nextDecision(log, since, "org.integrations.write");
+        expect(line.action).toBe("integrations.write");
         expect(line.source, "the deny did not come from the PDP").toBe("pdp");
         expect(line.allowed, "a member was allowed to write integrations").toBe(false);
         expect(denied.headers().location ?? "").toContain("github_app=error");
@@ -154,8 +166,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         stack("stop-auth");
         try {
             const since = mark(log);
-            await page.goto("/superadmin/users");
-            const line = await nextDecision(log, since, "platform.users");
+            await page.goto("/superadmin/orgs");
+            const line = await nextDecision(log, since, "platform.orgs");
+            expect(line.action).toBe("admin.orgs");
             expect(line.allowed, "a decision was allowed while the PDP was down").toBe(false);
             expect(line.source, "the deny did not come from the client's fail-closed path").toBe(
                 "client",
@@ -164,8 +177,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             stack("start-auth");
         }
         const since = mark(log);
-        await page.goto("/superadmin/users");
-        const line = await nextDecision(log, since, "platform.users");
+        await page.goto("/superadmin/orgs");
+        const line = await nextDecision(log, since, "platform.orgs");
+        expect(line.action).toBe("admin.orgs");
         expect(line.source).toBe("pdp");
         expect(line.allowed, `not allowed after auth-service came back: ${line.reason_code}`).toBe(
             true,
