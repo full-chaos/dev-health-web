@@ -71,10 +71,12 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
             );
         };
         // One job per tier (live, guided, web decisions): no two tiers share auth-service's login window.
-        expect(workflow).toMatch(/^\s+tier: \[live, guided, web-decisions\]$/m);
+        expect(workflow).toMatch(
+            /^\s+tier: \[live, guided, web-decisions, web-decisions-classes\]$/m,
+        );
         expect(workflow).not.toMatch(/ci\/run_tests\.sh live-e2e-two-pass/);
         expect(stepIf("Run web decisions live tier (flip F11)")).toMatch(
-            /^\s+if: matrix\.tier == 'web-decisions'$/,
+            /^\s+if: matrix\.tier == 'web-decisions' \|\| matrix\.tier == 'web-decisions-classes'$/,
         );
         expect(stepIf("Run live backend e2e tier")).toMatch(
             /^\s+if: matrix\.tier == 'live' \|\| matrix\.tier == 'guided'$/,

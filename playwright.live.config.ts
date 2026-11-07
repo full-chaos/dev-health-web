@@ -12,13 +12,20 @@ const liveBackendUrl =
 const askDev = process.env.LIVE_ASK_DEV === "true" || process.env.LIVE_ASK_DEV === "1";
 const askDevWeb = process.env.ASK_DEV_LIVE_WEB ?? "http://localhost:3000";
 
-// The web decisions pass (tests/live/web-decisions.spec.ts): the Next server runs with the PDP decision client on its own.
-// "enforce" = AUTHZ_DECISIONS_ENFORCE=on (the enforced actions are decided by the real PDP); "shadow" = enforcement off and the
-// shadow switch on (legacy rules decide, the PDP verdict is only logged). The web log (JSON lines) is read by the spec.
+// The web decisions passes: the Next server runs with the PDP decision client on its own, with the switch sets prod runs (F11).
+// "enforce" and "classes-enforce" = AUTHZ_PLATFORM_UI=shadow + AUTHZ_DECISIONS_ENFORCE=on (prod after F11 step 4: the PDP decides);
+// "shadow" and "classes-legacy" = AUTHZ_PLATFORM_UI=shadow alone (prod after step 3: legacy rules decide, the PDP verdict is only
+// logged). tests/live/web-decisions.spec.ts runs in "enforce" and "shadow"; tests/live/web-decisions-classes.spec.ts in the two
+// classes passes. The web log (JSON lines) is read by the specs.
+const DECISION_MODES = ["enforce", "shadow", "classes-legacy", "classes-enforce"] as const;
 const webDecisions = process.env.LIVE_WEB_DECISIONS;
-if (webDecisions !== undefined && webDecisions !== "enforce" && webDecisions !== "shadow") {
-    throw new Error('LIVE_WEB_DECISIONS must be "enforce" or "shadow"');
+if (webDecisions !== undefined && !(DECISION_MODES as readonly string[]).includes(webDecisions)) {
+    throw new Error(`LIVE_WEB_DECISIONS must be one of ${DECISION_MODES.join(", ")}`);
 }
+const decisionsEnforced = webDecisions === "enforce" || webDecisions === "classes-enforce";
+const decisionsSpec = webDecisions?.startsWith("classes-")
+    ? /web-decisions-classes\.spec\.ts/
+    : /web-decisions\.spec\.ts/;
 // The web server log: always for the decisions pass (the spec reads it), and for any other pass that names LIVE_WEB_LOG
 // (kept as a CI artifact, so a failed sign-in shows its auth-session branch line).
 const webServerLog =
@@ -51,8 +58,8 @@ export default defineConfig({
         ? [
               {
                   name: `web-decisions-${webDecisions}`,
-                  testMatch: /web-decisions\.spec\.ts/,
-                  timeout: 120_000,
+                  testMatch: decisionsSpec,
+                  timeout: webDecisions?.startsWith("classes-") ? 300_000 : 120_000,
                   use: { baseURL: "http://127.0.0.1:3002", headless: true },
               },
           ]
@@ -113,8 +120,8 @@ export default defineConfig({
                       DEV_HEALTH_TEST_MODE: "true",
                       NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
                       ...(guided ? { NEXT_PUBLIC_GUIDED_ONBOARDING: "true" } : {}),
-                      ...(webDecisions === "enforce" ? { AUTHZ_DECISIONS_ENFORCE: "on" } : {}),
-                      ...(webDecisions === "shadow" ? { AUTHZ_SHADOW_NAV: "on" } : {}),
+                      ...(webDecisions ? { AUTHZ_PLATFORM_UI: "shadow" } : {}),
+                      ...(decisionsEnforced ? { AUTHZ_DECISIONS_ENFORCE: "on" } : {}),
                       ...(webDecisions ? { LOG_FORMAT: "json", LOG_LEVEL: "info" } : {}),
                   },
               },

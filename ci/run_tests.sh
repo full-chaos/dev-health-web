@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|live-e2e-web-decisions|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -507,6 +507,19 @@ case "${tier}" in
     status=0
     mkdir -p web-decisions-logs
     for mode in enforce shadow; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+    done
+    exit "${status}"
+    ;;
+  live-e2e-web-decisions-classes)
+    # CHAOS-13277: each caller class sends the same request on the same stack with legacy deciding (classes-legacy, the
+    # yardstick) and then with the PDP deciding (classes-enforce); the second pass asserts the answers are equal.
+    status=0
+    mkdir -p web-decisions-logs
+    rm -f web-decisions-logs/classes-answers.json
+    for mode in classes-legacy classes-enforce; do
       LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
         LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
         run_live_e2e || status=$?

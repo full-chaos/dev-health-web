@@ -82,14 +82,24 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test.describe.configure({ mode: "serial" });
 
     // One superuser sign-in for the pass: the cells below share it, so the pass spends one login on that account.
+    // AUTHZ_PLATFORM_UI=shadow runs advisory platform shadows after a response, and a shadow may exchange a workload token. The
+    // wrong-subject cell needs the server to hold no token, so the foreign subject goes in BEFORE the sign-in: an early
+    // exchange then fails and caches nothing. The cell restores the subject file; afterAll restores it too if a cell failed first.
     let superContext: BrowserContext;
     let superPage: Page;
+    let goodSubject: Buffer;
     test.beforeAll(async ({ browser }, testInfo) => {
+        const file = workloadSubjectFile();
+        goodSubject = readFileSync(file);
+        writeFileSync(file, foreignSubjectJws(3600));
         superContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
         superPage = await superContext.newPage();
         await signInCanonicalUser(superPage);
     });
     test.afterAll(async () => {
+        const file = workloadSubjectFile();
+        if (goodSubject && sha256Hex(readFileSync(file)) !== sha256Hex(goodSubject))
+            writeFileSync(file, goodSubject);
         await superContext?.close();
     });
 
@@ -99,7 +109,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         const page = superPage;
         const log = webLogPath();
         const file = workloadSubjectFile();
-        const good = readFileSync(file);
+        const good = goodSubject;
         try {
             for (const [label, subject] of [
                 ["a subject the TokenReview does not know", foreignSubjectJws(3600)],
@@ -202,80 +212,6 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         expect(line.source, "the deny did not come from the PDP").toBe("pdp");
         expect(line.allowed, "a member was allowed to write integrations").toBe(false);
         expect(denied.headers().location ?? "").toContain("github_app=error");
-    });
-
-    // The legacy answer for integrations.write is owner or admin allow, member or viewer deny. Each role here is a platform
-    // user created with no organization and added to the owner's organization, so its only membership (and session org) is that one.
-    test("org roles: integrations.write gives admin allow, member and viewer deny, as the legacy rule does", async ({
-        browser,
-        page,
-        request,
-    }, testInfo) => {
-        const log = webLogPath();
-        const superToken = (await getSuperuserToken(request)) as string;
-        expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
-        const owner = await registerOwner(request, superToken);
-        await signInUser(page, owner.email, PASSWORD);
-        const orgId = await sessionOrgId(page);
-        for (const [role, want] of [
-            ["admin", true],
-            ["member", false],
-            ["viewer", false],
-        ] as const) {
-            const email = testEmail(`web-decisions-${role}`);
-            await expectSetupAnswer(
-                await request.post(`${liveBackendUrl}/api/v1/admin/users`, {
-                    headers: authHeaders(superToken),
-                    data: { email, password: PASSWORD, full_name: `Decisions ${role}` },
-                }),
-                [200, 201],
-                `creating the ${role} user`,
-            );
-            const userId = await userIdByEmail(request, email, superToken);
-            expect(userId, `the ${role} user is not in the admin user list`).not.toBe("");
-            await expectSetupAnswer(
-                await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-                    headers: authHeaders(superToken),
-                    data: { is_verified: true },
-                }),
-                [200],
-                `verifying the ${role} user`,
-            );
-            await expectSetupAnswer(
-                await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members`, {
-                    headers: authHeaders(superToken),
-                    data: { user_id: userId, role },
-                }),
-                [200, 201],
-                `adding the ${role} to the organization`,
-            );
-            const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
-            try {
-                const rolePage = await context.newPage();
-                await signInUser(rolePage, email, PASSWORD);
-                expect(
-                    await sessionOrgId(rolePage),
-                    `the ${role}'s session is not in the owner's organization`,
-                ).toBe(orgId);
-                const since = mark(log);
-                const res = await rolePage.request.get(
-                    "/org/admin/integrations/github-app/install",
-                    {
-                        maxRedirects: 0,
-                    },
-                );
-                const line = await nextDecision(log, since, "org.integrations.write");
-                expect(line.action).toBe("integrations.write");
-                expect(line.source, `${role}: not decided by the PDP`).toBe("pdp");
-                expect(
-                    line.allowed,
-                    `${role}: integrations.write allowed = ${line.allowed}, want ${want}`,
-                ).toBe(want);
-                if (!want) expect(res.headers().location ?? "").toContain("github_app=error");
-            } finally {
-                await context.close();
-            }
-        }
     });
 
     test("fail-closed: with auth-service stopped nothing is allowed, and it recovers", async () => {
