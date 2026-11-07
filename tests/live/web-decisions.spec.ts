@@ -22,8 +22,10 @@ import {
     foreignSubjectJws,
     mark,
     nextDecision,
+    pdpDecideLines,
     sha256Hex,
     shadowRuns,
+    shadowRunsOf,
     signInUser,
     stack,
     webLogPath,
@@ -145,6 +147,18 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test("superuser: admin.users and admin.orgs are allowed by the PDP", async () => {
         const page = superPage;
         const log = webLogPath();
+        // The pass runs AUTHZ_PLATFORM_UI=shadow as prod does after F11 step 4: a platform page load writes a platform shadow run
+        // (observed, not read from config). The new-org page is a surface this session has not loaded yet (the shadow samples one
+        // run per session and surface set per window, and the wrong-subject cell already loaded the org list).
+        const shadowBefore = shadowRunsOf(log, ["page:/superadmin/orgs/new"]);
+        expect((await page.goto("/superadmin/orgs/new"))?.status()).toBe(200);
+        await expect
+            .poll(() => shadowRunsOf(log, ["page:/superadmin/orgs/new"]), {
+                message:
+                    "no platform shadow run: AUTHZ_PLATFORM_UI=shadow is not live in this pass",
+                timeout: 30_000,
+            })
+            .toBeGreaterThan(shadowBefore);
         // The org list page decides admin.orgs (listOrganizations).
         let since = mark(log);
         const response = await page.goto("/superadmin/orgs");
@@ -253,8 +267,13 @@ test.describe("web decisions: shadow mode @shadow", () => {
         expect(response?.status()).toBe(200);
         await expect(page.getByText("Error loading users", { exact: false })).toHaveCount(0);
         await expect.poll(() => shadowRuns(log), { timeout: 30_000 }).toBeGreaterThan(before);
+        expect(
+            shadowRunsOf(log, ["page:/superadmin/users"]),
+            "no platform shadow run for the user list: AUTHZ_PLATFORM_UI=shadow is not live in this pass",
+        ).toBeGreaterThan(0);
         expect(decideLines(log), "enforcement is off: decideGuard must not call the PDP").toBe(
             decided,
         );
+        expect(pdpDecideLines(log), "a legacy pass logged a PDP verdict").toBe(0);
     });
 });

@@ -10,7 +10,7 @@
  * /api/v1/admin/integrations/github/install-url, route.ts after the guard): a deny returns before that call. Both an allow and a
  * deny end in ?github_app=error here (go-api cannot mint a GitHub install URL in this stack), so the redirect cannot tell them apart.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
     expect,
@@ -25,23 +25,31 @@ import {
     expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
-    envFault,
     signInCanonicalUser,
     testEmail,
     userIdByEmail,
 } from "./helpers";
-import { mark, nextDecision, signInUser, webLogPath } from "./web-decisions.helpers";
+import {
+    mark,
+    nextDecision,
+    pdpDecideLines,
+    shadowRunsOf,
+    signInUser,
+    webLogPath,
+} from "./web-decisions.helpers";
 
 const PASSWORD = "TestPass123!";
+// A refused login (429 or any other) fails the cell at its sign-in or token step; it is never recorded as an answer.
 const INSTALL = "/org/admin/integrations/github-app/install";
 const INSTALL_URL_ROUTE = "/api/v1/admin/integrations/github/install-url";
 
 type ClassId = "owner" | "admin" | "member" | "viewer" | "superuser";
 interface Answer {
     email: string;
-    // true = web asked go-api for an install URL (the guard allowed); false = the guard denied first.
-    allowed: boolean;
-    // superuser only: the switch-org status the cell saw (the switch is part of the request it repeats).
+    // 1 = web asked go-api for an install URL (the guard allowed); 0 = the guard denied first.
+    calls: number;
+    // superuser only: the switch-org status the cell saw (the switch is part of the request it repeats); no install request
+    // is sent when the switch refuses (it would have no target), and calls is then -1.
     switchStatus?: number;
 }
 interface Answers {
@@ -61,10 +69,15 @@ function answersPath(): string {
     return join(dirname(webLogPath()), "classes-answers.json");
 }
 
+// The go-api log is the counter of the answer: a missing or unreadable log fails the cell (never an answer of 0).
 function goApiLog(): string {
     const path = process.env.LIVE_E2E_GO_API_LOG;
-    if (!path) envFault("LIVE_E2E_GO_API_LOG names the go-api log of the live stack");
-    return path ?? "";
+    if (!path || !existsSync(path)) {
+        throw new Error(
+            `LIVE_E2E_GO_API_LOG must name the readable go-api log of the live stack (got ${String(path)})`,
+        );
+    }
+    return path;
 }
 
 function installUrlCalls(path: string): number {
@@ -92,17 +105,31 @@ async function sessionOrgId(page: Page): Promise<string> {
     return ((await res.json()) as { user?: { org_id?: string } }).user?.org_id ?? "";
 }
 
-// The install request as a user sends it, and its answer read from the go-api log (an allow asks for the install URL; a deny does not).
-async function installAnswer(page: Page): Promise<boolean> {
+// The install request as a user sends it, and its answer read from the go-api log: the exact number of install-url requests
+// from a mark, 0 (the guard denied first) or 1 (the guard allowed). Anything else fails the cell.
+async function installCalls(page: Page): Promise<number> {
     const log = goApiLog();
     const before = installUrlCalls(log);
     await page.request.get(INSTALL, { maxRedirects: 0 });
     // web answers only after go-api answered, so an allow's access line is written by now or within a moment: look a few times.
-    for (let i = 0; i < 20; i++) {
-        if (installUrlCalls(log) > before) return true;
-        await page.waitForTimeout(250);
-    }
-    return false;
+    for (let i = 0; i < 20 && installUrlCalls(log) === before; i++) await page.waitForTimeout(250);
+    const calls = installUrlCalls(log) - before;
+    expect([0, 1], `install-url requests for one install request: ${calls}`).toContain(calls);
+    return calls;
+}
+
+// AUTHZ_PLATFORM_UI=shadow is live in this pass (observed, not read from config): a platform page load writes a platform shadow run.
+async function expectPlatformShadow(page: Page): Promise<void> {
+    const log = webLogPath();
+    const surfaces = ["page:/superadmin/orgs", "fn:listOrganizations"];
+    const before = shadowRunsOf(log, surfaces);
+    expect((await page.goto("/superadmin/orgs"))?.status()).toBe(200);
+    await expect
+        .poll(() => shadowRunsOf(log, surfaces), {
+            message: "no platform shadow run: AUTHZ_PLATFORM_UI=shadow is not live in this pass",
+            timeout: 30_000,
+        })
+        .toBeGreaterThan(before);
 }
 
 async function newUserPage(browser: Browser, baseURL: string | undefined): Promise<Page> {
@@ -151,7 +178,7 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
         await signInUser(ownerPage, ownerEmail, PASSWORD);
         answers.orgId = await sessionOrgId(ownerPage);
         expect(answers.orgId, "the owner has no organization").not.toBe("");
-        answers.classes.owner = { email: ownerEmail, allowed: await installAnswer(ownerPage) };
+        answers.classes.owner = { email: ownerEmail, calls: await installCalls(ownerPage) };
 
         // admin, member (never an owner), viewer: platform users with no organization, added to O with the role, so O is
         // their only membership and their session organization.
@@ -181,25 +208,38 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
             expect(await sessionOrgId(page), `the ${role}'s session organization`).toBe(
                 answers.orgId,
             );
-            answers.classes[role] = { email, allowed: await installAnswer(page) };
+            answers.classes[role] = { email, calls: await installCalls(page) };
         }
 
-        // superuser with no membership row in O: switch the session to O, then the same install request.
+        // superuser with no membership row in O: switch the session to O, then the same install request. A refused switch leaves
+        // the install with no target: it is recorded (calls -1) and reported, not fixed.
         const superPage = await newUserPage(browser, baseURL);
         await signInCanonicalUser(superPage);
+        await expectPlatformShadow(superPage);
         const switched = await superPage.request.post("/api/auth/switch-org", {
             data: { org_id: answers.orgId },
         });
         answers.classes.superuser = {
             email: "the seeded superuser",
             switchStatus: switched.status(),
-            allowed: switched.ok() ? await installAnswer(superPage) : false,
+            calls: switched.ok() ? await installCalls(superPage) : -1,
         };
-
-        for (const [cls, want] of Object.entries(LEGACY_VALUE) as [ClassId, boolean][]) {
-            expect(answers.classes[cls]?.allowed, `legacy: ${cls} integrations.write`).toBe(want);
+        if (!switched.ok()) {
+            testInfo.annotations.push({
+                type: "report",
+                description: `legacy: switch-org to the owner's organization answered ${switched.status()} for a superuser with no row; the superuser install cell has no target`,
+            });
         }
         writeFileSync(answersPath(), JSON.stringify(answers, null, 2));
+
+        // The legacy pass: the legacy values, the counter self-check (owner and admin read 1), and no PDP verdict at all.
+        for (const [cls, want] of Object.entries(LEGACY_VALUE) as [ClassId, boolean][]) {
+            expect(
+                answers.classes[cls]?.calls,
+                `legacy: ${cls} integrations.write install-url requests`,
+            ).toBe(want ? 1 : 0);
+        }
+        expect(pdpDecideLines(webLogPath()), "the legacy pass logged a PDP verdict").toBe(0);
     });
 });
 
@@ -221,27 +261,28 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
         test(`${cls}: integrations.write answer equals the legacy answer`, async ({
             browser,
         }, testInfo) => {
-            const want = legacy.classes[cls];
+            const want = legacy.classes[cls] as Answer;
             expect(want, `no legacy answer for ${cls}`).toBeDefined();
             const page = await newUserPage(browser, testInfo.project.use.baseURL);
-            await signInUser(page, (want as Answer).email, PASSWORD);
+            await signInUser(page, want.email, PASSWORD);
             expect(await sessionOrgId(page), `the ${cls}'s session organization`).toBe(
                 legacy.orgId,
             );
             const log = webLogPath();
             const since = mark(log);
-            const allowed = await installAnswer(page);
+            const calls = await installCalls(page);
             const line = await nextDecision(log, since, "org.integrations.write");
             expect(line.action).toBe("integrations.write");
             expect(line.source, `${cls}: not decided by the PDP`).toBe("pdp");
             expect(line.allowed, `${cls}: the decision line and the request disagree`).toBe(
-                allowed,
+                calls === 1,
             );
-            expect(
-                allowed,
-                `${cls}: PDP answer ${allowed}, legacy answer ${(want as Answer).allowed}`,
-            ).toBe((want as Answer).allowed);
-            expect(allowed, `${cls}: the legacy value`).toBe(LEGACY_VALUE[cls]);
+            // The yardstick: the same request gave this answer with legacy deciding (any difference is a parity defect: STOP).
+            expect(calls, `${cls}: PDP answer ${calls}, legacy answer ${want.calls}`).toBe(
+                want.calls,
+            );
+            // Counter self-check: owner and admin read 1 in this pass too.
+            expect(calls, `${cls}: the legacy value`).toBe(LEGACY_VALUE[cls] ? 1 : 0);
         });
     }
 
@@ -252,24 +293,30 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
         expect(want, "no legacy answer for the superuser").toBeDefined();
         const page = await newUserPage(browser, testInfo.project.use.baseURL);
         await signInCanonicalUser(page);
+        await expectPlatformShadow(page);
         const switched = await page.request.post("/api/auth/switch-org", {
             data: { org_id: legacy.orgId },
         });
         expect(switched.status(), "the switch-org answer differs from the legacy pass").toBe(
             want.switchStatus,
         );
+        if (!switched.ok()) {
+            testInfo.annotations.push({
+                type: "report",
+                description: `switch-org answered ${switched.status()} on both sides: the superuser install cell has no target`,
+            });
+            return;
+        }
         const log = webLogPath();
         const since = mark(log);
-        const allowed = switched.ok() ? await installAnswer(page) : false;
-        if (switched.ok()) {
-            const line = await nextDecision(log, since, "org.integrations.write");
-            expect(line.source, "superuser: not decided by the PDP").toBe("pdp");
-            expect(line.allowed, "superuser: the decision line and the request disagree").toBe(
-                allowed,
-            );
-        }
-        expect(allowed, `superuser: PDP answer ${allowed}, legacy answer ${want.allowed}`).toBe(
-            want.allowed,
+        const calls = await installCalls(page);
+        const line = await nextDecision(log, since, "org.integrations.write");
+        expect(line.source, "superuser: not decided by the PDP").toBe("pdp");
+        expect(line.allowed, "superuser: the decision line and the request disagree").toBe(
+            calls === 1,
+        );
+        expect(calls, `superuser: PDP answer ${calls}, legacy answer ${want.calls}`).toBe(
+            want.calls,
         );
     });
 });
