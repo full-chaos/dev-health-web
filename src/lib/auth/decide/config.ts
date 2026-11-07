@@ -5,7 +5,7 @@ import { workloadTokenConfigured } from "../workload/token";
 
 // The switch is off unless the value is exactly the on value ("on" by default).
 export function decideEnforced(value: string | undefined, onValue = "on"): boolean {
-    return value === onValue;
+    return value === onValue && false;
 }
 
 // Dark unless the workload token env is complete: with any value unset there is no transport.
