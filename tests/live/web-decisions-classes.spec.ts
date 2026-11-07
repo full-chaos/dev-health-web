@@ -25,7 +25,8 @@ import {
     expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
-    signInCanonicalUser,
+    superuserEmail,
+    superuserPassword,
     testEmail,
     userIdByEmail,
 } from "./helpers";
@@ -48,9 +49,6 @@ interface Answer {
     email: string;
     // 1 = web asked go-api for an install URL (the guard allowed); 0 = the guard denied first.
     calls: number;
-    // superuser only: the switch-org status the cell saw (the switch is part of the request it repeats); no install request
-    // is sent when the switch refuses (it would have no target), and calls is then -1.
-    switchStatus?: number;
 }
 interface Answers {
     orgId: string;
@@ -132,6 +130,84 @@ async function expectPlatformShadow(page: Page): Promise<void> {
         .toBeGreaterThan(before);
 }
 
+// The login form sends no org_id: the superuser signs in with org O through the credentials callback itself.
+async function signInSuperuserWithOrg(page: Page, orgId: string): Promise<void> {
+    const csrf = await page.request.get("/api/auth/csrf");
+    await expectSetupAnswer(csrf, [200], "reading the CSRF token");
+    const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+    await expectSetupAnswer(
+        await page.request.post("/api/auth/callback/credentials", {
+            form: {
+                csrfToken,
+                email: superuserEmail,
+                password: superuserPassword,
+                org_id: orgId,
+                callbackUrl: "/dashboard",
+            },
+            maxRedirects: 0,
+        }),
+        [302, 303, 200],
+        "the superuser sign-in with org O",
+    );
+    const session = await page.request.get("/api/auth/session");
+    await expectSetupAnswer(session, [200], "reading the superuser session");
+    const user = ((await session.json()) as { user?: { email?: string; org_id?: string } }).user;
+    expect(user?.email, "the superuser sign-in with org O made no session").toBe(superuserEmail);
+    expect(user?.org_id, "superuser: the session organization after the sign-in with org O").toBe(
+        orgId,
+    );
+}
+
+async function superuserRowsIn(
+    request: APIRequestContext,
+    superToken: string,
+    orgId: string,
+    superId: string,
+): Promise<number> {
+    const res = await request.get(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members`, {
+        headers: authHeaders(superToken),
+    });
+    await expectSetupAnswer(res, [200], "listing the members of O");
+    return ((await res.json()) as Array<{ user_id?: string }>).filter((m) => m.user_id === superId)
+        .length;
+}
+
+// The superuser with no membership row in O and a session in O: a member row is added, the superuser signs in with org O, the
+// row is removed through go-api, and the session stays. A session that is not in O, or a row left in O, fails the cell.
+async function superuserSessionWithoutRow(
+    page: Page,
+    request: APIRequestContext,
+    superToken: string,
+    orgId: string,
+): Promise<void> {
+    const superId = await userIdByEmail(request, superuserEmail, superToken);
+    expect(superId, "the superuser is not in the admin user list").not.toBe("");
+    await expectSetupAnswer(
+        await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members`, {
+            headers: authHeaders(superToken),
+            data: { user_id: superId, role: "member" },
+        }),
+        [200, 201],
+        "adding the superuser to O as member",
+    );
+    await signInSuperuserWithOrg(page, orgId);
+    await expectSetupAnswer(
+        await request.delete(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members/${superId}`, {
+            headers: authHeaders(superToken),
+        }),
+        [200],
+        "removing the superuser's row in O through go-api",
+    );
+    expect(
+        await sessionOrgId(page),
+        "superuser: the session organization after the row removal",
+    ).toBe(orgId);
+    expect(
+        await superuserRowsIn(request, superToken, orgId, superId),
+        "superuser: membership rows in O before the install request",
+    ).toBe(0);
+}
+
 async function newUserPage(browser: Browser, baseURL: string | undefined): Promise<Page> {
     const context = await browser.newContext({ baseURL });
     return context.newPage();
@@ -211,25 +287,18 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
             answers.classes[role] = { email, calls: await installCalls(page) };
         }
 
-        // superuser with no membership row in O: switch the session to O, then the same install request. A refused switch leaves
-        // the install with no target: it is recorded (calls -1) and reported, not fixed.
+        // superuser with no membership row in O, session in O: the executed legacy answer is the yardstick (no pinned value).
         const superPage = await newUserPage(browser, baseURL);
-        await signInCanonicalUser(superPage);
+        await superuserSessionWithoutRow(superPage, request, superToken, answers.orgId);
         await expectPlatformShadow(superPage);
-        const switched = await superPage.request.post("/api/auth/switch-org", {
-            data: { org_id: answers.orgId },
+        expect(await sessionOrgId(superPage), "superuser: the session organization").toBe(
+            answers.orgId,
+        );
+        answers.classes.superuser = { email: superuserEmail, calls: await installCalls(superPage) };
+        testInfo.annotations.push({
+            type: "report",
+            description: `legacy: superuser with no row in O, session in O: install-url requests ${answers.classes.superuser.calls}`,
         });
-        answers.classes.superuser = {
-            email: "the seeded superuser",
-            switchStatus: switched.status(),
-            calls: switched.ok() ? await installCalls(superPage) : -1,
-        };
-        if (!switched.ok()) {
-            testInfo.annotations.push({
-                type: "report",
-                description: `legacy: switch-org to the owner's organization answered ${switched.status()} for a superuser with no row; the superuser install cell has no target`,
-            });
-        }
         writeFileSync(answersPath(), JSON.stringify(answers, null, 2));
 
         // The legacy pass: the legacy values, the counter self-check (owner and admin read 1), and no PDP verdict at all.
@@ -288,25 +357,16 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
 
     test("superuser with no membership row: integrations.write answer equals the legacy answer", async ({
         browser,
+        request,
     }, testInfo) => {
         const want = legacy.classes.superuser as Answer;
         expect(want, "no legacy answer for the superuser").toBeDefined();
+        const superToken = (await getSuperuserToken(request)) as string;
+        expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
         const page = await newUserPage(browser, testInfo.project.use.baseURL);
-        await signInCanonicalUser(page);
+        await superuserSessionWithoutRow(page, request, superToken, legacy.orgId);
         await expectPlatformShadow(page);
-        const switched = await page.request.post("/api/auth/switch-org", {
-            data: { org_id: legacy.orgId },
-        });
-        expect(switched.status(), "the switch-org answer differs from the legacy pass").toBe(
-            want.switchStatus,
-        );
-        if (!switched.ok()) {
-            testInfo.annotations.push({
-                type: "report",
-                description: `switch-org answered ${switched.status()} on both sides: the superuser install cell has no target`,
-            });
-            return;
-        }
+        expect(await sessionOrgId(page), "superuser: the session organization").toBe(legacy.orgId);
         const log = webLogPath();
         const since = mark(log);
         const calls = await installCalls(page);
@@ -318,5 +378,9 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
         expect(calls, `superuser: PDP answer ${calls}, legacy answer ${want.calls}`).toBe(
             want.calls,
         );
+        testInfo.annotations.push({
+            type: "report",
+            description: `superuser with no row in O, session in O: PDP install-url requests ${calls}, recorded legacy ${want.calls}`,
+        });
     });
 });
