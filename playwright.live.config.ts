@@ -91,7 +91,7 @@ export default defineConfig({
                     testIgnore: [
                         /onboarding-ui\.spec\.ts/,
                         /ask-dev\/.*\.spec\.ts/,
-                        /web-decisions\.spec\.ts/,
+                        /web-decisions(-classes)?\.spec\.ts/,
                     ],
                     dependencies: ["onboarding-ui"],
                     use: { baseURL: "http://127.0.0.1:3002", headless: true },
