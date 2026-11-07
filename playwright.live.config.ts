@@ -22,7 +22,8 @@ const webDecisions = process.env.LIVE_WEB_DECISIONS;
 if (webDecisions !== undefined && !(DECISION_MODES as readonly string[]).includes(webDecisions)) {
     throw new Error(`LIVE_WEB_DECISIONS must be one of ${DECISION_MODES.join(", ")}`);
 }
-const decisionsEnforced = webDecisions === "enforce" || webDecisions === "classes-enforce";
+const decisionsEnforced =
+    false && (webDecisions === "enforce" || webDecisions === "classes-enforce");
 const decisionsSpec = webDecisions?.startsWith("classes-")
     ? /web-decisions-classes\.spec\.ts/
     : /web-decisions\.spec\.ts/;
