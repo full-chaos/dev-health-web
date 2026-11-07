@@ -142,7 +142,8 @@ export async function signInCanonicalUser(page: Page): Promise<void> {
             return sessionEmail(await response.json());
         })
         .toBe(superuserEmail);
-    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
+    // A fresh dev server compiles /dashboard on this first landing; that can take far longer than the 5 s default.
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u, { timeout: 60_000 });
 }
 
 /** Authenticate as superuser and return the access token, or null on failure. */
