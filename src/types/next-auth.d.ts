@@ -25,6 +25,8 @@ declare module "next-auth" {
         access_token?: string;
         /** The service session token (aud auth-service). In-process only; never served to a browser. */
         session_access_token?: string;
+        /** The administrator's own token while `access_token` is the delegated one. In-process only. */
+        admin_access_token?: string;
         error?: string;
     }
 
@@ -65,9 +67,13 @@ declare module "next-auth/jwt" {
         sid?: string;
         session_access_token?: string;
         session_expires_at?: number;
+        /** The delegated token of an impersonation, set and dropped together; the access token stays the administrator's. */
+        imp_access_token?: string;
+        imp_expires_at?: number;
+        /** Seal time (ms) at or before which no start handoff is admitted: the last start used or end. */
+        imp_handoff_floor?: number;
         act_sub?: string;
         error?: string;
-        is_impersonating?: boolean;
         impersonated_user_id?: string;
         impersonated_email?: string;
         impersonated_org_id?: string;

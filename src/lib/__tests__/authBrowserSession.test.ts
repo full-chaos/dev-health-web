@@ -199,6 +199,15 @@ describe("browserSafeAuthHandler (CHAOS-12088)", () => {
 });
 
 describe("browserSafeAuthHandler and the service session token (CHAOS-10876)", () => {
+    it("R7 removes admin_access_token (the administrator's token aside while impersonating)", async () => {
+        const handler = vi.fn(async () =>
+            json({ user: { id: "u" }, expires: "e", admin_access_token: "ADM-1" }),
+        );
+        const res = await browserSafeAuthHandler(handler)(new NextRequest(URL_SESSION));
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ user: { id: "u" }, expires: "e" });
+    });
+
     it("removes session_access_token from the answer and keeps the rest", async () => {
         const handler = vi.fn(async () =>
             json({ user: { id: "u" }, expires: "e", session_access_token: "SVC-1" }),
@@ -231,5 +240,47 @@ describe("browserSafeAuthHandler and the service session token (CHAOS-10876)", (
             "authjs.session-token=sealed; Path=/; HttpOnly",
         ]);
         expect(res.headers.get("location")).toBe("/dashboard");
+    });
+});
+
+describe("browserSafeAuthHandler and an unconfirmed start handoff (CHAOS-13184)", () => {
+    const answer = () => {
+        const headers = new Headers();
+        headers.append("set-cookie", "authjs.session-token=rotated; Path=/; HttpOnly");
+        return json(
+            { user: { id: "u" }, error: "impersonation_handoff_unconfirmed", access_token: "AT-1" },
+            { status: 200, headers },
+        );
+    };
+    const post = () =>
+        new NextRequest(URL_SESSION, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ csrfToken: "c", data: { sessionHandoff: "sealed" } }),
+        });
+
+    it("answers the update 503, keeps the cookie Auth.js set, and serves no token", async () => {
+        const res = await browserSafeAuthHandler(vi.fn(async () => answer()))(post());
+        expect(res.status).toBe(503);
+        const text = await res.text();
+        expect(JSON.parse(text)).toEqual({ error: "impersonation_handoff_unconfirmed" });
+        expect(text).not.toContain("AT-1");
+        expect(res.headers.getSetCookie()).toEqual([
+            "authjs.session-token=rotated; Path=/; HttpOnly",
+        ]);
+        expect(res.headers.get("cache-control")).toBe("private, no-store");
+    });
+
+    it("a read (GET) of the same session is not a 503", async () => {
+        const res = await browserSafeAuthHandler(vi.fn(async () => answer()))(
+            new NextRequest(URL_SESSION),
+        );
+        expect(res.status).toBe(200);
+    });
+
+    it("an update with another session error keeps its status", async () => {
+        const handler = vi.fn(async () => json({ user: { id: "u" }, error: "refresh_failed" }));
+        const res = await browserSafeAuthHandler(handler)(post());
+        expect(res.status).toBe(200);
     });
 });

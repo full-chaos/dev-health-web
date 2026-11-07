@@ -1,16 +1,17 @@
 # Authorization decision client (server-only)
 
 Asks the Auth Control Plane policy decision point one question (`authorize`) or up to 100 (`authorizeBatch`) and returns an
-allow only for a valid, unexpired, unambiguous answer. Every other path is a deny.
+allow only for a valid, unambiguous answer. Every other path is a deny.
 
 - `request.ts`: builds `authorization_request.v1`. The principal is an opaque reference; no roles, scopes or actor can be set.
 - `decision.ts`: parses `authorization_decision.v1` and `authorization_batch_response.v1` from raw text. Refuses a duplicate member,
-  a non-integer number, an unknown reason, an expired decision, an unknown member, and a batch whose count or index order differs
+  a non-integer number, an unknown reason, a malformed or out-of-range `expires_at`, an unknown member, and a batch whose count or index order differs
   from the request. One bad entry refuses the whole batch.
 - `client.ts`: `transport` and `timeoutMs` are required arguments. No module default exists. The deny-default double lives in tests.
   Its consumers are `../shadow` (advisory, off by default) and `../decide` (single decisions for the platform admin actions and
-  the GitHub App routes, off by default, a missing transport denies); no transport is wired yet. `client.ts`, `shadow/run.ts` and
-  `decide/decide.ts` are rows of `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
+  the GitHub App routes, off by default, a missing transport denies). `transport.ts` is the real transport; it is wired only when `AUTH_INTERNAL_URL`,
+  `AUTH_WORKLOAD_SUBJECT_FILE` and `AUTH_WORKLOAD_ISSUER` are all set, and every other state is no transport. `client.ts`,
+  `transport.ts`, `shadow/run.ts` and `decide/decide.ts` are rows of `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
 
 ## Two kinds of deny
 
@@ -28,6 +29,13 @@ A new wire value denies until web moves `ci/ops-contract.pin`. `__tests__/corpus
 
 `__tests__/corpus.test.ts` runs the ops `examples/authorization_*` manifests through the client and pins the `golden/decision`
 directory by DIGEST (`__tests__/testdata/decision-golden.digest`). Go runs the pdp and pep rows; this client runs none.
+
+## Expiry and cacheability
+
+A well-formed, in-range `expires_at` is accepted whatever its relation to now (mirrors dev-health-go `pep` wire.go:165 and cache.go:8-17).
+`Decision.cacheable = expiresAtMs > nowMs`. A deny, or an allow with no cache window, carries `expires_at` = decision time: valid for
+its own request, `cacheable: false`. Web has no decision cache. A future cache stores only `cacheable` allows and never past
+`expiresAtMs`; a non-cacheable decision answers its own request only.
 
 ## For the first cache reader (no cache exists in this module)
 

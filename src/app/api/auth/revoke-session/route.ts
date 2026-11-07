@@ -66,6 +66,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         );
         return failure(401, "no_session");
     }
+    // A held impersonation is stopped first, with the administrator bearer, while the session
+    // still lives. A failed stop does not hold the sign-out: one error event
+    // (impersonation_stop_not_recorded) says so, and the delegated row ends at its own expiry.
+    await session.endImpersonation();
     const env = getServerEnv();
     const revoked = await revokeSessionAtAuthService(
         { access: session.access_token, refresh: session.refresh_token },

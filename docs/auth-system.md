@@ -49,6 +49,15 @@ credential is single use, so the rotated one is always stored, also when the key
 terminal (fail closed); the body `expires_in` never sets a lifetime on refresh. An unknown class setting or a missing issuer never
 ends a session at refresh: it is transient.
 
+**Forced sign-out bound** (`applyBackendValidationMemo` in `src/lib/authValidationMemo.ts`): the jwt callback
+asks the backend `POST /api/v1/auth/validate` when 60 s (`VALIDATION_INTERVAL_MS`) or more have passed since the
+token's last backend check. A refused answer (200 `valid: false`, 401, 403) ends the session. A forced sign-out
+(the user deactivated, its token version moved, the session revoked) thus ends every web session of the user on its
+first request 60 s or more after the backend refuses it. The per-process memo shares one answer between
+parallel callbacks of the same access token; a memo hit keeps the memo's check time, so a hit never moves the next
+check past that bound. Transient answers keep the session and retry after backoff. The drill
+`scripts/drills/session-forced-signout/drill.sh` measures the bound and the recovery after an auth-service restart.
+
 **Service session token** (`session_access_token`, aud `auth-service`; PR C1): under class `eddsa` the
 login and refresh answers carry a second token for the auth-service routes that refuse the access
 token's audience. `readAnswerTokens` (`src/lib/authServiceWire.ts`) reads it against the access token

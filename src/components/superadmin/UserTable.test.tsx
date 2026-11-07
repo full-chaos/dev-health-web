@@ -21,17 +21,23 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/admin/server", () => ({
     startImpersonation: vi.fn(),
+    stopImpersonation: vi.fn(async () => ({ data: { status: "stopped" } })),
 }));
 
-vi.mock("@/lib/impersonation-events", () => ({
+vi.mock("@/lib/impersonation-events", async (actual) => ({
+    ...(await actual<typeof import("@/lib/impersonation-events")>()),
     broadcastImpersonationEvent: vi.fn(),
     openImpersonationWindow: vi.fn(() => null),
     isImpersonationWindow: vi.fn(() => false),
     onImpersonationEvent: vi.fn(() => () => {}),
 }));
 
-import { startImpersonation } from "@/lib/admin/server";
-import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
+import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
+import {
+    broadcastImpersonationEvent,
+    IMPERSONATION_NOT_STARTED_TEXT,
+    openImpersonationWindow,
+} from "@/lib/impersonation-events";
 
 interface FakeImpersonationWindow {
     closed: boolean;
@@ -68,6 +74,8 @@ describe("UserTable impersonation", () => {
         vi.clearAllMocks();
         // Default: popup blocked → same-tab fallback. Tests opt into a window.
         vi.mocked(openImpersonationWindow).mockReturnValue(null);
+        // The update admitted the start: the session is impersonating.
+        mockUpdate.mockResolvedValue({ user: { id: "admin-1", is_impersonating: true } });
     });
 
     it("signals impersonationChanged so the session re-polls immediately (CHAOS-2309)", async () => {
@@ -154,6 +162,61 @@ describe("UserTable impersonation", () => {
         });
         expect(mockUpdate).not.toHaveBeenCalled();
         expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    // CHAOS-13184: an update that did not admit the start (a 503 answers null, a refusal leaves the
+    // session not impersonating) ends the go-api row with the stop step and shows the error.
+    it.each([
+        ["the update answered no session (503)", null],
+        ["the session is not impersonating", { user: { id: "admin-1", is_impersonating: false } }],
+    ])("%s: stops, shows the error and does not navigate", async (_name, updated) => {
+        const fakeWindow = makeFakeWindow();
+        vi.mocked(openImpersonationWindow).mockReturnValue(fakeWindow as unknown as Window);
+        mockUpdate.mockResolvedValue(updated);
+        vi.mocked(startImpersonation).mockResolvedValue({
+            data: {
+                status: "active",
+                target_user: {
+                    id: "target-1",
+                    email: "target@example.com",
+                    org_id: "org-target",
+                    role: "member",
+                },
+                expires_at: "2026-01-01T01:00:00Z",
+                sessionHandoff: "sealed",
+            },
+        });
+        renderWithToaster(<UserTable users={[makeUser()]} />);
+
+        await userEvent.click(screen.getByRole("button", { name: /^impersonate$/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText(IMPERSONATION_NOT_STARTED_TEXT)).toBeDefined();
+        });
+        expect(stopImpersonation).toHaveBeenCalledTimes(1);
+        expect(fakeWindow.close).toHaveBeenCalled();
+        expect(fakeWindow.location.href).toBe("");
+        expect(broadcastImpersonationEvent).not.toHaveBeenCalled();
+        expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("an admitted start sends no stop", async () => {
+        vi.mocked(startImpersonation).mockResolvedValue({
+            data: {
+                status: "active",
+                target_user: {
+                    id: "target-1",
+                    email: "target@example.com",
+                    org_id: "org-target",
+                    role: "member",
+                },
+                expires_at: "2026-01-01T01:00:00Z",
+            },
+        });
+        renderWithToaster(<UserTable users={[makeUser()]} />);
+        await userEvent.click(screen.getByRole("button", { name: /^impersonate$/i }));
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard"));
+        expect(stopImpersonation).not.toHaveBeenCalled();
     });
 
     it("does not offer impersonation for superuser rows", () => {
