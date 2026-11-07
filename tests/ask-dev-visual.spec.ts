@@ -96,7 +96,8 @@ async function answerOnDev(page: Page): Promise<Locator> {
         .or(page.getByRole("dialog", { name: "Ask Dev" }));
     await expect(panel.getByRole("article", { name: "Answer" })).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Open full page" }).click();
-    await expect(page).toHaveURL(/\/dev/u);
+    // The first visit to /dev compiles it on the dev server; that can take far longer than the 5 s default.
+    await expect(page).toHaveURL(/\/dev/u, { timeout: 60_000 });
     const answer = page.getByRole("article", { name: "Answer" });
     await expect(answer).toBeVisible({ timeout: 30_000 });
     return answer;
