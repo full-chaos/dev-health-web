@@ -378,6 +378,9 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
         expect(calls, `superuser: PDP answer ${calls}, legacy answer ${want.calls}`).toBe(
             want.calls,
         );
+        expect([0, 1], `superuser: the recorded legacy value is ${want.calls}, not 0|1`).toContain(
+            want.calls,
+        );
         testInfo.annotations.push({
             type: "report",
             description: `superuser with no row in O, session in O: PDP install-url requests ${calls}, recorded legacy ${want.calls}`,
