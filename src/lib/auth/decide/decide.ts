@@ -1,6 +1,7 @@
 import "server-only";
 import type { Session } from "next-auth";
 import { getServerEnv } from "@/lib/config";
+import { getBackendUrl } from "@/lib/origin";
 import { authorize, type Transport } from "../authorize/client";
 import { reasonToState } from "../reasonStates";
 import { buildShadowRequest, newRequestId } from "../shadow/run";
@@ -58,12 +59,27 @@ export async function decideGuard(
                 deps.log,
             );
 
+        // MUTANT m2 (do not merge): name the user's home membership org, not the session org.
+        let orgId = session.user?.org_id;
+        if (session.access_token && guard.resource === "organization") {
+            try {
+                const res = await fetch(`${getBackendUrl()}/api/v1/auth/me/organizations`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                    cache: "no-store",
+                });
+                const body = (await res.json()) as { organizations?: { id?: string }[] };
+                const home = (body.organizations ?? []).find((o) => o.id && o.id !== orgId);
+                if (home?.id) orgId = home.id;
+            } catch {
+                // keep the session org
+            }
+        }
         const request =
             session.access_token && deps.transport
                 ? buildShadowRequest(
                       { action, resource: guard.resource },
                       {
-                          orgId: session.user?.org_id,
+                          orgId,
                           principalReference: session.access_token,
                           requestId,
                       },
