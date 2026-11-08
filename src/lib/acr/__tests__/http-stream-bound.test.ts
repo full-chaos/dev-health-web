@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { acrRuntimeErrorCodes } from "../errors";
 import { fetchBoundedJson } from "../http";
@@ -12,6 +12,7 @@ const OVER_THE_BOUND = Math.ceil(1_048_576 / CHUNK.byteLength) + 1;
 let server: Server | undefined;
 
 afterEach(async () => {
+    vi.unstubAllGlobals();
     const running = server;
     server = undefined;
     if (running === undefined) return;
@@ -99,5 +100,92 @@ describe("fetchBoundedJson over real undici: a body that is not UTF-8", () => {
             retryable: false,
             status: 503,
         });
+    });
+});
+
+async function neverEndingOps(
+    headers: Record<string, string>,
+): Promise<{ url: URL; closed: Promise<void> }> {
+    let markClosed: () => void = () => undefined;
+    const closed = new Promise<void>((resolve) => {
+        markClosed = resolve;
+    });
+    server = createServer((_request, response) => {
+        response.on("close", markClosed);
+        response.writeHead(200, headers);
+        response.write(CHUNK);
+    });
+    const listening = server;
+    await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+    const { port } = listening.address() as AddressInfo;
+    return { closed, url: new URL(`http://127.0.0.1:${port}/graphql`) };
+}
+
+describe("fetchBoundedJson over real undici: a refusal before the body read releases the connection", () => {
+    it.each([
+        [
+            "a Content-Length past 1 MiB",
+            { "Content-Length": String(2 * 1_048_576), "Content-Type": "application/json" },
+            acrRuntimeErrorCodes.responseTooLarge,
+        ],
+        [
+            "a content type that is not JSON",
+            { "Content-Type": "text/html" },
+            acrRuntimeErrorCodes.malformedResponse,
+        ],
+    ] as const)(
+        "Given a 200 with %s whose body never ends, then it refuses and the connection closes",
+        { timeout: 10_000 },
+        async (_name, headers, code) => {
+            const ops = await neverEndingOps(headers);
+            await expect(
+                within(
+                    fetchBoundedJson({
+                        headers: {},
+                        method: "GET",
+                        timeoutMs: 30_000,
+                        url: ops.url,
+                    }),
+                    5_000,
+                    "the answer",
+                ),
+            ).rejects.toMatchObject({ code });
+            await within(ops.closed, 5_000, "the refused body closing the connection");
+        },
+    );
+});
+
+describe("fetchBoundedJson: a refusal before the body read cancels the body", () => {
+    it.each([
+        [
+            "a Content-Length past 1 MiB",
+            { "Content-Length": "1048577", "Content-Type": "application/json" },
+            acrRuntimeErrorCodes.responseTooLarge,
+        ],
+        [
+            "a content type that is not JSON",
+            { "Content-Type": "text/html" },
+            acrRuntimeErrorCodes.malformedResponse,
+        ],
+    ] as const)("Given %s, then the response body is cancelled", async (_name, headers, code) => {
+        let cancelled = false;
+        const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+                controller.enqueue(new Uint8Array(16));
+            },
+            cancel() {
+                cancelled = true;
+            },
+        });
+        vi.stubGlobal("fetch", async () => new Response(body, { headers }));
+        await expect(
+            fetchBoundedJson({
+                headers: {},
+                method: "GET",
+                timeoutMs: 5_000,
+                url: new URL("http://ops.example.test/graphql"),
+            }),
+        ).rejects.toMatchObject({ code });
+        expect(cancelled).toBe(true);
     });
 });
