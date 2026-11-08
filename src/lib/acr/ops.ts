@@ -141,34 +141,23 @@ function opsStatusError(status: number): AcrRuntimeError | null {
     return opsUnavailable();
 }
 
-/** An Ops 200 whose body cannot be read is an outage too, not a malformed answer to report. */
-async function fetchOpsJson(request: Parameters<typeof fetchBoundedJson>[0]): Promise<unknown> {
-    try {
-        return (await fetchBoundedJson({ ...request, classifyStatus: opsStatusError })).value;
-    } catch (error) {
-        if (
-            error instanceof AcrRuntimeError &&
-            error.code === acrRuntimeErrorCodes.malformedResponse
-        ) {
-            throw opsUnavailable(error);
-        }
-        throw error;
-    }
-}
+/** The Ops read options: the status is judged first, and a body that is not JSON is an outage. */
+const OPS_ANSWER = { classifyStatus: opsStatusError, unreadableBody: opsUnavailable } as const;
 
 async function requireAcrEntitlement(input: {
     readonly accessToken: string;
     readonly orgId: string;
     readonly signal: AbortSignal;
 }): Promise<void> {
-    const entitlement = await fetchOpsJson({
+    const entitlement = await fetchBoundedJson({
+        ...OPS_ANSWER,
         headers: opsHeaders(input.accessToken),
         method: "GET",
         signal: input.signal,
         timeoutMs: 5_000,
         url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
     });
-    const parsedEntitlement = entitlementSchema.safeParse(entitlement);
+    const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
     if (
         !parsedEntitlement.success ||
         !parsedEntitlement.data.is_valid ||
@@ -288,7 +277,8 @@ export async function resolveOpsAuthorization(
 async function readRepositoryScopes(
     input: ResolveOpsAuthorizationInput,
 ): Promise<OpsAuthorization> {
-    const scopes = await fetchOpsJson({
+    const scopes = await fetchBoundedJson({
+        ...OPS_ANSWER,
         body: JSON.stringify({
             query: ACR_REPOSITORY_SCOPES_QUERY,
             variables: { orgId: input.orgId },
@@ -299,7 +289,7 @@ async function readRepositoryScopes(
         timeoutMs: 5_000,
         url: backendUrl("/graphql"),
     });
-    const parsedScopes = scopesSchema.safeParse(scopes);
+    const parsedScopes = scopesSchema.safeParse(scopes.value);
     if (!parsedScopes.success) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.unavailable,

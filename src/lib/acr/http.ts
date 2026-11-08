@@ -11,6 +11,8 @@ type BoundedJsonRequest = {
     readonly url: URL;
     /** Judges the status before the body is read: an error returned here is thrown as it is. */
     readonly classifyStatus?: (status: number) => AcrRuntimeError | null;
+    /** The error for a body that is not JSON; `malformed_response` when absent. */
+    readonly unreadableBody?: (cause?: unknown) => AcrRuntimeError;
 };
 
 export type JsonHttpResponse = {
@@ -123,16 +125,22 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
     }
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.malformedResponse,
-            "Agent Context Runtime returned an invalid response.",
+        throw (
+            input.unreadableBody?.() ??
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            )
         );
     }
-    return {
-        status: response.status,
-        retryAfterSeconds: retryAfterSeconds(response),
-        value: parseJson(await readBoundedText(response.body, 1_048_576)),
-    };
+    const text = await readBoundedText(response.body, 1_048_576);
+    let value: unknown;
+    try {
+        value = parseJson(text);
+    } catch (error) {
+        throw input.unreadableBody?.(error) ?? error;
+    }
+    return { status: response.status, retryAfterSeconds: retryAfterSeconds(response), value };
 }
 
 export async function readRequestJson(request: Request, maximumBytes: number): Promise<unknown> {
