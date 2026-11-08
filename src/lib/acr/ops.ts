@@ -46,7 +46,7 @@ export type OpsAuthorization = {
     readonly orgId: string;
     readonly repositoryScopes: readonly string[];
     readonly subject: string;
-    /** Names the principal may read; differs from `repositoryScopes` only under a universal `*` grant. */
+    /** Names the principal may read; the same list as `repositoryScopes` (a universal grant sends every candidate). */
     readonly visibleRepositories?: readonly string[];
 };
 
