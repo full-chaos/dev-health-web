@@ -9,6 +9,8 @@ type BoundedJsonRequest = {
     readonly signal?: AbortSignal;
     readonly timeoutMs: number;
     readonly url: URL;
+    /** Judges the status before the body is read: an error returned here is thrown as it is. */
+    readonly classifyStatus?: (status: number) => AcrRuntimeError | null;
 };
 
 export type JsonHttpResponse = {
@@ -105,6 +107,12 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
             "Agent Context Runtime is temporarily unavailable.",
             { cause: error, retryable: true },
         );
+    }
+    const statusError = input.classifyStatus?.(response.status) ?? null;
+    if (statusError !== null) {
+        // Not awaited: a cancel can wait on a body the peer never ends.
+        void response.body?.cancel().catch(() => undefined);
+        throw statusError;
     }
     const contentLength = responseSize(response);
     if (contentLength !== undefined && contentLength > 1_048_576) {

@@ -116,17 +116,44 @@ function opsHeaders(accessToken: string): Readonly<Record<string, string>> {
     };
 }
 
-/**
- * CHAOS-13332: a deliberate Ops refusal (401/403) is not an outage. It is reported as the
- * non-retryable `not_entitled` 403, as the entitlement answer below is; a retry cannot succeed.
- */
-function opsRefusal(status: number): AcrRuntimeError | null {
-    if (status !== 401 && status !== 403) return null;
+function opsUnavailable(cause?: unknown): AcrRuntimeError {
     return new AcrRuntimeError(
-        acrRuntimeErrorCodes.notEntitled,
-        "Agent Context Runtime is not available for this organization.",
-        { retryable: false, status: 403 },
+        acrRuntimeErrorCodes.unavailable,
+        "Agent Context Runtime is temporarily unavailable.",
+        { cause, retryable: true },
     );
+}
+
+/**
+ * CHAOS-13332: an Ops status is judged before its body is read. A deliberate refusal (401/403) is
+ * the non-retryable `not_entitled` 403, as the entitlement answer below is; a retry cannot
+ * succeed. Any other non-200 is an outage, whatever its body.
+ */
+function opsStatusError(status: number): AcrRuntimeError | null {
+    if (status === 200) return null;
+    if (status === 401 || status === 403) {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.notEntitled,
+            "Agent Context Runtime is not available for this organization.",
+            { retryable: false, status: 403 },
+        );
+    }
+    return opsUnavailable();
+}
+
+/** An Ops 200 whose body cannot be read is an outage too, not a malformed answer to report. */
+async function fetchOpsJson(request: Parameters<typeof fetchBoundedJson>[0]): Promise<unknown> {
+    try {
+        return (await fetchBoundedJson({ ...request, classifyStatus: opsStatusError })).value;
+    } catch (error) {
+        if (
+            error instanceof AcrRuntimeError &&
+            error.code === acrRuntimeErrorCodes.malformedResponse
+        ) {
+            throw opsUnavailable(error);
+        }
+        throw error;
+    }
 }
 
 async function requireAcrEntitlement(input: {
@@ -134,24 +161,14 @@ async function requireAcrEntitlement(input: {
     readonly orgId: string;
     readonly signal: AbortSignal;
 }): Promise<void> {
-    const entitlement = await fetchBoundedJson({
+    const entitlement = await fetchOpsJson({
         headers: opsHeaders(input.accessToken),
         method: "GET",
         signal: input.signal,
         timeoutMs: 5_000,
         url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
     });
-    if (entitlement.status !== 200) {
-        throw (
-            opsRefusal(entitlement.status) ??
-            new AcrRuntimeError(
-                acrRuntimeErrorCodes.unavailable,
-                "Agent Context Runtime is temporarily unavailable.",
-                { retryable: true },
-            )
-        );
-    }
-    const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
+    const parsedEntitlement = entitlementSchema.safeParse(entitlement);
     if (
         !parsedEntitlement.success ||
         !parsedEntitlement.data.is_valid ||
@@ -271,7 +288,7 @@ export async function resolveOpsAuthorization(
 async function readRepositoryScopes(
     input: ResolveOpsAuthorizationInput,
 ): Promise<OpsAuthorization> {
-    const scopes = await fetchBoundedJson({
+    const scopes = await fetchOpsJson({
         body: JSON.stringify({
             query: ACR_REPOSITORY_SCOPES_QUERY,
             variables: { orgId: input.orgId },
@@ -282,17 +299,7 @@ async function readRepositoryScopes(
         timeoutMs: 5_000,
         url: backendUrl("/graphql"),
     });
-    if (scopes.status !== 200) {
-        throw (
-            opsRefusal(scopes.status) ??
-            new AcrRuntimeError(
-                acrRuntimeErrorCodes.unavailable,
-                "Agent Context Runtime is temporarily unavailable.",
-                { retryable: true },
-            )
-        );
-    }
-    const parsedScopes = scopesSchema.safeParse(scopes.value);
+    const parsedScopes = scopesSchema.safeParse(scopes);
     if (!parsedScopes.success) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.unavailable,

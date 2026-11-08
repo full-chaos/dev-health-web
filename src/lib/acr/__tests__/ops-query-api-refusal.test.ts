@@ -65,6 +65,59 @@ describe("readRepositoryScopes non-200 answers", () => {
         });
     });
 
+    const NOT_JSON = [
+        ["an HTML body", "<html>denied</html>", "text/html"],
+        ["a non-JSON body labelled JSON", "not json", "application/json"],
+    ] as const;
+    const entitlementOk = () =>
+        HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true });
+
+    describe.each(["entitlement", "catalog"] as const)("the %s read", (read) => {
+        function answer(status: number, body: string, contentType: string): void {
+            const respond = () =>
+                new HttpResponse(body, { status, headers: { "Content-Type": contentType } });
+            server.use(
+                http.get(
+                    "http://ops.example.test/api/v1/licensing/entitlements/:orgId",
+                    read === "entitlement" ? respond : entitlementOk,
+                ),
+                http.post("http://ops.example.test/graphql", respond),
+            );
+        }
+
+        it.each(
+            NOT_JSON.flatMap(([name, body, type]) =>
+                [401, 403].map((status) => [status, name, body, type] as const),
+            ),
+        )(
+            "Given it is refused %s with %s, then the refusal is not retryable",
+            async (status, _name, body, type) => {
+                answer(status, body, type);
+                await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+                    code: acrRuntimeErrorCodes.notEntitled,
+                    retryable: false,
+                    status: 403,
+                });
+            },
+        );
+
+        it.each(
+            NOT_JSON.flatMap(([name, body, type]) =>
+                [200, 500, 502, 503, 599].map((status) => [status, name, body, type] as const),
+            ),
+        )(
+            "Given it answers %s with %s, then it is a retryable 503 unavailable",
+            async (status, _name, body, type) => {
+                answer(status, body, type);
+                await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+                    code: acrRuntimeErrorCodes.unavailable,
+                    retryable: true,
+                    status: 503,
+                });
+            },
+        );
+    });
+
     it.each([401, 403])(
         "Given the entitlement read is refused with %s, then it is a non-retryable refusal",
         async (status) => {
