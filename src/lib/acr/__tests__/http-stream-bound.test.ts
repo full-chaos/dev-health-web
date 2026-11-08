@@ -76,3 +76,28 @@ describe("fetchBoundedJson over real undici: a streamed body past 1 MiB", () => 
         },
     );
 });
+
+describe("fetchBoundedJson over real undici: a body that is not UTF-8", () => {
+    it("Given a 200 JSON body that is not UTF-8 and no unreadable-body hook, then it is malformed_response, as a non-JSON body is", async () => {
+        server = createServer((_request, response) => {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            response.end(Buffer.from([0x7b, 0xff, 0xfe, 0x7d]));
+        });
+        const listening = server;
+        await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+        const { port } = listening.address() as AddressInfo;
+        await expect(
+            fetchBoundedJson({
+                headers: {},
+                method: "GET",
+                timeoutMs: 5_000,
+                url: new URL(`http://127.0.0.1:${port}/status`),
+            }),
+        ).rejects.toMatchObject({
+            name: "AcrRuntimeError",
+            code: acrRuntimeErrorCodes.malformedResponse,
+            retryable: false,
+            status: 503,
+        });
+    });
+});
