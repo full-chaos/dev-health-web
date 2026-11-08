@@ -558,12 +558,13 @@ test.describe("admin.users per caller class, the PDP decides @admin-users-enforc
         const want = legacy.classes[cls] as Answer;
         expect(want, `no legacy answer for ${cls}`).toBeDefined();
         const superToken = keptSuperToken();
+        // The id once per worker (a failed cell restarts the worker, and the next cell reads it again). No shadow check here:
+        // the platform shadow samples one run per user, organization and surface set, so a second check would read a skip.
         if (actionId === "") {
             const superPage = await keptSessionPage(browser, baseURL, "superuser");
             expect(await sessionOrgId(superPage), "superuser: the kept session organization").toBe(
                 legacy.orgId,
             );
-            await expectPlatformShadow(superPage);
             actionId = await createPlatformUserActionId(superPage);
         }
         const page = await keptSessionPage(browser, baseURL, cls);
@@ -594,6 +595,10 @@ test.describe("admin.users per caller class, the PDP decides @admin-users-enforc
         browser,
         request,
     }, testInfo) => {
+        // AUTHZ_PLATFORM_UI=shadow is live in this pass too (observed once, by the first cell).
+        await expectPlatformShadow(
+            await keptSessionPage(browser, testInfo.project.use.baseURL, "superuser"),
+        );
         await enforceCell(browser, request, testInfo.project.use.baseURL, "superuser");
     });
 
