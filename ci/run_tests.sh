@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|live-e2e-web-decisions-admin-users|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -526,6 +526,21 @@ case "${tier}" in
         LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
         run_live_e2e || status=$?
       # The next pass empties playwright-report: keep each pass's results next to classes-answers.json (uploaded always).
+      cp -f "playwright-report/live-results-web-decisions-${mode}.json" web-decisions-logs/ 2>/dev/null || true
+    done
+    exit "${status}"
+    ;;
+  live-e2e-web-decisions-admin-users)
+    # admin.users per caller class on the create-platform-user action: the same request with legacy deciding
+    # (admin-users-legacy, the yardstick) and then with the PDP deciding (admin-users-enforce) on the same stack.
+    status=0
+    mkdir -p web-decisions-logs
+    rm -f web-decisions-logs/admin-users-answers.json
+    for mode in admin-users-legacy admin-users-enforce; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+      # The next pass empties playwright-report: keep each pass's results next to admin-users-answers.json (uploaded always).
       cp -f "playwright-report/live-results-web-decisions-${mode}.json" web-decisions-logs/ 2>/dev/null || true
     done
     exit "${status}"
