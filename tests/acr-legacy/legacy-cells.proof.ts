@@ -76,14 +76,28 @@ const NO_ROW_PLATFORM_ADMIN = "platform_admin_no_row";
 const NO_ORG_PLATFORM_ADMIN = "platform_admin_no_org";
 
 /**
- * The legacy answer for the no-row platform admin. PREDICTED from the code read (query-api's catalog resolver checks
- * only the token org, schema.resolvers.go:100-134; go-api's licensing read admits a users.is_superuser caller with no
- * membership row): the catalog list and an approval. The first executed run on the stack confirms it or fails with the
- * recorded bytes (ACR_LEGACY_RECORD), and this table is then set to those bytes.
+ * The legacy answer for the no-row platform admin, as recorded by executed run legacy-cells-2 (dev-health-ops
+ * c60f0702, catalog 16; record sha256 f8aff1566d30...).
+ *
+ * context:read and evidence:read are REFUSED before any ACR call. For a superuser web skips the entitlement read
+ * (ops.ts resolveOpsAuthorization, platformValidation) and reads the catalog: POST /graphql to query-api. query-api's
+ * edge refuses it 401 by design (dev-health-ops internal/queryapi/server/internal_auth.go roleInOrg: "The token's own
+ * org always needs the membership, superuser or not"; logged reason=edge_not_a_member). Web maps every non-200 catalog
+ * answer to 503 unavailable, retryable (ops.ts readRepositoryScopes, `scopes.status !== 200`), so no scope is signed.
+ *
+ * Device approval and consent pass web: the go-api impersonation status and licensing reads answer 200 for this
+ * caller, so the org-wide ["*"] is sent, as for every org role.
  */
+const UNAVAILABLE = {
+    error: {
+        code: "unavailable",
+        message: "Agent Context Runtime is temporarily unavailable.",
+        retryable: true,
+    },
+};
 const PLATFORM_ADMIN_NO_ROW = {
-    contextScopes: (inventory: readonly string[]): unknown => [...inventory],
-    evidenceScopes: (inventory: readonly string[]): unknown => [...inventory],
+    context: { status: 503, body: UNAVAILABLE, assertions: [] },
+    evidence: { status: 503, body: UNAVAILABLE, assertions: [] },
     device: { status: 200, body: { status: "approved" }, scopes: ["*"] },
     consent: {
         status: 200,
@@ -384,21 +398,25 @@ describe(`ACR legacy cells (switch off) on dev-health-ops ${fixture.opsSha} cata
     // stale session (acp D6857): a member login, then the membership row is deleted. Login never gives a session org
     // to a user with no membership row, so this is the one way a session carries org X with no row in X.
     describe("platform admin: member login, then the membership row is deleted (stale session = session org X, no row)", () => {
-        it("context:read", async () => {
+        it("context:read is refused 503 unavailable with no ACR call (query-api edge: not a member of the token org)", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
             const answer = await contextRead();
             record(NO_ROW_PLATFORM_ADMIN, "context:read", answer);
-            expect(scopesOf(answer, CONTEXT_PATH)).toEqual(
-                PLATFORM_ADMIN_NO_ROW.contextScopes(fixture.inventory),
-            );
+            expect({
+                status: answer.status,
+                body: answer.body,
+                assertions: answer.assertions,
+            }).toEqual(PLATFORM_ADMIN_NO_ROW.context);
         });
-        it("evidence:read", async () => {
+        it("evidence:read is refused 503 unavailable with no ACR call (query-api edge: not a member of the token org)", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
             const answer = await evidenceRead();
             record(NO_ROW_PLATFORM_ADMIN, "evidence:read", answer);
-            expect(scopesOf(answer, EVIDENCE_PATH)).toEqual(
-                PLATFORM_ADMIN_NO_ROW.evidenceScopes(fixture.inventory),
-            );
+            expect({
+                status: answer.status,
+                body: answer.body,
+                assertions: answer.assertions,
+            }).toEqual(PLATFORM_ADMIN_NO_ROW.evidence);
         });
         it("device approval", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
