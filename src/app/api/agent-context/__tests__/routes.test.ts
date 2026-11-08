@@ -85,6 +85,25 @@ describe("agent-context API routes", () => {
         expect(createContextPacket).not.toHaveBeenCalled();
     });
 
+    it("returns a safe invalid-request response without invoking ACR for a body that is not UTF-8", async () => {
+        const request = new Request("http://web.example.test/api/agent-context/context-packets", {
+            body: new Uint8Array([0x7b, 0xff, 0xfe, 0x7d]),
+            method: "POST",
+        });
+
+        const response = await POST(request);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            error: {
+                code: acrRuntimeErrorCodes.invalidRequest,
+                message: "The context request is invalid.",
+                retryable: false,
+            },
+        });
+        expect(createContextPacket).not.toHaveBeenCalled();
+    });
+
     it("sanitizes runtime failure details from the packet response", async () => {
         vi.mocked(createContextPacket).mockRejectedValue(
             new AcrRuntimeError(acrRuntimeErrorCodes.upstream, "credential=do-not-leak", {
