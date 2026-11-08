@@ -64,21 +64,23 @@ for (const route of SURVEYED) {
         expect(response).not.toBeNull();
         if (route === "/_not-found") expect(response?.status()).toBe(404);
 
-        const script = scriptSrc(response?.headers()["content-security-policy"]);
-        expect(script).not.toContain("'unsafe-inline'");
-        for (const text of buildScripts(route)) expect(script).toContain(scriptHash(text));
-
         await page.waitForLoadState("networkidle");
-        expect(await page.evaluate(() => window.__cspViolations)).toEqual([]);
-        expect(consoleCsp).toEqual([]);
-        await expect
-            .poll(() =>
-                page.evaluate(() =>
-                    [...document.querySelectorAll("body *")].some((element) =>
-                        Object.keys(element).some((key) => key.startsWith("__reactFiber$")),
-                    ),
+        const violations = (await page.evaluate(() => window.__cspViolations)) ?? [];
+        expect.soft(violations, `${violations.length} CSP violation(s)`).toEqual([]);
+        expect.soft(consoleCsp, `${consoleCsp.length} CSP console error(s)`).toEqual([]);
+
+        const script = scriptSrc(response?.headers()["content-security-policy"]);
+        expect.soft(script).not.toContain("'unsafe-inline'");
+        for (const text of buildScripts(route)) expect.soft(script).toContain(scriptHash(text));
+
+        const hydrated = () =>
+            page.evaluate(() =>
+                [...document.querySelectorAll("body *")].some((element) =>
+                    Object.keys(element).some((key) => key.startsWith("__reactFiber$")),
                 ),
-            )
+            );
+        await expect.soft
+            .poll(hydrated, { message: "React hydrated the page", timeout: 5_000 })
             .toBe(true);
 
         const here = new URL(page.url()).pathname;
