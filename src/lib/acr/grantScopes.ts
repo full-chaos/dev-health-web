@@ -26,7 +26,10 @@ export type GrantScopeInput = {
 };
 
 export type GrantScopeResult = {
-    /** `["*"]` alone for a universal grant, else the allowed repositories, sorted. */
+    /**
+     * The allowed repositories, in the candidates' order. A universal grant allows every candidate,
+     * so the scopes are the candidates themselves: byte for byte the legacy catalog scopes.
+     */
     readonly repositoryScopes: readonly string[];
     /** The repositories this principal may read, as names (never `*`). */
     readonly visibleRepositories: readonly string[];
@@ -76,7 +79,10 @@ export async function resolveRepositoryScopes(
     const clientDeps: AuthorizeDeps = { timeoutMs: deps.timeoutMs, transport: deps.transport };
 
     if (allows(await authorize(requestFor(input, "*"), clientDeps), "*")) {
-        return { repositoryScopes: ["*"], visibleRepositories: [...input.candidates] };
+        return {
+            repositoryScopes: [...input.candidates],
+            visibleRepositories: [...input.candidates],
+        };
     }
 
     const allowed: string[] = [];
