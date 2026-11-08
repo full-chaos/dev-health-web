@@ -8,11 +8,68 @@ import {
     type AuthUiState,
 } from "../reasonStates";
 
+const AUTH_OUTCOME_CODES = [
+    "malformed",
+    "bad_signature",
+    "audience",
+    "issuer",
+    "expired",
+    "not_yet_valid",
+    "missing_sub",
+    "missing_type",
+    "type_mismatch",
+    "refresh_unknown",
+    "refresh_expired",
+    "refresh_reused",
+    "session_revoked",
+    "session_expired",
+    "principal_not_found",
+    "principal_deactivated",
+    "revision_stale",
+    "invalid_credentials",
+    "account_locked",
+    "email_unverified",
+    "email_collision",
+    "signup_unavailable",
+    "provider_already_linked",
+    "identity_conflict",
+    "rate_limited",
+    "replayed",
+    "nonce_mismatch",
+    "provisioning_disabled",
+    "domain_not_allowed",
+    "not_entitled",
+    "membership_required",
+    "store_unavailable",
+    "dependency_unavailable",
+];
+
 const PINNED_DECISION_CODES = [
+    "allowed_by_membership_default",
     "allowed_by_repository_grant",
+    "allowed_by_role",
+    "delegation_invalid",
     "grant_absent",
-    "repository_not_granted",
+    "grant_expired",
+    "grant_revoked",
+    "impersonation_denied",
+    "invalid_request",
+    "no_membership",
+    "org_mismatch",
+    "organization_inactive",
     "platform_role_absent",
+    "principal_inactive",
+    "repository_allowlist_too_large",
+    "repository_not_granted",
+    "repository_unresolved",
+    "resource_mismatch",
+    "role_lacks_action",
+    "role_scope_mismatch",
+    "role_unknown",
+    "service_account_inactive",
+    "unknown_action",
+    "workload_action_denied",
+    "workload_audience_denied",
 ];
 
 describe("reasonStates", () => {
@@ -38,6 +95,18 @@ describe("reasonStates", () => {
         ["denied_policy", "denied"],
         ["denied_no_grant", "denied"],
     ] as [string, AuthUiState][])("maps %s to %s", (code, state) => {
+        expect(reasonToState(code).state).toBe(state);
+    });
+
+    it.each([
+        ["allowed_by_role", "allowed"],
+        ["allowed_by_membership_default", "allowed"],
+        ["role_lacks_action", "denied"],
+        ["no_membership", "notfound"],
+        ["unknown_action", "denied"],
+        ["principal_inactive", "signin"],
+        ["invalid_request", "unavailable"],
+    ] as [string, AuthUiState][])("maps the wire reason %s to %s", (code, state) => {
         expect(reasonToState(code).state).toBe(state);
     });
 
@@ -205,7 +274,17 @@ describe("reasonStates CHAOS-10875 codes", () => {
         }
     });
 
-    it.each([...opsCodes.decision_reason_code, ...opsCodes.auth_outcome_reason_codes])(
+    it("holds the ops decision reason codes, no more and no fewer", () => {
+        expect([...DECISION_REASON_CODES].sort()).toEqual(
+            [...opsCodes.decision_reason_code.values].sort(),
+        );
+    });
+
+    it("does not map a reason code the contract dropped", () => {
+        expect(Object.hasOwn(CODE_STATES, "membership_inactive")).toBe(false);
+    });
+
+    it.each([...opsCodes.decision_reason_code.values, ...AUTH_OUTCOME_CODES])(
         "pinned ops code %s is mapped",
         (code) => {
             expect(Object.hasOwn(CODE_STATES, code)).toBe(true);

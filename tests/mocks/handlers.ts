@@ -430,6 +430,20 @@ const sampleCapacityForecast = {
     historyDays: 90,
     insufficientHistory: false,
     highVariance: false,
+    // CHAOS-12707: a stored distribution, so the page draws its curve. Its last bin is the horizon
+    // (day 365): the runs that did not finish, which stretch the day axis at phone width.
+    completionDistribution: {
+        horizonDays: 365,
+        runs: 10000,
+        unfinishedRuns: 500,
+        days: [
+            { value: 6, count: 1000, cumulativeShare: 0.1 },
+            { value: 12, count: 4000, cumulativeShare: 0.5 },
+            { value: 19, count: 3500, cumulativeShare: 0.85 },
+            { value: 27, count: 1000, cumulativeShare: 0.95 },
+            { value: 365, count: 500, cumulativeShare: 0.95 },
+        ],
+    },
 };
 
 function operatingReviewMetric(
@@ -3007,19 +3021,21 @@ export const handlers = [
                                 agent_context_runtime: true,
                                 ask_dev: true,
                             }
-                          : scenario === "investment-enabled"
-                            ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
-                            : scenario === "canonical-enabled"
-                              ? {
-                                    ...MOCK_ORG_ENTITLEMENTS.features,
-                                    canonical_incident_ingestion: true,
-                                }
-                              : scenario === "canonical-disabled"
+                          : scenario === "capacity-enabled"
+                            ? { ...MOCK_ORG_ENTITLEMENTS.features, capacity_forecast: true }
+                            : scenario === "investment-enabled"
+                              ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
+                              : scenario === "canonical-enabled"
                                 ? {
                                       ...MOCK_ORG_ENTITLEMENTS.features,
-                                      canonical_incident_ingestion: false,
+                                      canonical_incident_ingestion: true,
                                   }
-                                : MOCK_ORG_ENTITLEMENTS.features,
+                                : scenario === "canonical-disabled"
+                                  ? {
+                                        ...MOCK_ORG_ENTITLEMENTS.features,
+                                        canonical_incident_ingestion: false,
+                                    }
+                                  : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 
@@ -4641,6 +4657,86 @@ export const handlers = [
             { status: 201 },
         );
     }),
+
+    http.post("*/api/v1/admin/orgs/:orgId/invites", async ({ request, params }) => {
+        const body = (await request.json()) as { email?: string; role?: string };
+        if (body.email === "taken@example.com") {
+            return HttpResponse.json(
+                { detail: { error: "invite_pending", message: "internal words" } },
+                { status: 409 },
+            );
+        }
+        return HttpResponse.json(
+            {
+                id: "e2e-invite-new",
+                org_id: String(params.orgId),
+                email: body.email,
+                role: body.role,
+                invited_by_id: "e2e-user-1",
+                status: "pending",
+                expires_at: "2025-02-01T00:00:00Z",
+                accepted_at: null,
+            },
+            { status: 201 },
+        );
+    }),
+
+    http.get("*/api/v1/admin/orgs/:orgId/members", ({ params }) =>
+        HttpResponse.json([
+            {
+                id: "e2e-m-owner",
+                org_id: String(params.orgId),
+                user_id: "e2e-owner",
+                user_name: "Grace Hopper",
+                user_email: "grace@example.com",
+                role: "owner",
+                invited_by_id: null,
+                joined_at: "2025-01-01T00:00:00Z",
+                created_at: "2025-01-01T00:00:00Z",
+                updated_at: "2025-01-01T00:00:00Z",
+            },
+            {
+                id: "e2e-m-member",
+                org_id: String(params.orgId),
+                user_id: "e2e-member",
+                user_name: "Ada Lovelace",
+                user_email: "ada@example.com",
+                role: "member",
+                invited_by_id: null,
+                joined_at: "2025-01-02T00:00:00Z",
+                created_at: "2025-01-02T00:00:00Z",
+                updated_at: "2025-01-02T00:00:00Z",
+            },
+        ]),
+    ),
+
+    http.get("*/api/v1/admin/orgs/:orgId", ({ params }) =>
+        HttpResponse.json({
+            id: String(params.orgId),
+            slug: "e2e-org",
+            name: "E2E Org",
+            description: null,
+            tier: "community",
+            settings: {},
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
+        }),
+    ),
+
+    http.delete("*/api/v1/admin/orgs/:orgId/members/:userId", ({ params }) =>
+        params.userId === "e2e-owner"
+            ? HttpResponse.json(
+                  { detail: { error: "last_owner", message: "internal words" } },
+                  { status: 409 },
+              )
+            : new HttpResponse(null, { status: 204 }),
+    ),
+
+    http.post(
+        "*/api/v1/admin/orgs/:orgId/transfer-ownership",
+        () => new HttpResponse(null, { status: 204 }),
+    ),
 
     http.get("*/api/v1/admin/settings/categories", () =>
         HttpResponse.json(["general", "security"]),

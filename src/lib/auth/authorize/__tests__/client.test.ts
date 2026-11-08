@@ -10,7 +10,6 @@ import type { AuthorizeRequest } from "../request";
 
 const NOW = 1_800_000_000_000;
 const FUTURE = "2027-06-01T00:00:00Z";
-const PAST = "2020-01-01T00:00:00Z";
 
 const REQ: AuthorizeRequest = {
     principalReference: "prf_EXAMPLE0000000000000001",
@@ -138,19 +137,11 @@ const single: FailureRow[] = [
         ),
     },
     {
-        name: "expired",
-        reason: "expired",
-        ...bodyRow(
-            JSON.stringify(decision({ expires_at: PAST })),
-            batchBody([item(0), item(1, { expires_at: PAST })]),
-        ),
-    },
-    {
         name: "unknown reason",
         reason: "unknown_reason",
         ...bodyRow(
-            JSON.stringify(decision({ reason_code: "impersonation_denied" })),
-            batchBody([item(0), item(1, { reason_code: "impersonation_denied" })]),
+            JSON.stringify(decision({ reason_code: "not_a_wire_reason" })),
+            batchBody([item(0), item(1, { reason_code: "not_a_wire_reason" })]),
         ),
     },
 ];

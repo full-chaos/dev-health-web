@@ -31,6 +31,7 @@
         "typecheck": "tsc --noEmit",
         "check:client-bundle": "node scripts/check-client-bundle.mjs",
         "check:nonce-csp-pages": "node scripts/check-nonce-csp-pages.mjs",
+        "check:org-provisioning": "node scripts/check-org-provisioning-calls.mjs",
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",
@@ -45,6 +46,7 @@
         "test:e2e:pagerduty-final-qa:smoke": "playwright test --project=pagerduty-final-qa tests/pagerduty-final-qa-p0.spec.ts",
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
+        "test:e2e:visual": "playwright test -c playwright.visual.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:e2e:live:ask-dev": "LIVE_ASK_DEV=1 playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
@@ -52,7 +54,7 @@
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
-        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#1c4e3e616d0b747b05019c8737e65f4d9cbaac15",
+        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#03dda6f9cc133507c522d3682cd409bceba4f093",
         "@sentry/nextjs": "^11.7.0",
         "@tailwindcss/typography": "^0.5.20",
         "@urql/core": "^6",

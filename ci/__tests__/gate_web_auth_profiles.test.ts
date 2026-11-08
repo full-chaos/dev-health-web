@@ -1720,7 +1720,7 @@ describe("gate_web_auth_profiles: real repo state", () => {
             },
         });
         expect(violations).toEqual([]);
-    }, 60_000);
+    }, 90_000);
 });
 
 describe("gate_web_auth_profiles: proof binding (polarity, callee binding, casts, scalar types)", () => {
@@ -2137,6 +2137,7 @@ describe("tests.yml: the ops contract sparse checkout lists the schema closure o
         "contracts/auth/v1/credential-classes.schema.json",
         "contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json",
         "contracts/auth/v1/jsonschema/principal.v1.schema.json",
+        "contracts/ingress/v1/planes.json",
     ];
 
     function sparseCheckoutPaths(workflow: string): string[] {

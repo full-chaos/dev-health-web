@@ -6,7 +6,11 @@ import { CompletionRangeChart } from "@/components/charts/CompletionRangeChart";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
-import { completionRangeInput, completionRangeView } from "./completionRangeView";
+import {
+    completionRangeInput,
+    completionRangeView,
+    type CompletionRangeView,
+} from "./completionRangeView";
 
 /**
  * The "Completion range" card body (CHAOS-8477): the Monte Carlo forecast as a chance curve.
@@ -51,6 +55,21 @@ export function CompletionRange({
         );
     }
 
+    return <CompletionRangeFigure interpolation={interpolation} view={view} />;
+}
+
+/**
+ * What the card draws for a reported forecast: the chart and its words. The capacity page and the
+ * Ask Dev forecast slot both draw it from `completionRangeView` (CHAOS-4613), so one stored forecast
+ * reads the same in both.
+ */
+export function CompletionRangeFigure({
+    view,
+    interpolation = "step",
+}: {
+    view: Extract<CompletionRangeView, { reported: true }>;
+    interpolation?: "step" | "curve";
+}) {
     return (
         <div data-testid="completion-range">
             <CompletionRangeChart

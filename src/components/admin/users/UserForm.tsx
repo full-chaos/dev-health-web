@@ -1,5 +1,6 @@
 import type { SyntheticEvent } from "react";
-import { USER_CREATE_ROLES, type UserCreate, type User } from "@/lib/admin/types";
+import type { UserCreate, User } from "@/lib/admin/types";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -11,14 +12,6 @@ type UserFormProps = {
     onCancel: () => void;
     isEdit?: boolean;
     isLoading?: boolean;
-    /** Show the org role choice (an org-scoped add only). */
-    withRole?: boolean;
-};
-
-const ROLE_LABELS: Record<(typeof USER_CREATE_ROLES)[number], string> = {
-    member: "Member",
-    admin: "Admin",
-    viewer: "Viewer",
 };
 
 export function UserForm({
@@ -27,15 +20,14 @@ export function UserForm({
     onCancel,
     isEdit = false,
     isLoading = false,
-    withRole = false,
 }: UserFormProps) {
+    const { impersonationLimited } = useAdminNav();
     const { formData, handleChange } = useBaseFormState<UserFormData>({
         email: initialData?.email || "",
         full_name: initialData?.full_name || "",
         username: initialData?.username || "",
         password: "",
         is_active: initialData?.is_active ?? true,
-        ...(withRole ? { role: "member" as const } : {}),
     });
 
     const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
@@ -48,6 +40,7 @@ export function UserForm({
             onSubmitAction={handleSubmit}
             onCancelAction={onCancel}
             isLoading={isLoading}
+            hideSubmit={impersonationLimited}
             submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : CTA_LABELS.addUser}
             className="max-w-2xl space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
             contentClassName="grid gap-6 md:grid-cols-2"
@@ -121,28 +114,6 @@ export function UserForm({
                     <p className="text-xs text-(--ink-muted)">
                         Optional — leave blank if the user will set their own password later
                     </p>
-                </div>
-            )}
-
-            {withRole && !isEdit && (
-                <div className="space-y-2">
-                    <label htmlFor="role" className="text-sm font-medium text-(--ink-muted)">
-                        Role
-                    </label>
-                    <select
-                        id="role"
-                        name="role"
-                        value={formData.role ?? "member"}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                        className={inputClass}
-                    >
-                        {USER_CREATE_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                                {ROLE_LABELS[role]}
-                            </option>
-                        ))}
-                    </select>
                 </div>
             )}
 

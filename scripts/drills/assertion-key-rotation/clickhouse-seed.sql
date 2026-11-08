@@ -1,0 +1,6 @@
+-- ClickHouse seed for the drill (CHAOS-11236): the tables acr reads for a context packet, rendered from
+-- acr internal/contextfabric/devhealthschema DDL("repos", "ci_pipeline_runs"), plus one repo and one failed run.
+CREATE TABLE ci_pipeline_runs (repo_id UUID, run_id String, status Nullable(String), started_at DateTime64(3, 'UTC'), finished_at Nullable(DateTime64(3, 'UTC')), last_synced DateTime64(3, 'UTC'), org_id String, pipeline_name Nullable(String), branch Nullable(String)) ENGINE = ReplacingMergeTree(last_synced) ORDER BY (org_id, repo_id, run_id) SETTINGS index_granularity = 8192, allow_nullable_key = 1;
+CREATE TABLE repos (id UUID, repo String, ref Nullable(String), created_at DateTime64(3, 'UTC'), tags Nullable(String), last_synced DateTime64(3, 'UTC'), org_id String, provider String) ENGINE = ReplacingMergeTree(last_synced) ORDER BY (org_id, id) SETTINGS index_granularity = 8192, allow_nullable_key = 1;
+INSERT INTO repos (id, org_id, repo, ref, provider) VALUES ('00000000-0000-0000-0000-000000000001', '11111111-1111-4111-8111-111111111111', 'full-chaos/acr-integration', 'main', 'github');
+INSERT INTO ci_pipeline_runs (run_id, repo_id, org_id, branch, status, started_at, finished_at, last_synced) VALUES ('run-4821', '00000000-0000-0000-0000-000000000001', '11111111-1111-4111-8111-111111111111', 'main', 'failure', now64(3), now64(3), now64(3));

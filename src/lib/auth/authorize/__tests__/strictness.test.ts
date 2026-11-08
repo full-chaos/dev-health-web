@@ -25,17 +25,31 @@ const batchOf = (items: Record<string, unknown>[]) =>
     });
 
 describe("allowed and reason_code must agree", () => {
-    it.each(["grant_absent", "repository_not_granted", "platform_role_absent"])(
-        "refuses allowed=true with %s",
+    it.each([
+        "grant_absent",
+        "repository_not_granted",
+        "platform_role_absent",
+        "no_membership",
+        "role_lacks_action",
+        "impersonation_denied",
+        "workload_audience_denied",
+    ])("refuses allowed=true with %s", (reason_code) => {
+        const r = parseDecision(JSON.stringify(decision({ reason_code })), NOW);
+        expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
+    });
+    it.each(["allowed_by_repository_grant", "allowed_by_role", "allowed_by_membership_default"])(
+        "refuses allowed=false with the allow reason %s",
         (reason_code) => {
-            const r = parseDecision(JSON.stringify(decision({ reason_code })), NOW);
+            const r = parseDecision(JSON.stringify(decision({ allowed: false, reason_code })), NOW);
             expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
         },
     );
-    it("refuses allowed=false with the allow reason", () => {
-        const r = parseDecision(JSON.stringify(decision({ allowed: false })), NOW);
-        expect(r).toEqual({ ok: false, reason: "reason_mismatch" });
-    });
+    it.each(["allowed_by_role", "allowed_by_membership_default"])(
+        "accepts allowed=true with the role allow reason %s",
+        (reason_code) => {
+            expect(parseDecision(JSON.stringify(decision({ reason_code })), NOW).ok).toBe(true);
+        },
+    );
     it("refuses the whole batch when one entry disagrees", () => {
         const bad = decision({ reason_code: "grant_absent" });
         expect(parseBatch(batchOf([decision(), bad]), 2, NOW)).toEqual({
@@ -95,23 +109,23 @@ describe("expiry is compared in milliseconds", () => {
         async () => ({ status: 200, body });
     const expired = decision({ expires_at: "2027-06-01T00:00:00.500Z" });
 
-    it("denies a decision that expired 100 ms ago (single)", async () => {
+    it("accepts a decision that expired 100 ms ago as non-cacheable (single)", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2027-06-01T00:00:00.600Z"));
         const o = await authorize(REQ, {
             transport: reply(JSON.stringify(expired)),
             timeoutMs: 1000,
         });
-        expect(o).toEqual({ allowed: false, source: "client", reason: "expired" });
+        expect(o).toMatchObject({ allowed: true, decision: { cacheable: false } });
     });
-    it("denies every entry of a batch holding one that expired 100 ms ago", async () => {
+    it("accepts a batch entry that expired 100 ms ago as non-cacheable", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2027-06-01T00:00:00.600Z"));
         const out = await authorizeBatch([REQ, REQ], {
             transport: reply(batchOf([decision(), expired])),
             timeoutMs: 1000,
         });
-        expect(out.map((o) => o.allowed)).toEqual([false, false]);
+        expect(out.map((o) => o.allowed)).toEqual([true, true]);
     });
     it("allows the same decision 100 ms before it expires", async () => {
         vi.useFakeTimers();

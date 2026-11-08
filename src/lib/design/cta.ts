@@ -13,6 +13,8 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** Sign-in page: go to the start route of an admin-shared enterprise SSO provider (CHAOS-13035). */
+    ssoContinue: "Continue with single sign-on",
     /** The Ask Dev launcher in the app shell (CHAOS-3247: the accessible name). */
     openAskDev: "Open Ask Dev",
     /** The Ask Dev composer: send the question (CHAOS-11928). */
@@ -315,6 +317,8 @@ export const CTA_LABELS = {
     upgradePlan: "Upgrade plan",
     /** Discoverable row-level remove action for a mapping entry (provider identity row, CHAOS-2841). */
     remove: "Remove",
+    /** Org members: start handing ownership of the organization to this member (CHAOS-12789). */
+    makeOwner: "Make owner",
     /** Add another provider identity row to the identity mapping form (CHAOS-2841). */
     addProviderIdentity: "+ Add Identity",
     addServiceMapping: "Add service mapping",

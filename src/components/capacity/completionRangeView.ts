@@ -3,7 +3,7 @@ import { dayCount, formatDayOffset, formatServedDay } from "@/lib/capacityDates"
 import { formatNumber } from "@/lib/formatters";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
-import { PERCENTILE_ROLE, type Percentile } from "./ForecastTiles";
+import { PERCENTILE_ROLE, type Percentile } from "./percentileRoles";
 
 /**
  * One stored completion forecast, as any served form of it reads (CHAOS-12622). The capacity page

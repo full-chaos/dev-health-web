@@ -11,6 +11,8 @@ export default async function AuthErrorPage({ searchParams }: { searchParams: Se
         Configuration: "There is a problem with the server configuration.",
         AccessDenied: "You do not have access to this resource.",
         Verification: "The verification link has expired or has already been used.",
+        impersonation_ending:
+            "The impersonation is ending. Go back and reload the page in a moment.",
         Default: "An authentication error occurred.",
     };
 

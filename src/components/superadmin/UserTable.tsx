@@ -4,12 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
 import { useSession } from "next-auth/react";
-import { startImpersonation } from "@/lib/admin/server";
+import { useAdminNav } from "@/components/admin/AdminTabs";
+import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/DataTable";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
+import {
+    broadcastImpersonationEvent,
+    IMPERSONATION_NOT_STARTED_TEXT,
+    openImpersonationWindow,
+} from "@/lib/impersonation-events";
 import { appPath } from "@/lib/navigation/appPath";
 
 type UserTableProps = {
@@ -20,6 +25,7 @@ export function UserTable({ users }: UserTableProps) {
     const { data: session, update } = useSession();
     const router = useRouter();
     const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+    const { impersonationLimited } = useAdminNav();
 
     const handleImpersonate = async (userId: string) => {
         setImpersonatingId(userId);
@@ -41,7 +47,18 @@ export function UserTable({ users }: UserTableProps) {
                 // impersonation for up to 30s — during that window the backend
                 // already scopes data to the target org, poisoning org-keyed
                 // client caches with the wrong org's data.
-                await update({ impersonationChanged: true });
+                const updated = await update({
+                    impersonationChanged: true,
+                    sessionHandoff: result.data.sessionHandoff,
+                });
+                // A refused or unconfirmed start handoff (the update answers 503 or a session that
+                // is not impersonating): end the go-api row with the administrator's stop.
+                if (!updated?.user?.is_impersonating) {
+                    impersonationWindow?.close();
+                    await stopImpersonation();
+                    toast.error(IMPERSONATION_NOT_STARTED_TEXT);
+                    return;
+                }
                 broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
                 if (impersonationWindow && !impersonationWindow.closed) {
@@ -148,18 +165,20 @@ export function UserTable({ users }: UserTableProps) {
                     className: "px-6 py-4 text-right space-x-4",
                     render: (user) => (
                         <>
-                            {session?.user?.id !== user.id && !user.is_superuser && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleImpersonate(user.id)}
-                                    disabled={impersonatingId === user.id}
-                                    className="text-(--caution) hover:underline disabled:opacity-50"
-                                >
-                                    {impersonatingId === user.id
-                                        ? "Impersonating..."
-                                        : "Impersonate"}
-                                </button>
-                            )}
+                            {!impersonationLimited &&
+                                session?.user?.id !== user.id &&
+                                !user.is_superuser && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleImpersonate(user.id)}
+                                        disabled={impersonatingId === user.id}
+                                        className="text-(--caution) hover:underline disabled:opacity-50"
+                                    >
+                                        {impersonatingId === user.id
+                                            ? "Impersonating..."
+                                            : "Impersonate"}
+                                    </button>
+                                )}
                             <Link
                                 href={appPath("/superadmin/users/[id]", { id: user.id })}
                                 prefetch={false}

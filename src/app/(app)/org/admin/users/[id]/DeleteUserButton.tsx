@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deleteUser } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { useAdminNav } from "@/components/admin/AdminTabs";
 
 type DeleteUserButtonProps = {
     userId: string;
@@ -15,6 +16,7 @@ export function DeleteUserButton({ userId, userEmail }: DeleteUserButtonProps) {
     const router = useRouter();
     const [isConfirming, setIsConfirming] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { impersonationLimited } = useAdminNav();
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -30,6 +32,8 @@ export function DeleteUserButton({ userId, userEmail }: DeleteUserButtonProps) {
         router.push("/org/admin/users");
         router.refresh();
     };
+
+    if (impersonationLimited) return null;
 
     if (isConfirming) {
         return (

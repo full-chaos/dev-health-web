@@ -2,7 +2,7 @@ import "server-only";
 import { parseBatch, parseDecision, type Decision, type ParseFailure } from "./decision";
 import { buildRequestBody, type AuthorizeRequest } from "./request";
 
-// Server-only policy decision client. Every path that is not a valid, unexpired PDP answer is a
+// Server-only policy decision client. Every path that is not a valid PDP answer is a
 // deny. The transport and the time bound are required arguments: no module default exists that
 // could allow, and the production module holds no deny-default double (tests own it).
 

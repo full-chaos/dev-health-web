@@ -82,6 +82,8 @@ Copy `.env.example` to `.env.local`. All variables are optional in the Zod schem
 
 `NEXT_PUBLIC_*` values are inlined at build time. For container-start overrides, `scripts/write-runtime-config.mjs` writes `public/runtime-config.js` (git-ignored; see [docs/env-vars.md](docs/env-vars.md)).
 
+`AUTH_INTERNAL_URL`, `AUTH_WORKLOAD_SUBJECT_FILE` and `AUTH_WORKLOAD_ISSUER` (server) feed the server-only workload token source (`src/lib/auth/workload/token.ts`, no consumer yet). The exchange is served on the auth-service API listener and, when `authService.internal` is on, on its internal listener; web uses the one base URL `AUTH_INTERNAL_URL` names. Any one of the three unset = no token source and no request.
+
 ## Common tasks
 
 | Task                              | Command                               |

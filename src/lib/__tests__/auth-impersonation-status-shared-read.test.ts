@@ -94,6 +94,10 @@ function superuser(id: string, overrides: Token = {}): Token {
         access_token: `access-${id}`,
         refresh_token: `refresh-${id}`,
         is_superuser: true,
+        // A held delegated token is the impersonation (D6720): a status answer of false ends it,
+        // true adds the display data.
+        imp_access_token: `imp-${id}`,
+        imp_expires_at: Date.now() + 600_000,
         expires_at: Date.now() + 3_600_000,
         last_validated: Date.now(),
         ...overrides,
@@ -115,7 +119,6 @@ const updateRead = (id: string, overrides: Token = {}) =>
 
 /** A token that already carries an impersonation: a failed read must leave these fields. */
 const OLD_STATE = {
-    is_impersonating: true,
     impersonated_user_id: "target-old",
     impersonated_email: "old@example.test",
     impersonated_org_id: "org-old",
@@ -168,9 +171,9 @@ describe("impersonation status: one shared backend read for callers that arrive 
 
         expect(started).toBe(1);
         for (const token of tokens) {
-            expect(token.is_impersonating).toBe(true);
+            expect(token.imp_access_token).toEqual(expect.any(String));
             expect(token.impersonated_user_id).toBe("target-stale");
-            expect(token.impersonated_email).toBe("stale@example.test");
+            expect(token.impersonated_email).toBeUndefined();
             expect(token.impersonated_org_id).toBe("org-stale");
         }
     });
@@ -202,7 +205,7 @@ describe("(a) a status is kept and shared per user, never across users", () => {
         reads[0].answer(target("one"));
         reads[1].answer(NOT_IMPERSONATING);
         expect((await one).impersonated_user_id).toBe("target-one");
-        expect((await two).is_impersonating).toBe(false);
+        expect((await two).imp_access_token).toBeUndefined();
         expect((await two).impersonated_user_id).toBeUndefined();
 
         // Inside the keep time each user is served the status of that user, with no new read.
@@ -210,7 +213,7 @@ describe("(a) a status is kept and shared per user, never across users", () => {
         const twoAgain = await plainRead("user-two");
         expect(reads).toHaveLength(2);
         expect(oneAgain.impersonated_org_id).toBe("org-one");
-        expect(twoAgain.is_impersonating).toBe(false);
+        expect(twoAgain.imp_access_token).toBeUndefined();
         expect(twoAgain.impersonated_org_id).toBeUndefined();
     });
 
@@ -230,7 +233,7 @@ describe("(a) a status is kept and shared per user, never across users", () => {
         reads[0].answer(target("first"));
         reads[1].answer(NOT_IMPERSONATING);
         expect((await first).impersonated_user_id).toBe("target-first");
-        expect((await second).is_impersonating).toBe(false);
+        expect((await second).imp_access_token).toBeUndefined();
 
         const third = plainRead("unused", { id, access_token: "access-third" });
         await settle();
@@ -254,7 +257,7 @@ describe("(b) a failed read is not kept, and its in-flight entry is removed", ()
         await settle();
         expect(reads).toHaveLength(2);
         reads[1].answer(NOT_IMPERSONATING);
-        expect((await next).is_impersonating).toBe(false);
+        expect((await next).imp_access_token).toBeUndefined();
     });
 
     it("a read that throws: the callers keep their state, no read for 30 s, then a new read", async () => {
@@ -296,7 +299,7 @@ describe("(b) a failed read is not kept, and its in-flight entry is removed", ()
         await settle();
         expect(reads).toHaveLength(3);
         reads[2].answer(NOT_IMPERSONATING);
-        expect((await later).is_impersonating).toBe(false);
+        expect((await later).imp_access_token).toBeUndefined();
     });
 });
 
@@ -322,7 +325,7 @@ describe("(c) a start or a stop takes effect at once for that user", () => {
 
         const after = await plainRead("user-change");
         expect(reads).toHaveLength(2);
-        expect(after.is_impersonating).toBe(true);
+        expect(after.imp_access_token).toEqual(expect.any(String));
         expect(after.impersonated_user_id).toBe("target-new");
     });
 
@@ -472,6 +475,9 @@ describe("(e) server only", () => {
                 /from "@\/lib\/impersonationStatusMemo"/.test(readFileSync(file, "utf8")),
             );
         expect(importers).toEqual(["src/lib/auth.ts"]);
+        for (const file of importers) {
+            expect(readFileSync(file, "utf8")).toMatch(/^import "server-only";$/m);
+        }
         expect(readFileSync("src/lib/impersonationStatusMemo.ts", "utf8")).not.toMatch(
             /^["']use client["']/m,
         );

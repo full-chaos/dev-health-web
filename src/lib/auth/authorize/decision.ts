@@ -1,15 +1,37 @@
 import "server-only";
 import { parseStrictJson, StrictJsonError } from "../accesstoken/strictjson";
+import { isRepositoryKeyOrAll } from "./repositoryKey";
 
 // authorization_decision.v1 and authorization_batch_response.v1 client rules
 // (contracts/auth/v1/jsonschema, pinned from dev-health-ops). Pure: no I/O.
-// Anything that is not a valid, unexpired, unambiguous decision is a refusal.
+// Anything that is not a valid, unambiguous decision is a refusal. An expires_at at or before now is valid for its own request only (not cacheable).
 
 export const WIRE_REASON_CODES = [
+    "allowed_by_membership_default",
     "allowed_by_repository_grant",
+    "allowed_by_role",
+    "delegation_invalid",
     "grant_absent",
-    "repository_not_granted",
+    "grant_expired",
+    "grant_revoked",
+    "impersonation_denied",
+    "invalid_request",
+    "no_membership",
+    "org_mismatch",
+    "organization_inactive",
     "platform_role_absent",
+    "principal_inactive",
+    "repository_allowlist_too_large",
+    "repository_not_granted",
+    "repository_unresolved",
+    "resource_mismatch",
+    "role_lacks_action",
+    "role_scope_mismatch",
+    "role_unknown",
+    "service_account_inactive",
+    "unknown_action",
+    "workload_action_denied",
+    "workload_audience_denied",
 ] as const;
 export type WireReasonCode = (typeof WIRE_REASON_CODES)[number];
 
@@ -21,7 +43,6 @@ export type ParseFailure =
     | "bad_shape"
     | "unknown_reason"
     | "reason_mismatch"
-    | "expired"
     | "batch_count_mismatch"
     | "batch_index_mismatch";
 
@@ -31,6 +52,7 @@ export type Redaction = "personal_identifiers" | "contact_details" | "free_text"
 export interface Obligations {
     tenantScope?: string;
     repositoryAllowlist?: readonly string[];
+    repositoryScope?: "organization";
     redaction?: readonly Redaction[];
     minimumAssurance?: Assurance;
     stepUp?: boolean;
@@ -44,6 +66,8 @@ export interface Decision {
     organizationId: string | null;
     policyRevision: number;
     expiresAtMs: number;
+    // true only when expires_at is after the time of the answer; false means "valid for this request, never reuse".
+    cacheable: boolean;
     obligations?: Obligations;
 }
 
@@ -52,7 +76,12 @@ export type BatchResult =
     { ok: true; decisions: readonly Decision[] } | { ok: false; reason: ParseFailure };
 
 const MAX_BATCH = 100;
-const ALLOW_REASON: WireReasonCode = "allowed_by_repository_grant";
+const MAX_ALLOWLIST = 256;
+const ALLOW_REASONS: readonly WireReasonCode[] = [
+    "allowed_by_membership_default",
+    "allowed_by_repository_grant",
+    "allowed_by_role",
+];
 
 function isCalendarDay(year: number, month: number, day: number): boolean {
     const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -61,7 +90,6 @@ function isCalendarDay(year: number, month: number, day: number): boolean {
 }
 const DECISION_ID = /^dec_[A-Za-z0-9_-]{26}$/;
 const PRINCIPAL_ID = /^prn_[A-Za-z0-9_-]+$/;
-const REPO_KEY = /^([a-z0-9][a-z0-9._-]{0,99}\/[a-z0-9][a-z0-9._-]{0,99}|\*)$/;
 const EXPIRES_AT =
     /^([0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]{1,6})?(Z|[+-](0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])$/;
 const REDACTIONS: readonly string[] = ["personal_identifiers", "contact_details", "free_text"];
@@ -106,6 +134,7 @@ function parseObligations(v: unknown): Obligations {
     onlyKeys(v, [
         "tenant_scope",
         "repository_allowlist",
+        "repository_scope",
         "redaction",
         "minimum_assurance",
         "step_up",
@@ -117,10 +146,16 @@ function parseObligations(v: unknown): Obligations {
     }
     if ("repository_allowlist" in v) {
         const a = v.repository_allowlist;
-        if (!Array.isArray(a) || new Set(a).size !== a.length) refuse("bad_shape");
+        if (!Array.isArray(a) || a.length > MAX_ALLOWLIST || new Set(a).size !== a.length)
+            refuse("bad_shape");
         for (const k of a as unknown[])
-            if (typeof k !== "string" || !REPO_KEY.test(k)) refuse("bad_shape");
+            if (typeof k !== "string" || !isRepositoryKeyOrAll(k)) refuse("bad_shape");
         out.repositoryAllowlist = a as string[];
+    }
+    if ("repository_scope" in v) {
+        if (v.repository_scope !== "organization" || "repository_allowlist" in v)
+            refuse("bad_shape");
+        out.repositoryScope = "organization";
     }
     if ("redaction" in v) {
         const a = v.redaction;
@@ -173,13 +208,13 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
     if (typeof doc.reason_code !== "string") refuse("bad_shape");
     if (!(WIRE_REASON_CODES as readonly string[]).includes(doc.reason_code as string))
         refuse("unknown_reason");
-    if ((doc.allowed === true) !== (doc.reason_code === ALLOW_REASON)) refuse("reason_mismatch");
+    if ((doc.allowed === true) !== ALLOW_REASONS.includes(doc.reason_code as WireReasonCode))
+        refuse("reason_mismatch");
     let obligations: Obligations | undefined;
     if ("obligations" in doc) {
         if (doc.allowed === false) refuse("bad_shape");
         obligations = parseObligations(doc.obligations);
     }
-    if (expiresAtMs <= nowMs) refuse("expired");
     const decision: Decision = {
         decisionId: doc.decision_id as string,
         allowed: doc.allowed as boolean,
@@ -188,6 +223,7 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
         organizationId: org as string | null,
         policyRevision: rev as number,
         expiresAtMs,
+        cacheable: expiresAtMs > nowMs,
     };
     if (obligations) decision.obligations = obligations;
     return decision;

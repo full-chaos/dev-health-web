@@ -41,7 +41,7 @@ describe("routePatternForPathname bounded labels", () => {
     const routes = dynamicRoutes(APP_ROOT);
 
     it("finds the dynamic route directories (count pinned)", () => {
-        expect(routes.length).toBe(20);
+        expect(routes.length).toBe(24);
     });
 
     it.each(routes.map((segs) => [segs.join("/"), segs] as const))(

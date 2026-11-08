@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HideWhileImpersonationLimited } from "@/components/admin/HideWhileImpersonationLimited";
 import { Plus } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -24,10 +25,12 @@ export default async function UsersPage() {
     return (
         <div className="space-y-6">
             <AdminHeader title="Organization" description={DESCRIPTION}>
-                <Link href="/org/admin/users/new" className={buttonClassName("primary", "md")}>
-                    <Plus aria-hidden="true" className="h-4 w-4" />
-                    {CTA_LABELS.addUser}
-                </Link>
+                <HideWhileImpersonationLimited>
+                    <Link href="/org/admin/users/new" className={buttonClassName("primary", "md")}>
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.addUser}
+                    </Link>
+                </HideWhileImpersonationLimited>
             </AdminHeader>
             {result.error ? (
                 <Notice variant="danger" live={false} action={<RetryButton />}>

@@ -143,6 +143,7 @@ describe("playwright dev-server configs", () => {
         "playwright.navigation.config.ts",
         "playwright.onboarding.config.ts",
         "playwright.live.config.ts",
+        "playwright.visual.config.ts",
     ];
 
     it.each(configs)("%s carries the preload on its next dev webServer", async (name) => {

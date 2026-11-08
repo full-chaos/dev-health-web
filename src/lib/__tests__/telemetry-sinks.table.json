@@ -192,7 +192,27 @@
         "sentry": 0
     },
     "src/lib/auth.ts": {
-        "log": 8,
+        "log": 10,
+        "sentry": 0
+    },
+    "src/lib/auth/decide/log.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/auth/platform/limits.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/auth/shadow/log.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/auth/shadow/log.ts": {
+        "log": 3,
+        "sentry": 0
+    },
+    "src/lib/auth/workload/token.ts": {
+        "log": 1,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {
@@ -200,7 +220,7 @@
         "sentry": 0
     },
     "src/lib/authSessionLog.ts": {
-        "log": 1,
+        "log": 2,
         "sentry": 0
     },
     "src/lib/billing/actions/subscription.ts": {
@@ -224,6 +244,14 @@
         "sentry": 0
     },
     "src/lib/graphql/urqlExchanges.ts": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/lib/impersonationSession.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/impersonationToken.ts": {
         "log": 4,
         "sentry": 0
     },

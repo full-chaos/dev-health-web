@@ -384,9 +384,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -500,9 +497,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -636,9 +630,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -711,9 +702,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -809,9 +797,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -880,9 +865,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -952,9 +934,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -1039,9 +1018,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -1127,9 +1103,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -1215,9 +1188,6 @@
         "security": [
           {
             "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
           }
         ],
         "parameters": [
@@ -1352,6 +1322,10 @@
                   "scope": {
                     "type": "string",
                     "description": "Space-delimited requested scope; may only narrow the resolved binding's grant, never widen it."
+                  },
+                  "resource": {
+                    "type": "string",
+                    "description": "Organization selector, urn:acr:org:<lowercase uuid>. Omit it when the identity is bound in one organization; required when it is bound in several (invalid_request otherwise). An organization with no enabled binding for the identity is refused with invalid_target."
                   }
                 }
               }
@@ -1676,6 +1650,69 @@
             "$ref": "#/components/responses/Error"
           },
           "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/internal/v1/credentials/{credential_id}/revoke": {
+      "post": {
+        "operationId": "revokeCredentialOnBehalf",
+        "x-required-scope": "credential_lifecycle:revoke",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "description": "The credential to revoke, in the caller's organization.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../schemas/credential_revoke_on_behalf_request.v1.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The MCP-bound credential is revoked; one credential_revoked audit row names the actor type and id the body gave. Only a workload-class credential whose binding role is revoke is served."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
             "$ref": "#/components/responses/Error"
           },
           "429": {
@@ -2342,6 +2379,9 @@
                             "type": "integer"
                           },
                           "max": {
+                            "type": "integer"
+                          },
+                          "min_items": {
                             "type": "integer"
                           },
                           "max_items": {

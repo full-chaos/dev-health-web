@@ -88,6 +88,8 @@ const CANONICAL = [
             "                      contracts/auth/v1/examples/authorization_batch_request/",
             "                      contracts/auth/v1/examples/authorization_batch_response/",
             "                      contracts/auth/v1/golden/decision/",
+            "                      contracts/auth/v1/vocabulary/reason-codes.json",
+            "                      contracts/ingress/v1/planes.json",
             "                  sparse-checkout-cone-mode: false",
         ],
     },

@@ -18,12 +18,18 @@ const STATUS = capture("kiac_project_status_partial.event.json");
 const MERGED_PRS = capture("kiac_repo_merged_prs_degraded.event.json");
 
 /** The render's date, in the browser's time zone: the same zone as this process. */
-const day = (iso: string): string =>
-    new Date(iso).toLocaleDateString("en-US", {
+/** A window day as ask-dev reads it: the UTC day, an end-exclusive midnight as the day before. */
+const day = (iso: string, endExclusive = false): string => {
+    const at = new Date(iso);
+    const shown =
+        endExclusive && at.getTime() % 86_400_000 === 0 ? new Date(at.getTime() - 86_400_000) : at;
+    return shown.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "UTC",
     });
+};
 
 test.describe.configure({ mode: "serial" });
 
@@ -94,7 +100,7 @@ test.describe("desktop (1280px)", () => {
         // The window is stated for the answer, in its Coverage panel.
         const window_ = STATUS.effective_evidence_window as { start: string; end: string };
         await expect(
-            panel.getByText(`Evidence window: ${day(window_.start)} – ${day(window_.end)}`, {
+            panel.getByText(`Evidence window: ${day(window_.start)} – ${day(window_.end, true)}`, {
                 exact: false,
             }),
         ).toBeVisible();

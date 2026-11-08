@@ -37,6 +37,7 @@ describe("run_tests.sh quality", () => {
             "graphql:wire-parity:check",
             "lint",
             "typecheck",
+            "check:org-provisioning",
             "audit",
         ]);
         expect(result.stderr).toContain("QUALITY-STEP FAIL: run_pnpm_script codegen:check");
@@ -45,7 +46,7 @@ describe("run_tests.sh quality", () => {
     it("reports each failing step and passes the rest", () => {
         const { result } = runQuality(["audit", "lint"]);
         expect(result.status).not.toBe(0);
-        expect(result.stderr).toContain("2 of 5 steps failed");
+        expect(result.stderr).toContain("2 of 6 steps failed");
         expect(result.stdout).toContain("QUALITY-STEP PASS: run_pnpm_script typecheck");
     });
 

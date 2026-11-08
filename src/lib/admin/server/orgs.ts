@@ -1,8 +1,10 @@
 "use server";
 
 import { adminApi, AdminApiError } from "../api";
+import { UserFacingActionError } from "@/lib/actionFailure";
 import type { ActionResult } from "@/lib/result";
-import { ORG_MEMBER_ROLES } from "../types";
+import { ORG_MEMBER_ROLES, USER_CREATE_ROLES } from "../types";
+import { withOrgMemberRefusals } from "../orgMemberErrors";
 import type {
     Organization,
     OrganizationCreate,
@@ -15,6 +17,7 @@ import type {
     DeletionPlan,
 } from "../types";
 import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
+import { startResultWithHandoff, stopResultWithHandoff } from "@/lib/impersonationSession";
 
 // ---- Current Org (self-service) ----
 
@@ -62,13 +65,15 @@ export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
 export async function updateCurrentOrg(
     data: OrganizationUpdate,
 ): Promise<ActionResult<Organization>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        if (!orgId) {
-            throw new AdminApiError(400, "Bad Request", "No organization ID in session");
-        }
-        return adminApi.orgs.update(orgId, data, token, orgId);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const { token, orgId } = await getSessionContext({ write: "org.write" });
+            if (!orgId) {
+                throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+            }
+            return adminApi.orgs.update(orgId, data, token, orgId);
+        }),
+    );
 }
 
 /**
@@ -79,46 +84,27 @@ export async function updateOrgProfile(data: {
     name?: string;
     description?: string | null;
 }): Promise<ActionResult<Organization>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        if (!orgId) {
-            throw new AdminApiError(400, "Bad Request", "No organization ID in session");
-        }
-
-        const baseUrl = (await import("@/lib/origin")).getBackendUrl();
-        const response = await fetch(`${baseUrl}/api/v1/orgs/me`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-                "X-Org-Id": orgId,
-            },
-            body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-            let detail: string | undefined;
-            try {
-                const errorData = await response.json();
-                detail = errorData.detail || errorData.message;
-            } catch {
-                detail = undefined;
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const { token, orgId } = await getSessionContext({ write: "org.write" });
+            if (!orgId) {
+                throw new AdminApiError(400, "Bad Request", "No organization ID in session");
             }
-            throw new AdminApiError(response.status, response.statusText, detail, "PATCH");
-        }
-
-        return (await response.json()) as Organization;
-    });
+            return adminApi.orgs.updateProfile(data, token, orgId);
+        }),
+    );
 }
 
 export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        if (!orgId) {
-            throw new AdminApiError(400, "Bad Request", "No organization ID in session");
-        }
-        return adminApi.orgs.delete(orgId, token, orgId);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const { token, orgId } = await getSessionContext({ write: "org.delete" });
+            if (!orgId) {
+                throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+            }
+            return adminApi.orgs.delete(orgId, token, orgId);
+        }),
+    );
 }
 
 export async function dryRunDeleteCurrentOrg(): Promise<ActionResult<DeletionPlan>> {
@@ -138,18 +124,26 @@ export async function startImpersonation(targetUserId: string): Promise<
         status: string;
         target_user: { id: string; email: string; org_id: string; role: string };
         expires_at: string;
+        sessionHandoff?: string;
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        return adminApi.impersonation.start(targetUserId, token);
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            guard: "unmapped",
+        });
+        return startResultWithHandoff(await adminApi.impersonation.start(targetUserId, token));
     }, "changes-impersonation");
 }
 
 export async function stopImpersonation(): Promise<ActionResult<{ status: string }>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        return adminApi.impersonation.stop(token);
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            allowImpersonating: true,
+            guard: "unmapped",
+        });
+        return stopResultWithHandoff(await adminApi.impersonation.stop(token));
     }, "changes-impersonation");
 }
 
@@ -163,7 +157,11 @@ export async function getImpersonationStatus(): Promise<
     }>
 > {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({
+            action: "admin.impersonate",
+            allowImpersonating: true,
+            guard: "unmapped",
+        });
         return adminApi.impersonation.status(token);
     });
 }
@@ -172,14 +170,14 @@ export async function getImpersonationStatus(): Promise<
 
 export async function listOrganizations(): Promise<ActionResult<Organization[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.list(token);
     });
 }
 
 export async function getOrganization(orgId: string): Promise<ActionResult<Organization>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.get(orgId, token);
     });
 }
@@ -187,39 +185,45 @@ export async function getOrganization(orgId: string): Promise<ActionResult<Organ
 export async function createOrganization(
     data: OrganizationCreate,
 ): Promise<ActionResult<Organization>> {
-    return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        return adminApi.orgs.create(data, token);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
+            return adminApi.orgs.create(data, token);
+        }),
+    );
 }
 
 export async function updateOrganization(
     orgId: string,
     data: OrganizationUpdate,
 ): Promise<ActionResult<Organization>> {
-    return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        return adminApi.orgs.update(orgId, data, token);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
+            return adminApi.orgs.update(orgId, data, token);
+        }),
+    );
 }
 
 export async function deleteOrganization(orgId: string): Promise<ActionResult<void>> {
-    return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        return adminApi.orgs.delete(orgId, token);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
+            return adminApi.orgs.delete(orgId, token);
+        }),
+    );
 }
 
 export async function dryRunDeleteOrganization(orgId: string): Promise<ActionResult<DeletionPlan>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.dryRunDelete(orgId, token);
     });
 }
 
 export async function listOrgMembers(orgId: string): Promise<ActionResult<Membership[]>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.orgs" });
         return adminApi.orgs.members.list(orgId, token);
     });
 }
@@ -237,20 +241,22 @@ export async function addOrgMemberByEmail(
     email: string,
     role: string,
 ): Promise<ActionResult<Membership>> {
-    return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        const memberRole = requireMemberRole(role);
-        const wanted = email.trim().toLowerCase();
-        if (!wanted) {
-            throw new AdminApiError(422, "Unprocessable Entity", "Email is required");
-        }
-        const candidates = await adminApi.users.list(token, undefined, wanted);
-        const user = candidates.find((u) => u.email.toLowerCase() === wanted);
-        if (!user) {
-            throw new AdminApiError(404, "Not Found", `No user with email ${email.trim()}`);
-        }
-        return adminApi.orgs.members.add(orgId, { user_id: user.id, role: memberRole }, token);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
+            const memberRole = requireMemberRole(role);
+            const wanted = email.trim().toLowerCase();
+            if (!wanted) {
+                throw new AdminApiError(422, "Unprocessable Entity", "Email is required");
+            }
+            const candidates = await adminApi.users.list(token, undefined, wanted);
+            const user = candidates.find((u) => u.email.toLowerCase() === wanted);
+            if (!user) {
+                throw new UserFacingActionError(404, `No user with email ${email.trim()}`);
+            }
+            return adminApi.orgs.members.add(orgId, { user_id: user.id, role: memberRole }, token);
+        }),
+    );
 }
 
 export async function changeOrgMemberRole(
@@ -258,16 +264,18 @@ export async function changeOrgMemberRole(
     userId: string,
     role: string,
 ): Promise<ActionResult<Membership>> {
-    return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
-        const memberRole = requireMemberRole(role);
-        return adminApi.orgs.members.updateRole(orgId, userId, { role: memberRole }, token);
-    });
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(async () => {
+            const token = await requireSuperuserToken({ action: "admin.orgs" });
+            const memberRole = requireMemberRole(role);
+            return adminApi.orgs.members.updateRole(orgId, userId, { role: memberRole }, token);
+        }),
+    );
 }
 
 export async function getPlatformStats(): Promise<ActionResult<PlatformStats>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.stats" });
         return adminApi.platform.stats(token);
     });
 }
@@ -280,7 +288,7 @@ export async function listPlatformAuditLogs(
     offset?: number,
 ): Promise<ActionResult<AuditLogListResponse>> {
     return withErrorHandling(async () => {
-        const token = await requireSuperuserToken();
+        const token = await requireSuperuserToken({ action: "admin.audit" });
         return adminApi.platformAudit.list(filters, limit, offset, token);
     });
 }
@@ -302,5 +310,86 @@ export async function getAuditLog(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.audit.get(id, token, orgId);
+    });
+}
+
+// ---- Remove, transfer and invite (appended: the auth-profile anchors above stay put) ----
+
+/** Removes a member; the server decides whether the owner rules allow it. */
+export async function removeOrgMember(orgId: string, userId: string): Promise<ActionResult<void>> {
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
+                return adminApi.orgs.members.remove(orgId, userId, token);
+            },
+            { closed: true },
+        ),
+    );
+}
+
+export async function transferOrgOwnership(
+    orgId: string,
+    newOwnerUserId: string,
+): Promise<ActionResult<void>> {
+    return withErrorHandling(() =>
+        withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
+                return adminApi.orgs.members.transferOwnership(orgId, newOwnerUserId, token);
+            },
+            { closed: true },
+        ),
+    );
+}
+
+type CreatedOrgInvite = Awaited<ReturnType<typeof adminApi.orgs.invites.create>>;
+
+// An invite never carries owner: ownership moves only through a transfer.
+function inviteBody(email: string, role: string) {
+    if (!(USER_CREATE_ROLES as readonly string[]).includes(role)) {
+        throw new AdminApiError(422, "Unprocessable Entity", `Unknown role "${role}"`);
+    }
+    const wanted = email.trim().toLowerCase();
+    if (!wanted) {
+        throw new AdminApiError(422, "Unprocessable Entity", "Email is required");
+    }
+    return { email: wanted, role };
+}
+
+export async function inviteOrgMember(
+    orgId: string,
+    email: string,
+    role: string,
+): Promise<ActionResult<CreatedOrgInvite>> {
+    return withErrorHandling(() => {
+        const body = inviteBody(email, role);
+        return withOrgMemberRefusals(
+            async () => {
+                const token = await requireSuperuserToken({ action: "admin.orgs" });
+                return adminApi.orgs.invites.create(orgId, body, token);
+            },
+            { closed: true },
+        );
+    });
+}
+
+/** Invites into the signed-in organization; the org comes from the session, never from the caller. */
+export async function inviteCurrentOrgMember(
+    email: string,
+    role: string,
+): Promise<ActionResult<CreatedOrgInvite>> {
+    return withErrorHandling(() => {
+        const body = inviteBody(email, role);
+        return withOrgMemberRefusals(
+            async () => {
+                const { token, orgId } = await getSessionContext({ write: "members.invite" });
+                if (!orgId) {
+                    throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+                }
+                return adminApi.orgs.invites.create(orgId, body, token, orgId);
+            },
+            { closed: true },
+        );
     });
 }

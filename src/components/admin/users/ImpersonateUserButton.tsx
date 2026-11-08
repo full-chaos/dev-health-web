@@ -2,22 +2,29 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { startImpersonation } from "@/lib/admin/server";
+import { useAdminNav } from "@/components/admin/AdminTabs";
+import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { User } from "@/lib/admin/types";
-import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
+import {
+    broadcastImpersonationEvent,
+    IMPERSONATION_NOT_STARTED_TEXT,
+    openImpersonationWindow,
+} from "@/lib/impersonation-events";
 
 export function ImpersonateUserButton({ user }: { user: User }) {
     const { data: session, update } = useSession();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { impersonationLimited } = useAdminNav();
 
     // Impersonation is a superuser-only capability on the backend
     // (start_impersonation 403s non-superusers, ImpersonationMiddleware skips
     // them). Gate the button on the ACTOR being a superuser so non-superuser
     // admins are not offered an action that always fails (CHAOS-2303).
     const canImpersonate =
+        !impersonationLimited &&
         !!session?.user?.is_superuser &&
         session?.user?.id !== user.id &&
         !user.is_superuser &&
@@ -44,7 +51,18 @@ export function ImpersonateUserButton({ user }: { user: User }) {
                 // Force an immediate server-verified impersonation status re-poll
                 // so org scoping switches to the target org without waiting for
                 // the 30s JWT poll interval (CHAOS-2309).
-                await update({ impersonationChanged: true });
+                const updated = await update({
+                    impersonationChanged: true,
+                    sessionHandoff: result.data.sessionHandoff,
+                });
+                // A refused or unconfirmed start handoff (the update answers 503 or a session that
+                // is not impersonating): end the go-api row with the administrator's stop.
+                if (!updated?.user?.is_impersonating) {
+                    impersonationWindow?.close();
+                    await stopImpersonation();
+                    toast.error(IMPERSONATION_NOT_STARTED_TEXT);
+                    return;
+                }
                 broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
                 if (impersonationWindow && !impersonationWindow.closed) {
