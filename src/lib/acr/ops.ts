@@ -7,7 +7,16 @@ import { getBackendUrl } from "@/lib/origin";
 import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
-import { acrScopesFromGrantsEnabled, resolveRepositoryScopes } from "./grantScopes";
+import {
+    acrScopesFromGrantsEnabled,
+    CONTEXT_READ_ACTION,
+    decideCredentialIssue,
+    EVIDENCE_READ_ACTION,
+    type GrantDecisionOutcome,
+    logGrantDecision,
+    probeOrgWide,
+    resolveRepositoryDecisions,
+} from "./grantScopes";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
 
 const entitlementSchema = z
@@ -53,6 +62,11 @@ export type OpsAuthorization = {
 type ResolveOpsAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
+    /**
+     * The read these scopes are for (ACR_SCOPES_FROM_GRANTS on: its decisions decide them). Unset:
+     * "context" (`acr.context.read`).
+     */
+    readonly read?: "context" | "evidence";
     /** Platform validation is independently authorized by the superuser route guard. */
     readonly platformValidation?: boolean;
     readonly selectedRepository?: string;
@@ -252,9 +266,15 @@ export async function resolveOpsAuthorization(
     return readRepositoryScopes(input);
 }
 
-async function readRepositoryScopes(
-    input: ResolveOpsAuthorizationInput,
-): Promise<OpsAuthorization> {
+/**
+ * The analytics catalog's repository names: inventory, never authority. A name becomes a scope only
+ * as a candidate that a decision allows (switch on) or as the legacy catalog scope (switch off).
+ */
+async function readCatalogCandidates(input: {
+    readonly accessToken: string;
+    readonly orgId: string;
+    readonly signal: AbortSignal;
+}): Promise<readonly string[]> {
     const scopes = await fetchBoundedJson({
         body: JSON.stringify({
             query: ACR_REPOSITORY_SCOPES_QUERY,
@@ -281,15 +301,149 @@ async function readRepositoryScopes(
             { retryable: true },
         );
     }
-    const candidates = canonicalRepositoryScopes(
+    return canonicalRepositoryScopes(
         parsedScopes.data.data.catalog.values.map((value) => value.value),
     );
+}
+
+function issueRefused(): AcrRuntimeError {
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.notEntitled,
+        "Approval is unavailable for this account.",
+        { status: 403 },
+    );
+}
+
+/**
+ * ACR_SCOPES_FROM_GRANTS on (D6857-2): the decision and the repository scopes of one
+ * `credential:issue` call (device approval, consent). `acr.credential.issue` on the session
+ * organization decides first: a deny refuses (403). The organization-wide `["*"]` is sent only when a
+ * decision carries `repository_scope: organization`: the `acr.credential.issue` allow, or else an
+ * `acr.context.read` allow over the catalog names (for an empty catalog, the probe key's decision).
+ * Otherwise the scopes are the names an `acr.context.read` decision allows; none refuses (403).
+ * Requested names are never widened: an org-wide caller sends them as asked. Every outcome logs one
+ * Info line (logGrantDecision).
+ */
+export async function resolveDecidedIssuanceScopes(input: {
+    readonly accessToken: string;
+    readonly orgId: string;
+    readonly requested: readonly string[];
+    readonly route: "consent" | "device";
+    readonly signal: AbortSignal;
+}): Promise<readonly string[]> {
+    let logged = false;
+    const log = (
+        outcome: GrantDecisionOutcome,
+        scopes: readonly string[],
+        source: "named" | "org-wide" | null,
+        markerFrom: string | null,
+    ) => {
+        logged = true;
+        logGrantDecision({
+            markerFrom,
+            orgId: input.orgId,
+            outcome,
+            route: input.route,
+            scopes,
+            source,
+        });
+    };
+    const session = { accessToken: input.accessToken, orgId: input.orgId };
+    const wildcard = input.requested.length === 1 && input.requested[0] === "*";
+    try {
+        const issue = await decideCredentialIssue(session);
+        if (!issue.allowed) {
+            log("denied", [], null, null);
+            throw issueRefused();
+        }
+        if (issue.orgWide) {
+            log("allowed", input.requested, "org-wide", "acr.credential.issue");
+            return input.requested;
+        }
+        let orgWide: boolean;
+        let named: readonly string[];
+        if (wildcard) {
+            const candidates = await readCatalogCandidates(input);
+            if (candidates.length === 0) {
+                orgWide = await probeOrgWide(session);
+                named = [];
+            } else {
+                ({ orgWide, repositoryScopes: named } = await resolveRepositoryDecisions({
+                    ...session,
+                    candidates,
+                }));
+            }
+        } else {
+            ({ orgWide, repositoryScopes: named } = await resolveRepositoryDecisions({
+                ...session,
+                candidates: input.requested,
+            }));
+        }
+        if (orgWide) {
+            log("allowed", input.requested, "org-wide", CONTEXT_READ_ACTION);
+            return input.requested;
+        }
+        if (named.length === 0) {
+            log("no_scopes", [], "named", null);
+            throw issueRefused();
+        }
+        log("allowed", named, "named", null);
+        return named;
+    } catch (error) {
+        if (!logged) log("unavailable", [], null, null);
+        throw error;
+    }
+}
+
+/**
+ * ACR_SCOPES_FROM_GRANTS on: the scopes of a context or evidence read, from that read's own decisions
+ * (`acr.context.read`, `acr.evidence.read`; D6857-2). An org-wide allow allows every catalog name,
+ * so the scopes are the catalog list, byte for byte the legacy scopes. One Info line per read.
+ */
+async function decidedReadScopes(
+    input: ResolveOpsAuthorizationInput,
+    candidates: readonly string[],
+): Promise<{
+    readonly repositoryScopes: readonly string[];
+    readonly visibleRepositories: readonly string[];
+}> {
+    const route = input.read ?? "context";
+    const action = route === "evidence" ? EVIDENCE_READ_ACTION : CONTEXT_READ_ACTION;
+    const log = (outcome: GrantDecisionOutcome, scopes: readonly string[], orgWide: boolean) =>
+        logGrantDecision({
+            markerFrom: orgWide ? action : null,
+            orgId: input.orgId,
+            outcome,
+            route,
+            scopes,
+            source: outcome === "unavailable" ? null : orgWide ? "org-wide" : "named",
+        });
+    let result;
+    try {
+        result = await resolveRepositoryDecisions({
+            accessToken: input.accessToken,
+            action,
+            candidates,
+            orgId: input.orgId,
+        });
+    } catch (error) {
+        log("unavailable", [], false);
+        throw error;
+    }
+    log(
+        result.repositoryScopes.length > 0 ? "allowed" : "no_scopes",
+        result.repositoryScopes,
+        result.orgWide,
+    );
+    return result;
+}
+
+async function readRepositoryScopes(
+    input: ResolveOpsAuthorizationInput,
+): Promise<OpsAuthorization> {
+    const candidates = await readCatalogCandidates(input);
     const { repositoryScopes, visibleRepositories } = acrScopesFromGrantsEnabled()
-        ? await resolveRepositoryScopes({
-              accessToken: input.accessToken,
-              candidates,
-              orgId: input.orgId,
-          })
+        ? await decidedReadScopes(input, candidates)
         : { repositoryScopes: candidates, visibleRepositories: candidates };
     if (
         input.selectedRepository !== undefined &&
