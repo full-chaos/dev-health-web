@@ -106,8 +106,8 @@ export function authHeaders(token: string): Record<string, string> {
 }
 
 // Superuser credentials — set in CI secrets or use defaults for local dev
-const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
-const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
+export const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
+export const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
 
 function sessionEmail(session: unknown): string | undefined {
     if (typeof session !== "object" || session === null) return undefined;
@@ -142,7 +142,8 @@ export async function signInCanonicalUser(page: Page): Promise<void> {
             return sessionEmail(await response.json());
         })
         .toBe(superuserEmail);
-    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
+    // A fresh dev server compiles /dashboard on this first landing; that can take far longer than the 5 s default.
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u, { timeout: 60_000 });
 }
 
 /** Authenticate as superuser and return the access token, or null on failure. */
@@ -320,7 +321,12 @@ export async function setupUser(
             ) as Array<{ id?: string; email?: string }>;
             userId =
                 rows.find((row) => row.email?.toLowerCase() === user.email.toLowerCase())?.id ?? "";
-            steps.push(`user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}`);
+            // CHAOS-13327: a live impersonation session of this superuser scopes the list to the target's org.
+            const scoped =
+                lookup.headers()["x-impersonating"] === "true" ? " impersonating=true" : "";
+            steps.push(
+                `user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}${scoped}`,
+            );
         } else {
             await step("user-lookup", lookup);
         }

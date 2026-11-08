@@ -61,7 +61,7 @@ export async function requireSuperuserToken(opts: {
     if (impersonating) {
         throw new AdminApiError(403, "Forbidden", "Not available while impersonating");
     }
-    return session.access_token;
+    return (opts.allowImpersonating && session.admin_access_token) || session.access_token;
 }
 
 /**

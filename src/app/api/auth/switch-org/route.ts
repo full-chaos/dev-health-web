@@ -13,6 +13,12 @@ export async function POST(request: Request) {
     if (!session?.access_token) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+    // While impersonating, the token pair is the administrator's and the session holds no service
+    // token: a pair change is refused here, before any backend call (the jwt callback would refuse
+    // its handoff anyway).
+    if (session.user?.is_impersonating) {
+        return NextResponse.json({ error: "Not available while impersonating" }, { status: 403 });
+    }
 
     let payload: { org_id?: unknown } | null = null;
     try {

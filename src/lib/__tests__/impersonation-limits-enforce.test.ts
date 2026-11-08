@@ -81,7 +81,7 @@ const ORG_WRITES: ReadonlyArray<[string, () => Promise<ActionResult<unknown>>]> 
     ["setUserPassword (members.manage)", () => setUserPassword("u-2", "p1", "p0")],
 ];
 
-async function signIn(over: Record<string, unknown> = {}) {
+async function signIn(over: Record<string, unknown> = {}, delegated = true) {
     const token = await callbacks().jwt({
         token: {
             id: "admin-1",
@@ -90,6 +90,10 @@ async function signIn(over: Record<string, unknown> = {}) {
             is_superuser: true,
             access_token: "access-admin-1",
             refresh_token: "refresh-admin-1",
+            // The delegated token is the impersonation (D6720); the status read only adds display data.
+            ...(delegated
+                ? { imp_access_token: "access-delegated-1", imp_expires_at: Date.now() + 600_000 }
+                : {}),
             expires_at: Date.now() + 3_600_000,
             last_validated: Date.now(),
         },
@@ -219,25 +223,71 @@ describe("enforce, not impersonating", () => {
         expect((await updateOrgProfile({ name: "x" })).error).toBeUndefined();
     });
 
-    it("C10 a forged session flag does not change the server status", async () => {
-        await signIn({ is_impersonating: false });
+    it("C10 the status read alone does not limit: no delegated token, status true -> allowed", async () => {
         resetImpersonationStatusForTests();
         status.mode = "impersonating";
-        await expect(requireSuperuser("/superadmin")).rejects.toThrow(
-            "NEXT_REDIRECT:/impersonation-restricted",
-        );
-        expect((await updateOrgProfile({ name: "x" })).error).toBeDefined();
-        expect(backendCalls).toEqual([]);
+        await signIn({}, false);
+        await expect(requireSuperuser("/superadmin")).resolves.toBeTruthy();
+        expect((await updateOrgProfile({ name: "x" })).error).toBeUndefined();
+        expect(backendCalls).toHaveLength(1);
     });
 
-    it("C11 a status read that fails is a deny", async () => {
-        await signIn();
+    it("C11 a status read that fails changes nothing: no delegated token -> allowed", async () => {
         resetImpersonationStatusForTests();
         status.mode = "fail";
+        await signIn({}, false);
+        await expect(requireSuperuser("/superadmin")).resolves.toBeTruthy();
+        expect((await deleteCurrentOrg()).error).toBeUndefined();
+        expect(backendCalls).toHaveLength(1);
+    });
+});
+
+describe("enforce: the accessor alone decides (D6720, acp Q2 (i))", () => {
+    beforeEach(() => {
+        vi.stubEnv("AUTHZ_PLATFORM_UI", "enforce");
+    });
+
+    it("C12 a status read that fails changes nothing: delegated token held -> refused", async () => {
+        resetImpersonationStatusForTests();
+        status.mode = "fail";
+        await signIn();
         await expect(requireSuperuser("/superadmin")).rejects.toThrow(
             "NEXT_REDIRECT:/impersonation-restricted",
         );
         expect((await deleteCurrentOrg()).error).toBeDefined();
+        expect(backendCalls).toEqual([]);
+    });
+
+    it.each([
+        ["a number", { imp_access_token: 42, imp_expires_at: Date.now() + 600_000 }],
+        ["an empty string", { imp_access_token: "", imp_expires_at: Date.now() + 600_000 }],
+        ["no token, an expiry", { imp_expires_at: Date.now() + 600_000 }],
+        [
+            "a token, an unreadable expiry",
+            { imp_access_token: "access-delegated-1", imp_expires_at: "soon" },
+        ],
+    ])("C13 malformed imp_* (%s) is refused and serves no bearer", async (_, imp) => {
+        const s = await callbacks().session({
+            session: { user: {} },
+            token: {
+                id: "admin-1",
+                org_id: "org-admin",
+                role: "owner",
+                is_superuser: true,
+                access_token: "access-admin-1",
+                refresh_token: "refresh-admin-1",
+                expires_at: Date.now() + 3_600_000,
+                ...imp,
+            },
+        });
+        expect((s as { user: { is_impersonating?: boolean } }).user.is_impersonating).toBe(true);
+        expect((s as { access_token?: string }).access_token).toBeUndefined();
+        sessionRead.mockResolvedValue(s);
+        await expect(requireSuperuser("/superadmin")).rejects.toThrow("NEXT_REDIRECT");
+        await expect(requireSuperuser("/superadmin")).rejects.not.toThrow(
+            "NEXT_REDIRECT:/dashboard",
+        );
+        expect((await updateOrgProfile({ name: "x" })).error).toBeDefined();
         expect(backendCalls).toEqual([]);
     });
 });

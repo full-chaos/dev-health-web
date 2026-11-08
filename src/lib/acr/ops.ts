@@ -7,6 +7,7 @@ import { getBackendUrl } from "@/lib/origin";
 import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+import { acrScopesFromGrantsEnabled, resolveRepositoryScopes } from "./grantScopes";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
 
 const entitlementSchema = z
@@ -45,6 +46,8 @@ export type OpsAuthorization = {
     readonly orgId: string;
     readonly repositoryScopes: readonly string[];
     readonly subject: string;
+    /** Names the principal may read; the same list as `repositoryScopes` (a universal grant sends every candidate). */
+    readonly visibleRepositories?: readonly string[];
 };
 
 type ResolveOpsAuthorizationInput = {
@@ -113,25 +116,47 @@ function opsHeaders(accessToken: string): Readonly<Record<string, string>> {
     };
 }
 
+function opsUnavailable(cause?: unknown): AcrRuntimeError {
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.unavailable,
+        "Agent Context Runtime is temporarily unavailable.",
+        { cause, retryable: true },
+    );
+}
+
+/**
+ * CHAOS-13332: an Ops status is judged before its body is read. A deliberate refusal (401/403) is
+ * the non-retryable `not_entitled` 403, as the entitlement answer below is; a retry cannot
+ * succeed. Any other non-200 is an outage, whatever its body.
+ */
+function opsStatusError(status: number): AcrRuntimeError | null {
+    if (status === 200) return null;
+    if (status === 401 || status === 403) {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.notEntitled,
+            "Agent Context Runtime is not available for this organization.",
+            { retryable: false, status: 403 },
+        );
+    }
+    return opsUnavailable();
+}
+
+/** The Ops read options: the status is judged first, and a body that is not JSON is an outage. */
+const OPS_ANSWER = { classifyStatus: opsStatusError, unreadableBody: opsUnavailable } as const;
+
 async function requireAcrEntitlement(input: {
     readonly accessToken: string;
     readonly orgId: string;
     readonly signal: AbortSignal;
 }): Promise<void> {
     const entitlement = await fetchBoundedJson({
+        ...OPS_ANSWER,
         headers: opsHeaders(input.accessToken),
         method: "GET",
         signal: input.signal,
         timeoutMs: 5_000,
         url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
     });
-    if (entitlement.status !== 200) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.unavailable,
-            "Agent Context Runtime is temporarily unavailable.",
-            { retryable: true },
-        );
-    }
     const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
     if (
         !parsedEntitlement.success ||
@@ -256,6 +281,7 @@ async function readRepositoryScopes(
     input: ResolveOpsAuthorizationInput,
 ): Promise<OpsAuthorization> {
     const scopes = await fetchBoundedJson({
+        ...OPS_ANSWER,
         body: JSON.stringify({
             query: ACR_REPOSITORY_SCOPES_QUERY,
             variables: { orgId: input.orgId },
@@ -266,13 +292,6 @@ async function readRepositoryScopes(
         timeoutMs: 5_000,
         url: backendUrl("/graphql"),
     });
-    if (scopes.status !== 200) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.unavailable,
-            "Agent Context Runtime is temporarily unavailable.",
-            { retryable: true },
-        );
-    }
     const parsedScopes = scopesSchema.safeParse(scopes.value);
     if (!parsedScopes.success) {
         throw new AcrRuntimeError(
@@ -281,12 +300,19 @@ async function readRepositoryScopes(
             { retryable: true },
         );
     }
-    const repositoryScopes = canonicalRepositoryScopes(
+    const candidates = canonicalRepositoryScopes(
         parsedScopes.data.data.catalog.values.map((value) => value.value),
     );
+    const { repositoryScopes, visibleRepositories } = acrScopesFromGrantsEnabled()
+        ? await resolveRepositoryScopes({
+              accessToken: input.accessToken,
+              candidates,
+              orgId: input.orgId,
+          })
+        : { repositoryScopes: candidates, visibleRepositories: candidates };
     if (
         input.selectedRepository !== undefined &&
-        !repositoryScopes.includes(input.selectedRepository)
+        !visibleRepositories.includes(input.selectedRepository)
     ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.repositoryNotAvailable,
@@ -294,5 +320,5 @@ async function readRepositoryScopes(
             { status: 404 },
         );
     }
-    return { orgId: input.orgId, repositoryScopes, subject: input.subject };
+    return { orgId: input.orgId, repositoryScopes, subject: input.subject, visibleRepositories };
 }

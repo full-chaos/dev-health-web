@@ -31,8 +31,10 @@ export async function applyBackendValidationMemo(token: JWT, now: number): Promi
     const memoKey = await validationMemoKey(accessToken);
     const memoized = validationMemo.get(memoKey);
 
+    // A hit carries the memo's own check time: the next backend check is due 60 s after the last
+    // real one, so a forced sign-out ends this session within VALIDATION_INTERVAL_MS.
     if (memoized?.kind === "valid" && memoized.validUntil > now) {
-        applyValidationOutcome(token, { kind: "valid", checkedAt: now });
+        applyValidationOutcome(token, { kind: "valid", checkedAt: memoized.checkedAt });
         return;
     }
 

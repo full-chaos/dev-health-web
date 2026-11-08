@@ -48,6 +48,15 @@ credential is single use, so the rotated one is always stored, also when the key
 terminal (fail closed); the body `expires_in` never sets a lifetime on refresh. A missing issuer never ends a session at refresh: it
 is transient.
 
+**Forced sign-out bound** (`applyBackendValidationMemo` in `src/lib/authValidationMemo.ts`): the jwt callback
+asks the backend `POST /api/v1/auth/validate` when 60 s (`VALIDATION_INTERVAL_MS`) or more have passed since the
+token's last backend check. A refused answer (200 `valid: false`, 401, 403) ends the session. A forced sign-out
+(the user deactivated, its token version moved, the session revoked) thus ends every web session of the user on its
+first request 60 s or more after the backend refuses it. The per-process memo shares one answer between
+parallel callbacks of the same access token; a memo hit keeps the memo's check time, so a hit never moves the next
+check past that bound. Transient answers keep the session and retry after backoff. The drill
+`scripts/drills/session-forced-signout/drill.sh` measures the bound and the recovery after an auth-service restart.
+
 **Service session token** (`session_access_token`, aud `auth-service`; PR C1): the
 login and refresh answers carry a second token for the auth-service routes that refuse the access
 token's audience. `readAnswerTokens` (`src/lib/authServiceWire.ts`) reads it against the access token
@@ -442,7 +451,7 @@ sequenceDiagram
 
 ### SSO (SAML / OIDC)
 
-Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`, and it works only with `AUTH_ACCESS_TOKEN_CLASS=eddsa`. The backend aggregates `oidc` and `saml` must be on too.
+Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`. The backend aggregates `oidc` and `saml` must be on too.
 
 There is no provider lookup for a signed-out visitor. An administrator shares the provider id, and the user opens a deep link or pastes the id into the "Continue with single sign-on" form on `/auth/signin` (shown only while the switch is on):
 
@@ -743,12 +752,12 @@ Support for "Login as User" functionality:
 
 Auth-related environment variables (see `.env.example` for full list):
 
-| Variable           | Required      | Description                                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_SECRET`      | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                                                                                                                                           |
-| `AUTH_URL`         | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`.                                                                                                                   |
-| `BACKEND_URL`      | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                                                                                                                                   |
-| `AUTH_SSO_ENABLED` | No            | `true` or `1` turns on enterprise SSO sign-in (OIDC, SAML) through auth-service. Unset = off: no SSO call is made and the `sso` provider refuses every ticket. SSO requires `AUTH_ACCESS_TOKEN_CLASS=eddsa`: with any other value (unset, `hs256_compat`, unknown) every SSO completion is refused before any auth-service call and logs one error line (branch `sso_token_class_refused`). |
+| Variable           | Required      | Description                                                                                                                                                                                                                                                               |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`      | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                         |
+| `AUTH_URL`         | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`. |
+| `BACKEND_URL`      | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                 |
+| `AUTH_SSO_ENABLED` | No            | `true` or `1` turns on enterprise SSO sign-in (OIDC, SAML) through auth-service. Unset = off: no SSO call is made and the `sso` provider refuses every ticket.                                                                                                            |
 
 ### Troubleshooting: "request origin validation" error
 

@@ -9,6 +9,10 @@ type BoundedJsonRequest = {
     readonly signal?: AbortSignal;
     readonly timeoutMs: number;
     readonly url: URL;
+    /** Judges the status before the body is read: an error returned here is thrown as it is. */
+    readonly classifyStatus?: (status: number) => AcrRuntimeError | null;
+    /** The error for a body that is not JSON; `malformed_response` when absent. */
+    readonly unreadableBody?: (cause?: unknown) => AcrRuntimeError;
 };
 
 export type JsonHttpResponse = {
@@ -25,11 +29,11 @@ export function retryAfterSeconds(response: Response): number | undefined {
     return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
-async function readBoundedText(
+async function readBoundedBytes(
     stream: ReadableStream<Uint8Array> | null,
     maximumBytes: number,
-): Promise<string> {
-    if (stream === null) return "";
+): Promise<Uint8Array> {
+    if (stream === null) return new Uint8Array(0);
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let received = 0;
@@ -39,7 +43,8 @@ async function readBoundedText(
             if (next.done) break;
             received += next.value.byteLength;
             if (received > maximumBytes) {
-                await reader.cancel();
+                // Not awaited: a cancel can wait on a body the peer never ends.
+                void reader.cancel().catch(() => undefined);
                 throw new AcrRuntimeError(
                     acrRuntimeErrorCodes.responseTooLarge,
                     "Agent Context Runtime returned an oversized response.",
@@ -57,7 +62,20 @@ async function readBoundedText(
         body.set(chunk, offset);
         offset += chunk.byteLength;
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(body);
+    return body;
+}
+
+/** A body that is not UTF-8 is a `malformed_response`, as a body that is not JSON is. */
+function decodeUtf8(body: Uint8Array): string {
+    try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(body);
+    } catch (error) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.malformedResponse,
+            "Agent Context Runtime returned an invalid response.",
+            { cause: error },
+        );
+    }
 }
 
 function parseJson(body: string): unknown {
@@ -77,6 +95,11 @@ function responseSize(response: Response): number | undefined {
     if (value === null) return undefined;
     const parsed = Number(value);
     return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+/** Not awaited: a cancel can wait on a body the peer never ends. */
+function releaseBody(response: Response): void {
+    void response.body?.cancel().catch(() => undefined);
 }
 
 export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonHttpResponse> {
@@ -106,8 +129,14 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
             { cause: error, retryable: true },
         );
     }
+    const statusError = input.classifyStatus?.(response.status) ?? null;
+    if (statusError !== null) {
+        releaseBody(response);
+        throw statusError;
+    }
     const contentLength = responseSize(response);
     if (contentLength !== undefined && contentLength > 1_048_576) {
+        releaseBody(response);
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.responseTooLarge,
             "Agent Context Runtime returned an oversized response.",
@@ -115,21 +144,28 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
     }
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.malformedResponse,
-            "Agent Context Runtime returned an invalid response.",
+        releaseBody(response);
+        throw (
+            input.unreadableBody?.() ??
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            )
         );
     }
-    return {
-        status: response.status,
-        retryAfterSeconds: retryAfterSeconds(response),
-        value: parseJson(await readBoundedText(response.body, 1_048_576)),
-    };
+    const body = await readBoundedBytes(response.body, 1_048_576);
+    let value: unknown;
+    try {
+        value = parseJson(decodeUtf8(body));
+    } catch (error) {
+        throw input.unreadableBody?.(error) ?? error;
+    }
+    return { status: response.status, retryAfterSeconds: retryAfterSeconds(response), value };
 }
 
 export async function readRequestJson(request: Request, maximumBytes: number): Promise<unknown> {
     try {
-        return parseJson(await readBoundedText(request.body, maximumBytes));
+        return parseJson(decodeUtf8(await readBoundedBytes(request.body, maximumBytes)));
     } catch (error) {
         if (
             error instanceof AcrRuntimeError &&
