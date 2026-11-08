@@ -515,11 +515,13 @@ case "${tier}" in
     ;;
   live-e2e-web-decisions-classes)
     # CHAOS-13277: each caller class sends the same request on the same stack with legacy deciding (classes-legacy, the
-    # yardstick) and then with the PDP deciding (classes-enforce); the second pass asserts the answers are equal.
+    # yardstick) and then with the PDP deciding (classes-enforce); the second pass asserts the answers are equal. The third pass
+    # (classes-rollback) is the step 4 rollback on the same stack: enforce switched off again, every answer equals legacy and the
+    # decision client is not called for the enforced actions.
     status=0
     mkdir -p web-decisions-logs
     rm -f web-decisions-logs/classes-answers.json
-    for mode in classes-legacy classes-enforce; do
+    for mode in classes-legacy classes-enforce classes-rollback; do
       LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
         LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
         run_live_e2e || status=$?

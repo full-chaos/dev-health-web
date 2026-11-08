@@ -69,6 +69,22 @@ export function pdpDecideLines(path: string): number {
     return named(path, "authz_decide").filter((l) => l.source === "pdp").length;
 }
 
+/**
+ * authz_decide lines from the decision client (source pdp or client) after the mark, for the given guards or actions (all when
+ * none are given): an enforce-off pass must log none.
+ */
+export function decisionClientLines(path: string, since = 0, names?: readonly string[]): number {
+    return named(path, "authz_decide")
+        .slice(since)
+        .filter(
+            (l) =>
+                (l.source === "pdp" || l.source === "client") &&
+                (names === undefined ||
+                    names.includes(String(l.guard ?? "")) ||
+                    names.includes(String(l.action ?? ""))),
+        ).length;
+}
+
 /** authz_shadow_decide runs that asked at least one of the given surface ids (the platform shadow of AUTHZ_PLATFORM_UI). */
 export function shadowRunsOf(path: string, surfaces: readonly string[]): number {
     return named(path, "authz_shadow_decide").filter((l) =>

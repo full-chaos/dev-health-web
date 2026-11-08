@@ -701,6 +701,7 @@ jobs:
                       web-decisions-logs/classes-answers.json
                       web-decisions-logs/live-results-web-decisions-classes-legacy.json
                       web-decisions-logs/live-results-web-decisions-classes-enforce.json
+                      web-decisions-logs/live-results-web-decisions-classes-rollback.json
 
             - name: Run live backend e2e tier
               if: matrix.tier == 'live' || matrix.tier == 'guided'
