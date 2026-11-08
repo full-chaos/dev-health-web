@@ -97,6 +97,11 @@ function responseSize(response: Response): number | undefined {
     return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+/** Not awaited: a cancel can wait on a body the peer never ends. */
+function releaseBody(response: Response): void {
+    void response.body?.cancel().catch(() => undefined);
+}
+
 export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonHttpResponse> {
     const timeoutSignal = AbortSignal.timeout(input.timeoutMs);
     const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
@@ -126,12 +131,12 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
     }
     const statusError = input.classifyStatus?.(response.status) ?? null;
     if (statusError !== null) {
-        // Not awaited: a cancel can wait on a body the peer never ends.
-        void response.body?.cancel().catch(() => undefined);
+        releaseBody(response);
         throw statusError;
     }
     const contentLength = responseSize(response);
     if (contentLength !== undefined && contentLength > 1_048_576) {
+        releaseBody(response);
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.responseTooLarge,
             "Agent Context Runtime returned an oversized response.",
@@ -139,6 +144,7 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
     }
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
+        releaseBody(response);
         throw (
             input.unreadableBody?.() ??
             new AcrRuntimeError(
