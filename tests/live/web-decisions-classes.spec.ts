@@ -625,7 +625,7 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
 });
 
 test.describe("integrations.write per caller class, enforce switched off again (rollback) @classes-rollback", () => {
-    test.describe.configure({ mode: "serial" });
+    // Not serial: each cell reads its own kept session, so one failing cell does not hide the others.
     let legacy: Answers;
     test.beforeAll(() => {
         legacy = readLegacyAnswers();
