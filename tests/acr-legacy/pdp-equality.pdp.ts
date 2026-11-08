@@ -440,13 +440,13 @@ describe(`ACR real-PDP equality on dev-health-ops ${fixture.opsSha} catalog ${fi
     });
 
     // Product rule 1 + acp rule 5. The caller: a member login, then the membership row is deleted (stale session =
-    // session org X, no row). Reads: both paths refuse 503 unavailable before any decision (the catalog read is
+    // session org X, no row). Reads: both paths refuse 403 not_entitled before any decision (the catalog read is
     // refused by query-api's edge). Device and consent: both 200 ["*"]; on the grants path the acr.credential.issue
     // platform-admin allow carries repository_scope organization ONLY from s2b delta B on: RED on an s2-only build.
     describe("platform_admin_no_row: switch on equals legacy", () => {
-        it.each(READS)("%s: both refuse 503 unavailable with no decision", async (cell) => {
+        it.each(READS)("%s: both refuse 403 not_entitled with no decision", async (cell) => {
             const { grants } = await expectEqual("platform_admin_no_row", cell);
-            expect(grants.status).toBe(503);
+            expect(grants.status).toBe(403);
             expect(grants.decisions).toBe(0);
         });
         it.each(["credential:issue device", "credential:issue consent"] as const)(

@@ -141,7 +141,7 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
     );
 
     // Legacy refuses a platform admin with no membership row in its token's organization: the catalog read
-    // answers 401 (query-api edge auth) and web answers 503 unavailable, retryable (ops.ts readRepositoryScopes).
+    // answers 401 (query-api edge auth) and web answers 403 not_entitled, not retryable (ops.ts readRepositoryScopes).
     // With the switch on the same catalog read runs first, so the refusal is the same, byte for byte, and no
     // decision is asked.
     it("Given the catalog read is refused, then both paths refuse with the same error and no decision is asked", async () => {
@@ -182,13 +182,12 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
         };
         const fromGrants = await refusal();
         expect(fromGrants).toBe(legacy);
-        // Today's bytes, pinned as they are (the label is a known defect, fixed separately).
         expect(legacy).toBe(
             JSON.stringify({
-                code: acrRuntimeErrorCodes.unavailable,
-                message: "Agent Context Runtime is temporarily unavailable.",
-                retryable: true,
-                status: 503,
+                code: acrRuntimeErrorCodes.notEntitled,
+                message: "Agent Context Runtime is not available for this organization.",
+                retryable: false,
+                status: 403,
             }),
         );
         expect(decisions).toBe(0);
