@@ -153,7 +153,24 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
             )
         );
     }
-    const body = await readBoundedBytes(response.body, 1_048_576);
+    let body: Uint8Array;
+    try {
+        body = await readBoundedBytes(response.body, 1_048_576);
+    } catch (error) {
+        if (error instanceof AcrRuntimeError) throw error;
+        if (timeoutSignal.aborted) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.timeout,
+                "Agent Context Runtime did not respond in time.",
+                { cause: error, retryable: true, status: 504 },
+            );
+        }
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.unavailable,
+            "Agent Context Runtime is temporarily unavailable.",
+            { cause: error, retryable: true },
+        );
+    }
     let value: unknown;
     try {
         value = parseJson(decodeUtf8(body));
