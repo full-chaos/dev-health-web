@@ -25,7 +25,7 @@ export const GUARDS: Readonly<Record<GuardId, GuardRow>> = {
         legacyDenyMessage: "Superuser access required",
     },
     "platform.users": {
-        action: "admin.users",
+        action: "admin.users.unknown",
         resource: "platform",
         legacy: superuser,
         legacyDenyMessage: "Superuser access required",
