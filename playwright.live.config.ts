@@ -16,22 +16,30 @@ const askDevWeb = process.env.ASK_DEV_LIVE_WEB ?? "http://localhost:3000";
 // "enforce" and "classes-enforce" = AUTHZ_PLATFORM_UI=shadow + AUTHZ_DECISIONS_ENFORCE=on (prod after F11 step 4: the PDP decides);
 // "shadow", "classes-legacy" and "classes-rollback" = AUTHZ_PLATFORM_UI=shadow alone (prod after step 3, and after a step 4
 // rollback: legacy rules decide, the PDP verdict is only logged). tests/live/web-decisions.spec.ts runs in "enforce" and "shadow";
-// tests/live/web-decisions-classes.spec.ts in the three classes passes. The web log (JSON lines) is read by the specs.
+// tests/live/web-decisions-classes.spec.ts in the three classes passes; tests/live/web-decisions-admin-users.spec.ts in
+// "admin-users-legacy" (shadow alone) and "admin-users-enforce" (shadow + enforce). The web log (JSON lines) is read by the specs.
 const DECISION_MODES = [
     "enforce",
     "shadow",
     "classes-legacy",
     "classes-enforce",
     "classes-rollback",
+    "admin-users-legacy",
+    "admin-users-enforce",
 ] as const;
 const webDecisions = process.env.LIVE_WEB_DECISIONS;
 if (webDecisions !== undefined && !(DECISION_MODES as readonly string[]).includes(webDecisions)) {
     throw new Error(`LIVE_WEB_DECISIONS must be one of ${DECISION_MODES.join(", ")}`);
 }
-const decisionsEnforced = webDecisions === "enforce" || webDecisions === "classes-enforce";
+const decisionsEnforced =
+    webDecisions === "enforce" ||
+    webDecisions === "classes-enforce" ||
+    webDecisions === "admin-users-enforce";
 const decisionsSpec = webDecisions?.startsWith("classes-")
     ? /web-decisions-classes\.spec\.ts/
-    : /web-decisions\.spec\.ts/;
+    : webDecisions?.startsWith("admin-users-")
+      ? /web-decisions-admin-users\.spec\.ts/
+      : /web-decisions\.spec\.ts/;
 // The web server log: always for the decisions pass (the spec reads it), and for any other pass that names LIVE_WEB_LOG
 // (kept as a CI artifact, so a failed sign-in shows its auth-session branch line).
 const webServerLog =
@@ -65,7 +73,11 @@ export default defineConfig({
               {
                   name: `web-decisions-${webDecisions}`,
                   testMatch: decisionsSpec,
-                  timeout: webDecisions?.startsWith("classes-") ? 300_000 : 120_000,
+                  timeout:
+                      webDecisions?.startsWith("classes-") ||
+                      webDecisions?.startsWith("admin-users-")
+                          ? 300_000
+                          : 120_000,
                   use: { baseURL: "http://127.0.0.1:3002", headless: true },
               },
           ]
@@ -97,7 +109,7 @@ export default defineConfig({
                     testIgnore: [
                         /onboarding-ui\.spec\.ts/,
                         /ask-dev\/.*\.spec\.ts/,
-                        /web-decisions(-classes)?\.spec\.ts/,
+                        /web-decisions(-classes|-admin-users)?\.spec\.ts/,
                     ],
                     dependencies: ["onboarding-ui"],
                     use: { baseURL: "http://127.0.0.1:3002", headless: true },
