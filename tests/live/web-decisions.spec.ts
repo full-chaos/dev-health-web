@@ -22,8 +22,10 @@ import {
     foreignSubjectJws,
     mark,
     nextDecision,
+    pdpDecideLines,
     sha256Hex,
     shadowRuns,
+    shadowRunsOf,
     signInUser,
     stack,
     webLogPath,
@@ -82,14 +84,24 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test.describe.configure({ mode: "serial" });
 
     // One superuser sign-in for the pass: the cells below share it, so the pass spends one login on that account.
+    // AUTHZ_PLATFORM_UI=shadow runs advisory platform shadows after a response, and a shadow may exchange a workload token. The
+    // wrong-subject cell needs the server to hold no token, so the foreign subject goes in BEFORE the sign-in: an early
+    // exchange then fails and caches nothing. The cell restores the subject file; afterAll restores it too if a cell failed first.
     let superContext: BrowserContext;
     let superPage: Page;
+    let goodSubject: Buffer;
     test.beforeAll(async ({ browser }, testInfo) => {
+        const file = workloadSubjectFile();
+        goodSubject = readFileSync(file);
+        writeFileSync(file, foreignSubjectJws(3600));
         superContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
         superPage = await superContext.newPage();
         await signInCanonicalUser(superPage);
     });
     test.afterAll(async () => {
+        const file = workloadSubjectFile();
+        if (goodSubject && sha256Hex(readFileSync(file)) !== sha256Hex(goodSubject))
+            writeFileSync(file, goodSubject);
         await superContext?.close();
     });
 
@@ -99,7 +111,7 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         const page = superPage;
         const log = webLogPath();
         const file = workloadSubjectFile();
-        const good = readFileSync(file);
+        const good = goodSubject;
         try {
             for (const [label, subject] of [
                 ["a subject the TokenReview does not know", foreignSubjectJws(3600)],
@@ -135,6 +147,18 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test("superuser: admin.users and admin.orgs are allowed by the PDP", async () => {
         const page = superPage;
         const log = webLogPath();
+        // The pass runs AUTHZ_PLATFORM_UI=shadow as prod does after F11 step 4: a platform page load writes a platform shadow run
+        // (observed, not read from config). The new-org page is a surface this session has not loaded yet (the shadow samples one
+        // run per session and surface set per window, and the wrong-subject cell already loaded the org list).
+        const shadowBefore = shadowRunsOf(log, ["page:/superadmin/orgs/new"]);
+        expect((await page.goto("/superadmin/orgs/new"))?.status()).toBe(200);
+        await expect
+            .poll(() => shadowRunsOf(log, ["page:/superadmin/orgs/new"]), {
+                message:
+                    "no platform shadow run: AUTHZ_PLATFORM_UI=shadow is not live in this pass",
+                timeout: 30_000,
+            })
+            .toBeGreaterThan(shadowBefore);
         // The org list page decides admin.orgs (listOrganizations).
         let since = mark(log);
         const response = await page.goto("/superadmin/orgs");
@@ -243,8 +267,13 @@ test.describe("web decisions: shadow mode @shadow", () => {
         expect(response?.status()).toBe(200);
         await expect(page.getByText("Error loading users", { exact: false })).toHaveCount(0);
         await expect.poll(() => shadowRuns(log), { timeout: 30_000 }).toBeGreaterThan(before);
+        expect(
+            shadowRunsOf(log, ["page:/superadmin/users"]),
+            "no platform shadow run for the user list: AUTHZ_PLATFORM_UI=shadow is not live in this pass",
+        ).toBeGreaterThan(0);
         expect(decideLines(log), "enforcement is off: decideGuard must not call the PDP").toBe(
             decided,
         );
+        expect(pdpDecideLines(log), "a legacy pass logged a PDP verdict").toBe(0);
     });
 });

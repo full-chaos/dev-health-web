@@ -64,6 +64,20 @@ export function decideLines(path: string): number {
     return named(path, "authz_decide").length;
 }
 
+/** authz_decide lines whose verdict came from the PDP: a legacy pass must log none. */
+export function pdpDecideLines(path: string): number {
+    return named(path, "authz_decide").filter((l) => l.source === "pdp").length;
+}
+
+/** authz_shadow_decide runs that asked at least one of the given surface ids (the platform shadow of AUTHZ_PLATFORM_UI). */
+export function shadowRunsOf(path: string, surfaces: readonly string[]): number {
+    return named(path, "authz_shadow_decide").filter((l) =>
+        String(l.surfaces ?? "")
+            .split(",")
+            .some((s) => surfaces.includes(s)),
+    ).length;
+}
+
 /** The next decision of guard after the mark, polled: the server writes the line while it answers. */
 export async function nextDecision(
     path: string,
