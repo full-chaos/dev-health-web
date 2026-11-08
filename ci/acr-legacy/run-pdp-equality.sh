@@ -130,7 +130,8 @@ printf 'web workload principal (authorize caller): %s\n' "${WEB_PRN}"
 for name in web api; do
   (
     umask 077
-    compose run --rm --no-deps -T auth-workload-volume "cat /run/workload/${name}.bootstrap" >|"${WORK}/${name}.bootstrap"
+    # The volume's files are 65532-owned 0600 and this service drops every capability but CHOWN, so root cannot read them.
+    compose run --rm --no-deps -T --user 65532:65532 auth-workload-volume "cat /run/workload/${name}.bootstrap" >|"${WORK}/${name}.bootstrap"
   )
   [ -s "${WORK}/${name}.bootstrap" ] || die "could not read the ${name} bootstrap credential"
 done
