@@ -76,6 +76,8 @@ type Fixture = {
     readonly opsSha: string;
     readonly catalogVersion: number;
     readonly orgId: string;
+    /** Org S: the session org of platform_admin_no_row_suspended, suspended after the logins. */
+    readonly suspendedOrgId: string;
     readonly inventory: readonly string[];
     readonly webBootstrapFile: string;
     readonly callers: readonly Caller[];
@@ -454,6 +456,26 @@ describe(`ACR real-PDP equality on dev-health-ops ${fixture.opsSha} catalog ${fi
                 expect(grants.status).toBe(200);
             },
         );
+    });
+
+    // acp pre-roll item (ops evaluate.go: a platform admin is also admitted for a SUSPENDED or UNKNOWN org). The caller:
+    // a member login in org S, the membership row deleted, then S suspended (public.organizations.is_active = false, as
+    // go-api's admin PATCH writes it). No status is pinned: legacy and grants are compared, and a difference FAILS with
+    // both byte sets printed (acp decides). The record carries both answers either way.
+    describe("platform_admin_no_row_suspended: switch on equals legacy (a difference fails, both printed)", () => {
+        it.each(Object.keys(CELLS) as Cell[])("%s", async (cell) => {
+            const { legacy, grants } = await both("platform_admin_no_row_suspended", cell);
+            const legacyBytes = JSON.stringify(compared(cell, legacy));
+            const grantsBytes = JSON.stringify(compared(cell, grants));
+            expect(
+                legacy.decisions,
+                `legacy asked a decision; legacy=${legacyBytes} grants=${grantsBytes}`,
+            ).toBe(0);
+            expect(
+                grantsBytes,
+                `LEGACY AND GRANTS DIFFER for ${cell} (suspended org ${fixture.suspendedOrgId}): legacy=${legacyBytes} grants=${grantsBytes}`,
+            ).toBe(legacyBytes);
+        });
     });
 
     describe("platform_admin_no_org: both refuse 401 with no decision", () => {

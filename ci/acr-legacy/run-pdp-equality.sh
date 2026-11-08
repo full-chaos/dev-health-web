@@ -16,7 +16,9 @@
 # Seed (org X, 3 repositories, the ACR feature on): viewer, member, admin, owner on the membership default (no grant
 # row); wildcard_grant (member, one live "*" repository grant); exact_grant (member, one live grant on acme/alpha);
 # platform_admin_no_row (users.is_superuser: a member login, then the membership row is deleted, so the session org is
-# X with no row); platform_admin_no_org (users.is_superuser, no membership row ever); impersonating (member; the web
+# X with no row); platform_admin_no_row_suspended (the same, in a second org S: member login in S, the row deleted,
+# then S is suspended as go-api's admin PATCH is_active=false writes it: public.organizations.is_active = false);
+# platform_admin_no_org (users.is_superuser, no membership row ever); impersonating (member; the web
 # session says it impersonates). The grants are created through auth-service's own route (POST
 # /internal/v1/grants/create, actor = the owner, caller = the api workload). The web workload's /v1/authorize token is
 # exchanged from a compose bootstrap credential for the `web` workload (prod exchanges its ServiceAccount token).
@@ -139,9 +141,10 @@ done
 printf '\n--- step 3: seed (owner login) ---\n'
 uuid() { python3 -I -c 'import uuid; print(uuid.uuid4())'; }
 ORG_X="$(uuid)"
+ORG_S="$(uuid)"
 PASSWORD="Pw-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')-Aa1!"
 HASH="$(PW="${PASSWORD}" python3 -I -c 'import bcrypt, os; print(bcrypt.hashpw(os.environ["PW"].encode(), bcrypt.gensalt(12)).decode())')"
-CALLERS=(viewer member admin owner wildcard_grant exact_grant platform_admin_no_row platform_admin_no_org impersonating)
+CALLERS=(viewer member admin owner wildcard_grant exact_grant platform_admin_no_row platform_admin_no_row_suspended platform_admin_no_org impersonating)
 declare -A USER_ID EMAIL
 for who in "${CALLERS[@]}"; do
   USER_ID[${who}]="$(uuid)"
@@ -150,31 +153,36 @@ done
 superuser() { case "$1" in platform_admin_*) echo true ;; *) echo false ;; esac; }
 role_at_login() {
   case "$1" in
-    platform_admin_no_row | wildcard_grant | exact_grant | impersonating) echo member ;;
+    platform_admin_no_row | platform_admin_no_row_suspended | wildcard_grant | exact_grant | impersonating) echo member ;;
     platform_admin_no_org) echo "" ;;
     *) echo "$1" ;;
   esac
 }
 {
   printf "INSERT INTO public.organizations (id, slug, name) VALUES ('%s','acr-legacy-x','ACR Legacy X');\n" "${ORG_X}"
+  printf "INSERT INTO public.organizations (id, slug, name) VALUES ('%s','acr-legacy-s','ACR Legacy S');\n" "${ORG_S}"
   for who in "${CALLERS[@]}"; do
     printf "INSERT INTO public.users (id, email, password_hash, full_name, auth_provider, is_active, is_verified, is_superuser) VALUES ('%s','%s','%s','%s','local',true,true,%s);\n" \
       "${USER_ID[${who}]}" "${EMAIL[${who}]}" "${HASH}" "${who}" "$(superuser "${who}")"
     role="$(role_at_login "${who}")"
+    login_org="${ORG_X}"
+    [ "${who}" != platform_admin_no_row_suspended ] || login_org="${ORG_S}"
     [ -z "${role}" ] || printf "INSERT INTO public.memberships (id, user_id, org_id, role, joined_at) VALUES ('%s','%s','%s','%s',now());\n" \
-      "$(uuid)" "${USER_ID[${who}]}" "${ORG_X}" "${role}"
+      "$(uuid)" "${USER_ID[${who}]}" "${login_org}" "${role}"
   done
-  printf "INSERT INTO public.org_feature_overrides (id, org_id, feature_id, is_enabled, reason, created_at, updated_at) SELECT gen_random_uuid(), '%s', id, true, 'acr legacy cells', now(), now() FROM public.feature_flags WHERE key = 'agent_context_runtime';\n" "${ORG_X}"
+  for org in "${ORG_X}" "${ORG_S}"; do
+    printf "INSERT INTO public.org_feature_overrides (id, org_id, feature_id, is_enabled, reason, created_at, updated_at) SELECT gen_random_uuid(), '%s', id, true, 'acr legacy cells', now(), now() FROM public.feature_flags WHERE key = 'agent_context_runtime';\n" "${org}"
+  done
 } >|"${WORK}/seed.sql"
 compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres -q <"${WORK}/seed.sql"
-[ "$(psql_one "SELECT count(*) FROM public.org_feature_overrides WHERE org_id = '${ORG_X}'")" = 1 ] \
+[ "$(psql_one "SELECT count(*) FROM public.org_feature_overrides WHERE org_id IN ('${ORG_X}','${ORG_S}')")" = 2 ] \
   || die "no agent_context_runtime override row (feature_flags has no agent_context_runtime key?)"
 for who in "${CALLERS[@]}"; do
   printf 'user %-22s id=%s superuser=%s membership at login=%s\n' "${who}" "${USER_ID[${who}]}" "$(superuser "${who}")" "$(role_at_login "${who}")"
 done
-printf 'org X=%s\n' "${ORG_X}"
+printf 'org X=%s\norg S (suspended after the logins)=%s\n' "${ORG_X}" "${ORG_S}"
 INVENTORY='["acme/alpha","acme/beta","acme/gamma"]'
-ch "INSERT INTO repos (id, repo, created_at, last_synced, org_id, provider) VALUES (generateUUIDv4(),'acme/alpha',now64(3),now64(3),'${ORG_X}','github'), (generateUUIDv4(),'acme/beta',now64(3),now64(3),'${ORG_X}','github'), (generateUUIDv4(),'acme/gamma',now64(3),now64(3),'${ORG_X}','github')"
+ch "INSERT INTO repos (id, repo, created_at, last_synced, org_id, provider) VALUES (generateUUIDv4(),'acme/alpha',now64(3),now64(3),'${ORG_X}','github'), (generateUUIDv4(),'acme/beta',now64(3),now64(3),'${ORG_X}','github'), (generateUUIDv4(),'acme/gamma',now64(3),now64(3),'${ORG_X}','github'), (generateUUIDv4(),'acme/alpha',now64(3),now64(3),'${ORG_S}','github'), (generateUUIDv4(),'acme/beta',now64(3),now64(3),'${ORG_S}','github'), (generateUUIDv4(),'acme/gamma',now64(3),now64(3),'${ORG_S}','github')"
 printf 'clickhouse repos rows (org X): %s\n' "$(ch "SELECT count() FROM repos FINAL WHERE org_id = '${ORG_X}'")"
 compose run --rm auth-users-backfill
 
@@ -246,16 +254,25 @@ PY
 done
 rm -f -- "${WORK}/login.json" "${WORK}/login.out"
 
-printf '\n--- step 6: delete the membership row of platform_admin_no_row (after its login) ---\n'
-printf 'deleted rows: %s\n' "$(psql_one "WITH d AS (DELETE FROM public.memberships WHERE user_id = '${USER_ID[platform_admin_no_row]}' RETURNING 1) SELECT count(*) FROM d")"
-for who in platform_admin_no_row platform_admin_no_org; do
+printf '\n--- step 6: delete the membership rows of platform_admin_no_row and platform_admin_no_row_suspended (after their logins) ---\n'
+for who in platform_admin_no_row platform_admin_no_row_suspended; do
+  printf 'deleted rows (%s): %s\n' "${who}" "$(psql_one "WITH d AS (DELETE FROM public.memberships WHERE user_id = '${USER_ID[${who}]}' RETURNING 1) SELECT count(*) FROM d")"
+done
+for who in platform_admin_no_row platform_admin_no_row_suspended platform_admin_no_org; do
   printf '%s membership rows now: %s\n' "${who}" "$(psql_one "SELECT count(*) FROM public.memberships WHERE user_id = '${USER_ID[${who}]}'")"
 done
 
+printf '\n--- step 6b: suspend org S as the product does (go-api PATCH is_active=false: orgstore.go UPDATE organizations SET ... is_active) ---\n'
+# The PDP reads public.organizations.is_active (decisionstate.go organization(): false = suspended), as do go-api's membership reads
+# (policy/store.go membershipSQL). With AUTH_PROXY_ORG_PROVISIONING on the PATCH also calls auth-service's suspend first; that
+# route is not called here (no guarded auth.* write by SQL), and no read of this stack's decisions consults it.
+printf 'suspended rows: %s\n' "$(psql_one "WITH u AS (UPDATE public.organizations SET is_active = false, updated_at = now() WHERE id = '${ORG_S}' RETURNING 1) SELECT count(*) FROM u")"
+printf 'org S is_active now: %s\n' "$(psql_one "SELECT is_active FROM public.organizations WHERE id = '${ORG_S}'")"
+
 FIXTURE="${WORK}/fixture.json"
-python3 -I - "${CALLER_ROWS}" "${FIXTURE}" "${OPS_SHA}" "${CATALOG}" "${ORG_X}" "${INVENTORY}" "${WORK}/web.bootstrap" <<'PY'
+python3 -I - "${CALLER_ROWS}" "${FIXTURE}" "${OPS_SHA}" "${CATALOG}" "${ORG_X}" "${INVENTORY}" "${WORK}/web.bootstrap" "${ORG_S}" <<'PY'
 import json, os, sys
-rows_path, out, ops_sha, catalog, org, inventory, web_bootstrap = sys.argv[1:8]
+rows_path, out, ops_sha, catalog, org, inventory, web_bootstrap, org_s = sys.argv[1:9]
 callers = [json.loads(line) for line in open(rows_path)]
 for c in callers:
     c["impersonating"] = c["name"] == "impersonating"
@@ -263,11 +280,13 @@ expect = {c["name"]: c for c in callers}
 for name in ("viewer", "member", "admin", "owner", "wildcard_grant", "exact_grant", "platform_admin_no_row", "impersonating"):
     if expect[name]["sessionOrgId"] != org or not expect[name]["accessToken"]:
         sys.exit("FAIL: %s has no session in org X (login org %r)" % (name, expect[name]["sessionOrgId"]))
+if expect["platform_admin_no_row_suspended"]["sessionOrgId"] != org_s or not expect["platform_admin_no_row_suspended"]["accessToken"]:
+    sys.exit("FAIL: platform_admin_no_row_suspended has no session in org S (login org %r)" % expect["platform_admin_no_row_suspended"]["sessionOrgId"])
 if expect["platform_admin_no_org"]["sessionOrgId"] is not None or not expect["platform_admin_no_org"]["accessToken"]:
     sys.exit("FAIL: platform_admin_no_org must have a session with no org")
 fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
 with os.fdopen(fd, "w") as f:
-    json.dump({"opsSha": ops_sha, "catalogVersion": int(catalog), "orgId": org,
+    json.dump({"opsSha": ops_sha, "catalogVersion": int(catalog), "orgId": org, "suspendedOrgId": org_s,
                "inventory": json.loads(inventory), "webBootstrapFile": web_bootstrap, "callers": callers}, f)
 print("fixture: %d callers; sessions: %s" % (len(callers), {c["name"]: c["sessionOrgId"] for c in callers}))
 PY
