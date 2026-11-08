@@ -116,6 +116,19 @@ function opsHeaders(accessToken: string): Readonly<Record<string, string>> {
     };
 }
 
+/**
+ * CHAOS-13332: a deliberate Ops refusal (401/403) is not an outage. It is reported as the
+ * non-retryable `not_entitled` 403, as the entitlement answer below is; a retry cannot succeed.
+ */
+function opsRefusal(status: number): AcrRuntimeError | null {
+    if (status !== 401 && status !== 403) return null;
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.notEntitled,
+        "Agent Context Runtime is not available for this organization.",
+        { retryable: false, status: 403 },
+    );
+}
+
 async function requireAcrEntitlement(input: {
     readonly accessToken: string;
     readonly orgId: string;
@@ -129,10 +142,13 @@ async function requireAcrEntitlement(input: {
         url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
     });
     if (entitlement.status !== 200) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.unavailable,
-            "Agent Context Runtime is temporarily unavailable.",
-            { retryable: true },
+        throw (
+            opsRefusal(entitlement.status) ??
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.unavailable,
+                "Agent Context Runtime is temporarily unavailable.",
+                { retryable: true },
+            )
         );
     }
     const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
@@ -267,10 +283,13 @@ async function readRepositoryScopes(
         url: backendUrl("/graphql"),
     });
     if (scopes.status !== 200) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.unavailable,
-            "Agent Context Runtime is temporarily unavailable.",
-            { retryable: true },
+        throw (
+            opsRefusal(scopes.status) ??
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.unavailable,
+                "Agent Context Runtime is temporarily unavailable.",
+                { retryable: true },
+            )
         );
     }
     const parsedScopes = scopesSchema.safeParse(scopes.value);

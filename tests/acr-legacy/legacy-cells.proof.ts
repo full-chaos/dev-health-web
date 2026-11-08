@@ -76,28 +76,29 @@ const NO_ROW_PLATFORM_ADMIN = "platform_admin_no_row";
 const NO_ORG_PLATFORM_ADMIN = "platform_admin_no_org";
 
 /**
- * The legacy answer for the no-row platform admin, as recorded by executed run legacy-cells-2 (dev-health-ops
- * c60f0702, catalog 16; record sha256 f8aff1566d30...).
+ * The legacy answer for the no-row platform admin. Executed run legacy-cells-2 (dev-health-ops c60f0702, catalog 16;
+ * record sha256 f8aff1566d30...) recorded 503 unavailable, retryable; context and evidence are now 403 not_entitled.
  *
  * context:read and evidence:read are REFUSED before any ACR call. For a superuser web skips the entitlement read
  * (ops.ts resolveOpsAuthorization, platformValidation) and reads the catalog: POST /graphql to query-api. query-api's
  * edge refuses it 401 by design (dev-health-ops internal/queryapi/server/internal_auth.go roleInOrg: "The token's own
- * org always needs the membership, superuser or not"; logged reason=edge_not_a_member). Web maps every non-200 catalog
- * answer to 503 unavailable, retryable (ops.ts readRepositoryScopes, `scopes.status !== 200`), so no scope is signed.
+ * org always needs the membership, superuser or not"; logged reason=edge_not_a_member). Web maps a 401/403 catalog
+ * answer to 403 not_entitled, not retryable (ops.ts opsRefusal); other non-200 answers stay 503 unavailable, retryable.
+ * No scope is signed.
  *
  * Device approval and consent pass web: the go-api impersonation status and licensing reads answer 200 for this
  * caller, so the org-wide ["*"] is sent, as for every org role.
  */
-const UNAVAILABLE = {
+const NOT_ENTITLED = {
     error: {
-        code: "unavailable",
-        message: "Agent Context Runtime is temporarily unavailable.",
-        retryable: true,
+        code: "not_entitled",
+        message: "Agent Context Runtime is not available for this organization.",
+        retryable: false,
     },
 };
 const PLATFORM_ADMIN_NO_ROW = {
-    context: { status: 503, body: UNAVAILABLE, assertions: [] },
-    evidence: { status: 503, body: UNAVAILABLE, assertions: [] },
+    context: { status: 403, body: NOT_ENTITLED, assertions: [] },
+    evidence: { status: 403, body: NOT_ENTITLED, assertions: [] },
     device: { status: 200, body: { status: "approved" }, scopes: ["*"] },
     consent: {
         status: 200,
@@ -424,7 +425,7 @@ describe(`ACR legacy cells (switch off) on dev-health-ops ${fixture.opsSha} cata
     // stale session (acp D6857): a member login, then the membership row is deleted. Login never gives a session org
     // to a user with no membership row, so this is the one way a session carries org X with no row in X.
     describe("platform admin: member login, then the membership row is deleted (stale session = session org X, no row)", () => {
-        it("context:read is refused 503 unavailable with no ACR call (query-api edge: not a member of the token org)", async () => {
+        it("context:read is refused 403 not_entitled with no ACR call (query-api edge: not a member of the token org)", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
             const answer = await contextRead();
             record(NO_ROW_PLATFORM_ADMIN, "context:read", answer);
@@ -434,7 +435,7 @@ describe(`ACR legacy cells (switch off) on dev-health-ops ${fixture.opsSha} cata
                 assertions: answer.assertions,
             }).toEqual(PLATFORM_ADMIN_NO_ROW.context);
         });
-        it("evidence:read is refused 503 unavailable with no ACR call (query-api edge: not a member of the token org)", async () => {
+        it("evidence:read is refused 403 not_entitled with no ACR call (query-api edge: not a member of the token org)", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
             const answer = await evidenceRead();
             record(NO_ROW_PLATFORM_ADMIN, "evidence:read", answer);
