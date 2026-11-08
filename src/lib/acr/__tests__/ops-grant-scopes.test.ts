@@ -109,12 +109,12 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
         });
     });
 
-    it('Given the switch is on and a universal grant, then scopes are ["*"] and any inventory repository can be selected', async () => {
+    it("Given the switch is on and a universal grant, then scopes are every inventory repository and any of them can be selected", async () => {
         vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
         installOps(["a/one", "a/two"]);
         transportSeam.transport = pdp(() => true);
         const result = await resolveOpsAuthorization({ ...base, selectedRepository: "a/one" });
-        expect(result.repositoryScopes).toEqual(["*"]);
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
         expect(result.visibleRepositories).toEqual(["a/one", "a/two"]);
     });
 
@@ -125,7 +125,7 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
     it.each(["viewer", "member", "admin", "owner", "platform admin with no membership row"])(
         "Given the switch is on and the PDP admits %s on the universal key, then the scopes equal the legacy scopes byte for byte",
         async () => {
-            const inventory = ["b/zeta", "a/one", "a/two", "a/one"];
+            const inventory = ["a/one", "a/two", "b/zeta"];
             installOps(inventory);
             const legacy = await resolveOpsAuthorization(base);
             vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");

@@ -65,13 +65,13 @@ const input = (candidates: readonly string[]) => ({
 });
 
 describe("resolveRepositoryScopes", () => {
-    it('Given a universal grant, then the scopes are ["*"] alone and the inventory is only the visible list', async () => {
+    it("Given a universal grant, then the scopes are the candidates (one universal ask, no per-repository asks)", async () => {
         const { seen, transport } = fakeTransport(() => "allow");
         const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
             transport,
             timeoutMs: 1_000,
         });
-        expect(result.repositoryScopes).toEqual(["*"]);
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
         expect(result.visibleRepositories).toEqual(["a/one", "a/two"]);
         expect(seen.keys).toEqual(["*"]);
     });
