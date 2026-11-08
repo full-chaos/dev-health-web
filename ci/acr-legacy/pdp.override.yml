@@ -9,3 +9,6 @@ services:
         environment:
             AUTH_AUTHORIZE_CALLER_SUBJECTS: ${ACR_PDP_AUTHORIZE_CALLERS:-}
             AUTH_MEMBERSHIP_ROUTES: "true"
+            # The membership routes need both invite keys: go-api's link signing key, as compose.yml's go-api has it.
+            AUTH_INVITE_TOKEN_SECRET: ${LINK_TOKEN_SECRET:-local-dev-link-token-secret-0123456789abcdef}
+            AUTH_INVITE_TOKEN_SECRET_PREVIOUS: ${LINK_TOKEN_SECRET:-local-dev-link-token-secret-0123456789abcdef}
