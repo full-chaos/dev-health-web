@@ -140,6 +140,60 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
         },
     );
 
+    // Legacy refuses a platform admin with no membership row in its token's organization: the catalog read
+    // answers 401 (query-api edge auth) and web answers 503 unavailable, retryable (ops.ts readRepositoryScopes).
+    // With the switch on the same catalog read runs first, so the refusal is the same, byte for byte, and no
+    // decision is asked.
+    it("Given the catalog read is refused, then both paths refuse with the same error and no decision is asked", async () => {
+        server.use(
+            http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
+                HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true }),
+            ),
+            http.post("http://ops.example.test/graphql", () =>
+                HttpResponse.json({ error: "unauthorized" }, { status: 401 }),
+            ),
+        );
+        const refusal = async () => {
+            try {
+                await resolveOpsAuthorization(base);
+            } catch (error) {
+                const e = error as {
+                    code?: unknown;
+                    message?: unknown;
+                    retryable?: unknown;
+                    status?: unknown;
+                };
+                return JSON.stringify({
+                    code: e.code,
+                    message: e.message,
+                    retryable: e.retryable,
+                    status: e.status,
+                });
+            }
+            throw new Error("the catalog refusal did not refuse");
+        };
+        const legacy = await refusal();
+        vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
+        let decisions = 0;
+        const allowAll = pdp(() => true);
+        transportSeam.transport = async (call) => {
+            decisions += 1;
+            return allowAll(call);
+        };
+        const fromGrants = await refusal();
+        expect(fromGrants).toBe(legacy);
+        // Today's bytes, pinned as they are (the label is a known defect, fixed separately).
+        expect(legacy).toBe(
+            JSON.stringify({
+                code: acrRuntimeErrorCodes.unavailable,
+                message: "Agent Context Runtime is temporarily unavailable.",
+                retryable: true,
+                status: 503,
+            }),
+        );
+        expect(decisions).toBe(0);
+    });
+
     it("Given the switch is on and no transport, then it refuses instead of falling back to the catalog", async () => {
         vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
         installOps(["a/one"]);
