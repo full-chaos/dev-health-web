@@ -7,7 +7,8 @@
  * enforce pass sends the SAME request for the same user and asserts the answer is EQUAL.
  *
  * CHAOS-13290 adds a third pass, "classes-rollback" (AUTHZ_PLATFORM_UI=shadow, enforce off again: the step 4 rollback on the same
- * stack): every class's answer equals the legacy answer and the decision client is not called for the enforced actions. It also
+ * stack): every class's answer equals the legacy answer and the decision client is not called for the enforced actions. Its
+ * requests use the sessions the enforce pass kept (the per-address login limit; see SESSION_DIR). It also
  * adds two multi-org classes, integrations.write only, both with session organization B: a user who is admin in O and member in B
  * (legacy deny), and a user who is admin in B (legacy allow).
  *
@@ -15,7 +16,8 @@
  * /api/v1/admin/integrations/github/install-url, route.ts after the guard): a deny returns before that call. Both an allow and a
  * deny end in ?github_app=error here (go-api cannot mint a GitHub install URL in this stack), so the redirect cannot tell them apart.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
     expect,
@@ -245,6 +247,36 @@ async function newUserPage(browser: Browser, baseURL: string | undefined): Promi
     return context.newPage();
 }
 
+// The rollback pass signs nobody in: auth-service allows 20 logins per client address in 15 minutes (limits.go loginIPLimit)
+// and the legacy and enforce passes already use 16 of them on this one address. The enforce pass keeps each class's session
+// (and the superuser's API token) here, outside the uploaded log directory, 0600; the rollback pass sends its request with
+// that session, as a user whose session outlives the rollback roll does. A session the restarted server does not accept
+// fails the cell at its session-organization check.
+const SESSION_DIR = join(tmpdir(), "web-decisions-classes-sessions");
+
+function sessionPath(cls: string): string {
+    return join(SESSION_DIR, `${cls}.json`);
+}
+
+async function keepSession(page: Page, cls: string): Promise<void> {
+    mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
+    writeFileSync(sessionPath(cls), JSON.stringify(await page.context().storageState()), {
+        mode: 0o600,
+    });
+}
+
+async function keptSessionPage(
+    browser: Browser,
+    baseURL: string | undefined,
+    cls: string,
+): Promise<Page> {
+    if (!existsSync(sessionPath(cls))) {
+        throw new Error(`no kept session for ${cls}: the classes-enforce pass must run first`);
+    }
+    const context = await browser.newContext({ baseURL, storageState: sessionPath(cls) });
+    return context.newPage();
+}
+
 async function verifyUser(
     request: APIRequestContext,
     superToken: string,
@@ -352,6 +384,8 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
         browser,
         request,
     }, testInfo) => {
+        // No session of an earlier run may reach the rollback pass.
+        rmSync(SESSION_DIR, { recursive: true, force: true });
         const superToken = await legacySuperuserToken(request);
         const baseURL = testInfo.project.use.baseURL;
         const answers: Answers = { orgId: "", classes: {} };
@@ -524,6 +558,7 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
             );
             // Counter self-check: owner and admin read 1 in this pass too.
             expect(calls, `${cls}: the legacy value`).toBe(LEGACY_VALUE[cls] ? 1 : 0);
+            await keepSession(page, cls);
         });
     }
 
@@ -557,6 +592,8 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
             type: "report",
             description: `superuser with no row in O, session in O: PDP install-url requests ${calls}, recorded legacy ${want.calls}`,
         });
+        await keepSession(page, "superuser");
+        writeFileSync(join(SESSION_DIR, "superuser.token"), superToken, { mode: 0o600 });
     });
 
     for (const cls of MULTI_CLASSES) {
@@ -566,15 +603,12 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
             const want = legacy.classes[cls] as Answer;
             expect(want, `no legacy answer for ${cls}`).toBeDefined();
             expect(legacy.orgB, "the legacy answers name no organization B").toBeTruthy();
+            const page = await newUserPage(browser, testInfo.project.use.baseURL);
+            await signInWithOrg(page, want.email, PASSWORD, legacy.orgB as string, cls);
+            expect(await sessionOrgId(page), `${cls}: the session organization`).toBe(legacy.orgB);
             const log = webLogPath();
             const since = mark(log);
-            const calls = await multiOrgCalls(
-                browser,
-                testInfo.project.use.baseURL,
-                want.email,
-                legacy.orgB as string,
-                cls,
-            );
+            const calls = await installCalls(page);
             const line = await nextDecision(log, since, "org.integrations.write");
             expect(line.action).toBe("integrations.write");
             expect(line.source, `${cls}: not decided by the PDP`).toBe("pdp");
@@ -585,6 +619,7 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
                 want.calls,
             );
             expect(calls, `${cls}: the legacy value`).toBe(MULTI_LEGACY_VALUE[cls] ? 1 : 0);
+            await keepSession(page, cls);
         });
     }
 });
@@ -625,9 +660,8 @@ test.describe("integrations.write per caller class, enforce switched off again (
         }, testInfo) => {
             const want = legacy.classes[cls] as Answer;
             expect(want, `no legacy answer for ${cls}`).toBeDefined();
-            const page = await newUserPage(browser, testInfo.project.use.baseURL);
-            await signInUser(page, want.email, PASSWORD);
-            expect(await sessionOrgId(page), `the ${cls}'s session organization`).toBe(
+            const page = await keptSessionPage(browser, testInfo.project.use.baseURL, cls);
+            expect(await sessionOrgId(page), `the ${cls}'s kept session organization`).toBe(
                 legacy.orgId,
             );
             await expectLegacyAgain(page, cls, () => installCalls(page));
@@ -639,13 +673,24 @@ test.describe("integrations.write per caller class, enforce switched off again (
         browser,
         request,
     }, testInfo) => {
-        const superToken = (await getSuperuserToken(request)) as string;
-        expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
-        const page = await newUserPage(browser, testInfo.project.use.baseURL);
-        await superuserSessionWithoutRow(page, request, superToken, legacy.orgId);
+        const tokenPath = join(SESSION_DIR, "superuser.token");
+        expect(
+            existsSync(tokenPath),
+            "no kept superuser token: the classes-enforce pass must run first",
+        ).toBe(true);
+        const superToken = readFileSync(tokenPath, "utf8");
+        const superId = await userIdByEmail(request, superuserEmail, superToken);
+        expect(superId, "the superuser is not in the admin user list").not.toBe("");
+        expect(
+            await superuserRowsIn(request, superToken, legacy.orgId, superId),
+            "superuser: membership rows in O before the install request",
+        ).toBe(0);
+        const page = await keptSessionPage(browser, testInfo.project.use.baseURL, "superuser");
         // The platform shadow is still live after the switch-off (observed, not read from config).
         await expectPlatformShadow(page);
-        expect(await sessionOrgId(page), "superuser: the session organization").toBe(legacy.orgId);
+        expect(await sessionOrgId(page), "superuser: the kept session organization").toBe(
+            legacy.orgId,
+        );
         await expectLegacyAgain(page, "superuser", () => installCalls(page));
     });
 
@@ -656,9 +701,10 @@ test.describe("integrations.write per caller class, enforce switched off again (
             const want = legacy.classes[cls] as Answer;
             expect(want, `no legacy answer for ${cls}`).toBeDefined();
             expect(legacy.orgB, "the legacy answers name no organization B").toBeTruthy();
-            const page = await newUserPage(browser, testInfo.project.use.baseURL);
-            await signInWithOrg(page, want.email, PASSWORD, legacy.orgB as string, cls);
-            expect(await sessionOrgId(page), `${cls}: the session organization`).toBe(legacy.orgB);
+            const page = await keptSessionPage(browser, testInfo.project.use.baseURL, cls);
+            expect(await sessionOrgId(page), `${cls}: the kept session organization`).toBe(
+                legacy.orgB,
+            );
             await expectLegacyAgain(page, cls, () => installCalls(page));
             expect(want.calls, `${cls}: the legacy value`).toBe(MULTI_LEGACY_VALUE[cls] ? 1 : 0);
         });
