@@ -108,10 +108,20 @@ export default defineConfig({
                     name: "live-api",
                     testIgnore: [
                         /onboarding-ui\.spec\.ts/,
+                        /impersonation\.spec\.ts/,
                         /ask-dev\/.*\.spec\.ts/,
                         /web-decisions(-classes|-admin-users)?\.spec\.ts/,
                     ],
                     dependencies: ["onboarding-ui"],
+                    use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                },
+                // CHAOS-13327: an impersonation session scopes EVERY token of the shared superuser
+                // to the target's org while it is live, so the spec that starts one runs alone,
+                // after every other live spec.
+                {
+                    name: "live-impersonation",
+                    testMatch: /impersonation\.spec\.ts/,
+                    dependencies: ["live-api"],
                     use: { baseURL: "http://127.0.0.1:3002", headless: true },
                 },
             ],
