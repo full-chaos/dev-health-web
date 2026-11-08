@@ -321,6 +321,7 @@ function scopesOf(answer: Answer, path: string): unknown {
     return answer.assertions.find((a) => a.path === path)?.repositoryScopes ?? null;
 }
 
+const CAPABILITIES_PATH = "/api/v1/agent-context/capabilities";
 const CONTEXT_PATH = "/api/v1/agent-context/context-packets";
 const EVIDENCE_PATH = `/api/v1/agent-context/evidence/${EVIDENCE_REF}`;
 const DEVICE_PATH = "/api/v1/oauth/device_approval";
@@ -356,18 +357,43 @@ describe(`ACR legacy cells (switch off) on dev-health-ops ${fixture.opsSha} cata
     // Every org role: the context and evidence assertions carry the org's catalog list; device approval and consent
     // pass web and send the org-wide ["*"] (service.ts issuanceContext: any org session, refused only while
     // impersonating).
+    // The legacy fact of a role read is its ASSERTIONS (path, permissions, repositoryScopes). The client body of these
+    // two reads comes from the capture-only ACR double (its fixed packet), so it is not a legacy answer: ACR double,
+    // not compared.
     describe.each(ORG_ROLES)("%s of the org", (role) => {
-        it("context:read signs the catalog list", async () => {
+        it("context:read signs the catalog list (assertions compared; body: ACR double, not compared)", async () => {
             signIn(callerNamed(role));
             const answer = await contextRead();
             record(role, "context:read", answer);
-            expect(scopesOf(answer, CONTEXT_PATH)).toEqual(fixture.inventory);
+            expect(answer.assertions).toEqual([
+                {
+                    path: CAPABILITIES_PATH,
+                    permissions: ["context:read", "evidence:read"],
+                    repositoryScopes: fixture.inventory,
+                },
+                {
+                    path: CONTEXT_PATH,
+                    permissions: ["context:read"],
+                    repositoryScopes: fixture.inventory,
+                },
+            ]);
         });
-        it("evidence:read signs the catalog list", async () => {
+        it("evidence:read signs the catalog list (assertions compared; body: ACR double, not compared)", async () => {
             signIn(callerNamed(role));
             const answer = await evidenceRead();
             record(role, "evidence:read", answer);
-            expect(scopesOf(answer, EVIDENCE_PATH)).toEqual(fixture.inventory);
+            expect(answer.assertions).toEqual([
+                {
+                    path: CAPABILITIES_PATH,
+                    permissions: ["context:read", "evidence:read"],
+                    repositoryScopes: fixture.inventory,
+                },
+                {
+                    path: EVIDENCE_PATH,
+                    permissions: ["evidence:read"],
+                    repositoryScopes: fixture.inventory,
+                },
+            ]);
         });
         it("device approval is approved with the org-wide scope", async () => {
             signIn(callerNamed(role));
