@@ -130,6 +130,7 @@ export default defineConfig({
         "onboarding.setup.ts",
         "acr-context-fabric.production.spec.ts",
         "ask-dev-csp.production.spec.ts",
+        "prerendered-csp.production.spec.ts",
         "ask-dev-route.production.spec.ts",
         "admin-row-links.production.spec.ts",
         "code-hotspot-links.production.spec.ts",
