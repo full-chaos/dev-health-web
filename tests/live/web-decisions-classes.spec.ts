@@ -6,11 +6,18 @@
  * PDP decides). The legacy pass creates the users and writes each class's answer to web-decisions-logs/classes-answers.json; the
  * enforce pass sends the SAME request for the same user and asserts the answer is EQUAL.
  *
+ * CHAOS-13290 adds a third pass, "classes-rollback" (AUTHZ_PLATFORM_UI=shadow, enforce off again: the step 4 rollback on the same
+ * stack): every class's answer equals the legacy answer and the decision client is not called for the enforced actions. Its
+ * requests use the sessions the enforce pass kept (the per-address login limit; see SESSION_DIR). It also
+ * adds two multi-org classes, integrations.write only, both with session organization B: a user who is admin in O and member in B
+ * (legacy deny), and a user who is admin in B (legacy allow).
+ *
  * The answer of GET /org/admin/integrations/github-app/install is whether web asked go-api for an install URL (POST
  * /api/v1/admin/integrations/github/install-url, route.ts after the guard): a deny returns before that call. Both an allow and a
  * deny end in ?github_app=error here (go-api cannot mint a GitHub install URL in this stack), so the redirect cannot tell them apart.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
     expect,
@@ -31,6 +38,7 @@ import {
     userIdByEmail,
 } from "./helpers";
 import {
+    decisionClientLines,
     mark,
     nextDecision,
     pdpDecideLines,
@@ -45,6 +53,8 @@ const INSTALL = "/org/admin/integrations/github-app/install";
 const INSTALL_URL_ROUTE = "/api/v1/admin/integrations/github/install-url";
 
 type ClassId = "owner" | "admin" | "member" | "viewer" | "superuser";
+// The multi-org classes: session organization B. adminOMemberB = admin in O and member in B; adminB = admin in B, no other row.
+type MultiClassId = "adminOMemberB" | "adminB";
 interface Answer {
     email: string;
     // 1 = web asked go-api for an install URL (the guard allowed); 0 = the guard denied first.
@@ -52,7 +62,8 @@ interface Answer {
 }
 interface Answers {
     orgId: string;
-    classes: Partial<Record<ClassId, Answer>>;
+    orgB?: string;
+    classes: Partial<Record<ClassId | MultiClassId, Answer>>;
 }
 
 // The legacy value for the classes whose legacy answer is fixed (catalog.ts org.integrations.write: superuser or owner/admin).
@@ -62,6 +73,21 @@ const LEGACY_VALUE: Partial<Record<ClassId, boolean>> = {
     member: false,
     viewer: false,
 };
+// The same rule for the multi-org classes, judged on the session organization B only: the admin row in O gives nothing in B.
+const MULTI_LEGACY_VALUE: Record<MultiClassId, boolean> = {
+    adminOMemberB: false,
+    adminB: true,
+};
+const MULTI_CLASSES = ["adminOMemberB", "adminB"] as const;
+// The actions web decides with the PDP when enforce is on (the guards of the F11 decision client).
+const ENFORCED = [
+    "admin.orgs",
+    "admin.users",
+    "integrations.write",
+    "platform.orgs",
+    "platform.users",
+    "org.integrations.write",
+] as const;
 
 function answersPath(): string {
     return join(dirname(webLogPath()), "classes-answers.json");
@@ -130,8 +156,14 @@ async function expectPlatformShadow(page: Page): Promise<void> {
         .toBeGreaterThan(before);
 }
 
-// The login form sends no org_id: the superuser signs in with org O through the credentials callback itself.
-async function signInSuperuserWithOrg(page: Page, orgId: string): Promise<void> {
+// The login form sends no org_id: the user signs in with the named organization through the credentials callback itself.
+async function signInWithOrg(
+    page: Page,
+    email: string,
+    password: string,
+    orgId: string,
+    who: string,
+): Promise<void> {
     const csrf = await page.request.get("/api/auth/csrf");
     await expectSetupAnswer(csrf, [200], "reading the CSRF token");
     const { csrfToken } = (await csrf.json()) as { csrfToken: string };
@@ -139,23 +171,25 @@ async function signInSuperuserWithOrg(page: Page, orgId: string): Promise<void> 
         await page.request.post("/api/auth/callback/credentials", {
             form: {
                 csrfToken,
-                email: superuserEmail,
-                password: superuserPassword,
+                email,
+                password,
                 org_id: orgId,
                 callbackUrl: "/dashboard",
             },
             maxRedirects: 0,
         }),
         [302, 303, 200],
-        "the superuser sign-in with org O",
+        `the ${who} sign-in with the organization`,
     );
     const session = await page.request.get("/api/auth/session");
-    await expectSetupAnswer(session, [200], "reading the superuser session");
+    await expectSetupAnswer(session, [200], `reading the ${who} session`);
     const user = ((await session.json()) as { user?: { email?: string; org_id?: string } }).user;
-    expect(user?.email, "the superuser sign-in with org O made no session").toBe(superuserEmail);
-    expect(user?.org_id, "superuser: the session organization after the sign-in with org O").toBe(
-        orgId,
-    );
+    expect(user?.email, `the ${who} sign-in with the organization made no session`).toBe(email);
+    expect(user?.org_id, `${who}: the session organization after the sign-in`).toBe(orgId);
+}
+
+async function signInSuperuserWithOrg(page: Page, orgId: string): Promise<void> {
+    await signInWithOrg(page, superuserEmail, superuserPassword, orgId, "superuser");
 }
 
 async function superuserRowsIn(
@@ -213,6 +247,36 @@ async function newUserPage(browser: Browser, baseURL: string | undefined): Promi
     return context.newPage();
 }
 
+// The rollback pass signs nobody in: auth-service allows 20 logins per client address in 15 minutes (limits.go loginIPLimit)
+// and the legacy and enforce passes already use 16 of them on this one address. The enforce pass keeps each class's session
+// (and the superuser's API token) here, outside the uploaded log directory, 0600; the rollback pass sends its request with
+// that session, as a user whose session outlives the rollback roll does. A session the restarted server does not accept
+// fails the cell at its session-organization check.
+const SESSION_DIR = join(tmpdir(), "web-decisions-classes-sessions");
+
+function sessionPath(cls: string): string {
+    return join(SESSION_DIR, `${cls}.json`);
+}
+
+async function keepSession(page: Page, cls: string): Promise<void> {
+    mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
+    writeFileSync(sessionPath(cls), JSON.stringify(await page.context().storageState()), {
+        mode: 0o600,
+    });
+}
+
+async function keptSessionPage(
+    browser: Browser,
+    baseURL: string | undefined,
+    cls: string,
+): Promise<Page> {
+    if (!existsSync(sessionPath(cls))) {
+        throw new Error(`no kept session for ${cls}: the classes-enforce pass must run first`);
+    }
+    const context = await browser.newContext({ baseURL, storageState: sessionPath(cls) });
+    return context.newPage();
+}
+
 async function verifyUser(
     request: APIRequestContext,
     superToken: string,
@@ -229,13 +293,100 @@ async function verifyUser(
     );
 }
 
+// A verified platform user with no organization (the admin API), for the multi-org classes.
+async function createVerifiedUser(
+    request: APIRequestContext,
+    superToken: string,
+    email: string,
+    who: string,
+): Promise<string> {
+    await expectSetupAnswer(
+        await request.post(`${liveBackendUrl}/api/v1/admin/users`, {
+            headers: authHeaders(superToken),
+            data: { email, password: PASSWORD, full_name: `Classes ${who}` },
+        }),
+        [200, 201],
+        `creating the ${who}`,
+    );
+    const userId = await userIdByEmail(request, email, superToken);
+    expect(userId, `the ${who} is not in the admin user list`).not.toBe("");
+    await verifyUser(request, superToken, userId, who);
+    return userId;
+}
+
+async function addMember(
+    request: APIRequestContext,
+    superToken: string,
+    orgId: string,
+    userId: string,
+    role: "admin" | "member",
+    step: string,
+): Promise<void> {
+    await expectSetupAnswer(
+        await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}/members`, {
+            headers: authHeaders(superToken),
+            data: { user_id: userId, role },
+        }),
+        [200, 201],
+        step,
+    );
+}
+
+// Organization B, created by the superuser with no owner row: only the rows the cells add exist in B.
+async function createOrgB(request: APIRequestContext, superToken: string): Promise<string> {
+    const res = await request.post(`${liveBackendUrl}/api/v1/admin/orgs`, {
+        headers: authHeaders(superToken),
+        data: { name: `Classes B ${Date.now()}` },
+    });
+    await expectSetupAnswer(res, [201, 200], "creating organization B");
+    const id = ((await res.json()) as { id?: string }).id ?? "";
+    expect(id, "organization B has no id").not.toBe("");
+    return id;
+}
+
+// The multi-org user's install request in its session organization B: a fresh sign-in with org B each pass.
+async function multiOrgCalls(
+    browser: Browser,
+    baseURL: string | undefined,
+    email: string,
+    orgB: string,
+    cls: MultiClassId,
+): Promise<number> {
+    const page = await newUserPage(browser, baseURL);
+    await signInWithOrg(page, email, PASSWORD, orgB, cls);
+    expect(await sessionOrgId(page), `${cls}: the session organization`).toBe(orgB);
+    return installCalls(page);
+}
+
+function readLegacyAnswers(): Answers {
+    let legacy: Answers;
+    try {
+        legacy = JSON.parse(readFileSync(answersPath(), "utf8")) as Answers;
+    } catch {
+        throw new Error(
+            `no legacy answers at ${answersPath()}: the classes-legacy pass must run first`,
+        );
+    }
+    expect(legacy.orgId, "the legacy answers name no organization").not.toBe("");
+    return legacy;
+}
+
+// One superuser API login per pass for the legacy tests: the per-address-and-account login limit counts every login of the job.
+let legacySuperToken: string | null = null;
+async function legacySuperuserToken(request: APIRequestContext): Promise<string> {
+    legacySuperToken ??= await getSuperuserToken(request);
+    expect(legacySuperToken, "the seeded superuser cannot log in").not.toBeNull();
+    return legacySuperToken as string;
+}
+
 test.describe("integrations.write per caller class, legacy decides @classes-legacy", () => {
     test("each class's legacy answer is recorded for the enforce pass", async ({
         browser,
         request,
     }, testInfo) => {
-        const superToken = (await getSuperuserToken(request)) as string;
-        expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
+        // No session of an earlier run may reach the rollback pass.
+        rmSync(SESSION_DIR, { recursive: true, force: true });
+        const superToken = await legacySuperuserToken(request);
         const baseURL = testInfo.project.use.baseURL;
         const answers: Answers = { orgId: "", classes: {} };
 
@@ -310,6 +461,61 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
         }
         expect(pdpDecideLines(webLogPath()), "the legacy pass logged a PDP verdict").toBe(0);
     });
+
+    test("multi-org: each class's legacy answer in organization B is recorded", async ({
+        browser,
+        request,
+    }, testInfo) => {
+        const answers = readLegacyAnswers();
+        const superToken = await legacySuperuserToken(request);
+        const baseURL = testInfo.project.use.baseURL;
+        const orgB = await createOrgB(request, superToken);
+        expect(orgB, "organization B is organization O").not.toBe(answers.orgId);
+        answers.orgB = orgB;
+
+        // adminOMemberB: admin in O and member in B, session in B.
+        const adminOMemberB = testEmail("classes-admin-o-member-b");
+        const u1 = await createVerifiedUser(request, superToken, adminOMemberB, "adminOMemberB");
+        await addMember(
+            request,
+            superToken,
+            answers.orgId,
+            u1,
+            "admin",
+            "adding adminOMemberB to O as admin",
+        );
+        await addMember(
+            request,
+            superToken,
+            orgB,
+            u1,
+            "member",
+            "adding adminOMemberB to B as member",
+        );
+        // adminB: admin in B, no other row.
+        const adminB = testEmail("classes-admin-b");
+        const u2 = await createVerifiedUser(request, superToken, adminB, "adminB");
+        await addMember(request, superToken, orgB, u2, "admin", "adding adminB to B as admin");
+
+        for (const [cls, email] of [
+            ["adminOMemberB", adminOMemberB],
+            ["adminB", adminB],
+        ] as const) {
+            answers.classes[cls] = {
+                email,
+                calls: await multiOrgCalls(browser, baseURL, email, orgB, cls),
+            };
+        }
+        writeFileSync(answersPath(), JSON.stringify(answers, null, 2));
+
+        for (const cls of MULTI_CLASSES) {
+            expect(
+                answers.classes[cls]?.calls,
+                `legacy: ${cls} integrations.write install-url requests in organization B`,
+            ).toBe(MULTI_LEGACY_VALUE[cls] ? 1 : 0);
+        }
+        expect(pdpDecideLines(webLogPath()), "the legacy pass logged a PDP verdict").toBe(0);
+    });
 });
 
 test.describe("integrations.write per caller class, the PDP decides @classes-enforce", () => {
@@ -352,6 +558,7 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
             );
             // Counter self-check: owner and admin read 1 in this pass too.
             expect(calls, `${cls}: the legacy value`).toBe(LEGACY_VALUE[cls] ? 1 : 0);
+            await keepSession(page, cls);
         });
     }
 
@@ -385,5 +592,133 @@ test.describe("integrations.write per caller class, the PDP decides @classes-enf
             type: "report",
             description: `superuser with no row in O, session in O: PDP install-url requests ${calls}, recorded legacy ${want.calls}`,
         });
+        await keepSession(page, "superuser");
+        writeFileSync(join(SESSION_DIR, "superuser.token"), superToken, { mode: 0o600 });
+    });
+
+    for (const cls of MULTI_CLASSES) {
+        test(`multi-org ${cls}: integrations.write answer in organization B equals the legacy answer`, async ({
+            browser,
+        }, testInfo) => {
+            const want = legacy.classes[cls] as Answer;
+            expect(want, `no legacy answer for ${cls}`).toBeDefined();
+            expect(legacy.orgB, "the legacy answers name no organization B").toBeTruthy();
+            const page = await newUserPage(browser, testInfo.project.use.baseURL);
+            await signInWithOrg(page, want.email, PASSWORD, legacy.orgB as string, cls);
+            expect(await sessionOrgId(page), `${cls}: the session organization`).toBe(legacy.orgB);
+            const log = webLogPath();
+            const since = mark(log);
+            const calls = await installCalls(page);
+            const line = await nextDecision(log, since, "org.integrations.write");
+            expect(line.action).toBe("integrations.write");
+            expect(line.source, `${cls}: not decided by the PDP`).toBe("pdp");
+            expect(line.allowed, `${cls}: the decision line and the request disagree`).toBe(
+                calls === 1,
+            );
+            expect(calls, `${cls}: PDP answer ${calls}, legacy answer ${want.calls}`).toBe(
+                want.calls,
+            );
+            expect(calls, `${cls}: the legacy value`).toBe(MULTI_LEGACY_VALUE[cls] ? 1 : 0);
+            await keepSession(page, cls);
+        });
+    }
+});
+
+test.describe("integrations.write per caller class, enforce switched off again (rollback) @classes-rollback", () => {
+    // Not serial: each cell reads its own kept session, so one failing cell does not hide the others.
+    let legacy: Answers;
+    test.beforeAll(() => {
+        legacy = readLegacyAnswers();
+    });
+
+    // After the switch-off the answer is the legacy answer and the decision client is not asked: no authz_decide line from the
+    // PDP or the client (a deny) for the install guard after the request.
+    async function expectLegacyAgain(
+        page: Page,
+        cls: ClassId | MultiClassId,
+        send: () => Promise<number>,
+    ): Promise<void> {
+        const want = legacy.classes[cls] as Answer;
+        expect(want, `no legacy answer for ${cls}`).toBeDefined();
+        const log = webLogPath();
+        const since = mark(log);
+        const calls = await send();
+        expect(calls, `${cls}: rollback answer ${calls}, legacy answer ${want.calls}`).toBe(
+            want.calls,
+        );
+        // A decision line is written while the server answers; the install-url poll in installCalls already waited for it.
+        await page.waitForTimeout(500);
+        expect(
+            decisionClientLines(log, since, ENFORCED),
+            `${cls}: the decision client was asked after enforce was switched off`,
+        ).toBe(0);
+    }
+
+    for (const cls of ["owner", "admin", "member", "viewer"] as const) {
+        test(`${cls}: integrations.write answer equals the legacy answer after the switch-off`, async ({
+            browser,
+        }, testInfo) => {
+            const want = legacy.classes[cls] as Answer;
+            expect(want, `no legacy answer for ${cls}`).toBeDefined();
+            const page = await keptSessionPage(browser, testInfo.project.use.baseURL, cls);
+            expect(await sessionOrgId(page), `the ${cls}'s kept session organization`).toBe(
+                legacy.orgId,
+            );
+            await expectLegacyAgain(page, cls, () => installCalls(page));
+            expect(want.calls, `${cls}: the legacy value`).toBe(LEGACY_VALUE[cls] ? 1 : 0);
+        });
+    }
+
+    test("superuser with no membership row: integrations.write answer equals the legacy answer after the switch-off", async ({
+        browser,
+        request,
+    }, testInfo) => {
+        const tokenPath = join(SESSION_DIR, "superuser.token");
+        expect(
+            existsSync(tokenPath),
+            "no kept superuser token: the classes-enforce pass must run first",
+        ).toBe(true);
+        const superToken = readFileSync(tokenPath, "utf8");
+        const superId = await userIdByEmail(request, superuserEmail, superToken);
+        expect(superId, "the superuser is not in the admin user list").not.toBe("");
+        expect(
+            await superuserRowsIn(request, superToken, legacy.orgId, superId),
+            "superuser: membership rows in O before the install request",
+        ).toBe(0);
+        const page = await keptSessionPage(browser, testInfo.project.use.baseURL, "superuser");
+        // The platform shadow is still live after the switch-off (observed, not read from config).
+        await expectPlatformShadow(page);
+        expect(await sessionOrgId(page), "superuser: the kept session organization").toBe(
+            legacy.orgId,
+        );
+        await expectLegacyAgain(page, "superuser", () => installCalls(page));
+    });
+
+    for (const cls of MULTI_CLASSES) {
+        test(`multi-org ${cls}: integrations.write answer in organization B equals the legacy answer after the switch-off`, async ({
+            browser,
+        }, testInfo) => {
+            const want = legacy.classes[cls] as Answer;
+            expect(want, `no legacy answer for ${cls}`).toBeDefined();
+            expect(legacy.orgB, "the legacy answers name no organization B").toBeTruthy();
+            const page = await keptSessionPage(browser, testInfo.project.use.baseURL, cls);
+            expect(await sessionOrgId(page), `${cls}: the kept session organization`).toBe(
+                legacy.orgB,
+            );
+            await expectLegacyAgain(page, cls, () => installCalls(page));
+            expect(want.calls, `${cls}: the legacy value`).toBe(MULTI_LEGACY_VALUE[cls] ? 1 : 0);
+        });
+    }
+
+    test("the whole switch-off pass: no decision-client verdict for any enforced action", () => {
+        const log = webLogPath();
+        expect(
+            decisionClientLines(log, 0, ENFORCED),
+            "the rollback pass logged a decision-client verdict for an enforced action",
+        ).toBe(0);
+        expect(decisionClientLines(log), "the rollback pass logged a decision-client verdict").toBe(
+            0,
+        );
+        expect(pdpDecideLines(log), "the rollback pass logged a PDP verdict").toBe(0);
     });
 });

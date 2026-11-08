@@ -14,10 +14,16 @@ const askDevWeb = process.env.ASK_DEV_LIVE_WEB ?? "http://localhost:3000";
 
 // The web decisions passes: the Next server runs with the PDP decision client on its own, with the switch sets prod runs (F11).
 // "enforce" and "classes-enforce" = AUTHZ_PLATFORM_UI=shadow + AUTHZ_DECISIONS_ENFORCE=on (prod after F11 step 4: the PDP decides);
-// "shadow" and "classes-legacy" = AUTHZ_PLATFORM_UI=shadow alone (prod after step 3: legacy rules decide, the PDP verdict is only
-// logged). tests/live/web-decisions.spec.ts runs in "enforce" and "shadow"; tests/live/web-decisions-classes.spec.ts in the two
-// classes passes. The web log (JSON lines) is read by the specs.
-const DECISION_MODES = ["enforce", "shadow", "classes-legacy", "classes-enforce"] as const;
+// "shadow", "classes-legacy" and "classes-rollback" = AUTHZ_PLATFORM_UI=shadow alone (prod after step 3, and after a step 4
+// rollback: legacy rules decide, the PDP verdict is only logged). tests/live/web-decisions.spec.ts runs in "enforce" and "shadow";
+// tests/live/web-decisions-classes.spec.ts in the three classes passes. The web log (JSON lines) is read by the specs.
+const DECISION_MODES = [
+    "enforce",
+    "shadow",
+    "classes-legacy",
+    "classes-enforce",
+    "classes-rollback",
+] as const;
 const webDecisions = process.env.LIVE_WEB_DECISIONS;
 if (webDecisions !== undefined && !(DECISION_MODES as readonly string[]).includes(webDecisions)) {
     throw new Error(`LIVE_WEB_DECISIONS must be one of ${DECISION_MODES.join(", ")}`);
