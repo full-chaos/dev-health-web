@@ -1,0 +1,29 @@
+# CHAOS-13330: overlay of dev-health-ops compose.yml for ci/acr-legacy/run-legacy-cells.sh (the ACR legacy cells).
+# It keeps compose.yml's flag set (no AUTH_* value changes here) and makes the project private to its run: no
+# host-global container_name, no fixed host port, and no `planes` network (its fixed subnet is host-global). The ops
+# router is the one published port, on loopback: ACR_LEGACY_ROUTER_PORT, or an ephemeral port when that is empty.
+# The router keeps its own nginx config; it reaches go-api and query-api on the project's default network.
+services:
+    postgres:
+        container_name: !reset null
+        ports: !reset []
+    clickhouse:
+        container_name: !reset null
+        ports: !reset []
+    valkey:
+        container_name: !reset null
+        ports: !reset []
+    migrate:
+        container_name: !reset null
+    auth-service:
+        ports: !reset []
+    auth-issuer:
+        ports: !reset []
+    go-api:
+        ports: !reset []
+        networks: !override [default, auth_plane]
+    query-api:
+        networks: !override [default]
+    router:
+        ports: !override ["127.0.0.1:${ACR_LEGACY_ROUTER_PORT:-}:8000"]
+        networks: !override [default]
