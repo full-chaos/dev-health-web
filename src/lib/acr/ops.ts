@@ -7,6 +7,7 @@ import { getBackendUrl } from "@/lib/origin";
 import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+import { acrScopesFromGrantsEnabled, resolveRepositoryScopes } from "./grantScopes";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
 
 const entitlementSchema = z
@@ -45,6 +46,8 @@ export type OpsAuthorization = {
     readonly orgId: string;
     readonly repositoryScopes: readonly string[];
     readonly subject: string;
+    /** Names the principal may read; the same list as `repositoryScopes` (a universal grant sends every candidate). */
+    readonly visibleRepositories?: readonly string[];
 };
 
 type ResolveOpsAuthorizationInput = {
@@ -278,12 +281,19 @@ async function readRepositoryScopes(
             { retryable: true },
         );
     }
-    const repositoryScopes = canonicalRepositoryScopes(
+    const candidates = canonicalRepositoryScopes(
         parsedScopes.data.data.catalog.values.map((value) => value.value),
     );
+    const { repositoryScopes, visibleRepositories } = acrScopesFromGrantsEnabled()
+        ? await resolveRepositoryScopes({
+              accessToken: input.accessToken,
+              candidates,
+              orgId: input.orgId,
+          })
+        : { repositoryScopes: candidates, visibleRepositories: candidates };
     if (
         input.selectedRepository !== undefined &&
-        !repositoryScopes.includes(input.selectedRepository)
+        !visibleRepositories.includes(input.selectedRepository)
     ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.repositoryNotAvailable,
@@ -291,5 +301,5 @@ async function readRepositoryScopes(
             { status: 404 },
         );
     }
-    return { orgId: input.orgId, repositoryScopes, subject: input.subject };
+    return { orgId: input.orgId, repositoryScopes, subject: input.subject, visibleRepositories };
 }
