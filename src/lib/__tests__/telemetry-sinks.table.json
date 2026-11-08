@@ -227,6 +227,10 @@
         "log": 1,
         "sentry": 0
     },
+    "src/lib/csp/prerenderedScriptHashes.ts": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/lib/feature-flags/fetchers.ts": {
         "log": 6,
         "sentry": 0
