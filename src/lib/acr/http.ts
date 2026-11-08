@@ -29,11 +29,11 @@ export function retryAfterSeconds(response: Response): number | undefined {
     return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
-async function readBoundedText(
+async function readBoundedBytes(
     stream: ReadableStream<Uint8Array> | null,
     maximumBytes: number,
-): Promise<string> {
-    if (stream === null) return "";
+): Promise<Uint8Array> {
+    if (stream === null) return new Uint8Array(0);
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let received = 0;
@@ -43,7 +43,8 @@ async function readBoundedText(
             if (next.done) break;
             received += next.value.byteLength;
             if (received > maximumBytes) {
-                await reader.cancel();
+                // Not awaited: a cancel can wait on a body the peer never ends.
+                void reader.cancel().catch(() => undefined);
                 throw new AcrRuntimeError(
                     acrRuntimeErrorCodes.responseTooLarge,
                     "Agent Context Runtime returned an oversized response.",
@@ -61,7 +62,20 @@ async function readBoundedText(
         body.set(chunk, offset);
         offset += chunk.byteLength;
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(body);
+    return body;
+}
+
+/** A body that is not UTF-8 is a `malformed_response`, as a body that is not JSON is. */
+function decodeUtf8(body: Uint8Array): string {
+    try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(body);
+    } catch (error) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.malformedResponse,
+            "Agent Context Runtime returned an invalid response.",
+            { cause: error },
+        );
+    }
 }
 
 function parseJson(body: string): unknown {
@@ -133,10 +147,10 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
             )
         );
     }
-    const text = await readBoundedText(response.body, 1_048_576);
+    const body = await readBoundedBytes(response.body, 1_048_576);
     let value: unknown;
     try {
-        value = parseJson(text);
+        value = parseJson(decodeUtf8(body));
     } catch (error) {
         throw input.unreadableBody?.(error) ?? error;
     }
@@ -145,7 +159,7 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
 
 export async function readRequestJson(request: Request, maximumBytes: number): Promise<unknown> {
     try {
-        return parseJson(await readBoundedText(request.body, maximumBytes));
+        return parseJson(decodeUtf8(await readBoundedBytes(request.body, maximumBytes)));
     } catch (error) {
         if (
             error instanceof AcrRuntimeError &&
