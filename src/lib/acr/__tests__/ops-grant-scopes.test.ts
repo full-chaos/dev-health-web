@@ -118,6 +118,28 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
         expect(result.visibleRepositories).toEqual(["a/one", "a/two"]);
     });
 
+    // Scope parity (CHAOS-13323, acp condition 1): for every caller class the PDP admits on the
+    // universal key (viewer, member, admin and owner hold acr.context.read; a platform admin with no
+    // membership row gets the legacy answer, rule 1), the scopes from grants are the legacy catalog
+    // scopes byte for byte, and so is the visible list. A smaller set would be a narrowing.
+    it.each(["viewer", "member", "admin", "owner", "platform admin with no membership row"])(
+        "Given the switch is on and the PDP admits %s on the universal key, then the scopes equal the legacy scopes byte for byte",
+        async () => {
+            const inventory = ["b/zeta", "a/one", "a/two", "a/one"];
+            installOps(inventory);
+            const legacy = await resolveOpsAuthorization(base);
+            vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
+            transportSeam.transport = pdp(() => true);
+            const fromGrants = await resolveOpsAuthorization(base);
+            expect(JSON.stringify(fromGrants.repositoryScopes)).toBe(
+                JSON.stringify(legacy.repositoryScopes),
+            );
+            expect(JSON.stringify(fromGrants.visibleRepositories)).toBe(
+                JSON.stringify(legacy.visibleRepositories),
+            );
+        },
+    );
+
     it("Given the switch is on and no transport, then it refuses instead of falling back to the catalog", async () => {
         vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
         installOps(["a/one"]);
