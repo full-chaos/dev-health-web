@@ -321,7 +321,12 @@ export async function setupUser(
             ) as Array<{ id?: string; email?: string }>;
             userId =
                 rows.find((row) => row.email?.toLowerCase() === user.email.toLowerCase())?.id ?? "";
-            steps.push(`user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}`);
+            // CHAOS-13327: a live impersonation session of this superuser scopes the list to the target's org.
+            const scoped =
+                lookup.headers()["x-impersonating"] === "true" ? " impersonating=true" : "";
+            steps.push(
+                `user-lookup ${String(lookup.status())} ${userId ? "found" : "not-found"}${scoped}`,
+            );
         } else {
             await step("user-lookup", lookup);
         }

@@ -17,7 +17,7 @@ const TOKEN = "eyJhbGciOiJIUzI1NiJ9.sentinel-access-token.do-not-print";
 const TOKEN2 = "eyJhbGciOiJIUzI1NiJ9.sentinel-relogin-token.do-not-print";
 const SU_TOKEN = "eyJhbGciOiJIUzI1NiJ9.sentinel-superuser-token.do-not-print";
 
-type Reply = { status: number; body?: unknown; raw?: string };
+type Reply = { status: number; body?: unknown; raw?: string; headers?: Record<string, string> };
 type Options = { data?: unknown; headers?: Record<string, string> };
 type Route = (call: string, options: Options, url: string) => Reply;
 type Sent = { call: string; url: string; data?: unknown; headers?: Record<string, string> };
@@ -35,6 +35,7 @@ function fakeRequest(route: Route) {
             return {
                 status: () => reply.status,
                 ok: () => reply.status >= 200 && reply.status < 300,
+                headers: () => reply.headers ?? {},
                 text: async () => text,
                 json: async () => JSON.parse(text) as unknown,
             };
@@ -151,6 +152,12 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             "GET /api/v1/admin/users",
             { status: 200, body: { items: [] } },
             "user-lookup 200 not-found | verify skipped | login 200 token=absent body=json",
+        ],
+        [
+            "a lookup a live impersonation session scoped to another org (CHAOS-13327)",
+            "GET /api/v1/admin/users",
+            { status: 200, body: { items: [] }, headers: { "x-impersonating": "true" } },
+            "user-lookup 200 not-found impersonating=true | verify skipped | login 200 token=absent body=json",
         ],
         [
             "a refused lookup",
