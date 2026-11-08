@@ -118,6 +118,51 @@ describe("readRepositoryScopes non-200 answers", () => {
         );
     });
 
+    describe.each(["entitlement", "catalog"] as const)(
+        "the %s read, body failures outside the JSON parse (same answer as before the status-first change)",
+        (read) => {
+            function answer(respond: () => Response): void {
+                server.use(
+                    http.get(
+                        "http://ops.example.test/api/v1/licensing/entitlements/:orgId",
+                        read === "entitlement" ? respond : entitlementOk,
+                    ),
+                    http.post("http://ops.example.test/graphql", respond),
+                );
+            }
+
+            it("Given a 200 whose Content-Length is over 1 MiB, then it is response_too_large, not retryable", async () => {
+                answer(
+                    () =>
+                        new HttpResponse("{}", {
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Content-Length": "1048577",
+                            },
+                        }),
+                );
+                await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+                    code: acrRuntimeErrorCodes.responseTooLarge,
+                    retryable: false,
+                    status: 503,
+                });
+            });
+
+            it("Given a 200 whose body is not UTF-8, then the decode error is thrown as it is", async () => {
+                answer(
+                    () =>
+                        new HttpResponse(new Uint8Array([0x7b, 0xff, 0xfe, 0x7d]), {
+                            headers: { "Content-Type": "application/json" },
+                        }),
+                );
+                await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+                    name: "TypeError",
+                    code: "ERR_ENCODING_INVALID_ENCODED_DATA",
+                });
+            });
+        },
+    );
+
     it.each([401, 403])(
         "Given the entitlement read is refused with %s, then it is a non-retryable refusal",
         async (status) => {
