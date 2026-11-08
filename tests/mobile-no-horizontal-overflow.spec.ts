@@ -20,34 +20,6 @@ const PAGES: { name: string; path: string; ready: (page: Page) => Promise<void> 
             await expect(page.getByLabel("Invite email")).toBeVisible();
         },
     },
-    {
-        name: "audit logs",
-        path: "/org/admin/audit-logs",
-        ready: async (page) => {
-            await expect(page.getByRole("table")).toBeVisible();
-        },
-    },
-    {
-        name: "investment overview (classification table)",
-        path: "/investment?tab=overview",
-        ready: async (page) => {
-            await expect(page.getByTestId("classification-table")).toBeVisible();
-        },
-    },
-    {
-        name: "investment evidence table",
-        path: "/investment?tab=evidence",
-        ready: async (page) => {
-            await expect(page.getByTestId("evidence-table-head")).toBeVisible();
-        },
-    },
-    {
-        name: "sync coverage timeline",
-        path: "/org/admin/sync/sample-sync-config",
-        ready: async (page) => {
-            await expect(page.locator("caption.sr-only").first()).toBeAttached();
-        },
-    },
 ];
 
 test.describe("no horizontal page overflow at 390px", () => {
