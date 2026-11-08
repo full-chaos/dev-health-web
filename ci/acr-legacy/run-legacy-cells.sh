@@ -18,7 +18,7 @@
 # no membership row ever (its login gives a session with no org).
 # Needs: docker with compose v2, curl, python3 with bcrypt, node and this checkout's dependencies installed.
 set -euo pipefail
-set -o noclobber
+set -o noclobber # LOG and RECORD are never overwritten; temp files in the private WORK dir are rewritten with >|
 
 WEB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd -P)"
 HERE="${WEB_DIR}/ci/acr-legacy"
@@ -138,7 +138,7 @@ role_at_login() { case "$1" in platform_admin_no_row) echo member ;; platform_ad
       "$(uuid)" "${USER_ID[${who}]}" "${ORG_X}" "${role}"
   done
   printf "INSERT INTO public.org_feature_overrides (id, org_id, feature_id, is_enabled, reason, created_at, updated_at) SELECT gen_random_uuid(), '%s', id, true, 'acr legacy cells', now(), now() FROM public.feature_flags WHERE key = 'agent_context_runtime';\n" "${ORG_X}"
-} >"${WORK}/seed.sql"
+} >|"${WORK}/seed.sql"
 compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d postgres -q <"${WORK}/seed.sql"
 [ "$(psql_one "SELECT count(*) FROM public.org_feature_overrides WHERE org_id = '${ORG_X}'")" = 1 ] \
   || die "no agent_context_runtime override row (feature_flags has no agent_context_runtime key?)"
@@ -162,7 +162,7 @@ printf 'backend (ops router): %s\n' "${BACKEND}"
 printf '\n--- step 5: log every caller in (POST /api/v1/auth/login, as web passwordLogin) ---\n'
 CALLER_ROWS="${WORK}/callers.jsonl"
 for who in "${CALLERS[@]}"; do
-  EMAIL="${EMAIL[${who}]}" PW="${PASSWORD}" python3 -I -c 'import json, os; print(json.dumps({"email": os.environ["EMAIL"], "password": os.environ["PW"]}))' >"${WORK}/login.json"
+  EMAIL="${EMAIL[${who}]}" PW="${PASSWORD}" python3 -I -c 'import json, os; print(json.dumps({"email": os.environ["EMAIL"], "password": os.environ["PW"]}))' >|"${WORK}/login.json"
   status="$(curl --silent --show-error --max-time 30 --output "${WORK}/login.out" --write-out '%{http_code}' \
     -H 'Content-Type: application/json' --data-binary "@${WORK}/login.json" "${BACKEND}/api/v1/auth/login" || echo curl_error)"
   printf 'login %-22s -> HTTP %s; body with token values redacted: ' "${who}" "${status}"

@@ -67,7 +67,10 @@ const REPOSITORY = "acme/alpha";
 const EVIDENCE_REF = "evref-legacy-cell-0001";
 
 const ORG_ROLES = ["viewer", "member", "admin", "owner"] as const;
-/** The platform admin (users.is_superuser) whose session org is the org and who has NO membership row in it. */
+/**
+ * The platform admin (users.is_superuser) with NO membership row in the org and session org = the org: a member login,
+ * then the membership row is deleted (stale session = session org X, no row; acp D6857).
+ */
 const NO_ROW_PLATFORM_ADMIN = "platform_admin_no_row";
 /** A platform admin whose session has no org at all (the login of a user with no membership). */
 const NO_ORG_PLATFORM_ADMIN = "platform_admin_no_org";
@@ -377,8 +380,10 @@ describe(`ACR legacy cells (switch off) on dev-health-ops ${fixture.opsSha} cata
     });
 
     // Product rule 1: the platform admin with no membership row gets the legacy answer. These cells PIN that answer
-    // (PLATFORM_ADMIN_NO_ROW below); the PDP path must equal it (CHAOS-13325 equality cells).
-    describe("platform admin with no membership row, session org = the org", () => {
+    // (PLATFORM_ADMIN_NO_ROW above); the PDP path must equal it (CHAOS-13325 equality cells). The caller is built as a
+    // stale session (acp D6857): a member login, then the membership row is deleted. Login never gives a session org
+    // to a user with no membership row, so this is the one way a session carries org X with no row in X.
+    describe("platform admin: member login, then the membership row is deleted (stale session = session org X, no row)", () => {
         it("context:read", async () => {
             signIn(callerNamed(NO_ROW_PLATFORM_ADMIN));
             const answer = await contextRead();
