@@ -23,6 +23,7 @@ test("a platform admin whose session was refreshed still opens /superadmin/billi
     // The sign-in page moves on to /dashboard by itself; a navigation before that lands is aborted.
     await page.waitForURL(/\/dashboard/);
 
+    // The session the next reads answer, after the refresh: still this admin, still superuser.
     await expect
         .poll(async () => {
             const response = await page.request.get("/api/auth/session");
@@ -30,9 +31,9 @@ test("a platform admin whose session was refreshed still opens /superadmin/billi
             const session = (await response.json()) as {
                 user?: { email?: string; is_superuser?: boolean };
             } | null;
-            return session?.user?.email === EMAIL ? session.user.is_superuser : undefined;
+            return { email: session?.user?.email, is_superuser: session?.user?.is_superuser };
         })
-        .toBe(true);
+        .toEqual({ email: EMAIL, is_superuser: true });
 
     await page.goto("/superadmin/billing/audit");
     await expect(page).toHaveURL(/\/superadmin\/billing\/audit$/);
