@@ -20,6 +20,8 @@ test("a platform admin whose session was refreshed still opens /superadmin/billi
     );
     await page.getByRole("button", { name: "Sign In" }).click();
     expect((await callback).ok()).toBeTruthy();
+    // The sign-in page moves on to /dashboard by itself; a navigation before that lands is aborted.
+    await page.waitForURL(/\/dashboard/);
 
     await expect
         .poll(async () => {
