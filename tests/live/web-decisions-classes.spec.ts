@@ -29,6 +29,7 @@ import {
 } from "@playwright/test";
 import {
     authHeaders,
+    dropAutoOrg,
     expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
@@ -36,6 +37,7 @@ import {
     superuserPassword,
     testEmail,
     userIdByEmail,
+    verifyUserViaStack,
 } from "./helpers";
 import {
     decisionClientLines,
@@ -277,43 +279,34 @@ async function keptSessionPage(
     return context.newPage();
 }
 
-async function verifyUser(
-    request: APIRequestContext,
-    superToken: string,
-    userId: string,
-    who: string,
-): Promise<void> {
-    await expectSetupAnswer(
-        await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-            headers: authHeaders(superToken),
-            data: { is_verified: true },
-        }),
-        [200],
-        `verifying the ${who}`,
-    );
+// Owned users: the admin PATCH is refused (409 operation_moved, CHAOS-11017); setup verifies through the stack verb.
+function verifyUser(email: string, who: string): void {
+    expect(verifyUserViaStack(email), `verifying the ${who}`).toBe(true);
 }
 
-// A verified platform user with no organization (the admin API), for the multi-org classes.
+// A verified user for the multi-org classes. Users are owned by auth-service: POST /api/v1/admin/users answers 409 operation_moved
+// (CHAOS-13376), so the user registers through the prod route and is verified through the stack verb.
 async function createVerifiedUser(
     request: APIRequestContext,
     superToken: string,
     email: string,
     who: string,
 ): Promise<string> {
-    await expectSetupAnswer(
-        await request.post(`${liveBackendUrl}/api/v1/admin/users`, {
-            headers: authHeaders(superToken),
+    expectRegisterAccepted(
+        await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
             data: { email, password: PASSWORD, full_name: `Classes ${who}` },
+            headers: { Origin: liveBackendUrl },
         }),
-        [200, 201],
-        `creating the ${who}`,
     );
+    verifyUser(email, who);
+    // Register auto-creates an owned org; drop it so the later membership is the user's only one (a member never owns an org).
+    await dropAutoOrg(request, email, superToken);
     const userId = await userIdByEmail(request, email, superToken);
     expect(userId, `the ${who} is not in the admin user list`).not.toBe("");
-    await verifyUser(request, superToken, userId, who);
     return userId;
 }
 
+// The membership route is not refused while users are owned (ops apiservice/admin/orgs.go:29 has no owned guard; orgs_provision.go:121 writes through the auth change path).
 async function addMember(
     request: APIRequestContext,
     superToken: string,
@@ -400,7 +393,7 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
         );
         const ownerId = await userIdByEmail(request, ownerEmail, superToken);
         expect(ownerId, "the owner is not in the admin user list").not.toBe("");
-        await verifyUser(request, superToken, ownerId, "owner");
+        verifyUser(ownerEmail, "owner");
         const ownerPage = await newUserPage(browser, baseURL);
         await signInUser(ownerPage, ownerEmail, PASSWORD);
         answers.orgId = await sessionOrgId(ownerPage);
@@ -411,17 +404,7 @@ test.describe("integrations.write per caller class, legacy decides @classes-lega
         // their only membership and their session organization.
         for (const role of ["admin", "member", "viewer"] as const) {
             const email = testEmail(`classes-${role}`);
-            await expectSetupAnswer(
-                await request.post(`${liveBackendUrl}/api/v1/admin/users`, {
-                    headers: authHeaders(superToken),
-                    data: { email, password: PASSWORD, full_name: `Classes ${role}` },
-                }),
-                [200, 201],
-                `creating the ${role}`,
-            );
-            const userId = await userIdByEmail(request, email, superToken);
-            expect(userId, `the ${role} is not in the admin user list`).not.toBe("");
-            await verifyUser(request, superToken, userId, role);
+            const userId = await createVerifiedUser(request, superToken, email, role);
             await expectSetupAnswer(
                 await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${answers.orgId}/members`, {
                     headers: authHeaders(superToken),

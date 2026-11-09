@@ -33,6 +33,7 @@ import {
 } from "@playwright/test";
 import {
     authHeaders,
+    dropAutoOrg,
     expectRegisterAccepted,
     getSuperuserToken,
     liveBackendUrl,
@@ -40,6 +41,7 @@ import {
     superuserPassword,
     testEmail,
     userIdByEmail,
+    verifyUserViaStack,
 } from "./helpers";
 import {
     mark,
@@ -222,20 +224,9 @@ async function newUserPage(browser: Browser, baseURL: string | undefined): Promi
     return context.newPage();
 }
 
-async function verifyUser(
-    request: APIRequestContext,
-    superToken: string,
-    userId: string,
-    who: string,
-): Promise<void> {
-    await expectSetupAnswer(
-        await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-            headers: authHeaders(superToken),
-            data: { is_verified: true },
-        }),
-        [200],
-        `verifying the ${who}`,
-    );
+// Owned users: the admin PATCH is refused (409 operation_moved, CHAOS-11017); setup verifies through the stack verb.
+function verifyUser(email: string, who: string): void {
+    expect(verifyUserViaStack(email), `verifying the ${who}`).toBe(true);
 }
 
 // The enforce pass signs nobody in: auth-service allows 20 logins per client address in 15 minutes (limits.go loginIPLimit).
@@ -456,7 +447,7 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
         );
         const ownerId = await userIdByEmail(request, ownerEmail, superToken);
         expect(ownerId, "the owner is not in the admin user list").not.toBe("");
-        await verifyUser(request, superToken, ownerId, "owner");
+        verifyUser(ownerEmail, "owner");
         const pages: Partial<Record<ClassId, Page>> = {};
         pages.owner = await newUserPage(browser, baseURL);
         await signInUser(pages.owner, ownerEmail, PASSWORD);
@@ -474,17 +465,20 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
         // and their session organization.
         for (const role of ["admin", "member", "viewer"] as const) {
             const email = testEmail(`g3-${role}`);
-            await expectSetupAnswer(
-                await request.post(`${liveBackendUrl}/api/v1/admin/users`, {
-                    headers: authHeaders(superToken),
+            // Users are owned by auth-service: POST /api/v1/admin/users answers 409 operation_moved (CHAOS-13376), so the user
+            // registers through the prod route and is verified through the stack verb; the membership route is not refused while
+            // owned (ops apiservice/admin/orgs.go:29 has no owned guard; orgs_provision.go:121 writes through the auth change path).
+            expectRegisterAccepted(
+                await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
                     data: { email, password: PASSWORD, full_name: `G3 ${role}` },
+                    headers: { Origin: liveBackendUrl },
                 }),
-                [200, 201],
-                `creating the ${role}`,
             );
+            verifyUser(email, role);
+            // Register auto-creates an owned org; drop it so O is the user's only membership and session org.
+            await dropAutoOrg(request, email, superToken);
             const userId = await userIdByEmail(request, email, superToken);
             expect(userId, `the ${role} is not in the admin user list`).not.toBe("");
-            await verifyUser(request, superToken, userId, role);
             await expectSetupAnswer(
                 await request.post(`${liveBackendUrl}/api/v1/admin/orgs/${answers.orgId}/members`, {
                     headers: authHeaders(superToken),
@@ -535,9 +529,41 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
                 answers.classes[cls]?.calls,
                 `legacy: ${cls} admin.users go-api create requests`,
             ).toBe(want ? 1 : 0);
-            expect(answers.classes[cls]?.row, `legacy: ${cls} admin.users created row`).toBe(want);
+            // KNOWN DIVERGENCE CHAOS-13376: while users are owned, go-api refuses the create (409 operation_moved), so the
+            // superuser's request reaches go-api (calls 1) and no row is created. When 13376 lands this reads true and goes red.
+            expect(answers.classes[cls]?.row, `legacy: ${cls} admin.users created row`).toBe(false);
         }
         expect(pdpDecideLines(webLogPath()), "the legacy pass logged a PDP verdict").toBe(0);
+    });
+});
+
+test.describe("admin.users create under owned users @admin-users-legacy", () => {
+    // KNOWN DIVERGENCE CHAOS-13376 (not intended behaviour): the /superadmin/users/new flow sends POST /api/v1/admin/users, and while
+    // auth-service owns users go-api answers 409 operation_moved (ops apiservice/admin/users.go:246-248; body from
+    // internal/api/usersowned/usersowned.go:78 Write via policy.WriteDetail, internal/api/policy/respond.go:95). When 13376 lands
+    // the create answers 201, and this test goes red on purpose: replace it with the create-and-row assertion.
+    test("known divergence 13376: the superuser's platform-user create is refused 409 operation_moved", async ({
+        request,
+    }) => {
+        const superToken = (await getSuperuserToken(request)) as string;
+        expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
+        const email = testEmail("kd-13376");
+        const res = await request.post(`${liveBackendUrl}${ADMIN_USERS_ROUTE}`, {
+            headers: authHeaders(superToken),
+            data: { email, password: PASSWORD, full_name: "KD 13376" },
+        });
+        expect(
+            res.status(),
+            `create answered ${res.status()}: ${(await res.text()).slice(0, 500)}`,
+        ).toBe(409);
+        expect(await res.json()).toEqual({
+            detail: {
+                message:
+                    "This operation is served by the authentication service while it owns users",
+                reason: "operation_moved",
+            },
+        });
+        expect(await userIdByEmail(request, email, superToken), "no row is created").toBe("");
     });
 });
 

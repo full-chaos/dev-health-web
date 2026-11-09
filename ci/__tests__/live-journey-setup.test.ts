@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@playwright/test", () => ({ expect: () => undefined, test: { skip: () => undefined } }));
 
@@ -21,6 +24,47 @@ type Reply = { status: number; body?: unknown; raw?: string; headers?: Record<st
 type Options = { data?: unknown; headers?: Record<string, string> };
 type Route = (call: string, options: Options, url: string) => Reply;
 type Sent = { call: string; url: string; data?: unknown; headers?: Record<string, string> };
+
+/**
+ * The ops stack script, faked: every call's argv is appended to `calls.log`. The verb exits 1 when the
+ * `fail` marker exists, else it writes the `verified` marker (the user can then log in).
+ */
+let stackDir = "";
+const savedEnv = {
+    script: process.env.LIVE_E2E_STACK_SCRIPT,
+    state: process.env.LIVE_E2E_STACK_STATE,
+};
+const restore = (name: string, value: string | undefined) => {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+};
+beforeEach(() => {
+    stackDir = mkdtempSync(join(tmpdir(), "live-journey-stack-"));
+    const script = join(stackDir, "stack.sh");
+    writeFileSync(
+        script,
+        [
+            "#!/bin/bash",
+            `echo "$*" >> "${stackDir}/calls.log"`,
+            `[ -f "${stackDir}/fail" ] && exit 1`,
+            `[ "$1" = verify-user ] && touch "${stackDir}/verified"`,
+            "exit 0",
+            "",
+        ].join("\n"),
+    );
+    chmodSync(script, 0o755);
+    process.env.LIVE_E2E_STACK_SCRIPT = script;
+    process.env.LIVE_E2E_STACK_STATE = join(stackDir, "state");
+});
+afterEach(() => {
+    restore("LIVE_E2E_STACK_SCRIPT", savedEnv.script);
+    restore("LIVE_E2E_STACK_STATE", savedEnv.state);
+    rmSync(stackDir, { recursive: true, force: true });
+});
+const stackCalls = (): string[] => {
+    const log = join(stackDir, "calls.log");
+    return existsSync(log) ? readFileSync(log, "utf8").split("\n").filter(Boolean) : [];
+};
 
 /** A fake APIRequestContext: each call is answered by `route`, and every call is recorded. */
 function fakeRequest(route: Route) {
@@ -55,7 +99,6 @@ const isUser = (options: Options) =>
  * token only once the user is verified; the second user login (the relogin) gives TOKEN2.
  */
 function healthy(overrides: Partial<Record<string, Reply>> = {}): Route {
-    let verified = false;
     let userLogins = 0;
     return (call, options) => {
         const login = call === "POST /api/v1/auth/login";
@@ -64,16 +107,13 @@ function healthy(overrides: Partial<Record<string, Reply>> = {}): Route {
         if (call === "POST /api/v1/auth/register") return { status: 202, body: { message: "ok" } };
         if (login && !isUser(options)) return { status: 200, body: { access_token: SU_TOKEN } };
         if (login) {
-            if (!verified) return { status: 200, body: { needs_verification: true } };
+            if (!existsSync(join(stackDir, "verified")))
+                return { status: 200, body: { needs_verification: true } };
             userLogins += 1;
             return { status: 200, body: { access_token: userLogins === 1 ? TOKEN : TOKEN2 } };
         }
         if (call === "GET /api/v1/admin/users") {
             return { status: 200, body: { items: [{ id: "user-1", email: EMAIL }] } };
-        }
-        if (call === "PATCH /api/v1/admin/users/user-1") {
-            verified = true;
-            return { status: 200, body: {} };
         }
         if (call === "POST /api/v1/auth/onboard") return { status: 200, body: { org_id: "o1" } };
         return { status: 500, body: { error: { code: "unexpected_call" } } };
@@ -92,7 +132,7 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             "register 202 body=json",
             "superuser-login 200 token=present",
             "user-lookup 200 found",
-            "verify 200 body=json",
+            "verify ok",
             "login 200 token=present body=json",
             "onboard 200 body=json",
             "relogin 200 token=present body=json",
@@ -101,12 +141,11 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             "POST /api/v1/auth/register",
             "POST /api/v1/auth/login",
             "GET /api/v1/admin/users",
-            "PATCH /api/v1/admin/users/user-1",
             "POST /api/v1/auth/login",
             "POST /api/v1/auth/onboard",
             "POST /api/v1/auth/login",
         ]);
-        const [register, , lookup, verify, , onboard] = sent;
+        const [register, , lookup, , onboard] = sent;
         expect(register?.data).toEqual({
             email: EMAIL,
             password: PASSWORD,
@@ -116,8 +155,7 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
         const query = new URL(lookup!.url).searchParams;
         expect([query.get("q"), query.get("limit")]).toEqual([EMAIL, "5"]);
         expect(lookup?.headers?.Authorization).toBe(`Bearer ${SU_TOKEN}`);
-        expect(verify?.data).toEqual({ is_verified: true });
-        expect(verify?.headers?.Authorization).toBe(`Bearer ${SU_TOKEN}`);
+        expect(stackCalls()).toEqual([`verify-user ${join(stackDir, "state")} ${EMAIL}`]);
         expect(onboard?.data).toEqual({ action: "create_org", org_name: "Creds Org" });
         expect(onboard?.headers?.Authorization).toBe(`Bearer ${TOKEN}`);
         expect(setupFault(setup)).toBe("");
@@ -166,12 +204,6 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             "user-lookup 403 body=error | verify skipped | login 200 token=absent body=json",
         ],
         [
-            "a refused verify",
-            "PATCH /api/v1/admin/users/user-1",
-            { status: 403, body: { error: { code: "x" } } },
-            "verify 403 body=error | login 200 token=absent body=json",
-        ],
-        [
             "a login with no token",
             "POST /api/v1/auth/login#user",
             { status: 400, body: { detail: "x" } },
@@ -188,6 +220,28 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
             expect(calls().filter((c) => c === "POST /api/v1/auth/login").length).toBe(2);
         });
     }
+
+    it("names a failed verify step and gives no token, no login, no onboard", async () => {
+        writeFileSync(join(stackDir, "fail"), "");
+        const { request, calls } = fakeRequest(healthy());
+        const setup = await setupUser(request, withOrg);
+        expect(setup.token).toBe("");
+        expect(setupFault(setup).endsWith("user-lookup 200 found | verify failed")).toBe(true);
+        expect(stackCalls()).toEqual([`verify-user ${join(stackDir, "state")} ${EMAIL}`]);
+        expect(calls().filter((c) => c === "POST /api/v1/auth/login").length).toBe(1);
+        expect(calls()).not.toContain("POST /api/v1/auth/onboard");
+    });
+
+    it("skips the verb, and the user cannot log in, when the stack env is unset", async () => {
+        delete process.env.LIVE_E2E_STACK_SCRIPT;
+        const ci = process.env.CI; // envFault throws under CI; locally it skips (mocked here)
+        delete process.env.CI;
+        const { request } = fakeRequest(healthy());
+        const setup = await setupUser(request, user).finally(() => restore("CI", ci));
+        expect(setup.token).toBe("");
+        expect(setup.steps).toContain("verify skipped (no stack env)");
+        expect(stackCalls()).toEqual([]);
+    });
 
     // Codex r2 and r3 on #1813: `Abc123`, `org-123` and then a letters-only `SecretToken` passed a
     // shape filter. No backend string is printed at all: only the body's kind.
@@ -263,7 +317,6 @@ describe("a live journey's setup user (CHAOS-12865)", () => {
         for (const [method, step, name, recorded] of [
             ["post", "register", "TimeoutError", "TimeoutError"],
             ["get", "user-lookup", "SecretToken", "Error"],
-            ["patch", "verify", "TypeError", "TypeError"],
         ] as const) {
             const { request } = fakeRequest(healthy());
             const thrower = async () => {

@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 # CHAOS-12138: restart the live-e2e go-api with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false and the rest
 # of its environment unchanged (saved by the "Start dev-health-ops go-api" step).
+# CHAOS-13375: users are owned by auth-service and register runs there, which reads the same variable from its own process
+# (ops internal/auth/authapi/register.go:41-47), so auth-service restarts too, through the ops stack verbs
+# (LIVE_E2E_STACK_SCRIPT, LIVE_E2E_STACK_STATE): start-auth inherits the caller environment and waits for /readyz.
 set -euo pipefail
+
+: "${LIVE_E2E_STACK_SCRIPT:?LIVE_E2E_STACK_SCRIPT is required to restart auth-service}"
+: "${LIVE_E2E_STACK_STATE:?LIVE_E2E_STACK_STATE is required to restart auth-service}"
+
+bash "${LIVE_E2E_STACK_SCRIPT}" stop-auth "${LIVE_E2E_STACK_STATE}"
+AUTH_AUTO_CREATE_ORG_ON_REGISTER=false bash "${LIVE_E2E_STACK_SCRIPT}" start-auth "${LIVE_E2E_STACK_STATE}"
 
 kill "$(cat /tmp/dev-health-go-api.pid)"
 for _ in {1..30}; do

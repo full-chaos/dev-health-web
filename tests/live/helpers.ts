@@ -11,6 +11,7 @@
  *     platform admin used only to verify those new users. It is never conflated
  *     with the orgless test users.
  */
+import { execFileSync } from "node:child_process";
 import {
     expect,
     test,
@@ -81,6 +82,62 @@ export async function loginUser(
         data: { email, password },
     });
     return (await res.json()) as Record<string, unknown>;
+}
+
+/**
+ * Delete the org that register auto-created for a verified user, as the superuser, so the user has no membership and a later
+ * add-member row is its only (session) org. Login picks the earliest membership (ops auth/authapi/users.go:201-211), so the
+ * auto org would win. No user login: auth-service budgets logins at 20 per 15 min per IP (authapi/limits.go:35-36). The org is
+ * found through the superuser admin API: the user id (GET /api/v1/admin/users?q=, apiservice/admin/users.go:145) and the newest
+ * orgs (GET /api/v1/admin/orgs, orgs.go:23, newest first, orgstore.go:66), whose members (GET /api/v1/admin/orgs/{id}/members,
+ * orgs.go:28, answer field user_id and role, orgs.go:60-70) name the user. Right after register the user has exactly one
+ * membership, the auto org with role owner; anything else fails with a message. A real delete removes the memberships and the
+ * org (apiservice/admin/orgdeletion_targets.go:100,103) and deprovisions it in auth (orgs_provision.go:238).
+ */
+export async function dropAutoOrg(
+    request: APIRequestContext,
+    email: string,
+    superToken: string,
+): Promise<void> {
+    const userId = await userIdByEmail(request, email, superToken);
+    expect(userId, `${email} is not in the admin user list`).not.toBe("");
+    const orgsRes = await request.get(`${liveBackendUrl}/api/v1/admin/orgs?limit=100`, {
+        headers: authHeaders(superToken),
+    });
+    expect(orgsRes.status(), `listing organizations answered ${orgsRes.status()}`).toBe(200);
+    const orgs = (await orgsRes.json()) as Array<{ id?: string }>;
+    const memberships: Array<{ orgId: string; role: string }> = [];
+    for (const org of orgs) {
+        if (!org.id) continue;
+        const res = await request.get(`${liveBackendUrl}/api/v1/admin/orgs/${org.id}/members`, {
+            headers: authHeaders(superToken),
+        });
+        expect(res.status(), `listing members of ${org.id} answered ${res.status()}`).toBe(200);
+        const members = (await res.json()) as Array<{ user_id?: string; role?: string }>;
+        for (const member of members) {
+            if (member.user_id === userId)
+                memberships.push({ orgId: org.id, role: member.role ?? "" });
+        }
+        // The auto org is the newest org the user has, and a user has no other membership right after register.
+        if (memberships.length > 0) break;
+    }
+    expect(
+        memberships.length,
+        `${email} has ${memberships.length} memberships among the newest ${orgs.length} organizations, want exactly one (the auto-created org)`,
+    ).toBe(1);
+    expect(
+        memberships[0].role,
+        `the auto-created membership of ${email} has role ${memberships[0].role}, want owner`,
+    ).toBe("owner");
+    const res = await request.delete(
+        `${liveBackendUrl}/api/v1/admin/orgs/${memberships[0].orgId}`,
+        {
+            headers: authHeaders(superToken),
+        },
+    );
+    expect(res.status(), `deleting the auto-created organization answered ${res.status()}`).toBe(
+        200,
+    );
 }
 
 /**
@@ -178,19 +235,34 @@ export async function userIdByEmail(
 }
 
 /**
- * Mark a user as email-verified via the admin API.
- * Requires a superuser token. Returns true on success.
+ * One verb of the ops live e2e auth stack script (LIVE_E2E_STACK_SCRIPT, state LIVE_E2E_STACK_STATE). Users are owned by
+ * auth-service, so the go-api admin PATCH no longer sets is_verified or is_superuser (409 operation_moved, CHAOS-11017):
+ * test setup goes through the venue verbs. Returns false (after envFault) when the stack env is missing; throws when the verb fails.
  */
-export async function verifyUser(
-    request: APIRequestContext,
-    userId: string,
-    superuserToken: string,
-): Promise<boolean> {
-    const res = await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-        headers: authHeaders(superuserToken),
-        data: { is_verified: true },
+export function stackVerb(...args: string[]): boolean {
+    const script = process.env.LIVE_E2E_STACK_SCRIPT;
+    const state = process.env.LIVE_E2E_STACK_STATE;
+    if (!script || !state) {
+        envFault(
+            "LIVE_E2E_STACK_SCRIPT and LIVE_E2E_STACK_STATE name the ops auth stack script and its state directory",
+        );
+        return false;
+    }
+    execFileSync("bash", [script, args[0], state, ...args.slice(1)], {
+        stdio: "pipe",
+        timeout: 90_000,
     });
-    return res.ok();
+    return true;
+}
+
+/** Mark a user's e-mail verified in auth.users and public.users (stack verb verify-user). Test setup only. */
+export function verifyUserViaStack(email: string): boolean {
+    return stackVerb("verify-user", email);
+}
+
+/** Make a user a platform admin in auth (stack verb grant-platform-admin, new in ops PR-V). Test setup only. */
+export function grantPlatformAdminViaStack(email: string): boolean {
+    return stackVerb("grant-platform-admin", email);
 }
 
 /**
@@ -334,14 +406,14 @@ export async function setupUser(
         steps.push("user-lookup skipped (no superuser token)");
     }
     if (suToken && userId) {
-        const verify = await attempt(steps, "verify", () =>
-            request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-                headers: authHeaders(suToken),
-                data: { is_verified: true },
-            }),
-        );
-        if (verify === undefined) return none();
-        await step("verify", verify);
+        try {
+            steps.push(
+                verifyUserViaStack(user.email) ? "verify ok" : "verify skipped (no stack env)",
+            );
+        } catch {
+            steps.push("verify failed");
+            return none();
+        }
     } else {
         steps.push("verify skipped");
     }
@@ -412,11 +484,13 @@ export async function provisionUser(
     if (registerStatusFault(res.status()) !== "") return "";
     const userId = await userIdByEmail(request, email, superuserToken);
     if (!userId) return "";
-    const patch = await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-        headers: authHeaders(superuserToken),
-        data: superuser ? { is_verified: true, is_superuser: true } : { is_verified: true },
-    });
-    return patch.ok() ? userId : "";
+    try {
+        if (!verifyUserViaStack(email)) return "";
+        if (superuser && !grantPlatformAdminViaStack(email)) return "";
+    } catch {
+        return "";
+    }
+    return userId;
 }
 
 /** The onboarding steps mark themselves interactive once React has attached their handlers. */

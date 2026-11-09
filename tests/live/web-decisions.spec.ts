@@ -16,6 +16,7 @@ import {
     signInCanonicalUser,
     testEmail,
     userIdByEmail,
+    verifyUserViaStack,
 } from "./helpers";
 import {
     decideLines,
@@ -59,14 +60,8 @@ async function registerOwner(
     expectRegisterAccepted(res);
     const userId = await userIdByEmail(request, email, superToken);
     expect(userId, "the registered user is not in the admin user list").not.toBe("");
-    await expectSetupAnswer(
-        await request.patch(`${liveBackendUrl}/api/v1/admin/users/${userId}`, {
-            headers: authHeaders(superToken),
-            data: { is_verified: true },
-        }),
-        [200],
-        "verifying the user",
-    );
+    // Owned users: the admin PATCH is refused (409 operation_moved, CHAOS-11017); setup verifies through the stack verb.
+    expect(verifyUserViaStack(email), "verifying the user").toBe(true);
     return { email, userId };
 }
 
