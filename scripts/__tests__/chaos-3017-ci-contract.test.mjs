@@ -136,17 +136,21 @@ describe("CHAOS-3017 CI contracts", () => {
         "keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies",
         async () => {
             const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
+            // Each list gets what is left of this test's bound (less 1 s, so a stopped list reports its
+            // own cause before the test times out), not a fixed per-list limit (CHAOS-13465).
+            const deadline = Date.now() + DEFAULT_SHARD_LIST_TIMEOUT_MS - 1_000;
+            const timeLeft = () => ({ timeoutMs: Math.max(1, deadline - Date.now()) });
             // Each Playwright process uses the report and result paths from the shared
             // config. Listing them concurrently makes those processes race while the
             // broader Vitest suite is also active, producing incomplete inventories.
-            const full = await listDefaultPlaywrightTests();
+            const full = await listDefaultPlaywrightTests(undefined, timeLeft());
             expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
             expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
             // CHAOS-12841: pixels hold only in the mirrored image; the `visual` job runs this spec.
             expect(full.some((entry) => entry.includes("ask-dev-visual.spec.ts"))).toBe(false);
             const shards = [];
             for (const shard of shardLabels) {
-                shards.push(await listDefaultPlaywrightTests(shard));
+                shards.push(await listDefaultPlaywrightTests(shard, timeLeft()));
             }
 
             expect(full.length).toBeGreaterThan(0);
@@ -191,6 +195,12 @@ describe("CHAOS-3017 CI contracts", () => {
         },
         DEFAULT_SHARD_LIST_TIMEOUT_MS,
     );
+
+    it("names the list and its limit when a shard list runs out of time", async () => {
+        await expect(listDefaultPlaywrightTests("1/3", { timeoutMs: 1 })).rejects.toThrow(
+            /^playwright test --list for shard 1\/3 was stopped at its 1 ms limit after \d+ ms$/u,
+        );
+    });
 
     it("isolates E2E artifacts by suite and shard", () => {
         const workflow = contents(TESTS_WORKFLOW);
