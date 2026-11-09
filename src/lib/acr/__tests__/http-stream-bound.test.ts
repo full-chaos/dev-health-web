@@ -1,9 +1,31 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { acrRuntimeErrorCodes } from "../errors";
-import { fetchBoundedJson } from "../http";
+import { BODY_READ_FAILED_MESSAGE, fetchBoundedJson } from "../http";
+
+const warnings = vi.hoisted(() => [] as unknown[][]);
+
+vi.mock("@/lib/logger", () => {
+    const ignore = () => undefined;
+    return {
+        logger: {
+            debug: ignore,
+            error: ignore,
+            fatal: ignore,
+            info: ignore,
+            trace: ignore,
+            warn: (...args: unknown[]) => {
+                warnings.push(args);
+            },
+        },
+    };
+});
+
+beforeEach(() => {
+    warnings.length = 0;
+});
 
 // Real undici (Node's global fetch) against a loopback server: no msw in this file.
 const CHUNK = Buffer.alloc(64 * 1_024, 0x20);
@@ -253,5 +275,121 @@ describe("fetchBoundedJson over real undici: a network error during the body rea
             retryable: false,
         });
         expect((error as Error).cause).toBeUndefined();
+    });
+});
+
+describe("fetchBoundedJson over real undici: a failed body read writes one WARN line", () => {
+    it(
+        "Given a 200 whose connection is reset right after the headers, then one WARN names the path, unavailable and 0 bytes",
+        { timeout: 10_000 },
+        async () => {
+            const url = await listen((_request, response) => {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                // Sends the headers now: without a write, Node holds them back.
+                response.flushHeaders();
+                setTimeout(() => response.socket?.resetAndDestroy(), 50);
+            });
+            await expect(
+                fetchBoundedJson({
+                    headers: { Authorization: "Bearer secret-token" },
+                    method: "GET",
+                    timeoutMs: 5_000,
+                    url,
+                }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable, status: 503 });
+            expect(warnings).toEqual([
+                [
+                    {
+                        module: "acr-http",
+                        path: "/graphql",
+                        code: acrRuntimeErrorCodes.unavailable,
+                        bytesRead: 0,
+                    },
+                    BODY_READ_FAILED_MESSAGE,
+                ],
+            ]);
+        },
+    );
+
+    it(
+        "Given a 200 whose connection is reset after part of the body, then one WARN names unavailable and at most the bytes sent",
+        { timeout: 10_000 },
+        async () => {
+            const url = await listen((_request, response) => {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                response.write('{"a":');
+                setTimeout(() => response.socket?.resetAndDestroy(), 50);
+            });
+            await expect(
+                fetchBoundedJson({ headers: {}, method: "GET", timeoutMs: 5_000, url }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable, status: 503 });
+            expect(warnings).toHaveLength(1);
+            const [fields, message] = warnings[0] as [Record<string, unknown>, string];
+            expect(message).toBe(BODY_READ_FAILED_MESSAGE);
+            expect(Object.keys(fields).sort()).toEqual(["bytesRead", "code", "module", "path"]);
+            expect(fields).toMatchObject({
+                module: "acr-http",
+                path: "/graphql",
+                code: acrRuntimeErrorCodes.unavailable,
+            });
+            expect(fields["bytesRead"]).toBeGreaterThanOrEqual(0);
+            expect(fields["bytesRead"]).toBeLessThanOrEqual(5);
+        },
+    );
+
+    it(
+        "Given a 200 whose body stalls past the read timeout, then one WARN names the path, timeout and the 5 bytes read",
+        { timeout: 10_000 },
+        async () => {
+            const url = await listen((_request, response) => {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                response.write('{"a":');
+            });
+            await expect(
+                fetchBoundedJson({
+                    headers: {},
+                    method: "GET",
+                    timeoutMs: 300,
+                    url: new URL("/graphql?token=secret", url),
+                }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.timeout, status: 504 });
+            expect(warnings).toEqual([
+                [
+                    {
+                        module: "acr-http",
+                        path: "/graphql",
+                        code: acrRuntimeErrorCodes.timeout,
+                        bytesRead: 5,
+                    },
+                    BODY_READ_FAILED_MESSAGE,
+                ],
+            ]);
+        },
+    );
+
+    it(
+        "Given a body past 1 MiB, then response_too_large writes no WARN line",
+        { timeout: 10_000 },
+        async () => {
+            const url = await listen((_request, response) => {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                for (let index = 0; index < OVER_THE_BOUND; index += 1) response.write(CHUNK);
+            });
+            await expect(
+                fetchBoundedJson({ headers: {}, method: "GET", timeoutMs: 5_000, url }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.responseTooLarge });
+            expect(warnings).toEqual([]);
+        },
+    );
+
+    it("Given a clean 200 JSON read, then it writes no WARN line", async () => {
+        const url = await listen((_request, response) => {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            response.end('{"ok":true}');
+        });
+        await expect(
+            fetchBoundedJson({ headers: {}, method: "GET", timeoutMs: 5_000, url }),
+        ).resolves.toMatchObject({ status: 200, value: { ok: true } });
+        expect(warnings).toEqual([]);
     });
 });
