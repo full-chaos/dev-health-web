@@ -94,6 +94,12 @@ describe("executableInlineScripts follows the HTML parsing states (CHAOS-13396)"
         ).toEqual(["<!--<script></script>still()"]);
     });
 
+    it("hashes a script inside <template>, which runs once the template content is inserted", () => {
+        expect(
+            executableInlineScripts(page("<template><script>later()</script></template>")),
+        ).toEqual(["later()"]);
+    });
+
     it("hashes an SVG script's text as the parser decodes it", () => {
         expect(executableInlineScripts(page("<svg><script>a&lt;b()</script></svg>"))).toEqual([
             "a<b()",
