@@ -145,7 +145,7 @@ export function DataTable<T>({
                 role="region"
                 aria-label={accessibleLabel}
                 tabIndex={0}
-                className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80)"
+                className="relative overflow-x-auto rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80)"
             >
                 <table className="w-full text-left text-sm" data-testid={testId}>
                     {/* Concept `th`: caps label on the page background. The type scale rules (label-caps 11/16,

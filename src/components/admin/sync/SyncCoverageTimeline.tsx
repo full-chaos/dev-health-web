@@ -581,7 +581,7 @@ export function SyncCoverageTimeline({
                             )}
 
                             {/* Accessible table fallback — the authoritative rendering. */}
-                            <div className="overflow-x-auto">
+                            <div className="relative overflow-x-auto">
                                 <table className="min-w-full divide-y divide-(--card-stroke) text-sm">
                                     <caption className="sr-only">
                                         Coverage windows for dataset {dataset.dataset_key}

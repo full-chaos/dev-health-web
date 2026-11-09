@@ -392,6 +392,12 @@ describe("overview: classification table", () => {
         expect(facts).not.toHaveTextContent(/evidence quality/i);
     });
 
+    it("the clip box around the table is positioned, so the sr-only Evidence header cannot escape it", () => {
+        overview({ investmentMix: mix as never });
+        const clip = screen.getByTestId("classification-table").closest(".overflow-hidden");
+        expect(clip).toHaveClass("relative");
+    });
+
     it("renders no table when the mix is empty or absent", () => {
         overview({ investmentMix: null });
         expect(screen.queryByTestId("classification-table")).toBeNull();
