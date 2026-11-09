@@ -1,6 +1,9 @@
 import "server-only";
 
+import { logger } from "@/lib/logger";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+
+export const BODY_READ_FAILED_MESSAGE = "acr upstream body read failed";
 
 type BoundedJsonRequest = {
     readonly body?: string;
@@ -32,6 +35,7 @@ export function retryAfterSeconds(response: Response): number | undefined {
 async function readBoundedBytes(
     stream: ReadableStream<Uint8Array> | null,
     maximumBytes: number,
+    progress: { received: number } = { received: 0 },
 ): Promise<Uint8Array> {
     if (stream === null) return new Uint8Array(0);
     const reader = stream.getReader();
@@ -42,6 +46,7 @@ async function readBoundedBytes(
             const next = await reader.read();
             if (next.done) break;
             received += next.value.byteLength;
+            progress.received = received;
             if (received > maximumBytes) {
                 // Not awaited: a cancel can wait on a body the peer never ends.
                 void reader.cancel().catch(() => undefined);
@@ -154,11 +159,23 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
         );
     }
     let body: Uint8Array;
+    const progress = { received: 0 };
     try {
-        body = await readBoundedBytes(response.body, 1_048_576);
+        body = await readBoundedBytes(response.body, 1_048_576, progress);
     } catch (error) {
         if (error instanceof AcrRuntimeError) throw error;
-        if (timeoutSignal.aborted) {
+        const timedOut = timeoutSignal.aborted;
+        // The path only: the query, headers and body bytes can carry credentials.
+        logger.warn(
+            {
+                module: "acr-http",
+                path: input.url.pathname,
+                code: timedOut ? acrRuntimeErrorCodes.timeout : acrRuntimeErrorCodes.unavailable,
+                bytesRead: progress.received,
+            },
+            BODY_READ_FAILED_MESSAGE,
+        );
+        if (timedOut) {
             throw new AcrRuntimeError(
                 acrRuntimeErrorCodes.timeout,
                 "Agent Context Runtime did not respond in time.",
