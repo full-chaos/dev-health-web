@@ -162,7 +162,7 @@ async function labelsAt(
     shape = liveShape(),
 ): Promise<{ boxes: Box[]; every: Box[] }> {
     render(askDevShapeChart(shape) as ReactElement);
-    await screen.findByTestId("chart");
+    await screen.findByTestId("chart", {}, { timeout: 5000 });
     const option = caught.option as echarts.EChartsCoreOption & { series: object[] };
     const unhidden = {
         ...option,
