@@ -704,57 +704,77 @@ function envWithout(...keys: string[]): NodeJS.ProcessEnv {
 describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (spawns the real script)", () => {
     const scriptPath = resolve(WEB_ROOT, "ci/gate_web_auth_profiles.ts");
     const tsxBin = resolve(WEB_ROOT, "node_modules/.bin/tsx");
+    // CHAOS-13439: each test spawns the real script (11.4-15.0 s alone on a host at load ~26, 3 runs).
+    // Under `taskset -c 0-3 vitest --maxWorkers=32` the slowest ran 58.5 s (tier-branch-5.json of
+    // fcs-12901): 58.5 s x 1.5 = 88 s, rounded to 90 s, under the 120 s cap.
+    const SPAWN_CLI_TIMEOUT_MS = 90_000;
 
-    it("exits 1 (not 0) under CI=true with no --credential-classes/--schema and no sibling ops checkout", () => {
-        const env = envWithout("GITHUB_ACTIONS");
-        env.CI = "true";
-        const result = spawnSync(tsxBin, [scriptPath, "--root", WEB_ROOT], {
-            cwd: WEB_ROOT,
-            encoding: "utf8",
-            env,
-        });
-        expect(result.status).toBe(1);
-        expect(result.stderr).toMatch(/^FAIL:/m);
-        expect(result.stderr).toContain("credential-classes.json");
-        expect(result.stderr).toContain("endpoint-profile.schema.json");
-    }, 30_000);
+    it(
+        "exits 1 (not 0) under CI=true with no --credential-classes/--schema and no sibling ops checkout",
+        () => {
+            const env = envWithout("GITHUB_ACTIONS");
+            env.CI = "true";
+            const result = spawnSync(tsxBin, [scriptPath, "--root", WEB_ROOT], {
+                cwd: WEB_ROOT,
+                encoding: "utf8",
+                env,
+            });
+            expect(result.status).toBe(1);
+            expect(result.stderr).toMatch(/^FAIL:/m);
+            expect(result.stderr).toContain("credential-classes.json");
+            expect(result.stderr).toContain("endpoint-profile.schema.json");
+        },
+        SPAWN_CLI_TIMEOUT_MS,
+    );
 
-    it("exits non-zero locally (CI unset) with missing inputs and no opt-out flag", () => {
-        const env = envWithout("CI", "GITHUB_ACTIONS");
-        const result = spawnSync(tsxBin, [scriptPath, "--root", WEB_ROOT], {
-            cwd: WEB_ROOT,
-            encoding: "utf8",
-            env,
-        });
-        expect(result.status).toBe(1);
-        expect(result.stderr).toMatch(/^FAIL:/m);
-        expect(result.stderr).toContain("--allow-missing-contract-inputs");
-    }, 30_000);
+    it(
+        "exits non-zero locally (CI unset) with missing inputs and no opt-out flag",
+        () => {
+            const env = envWithout("CI", "GITHUB_ACTIONS");
+            const result = spawnSync(tsxBin, [scriptPath, "--root", WEB_ROOT], {
+                cwd: WEB_ROOT,
+                encoding: "utf8",
+                env,
+            });
+            expect(result.status).toBe(1);
+            expect(result.stderr).toMatch(/^FAIL:/m);
+            expect(result.stderr).toContain("--allow-missing-contract-inputs");
+        },
+        SPAWN_CLI_TIMEOUT_MS,
+    );
 
-    it("exits 0 locally with --allow-missing-contract-inputs and lists the skipped checks", () => {
-        const env = envWithout("CI", "GITHUB_ACTIONS");
-        const result = spawnSync(
-            tsxBin,
-            [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
-            { cwd: WEB_ROOT, encoding: "utf8", env },
-        );
-        expect(result.status).toBe(0);
-        expect(result.stderr).toMatch(/^WARN:/m);
-        expect(result.stderr).toContain("SKIPPED");
-        expect(result.stderr).toContain("credential-classes.json");
-    }, 30_000);
+    it(
+        "exits 0 locally with --allow-missing-contract-inputs and lists the skipped checks",
+        () => {
+            const env = envWithout("CI", "GITHUB_ACTIONS");
+            const result = spawnSync(
+                tsxBin,
+                [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
+                { cwd: WEB_ROOT, encoding: "utf8", env },
+            );
+            expect(result.status).toBe(0);
+            expect(result.stderr).toMatch(/^WARN:/m);
+            expect(result.stderr).toContain("SKIPPED");
+            expect(result.stderr).toContain("credential-classes.json");
+        },
+        SPAWN_CLI_TIMEOUT_MS,
+    );
 
-    it("CI stays fatal even with the opt-out flag", () => {
-        const env = envWithout("GITHUB_ACTIONS");
-        env.CI = "true";
-        const result = spawnSync(
-            tsxBin,
-            [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
-            { cwd: WEB_ROOT, encoding: "utf8", env },
-        );
-        expect(result.status).toBe(1);
-        expect(result.stderr).toMatch(/^FAIL:/m);
-    }, 30_000);
+    it(
+        "CI stays fatal even with the opt-out flag",
+        () => {
+            const env = envWithout("GITHUB_ACTIONS");
+            env.CI = "true";
+            const result = spawnSync(
+                tsxBin,
+                [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
+                { cwd: WEB_ROOT, encoding: "utf8", env },
+            );
+            expect(result.status).toBe(1);
+            expect(result.stderr).toMatch(/^FAIL:/m);
+        },
+        SPAWN_CLI_TIMEOUT_MS,
+    );
 });
 
 describe("surface_kind vocabulary is read live from the schema", () => {

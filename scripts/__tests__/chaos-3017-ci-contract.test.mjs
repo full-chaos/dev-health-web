@@ -21,9 +21,11 @@ import {
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
 // One `--list` per shard plus one for the whole suite, run one after another. Measured at 1 to
 // 3.5 s each on a loaded machine and in a review sandbox (CHAOS-12583), so the limit grows with the
-// matrix instead of staying fixed for three shards.
+// matrix instead of staying fixed for three shards. CHAOS-13439: 6 lists took 10.3-13.6 s alone
+// (about 2 s each, 3 runs, host load ~26) and 48.1 s under `taskset -c 0-3 vitest --maxWorkers=32`
+// (about 8 s each, tier-branch-5.json of fcs-12901); 8 s x 1.5 = 12 s per list.
 const DEFAULT_SHARD_LIST_TIMEOUT_MS =
-    (matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default")).length + 1) * 8_000;
+    (matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default")).length + 1) * 12_000;
 const STATIC_WORKFLOW = path.join(ROOT, ".github/workflows/build-static.yml");
 const BUILD_WORKFLOW = path.join(ROOT, ".github/workflows/build.yml");
 const DOCKER_WORKFLOW = path.join(ROOT, ".github/workflows/build-docker.yml");
