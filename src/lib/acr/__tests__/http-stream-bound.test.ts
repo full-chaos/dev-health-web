@@ -285,6 +285,8 @@ describe("fetchBoundedJson over real undici: a failed body read writes one WARN 
         async () => {
             const url = await listen((_request, response) => {
                 response.writeHead(200, { "Content-Type": "application/json" });
+                // Sends the headers now: without a write, Node holds them back.
+                response.flushHeaders();
                 setTimeout(() => response.socket?.resetAndDestroy(), 50);
             });
             await expect(
