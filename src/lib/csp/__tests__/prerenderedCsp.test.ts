@@ -78,6 +78,41 @@ describe("executableInlineScripts", () => {
     });
 });
 
+describe("executableInlineScripts follows the HTML parsing states (CHAOS-13396)", () => {
+    it.each([
+        ["a comment", page("<!-- <script>c()</script> -->")],
+        ["a quoted attribute", page('<div title="<script>a()</script>"></div>')],
+        ["<title>", "<html><head><title><script>t()</script></title></head><body></body></html>"],
+        ["<textarea>", page("<textarea><script>x()</script></textarea>")],
+    ])("gives no script for script-like text inside %s", (_where, html) => {
+        expect(executableInlineScripts(html)).toEqual([]);
+    });
+
+    it("reads a double-escaped script body whole, to the </script> that ends it", () => {
+        expect(
+            executableInlineScripts(page("<script><!--<script></script>still()</script>")),
+        ).toEqual(["<!--<script></script>still()"]);
+    });
+
+    it("keeps comment-like text inside a script body: it is script text, not a comment", () => {
+        expect(executableInlineScripts(page('<script>a("<!--x-->")</script>'))).toEqual([
+            'a("<!--x-->")',
+        ]);
+    });
+
+    it("hashes a script inside <template>, which runs once the template content is inserted", () => {
+        expect(
+            executableInlineScripts(page("<template><script>later()</script></template>")),
+        ).toEqual(["later()"]);
+    });
+
+    it("hashes an SVG script's text as the parser decodes it", () => {
+        expect(executableInlineScripts(page("<svg><script>a&lt;b()</script></svg>"))).toEqual([
+            "a<b()",
+        ]);
+    });
+});
+
 describe("scriptHash", () => {
     it("is the CSP source of the script text's sha256, base64", () => {
         expect(scriptHash("alert(1)")).toBe(
@@ -106,6 +141,16 @@ describe("inlineHandlers", () => {
                     '<script>self.__next_f.push([1,"<a onclick=\\"x\\" href=\\"javascript:y\\">"])</script>' +
                         '<style>a[onclick]{color:red}</style><a href="/marketing" data-x="onclick">x</a>',
                 ),
+            ),
+        ).toBe(0);
+    });
+});
+
+describe("inlineHandlers follows the HTML parsing states (CHAOS-13396)", () => {
+    it("does not count a handler inside a comment or <textarea>", () => {
+        expect(
+            inlineHandlers(
+                page('<!-- <a onclick="x()">x</a> --><textarea><img src=x onerror=y()></textarea>'),
             ),
         ).toBe(0);
     });
