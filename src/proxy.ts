@@ -4,6 +4,7 @@ import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { acrIssuerOriginForCsp } from "@/lib/ask-dev/acr-browser-config";
 import { auth } from "@/lib/auth";
+import { prerenderedScriptSources } from "@/lib/csp/prerenderedScriptHashes";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { isSsoCallbackPath, routedPathname, shouldProxyToOps } from "@/lib/proxyRouting";
@@ -202,21 +203,24 @@ function allowsScriptEval(): boolean {
 }
 
 /**
- * Build the Content-Security-Policy header value.
+ * Build the Content-Security-Policy header value for a response to this path.
  *
  * unsafe-eval is excluded in production — the Next.js App Router does not
  * require it there (see allowsScriptEval for the development exception). The
- * nonce covers all first-party inline scripts (theme init, runtime-config.js)
- * so unsafe-inline is also removed from script-src.
+ * nonce covers the inline scripts of every page rendered per request, so
+ * unsafe-inline is also removed from script-src. A page `next build`
+ * prerendered is fixed HTML that cannot carry the nonce: its inline scripts are
+ * allowed by their sha256, read from the served build output (CHAOS-12365).
  */
-function buildCspHeader(nonce: string): string {
+function buildCspHeader(nonce: string, pathname: string): string {
     // CHAOS-12302: the browser calls ACR directly (Ask Dev direct browser design §5), so
     // connect-src gains exactly ACR's issuer origin when ACR_OAUTH_ISSUER is set, and nothing
     // otherwise. Only a value that is exactly an https (or loopback http) origin is added.
     const acrOrigin = acrIssuerOriginForCsp(process.env.ACR_OAUTH_ISSUER);
+    const hashes = prerenderedScriptSources(pathname);
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}'${allowsScriptEval() ? " 'unsafe-eval'" : ""}`,
+        `script-src 'self' 'nonce-${nonce}'${allowsScriptEval() ? " 'unsafe-eval'" : ""}${hashes.length > 0 ? ` ${hashes.join(" ")}` : ""}`,
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
@@ -349,7 +353,7 @@ async function handleRequest(request: NextRequest) {
 
     // Generate a per-request nonce and attach it so the layout can read it.
     const nonce = generateNonce();
-    const csp = buildCspHeader(nonce);
+    const csp = buildCspHeader(nonce, pathname);
 
     if (isDeletedAskDevPath(pathname)) {
         const response = new NextResponse(null, { status: 404 });
