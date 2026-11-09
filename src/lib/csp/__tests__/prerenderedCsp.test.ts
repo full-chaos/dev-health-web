@@ -188,6 +188,23 @@ describe("inlineHandlers follows the HTML parsing states (CHAOS-13396)", () => {
     });
 });
 
+describe("inlineHandlers compares the javascript: scheme ASCII-only (CHAOS-13423)", () => {
+    const allFour = (scheme: string) =>
+        page(
+            `<a href="${scheme}a()">x</a><img src="${scheme}b()">` +
+                `<form action="${scheme}c()"><button formaction="${scheme}d()">x</button></form>`,
+        );
+
+    it("does not count javaſcript: (U+017F), which the URL parser reads as a relative URL", () => {
+        expect(inlineHandlers(allFour("java\u017fcript:"))).toBe(0);
+        expect(inlineHandlers(allFour("java&#x17f;cript:"))).toBe(0);
+    });
+
+    it.each(["JAVASCRIPT:", "JavaScript:"])("counts %s in each URL attribute", (scheme) => {
+        expect(inlineHandlers(allFour(scheme))).toBe(4);
+    });
+});
+
 describe("readPrerenderedHashes", () => {
     it("hashes each prerendered page's inline scripts by route, and skips non-HTML routes", () => {
         const dir = dist({
