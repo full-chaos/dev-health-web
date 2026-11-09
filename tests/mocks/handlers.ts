@@ -2609,10 +2609,13 @@ const onboardingProgress: OnboardingProgress = { ...INITIAL_ONBOARDING_PROGRESS 
 // register handler returning a bare { registered: true } and the journey having
 // to fall back to a different canned login user). Cleared on reset.
 const registeredOrglessUsers = new Map<string, { password: string; fullName: string | null }>();
+// The refresh tokens the mock issued to those signups, by token: only these map back to the signup.
+const registeredRefreshTokens = new Map<string, string>();
 
 function resetOnboardingProgress(overrides?: Partial<OnboardingProgress>) {
     Object.assign(onboardingProgress, INITIAL_ONBOARDING_PROGRESS, overrides ?? {});
     registeredOrglessUsers.clear();
+    registeredRefreshTokens.clear();
 }
 
 /** C1 next_step derived from progress (deterministic, mirrors the backend). */
@@ -2728,14 +2731,8 @@ function userForRefreshToken(token: string): UserInfo | undefined {
         case "mock-newuser-refresh-token-e2e":
             return orglessUser("e2e-user-new", "newuser@example.com");
     }
-    if (base.startsWith(REGISTERED_REFRESH_PREFIX)) {
-        const email = Buffer.from(
-            base.slice(REGISTERED_REFRESH_PREFIX.length),
-            "base64url",
-        ).toString();
-        return orglessUser(`e2e-user-${email}`, email);
-    }
-    return undefined;
+    const email = registeredRefreshTokens.get(base);
+    return email === undefined ? undefined : orglessUser(`e2e-user-${email}`, email);
 }
 
 export const handlers = [
@@ -2773,10 +2770,12 @@ export const handlers = [
         // genuine same-user signup -> signin -> onboarding flow (CHAOS-2670).
         const registered = registeredOrglessUsers.get(body.email);
         if (registered && body.password === registered.password) {
+            const refreshToken = `${REGISTERED_REFRESH_PREFIX}${Buffer.from(body.email).toString("base64url")}`;
+            registeredRefreshTokens.set(refreshToken, body.email);
             return HttpResponse.json<LoginResponseBody>({
                 user: orglessUser(`e2e-user-${body.email}`, body.email),
                 access_token: MOCK_ACCESS_TOKEN,
-                refresh_token: `${REGISTERED_REFRESH_PREFIX}${Buffer.from(body.email).toString("base64url")}`,
+                refresh_token: refreshToken,
                 token_type: "bearer",
                 expires_in: 86400,
                 needs_onboarding: true,
@@ -2839,10 +2838,11 @@ export const handlers = [
                 user,
             });
         }
-        // A refresh token no sign-in above issued (the onboarding pair): the answer it always had.
+        // A refresh token no sign-in above issued (the onboarding pair): the answer it always had,
+        // with a rotated token that maps to no sign-in either.
         return HttpResponse.json<TokenRefreshResponseBody>({
             access_token: MOCK_REFRESHED_ACCESS_TOKEN,
-            refresh_token: "mock-refreshed-refresh-token-e2e",
+            refresh_token: "mock-unissued-refreshed-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
             user: {

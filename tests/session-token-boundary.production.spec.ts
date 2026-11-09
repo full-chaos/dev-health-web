@@ -24,6 +24,7 @@ const OPS_TOKENS = [
     "mock-refreshed-expiring-admin-refresh-token-e2e",
     "mock-registered-refresh-token-e2e.",
     "mock-refreshed-registered-refresh-token-e2e.",
+    "mock-unissued-refreshed-refresh-token-e2e",
 ];
 
 type Scan = { url: string; hits: string[] };
