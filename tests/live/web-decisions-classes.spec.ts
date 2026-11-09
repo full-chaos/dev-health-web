@@ -300,7 +300,7 @@ async function createVerifiedUser(
     );
     verifyUser(email, who);
     // Register auto-creates an owned org; drop it so the later membership is the user's only one (a member never owns an org).
-    await dropAutoOrg(request, email, PASSWORD, superToken);
+    await dropAutoOrg(request, email, superToken);
     const userId = await userIdByEmail(request, email, superToken);
     expect(userId, `the ${who} is not in the admin user list`).not.toBe("");
     return userId;

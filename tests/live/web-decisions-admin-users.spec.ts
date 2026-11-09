@@ -476,7 +476,7 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
             );
             verifyUser(email, role);
             // Register auto-creates an owned org; drop it so O is the user's only membership and session org.
-            await dropAutoOrg(request, email, PASSWORD, superToken);
+            await dropAutoOrg(request, email, superToken);
             const userId = await userIdByEmail(request, email, superToken);
             expect(userId, `the ${role} is not in the admin user list`).not.toBe("");
             await expectSetupAnswer(
