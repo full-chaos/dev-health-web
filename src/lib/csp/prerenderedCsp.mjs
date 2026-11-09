@@ -25,6 +25,24 @@ function* elementsOf(html) {
     }
 }
 
+/** The node's text content: its descendant text in tree order, comments left out (DOM textContent). */
+function textContentOf(node) {
+    let text = "";
+    for (const child of node.childNodes ?? []) {
+        if (child.nodeName === "#text") text += child.value;
+        else if (child.nodeName !== "#comment") text += textContentOf(child);
+    }
+    return text;
+}
+
+/**
+ * A URL attribute value as the URL parser reads its scheme: TAB, LF and CR removed anywhere, C0
+ * controls and spaces removed at both ends.
+ */
+function urlForSchemeTest(value) {
+    return value.replace(/[\t\n\r]/gu, "").replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/gu, "");
+}
+
 /** The element's attributes by lower-case name; the parser keeps the first of a repeated one. */
 function attributesOf(element) {
     return new Map(
@@ -35,8 +53,8 @@ function attributesOf(element) {
 /**
  * The text of every executable inline script, HTML or SVG: no `src` attribute, not a JSON data type.
  * A nonce attribute does not count: HTML fixed at build time cannot carry the nonce drawn per
- * request. The text is the script's child text as the parser produced it (CR LF and CR already LF),
- * which is what the browser hashes.
+ * request. The text is the script's text content as the parser produced it (CR LF and CR already
+ * LF, text below an SVG script's child elements included), which is what the browser hashes.
  */
 export function executableInlineScripts(html) {
     const scripts = [];
@@ -45,12 +63,7 @@ export function executableInlineScripts(html) {
         const attributes = attributesOf(element);
         if (attributes.has("src")) continue;
         if (/^application\/(?:ld\+)?json$/iu.test((attributes.get("type") ?? "").trim())) continue;
-        scripts.push(
-            element.childNodes
-                .filter((child) => child.nodeName === "#text")
-                .map((child) => child.value)
-                .join(""),
-        );
+        scripts.push(textContentOf(element));
     }
     return scripts;
 }
@@ -63,7 +76,7 @@ export function inlineHandlers(html) {
             if (/^on[a-z]+$/u.test(name)) count += 1;
             else if (
                 ["href", "src", "action", "formaction"].includes(name) &&
-                /^javascript:/iu.test(value.trim())
+                /^javascript:/iu.test(urlForSchemeTest(value))
             )
                 count += 1;
         }

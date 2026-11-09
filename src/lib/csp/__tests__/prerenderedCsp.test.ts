@@ -106,6 +106,16 @@ describe("executableInlineScripts follows the HTML parsing states (CHAOS-13396)"
         ).toEqual(["later()"]);
     });
 
+    it("hashes an SVG script's whole text content, text below child elements included", () => {
+        expect(
+            executableInlineScripts(
+                page(
+                    "<svg><script>alert(<g>1</g>)</script><script>b(<g><text>2</text></g>)</script></svg>",
+                ),
+            ),
+        ).toEqual(["alert(1)", "b(2)"]);
+    });
+
     it("hashes an SVG script's text as the parser decodes it", () => {
         expect(executableInlineScripts(page("<svg><script>a&lt;b()</script></svg>"))).toEqual([
             "a<b()",
@@ -147,6 +157,28 @@ describe("inlineHandlers", () => {
 });
 
 describe("inlineHandlers follows the HTML parsing states (CHAOS-13396)", () => {
+    it.each([
+        ["a TAB", "&#x09;"],
+        ["a line feed", "&#x0a;"],
+        ["a carriage return", "&#x0d;"],
+    ])(
+        "counts a javascript: URL with %s inside the scheme, which the URL parser removes",
+        (_name, ref) => {
+            expect(
+                inlineHandlers(
+                    page(
+                        `<a href="java${ref}script:a()">x</a><img src="java${ref}script:b()">` +
+                            `<form action="java${ref}script:c()"><button formaction="java${ref}script:d()">x</button></form>`,
+                    ),
+                ),
+            ).toBe(4);
+        },
+    );
+
+    it("counts a javascript: URL behind leading control characters and spaces", () => {
+        expect(inlineHandlers(page('<a href="&#x01; javascript:a()">x</a>'))).toBe(1);
+    });
+
     it("does not count a handler inside a comment or <textarea>", () => {
         expect(
             inlineHandlers(
