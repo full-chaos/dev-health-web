@@ -591,10 +591,16 @@ jobs:
                     exit 1
                   fi
 
-            - name: Assert the login token is EdDSA from auth-service, and a delegated session issue used the workload credential
-              # The seeded superuser's login answer (/tmp/login.json): alg EdDSA, kid, iss, aud dev-health-api. Then a throwaway user changes
-              # its password once: that is a go-api sign-in flow that calls auth-service's session issue route, and the audit rows must
-              # name the workload credential (workload_jti) and no service credential.
+            - name: Assert the login token is EdDSA from auth-service, and an invite accept's delegated session issue used the workload credential
+              # The seeded superuser's login answer (/tmp/login.json): alg EdDSA, kid, iss, aud dev-health-api. Then a throwaway user
+              # changes its password once. With users owned (AUTH_PROXY_CREDENTIALS on) go-api forwards change-password unread and
+              # auth-service authenticates it with the session token (session_access_token, aud auth-service) and mints the new session
+              # itself, so no delegated issue comes from it. The delegated issue comes from an invite accept: the superuser invites the
+              # throwaway user to its org, and the user accepts through go-api's own accept-invite route (in no AUTH_PROXY_ route map),
+              # which calls auth-service's session issue route. The audit rows must name the workload credential (workload_jti) and no
+              # service credential. The invite link goes out by the console mail provider, which logs no body, and org_invites keeps
+              # only the token hash, so the step builds the link token as go-api does (hex invite id "." HMAC-SHA256 with the job's
+              # LINK_TOKEN_SECRET from the go-api environ copy) and checks its hash against the stored row before it uses it.
               env:
                   BACKEND_URL: http://127.0.0.1:8099
                   PGHOST: localhost
@@ -617,12 +623,57 @@ jobs:
                     curl -s -o /tmp/audit-login.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/login" \
                       -H 'Content-Type: application/json' --data-binary @-)
                   test "${login_status}" = "200" || { echo "::error::audit user login status ${login_status}"; exit 1; }
-                  token="$(jq -r '.access_token // empty' /tmp/audit-login.json)"
-                  test -n "${token}" || { echo "::error::audit login carries no access token"; exit 1; }
+                  # change-password is auth-service's own route: its bearer is the session token (aud auth-service), as web sends it.
+                  token="$(jq -r '.session_access_token // empty' /tmp/audit-login.json)"
+                  test -n "${token}" || { echo "::error::audit login carries no session access token"; exit 1; }
                   cp_status=$(jq -n --arg c "${password}" --arg n "${new_password}" '{current_password:$c,new_password:$n}' |
-                    curl -s -o /dev/null -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/change-password" \
+                    curl -s -o /tmp/audit-cp.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/change-password" \
                       -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${token}" --data-binary @-)
                   echo "change-password status=${cp_status}"
+                  if [ "${cp_status}" != "200" ]; then
+                    head -c 500 /tmp/audit-cp.json || true; echo
+                    echo "::error::audit user change-password status ${cp_status}"; exit 1
+                  fi
+                  # The superuser invites the throwaway user to its own org (go-api POST /api/v1/admin/orgs/{org_id}/invites).
+                  admin_token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
+                  org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
+                  test -n "${admin_token}" && test -n "${org_id}" || { echo "::error::superuser login carries no access token or org id"; exit 1; }
+                  invite_status=$(jq -n --arg e "${email}" '{email:$e,role:"member"}' |
+                    curl -s -o /tmp/audit-invite.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/admin/orgs/${org_id}/invites" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${admin_token}" --data-binary @-)
+                  echo "create-invite status=${invite_status}"
+                  if [ "${invite_status}" != "201" ]; then
+                    head -c 500 /tmp/audit-invite.json || true; echo
+                    echo "::error::create-invite status ${invite_status}"; exit 1
+                  fi
+                  invite_id="$(jq -r '.id // empty' /tmp/audit-invite.json)"
+                  [[ "${invite_id}" =~ ^[0-9a-f-]{36}$ ]] || { echo "::error::create-invite answer carries no invite id"; exit 1; }
+                  # The mailed link token, built as go-api builds it (signedtoken.Build); the secret is read inside python, never printed.
+                  invite_token="$(python3 -I - "${invite_id}" /tmp/dev-health-go-api.environ <<'PY'
+                  import hashlib, hmac, sys, uuid
+                  idhex = uuid.UUID(sys.argv[1]).hex
+                  entries = open(sys.argv[2], "rb").read().decode().split("\0")
+                  secret = next(e.split("=", 1)[1] for e in entries if e.startswith("LINK_TOKEN_SECRET="))
+                  print(idhex + "." + hmac.new(secret.encode(), idhex.encode(), hashlib.sha256).hexdigest())
+                  PY
+                  )"
+                  invite_hash="$(printf '%s' "${invite_token}" | sha256sum | cut -d' ' -f1)"
+                  stored="$(psql -v ON_ERROR_STOP=1 -At -v id="${invite_id}" -v h="${invite_hash}" <<'SQL'
+                  SELECT count(*) FROM org_invites WHERE id = :'id'::uuid AND token_hash = :'h' AND status = 'pending';
+                  SQL
+                  )"
+                  test "${stored}" = "1" || { echo "::error::the built invite token does not match the stored pending invite (rows ${stored:-none})"; exit 1; }
+                  # The invitee accepts through go-api's own route, with the access token of its new session (aud dev-health-api).
+                  user_token="$(jq -r '.access_token // empty' /tmp/audit-cp.json)"
+                  test -n "${user_token}" || { echo "::error::change-password answer carries no access token"; exit 1; }
+                  accept_status=$(jq -n --arg t "${invite_token}" '{token:$t}' |
+                    curl -s -o /tmp/audit-accept.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/accept-invite" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${user_token}" --data-binary @-)
+                  echo "accept-invite status=${accept_status}"
+                  if [ "${accept_status}" != "200" ]; then
+                    head -c 500 /tmp/audit-accept.json || true; echo
+                    echo "::error::accept-invite status ${accept_status}"; exit 1
+                  fi
                   bash ci/live_e2e_auth_stack.sh assert-audit "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 
