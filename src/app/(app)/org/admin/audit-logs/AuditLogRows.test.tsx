@@ -162,3 +162,10 @@ describe("AuditLogRows", () => {
         expect(onRowSelectAction).not.toHaveBeenCalled();
     });
 });
+
+describe("AuditLogRows scroll box (CHAOS-12459)", () => {
+    it("is positioned, so the sr-only Details header cannot escape it", () => {
+        render(<AuditLogRows entries={[makeEntry()]} onRowSelectAction={vi.fn()} />);
+        expect(screen.getByRole("table").closest(".overflow-x-auto")).toHaveClass("relative");
+    });
+});

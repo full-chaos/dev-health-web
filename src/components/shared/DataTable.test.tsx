@@ -312,3 +312,13 @@ describe("DataTable test hooks (CHAOS-7765)", () => {
         expect(screen.getByTestId("own-a")).toBeInTheDocument();
     });
 });
+
+describe("DataTable scroll box", () => {
+    it("is positioned, so the sr-only Actions header cannot escape it (CHAOS-12459)", () => {
+        render(<DataTable {...base} rowActions={() => null} />);
+        expect(screen.getByRole("region", { name: "Things" })).toHaveClass(
+            "overflow-x-auto",
+            "relative",
+        );
+    });
+});

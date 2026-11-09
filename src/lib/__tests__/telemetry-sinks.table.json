@@ -155,6 +155,10 @@
         "log": 1,
         "sentry": 0
     },
+    "src/lib/acr/grantScopes.ts": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/lib/acr/ops.ts": {
         "log": 2,
         "sentry": 0
