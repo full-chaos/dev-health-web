@@ -7,10 +7,16 @@ import { resolveRepositoryScopes } from "../grantScopes";
 const TOKEN = "header.payload.signature-of-the-session-token";
 const ORG = "org-123";
 
-type Verdict = "allow" | "deny" | { allowlist: readonly string[] };
+type Verdict = "allow" | "bare" | "deny" | "org" | { allowlist: readonly string[] };
 
 function decision(verdict: Verdict): Record<string, unknown> {
     const allowed = verdict !== "deny";
+    const obligations =
+        verdict === "org"
+            ? { repository_scope: "organization" }
+            : typeof verdict === "object"
+              ? { repository_allowlist: verdict.allowlist }
+              : undefined;
     return {
         schema_version: "authorization_decision.v1",
         decision_id: "dec_" + "A".repeat(26),
@@ -20,9 +26,7 @@ function decision(verdict: Verdict): Record<string, unknown> {
         organization_id: ORG,
         policy_revision: 1,
         expires_at: new Date(Date.now() + 60_000).toISOString(),
-        ...(typeof verdict === "object"
-            ? { obligations: { repository_allowlist: verdict.allowlist } }
-            : {}),
+        ...(obligations === undefined ? {} : { obligations }),
     };
 }
 
@@ -113,6 +117,54 @@ describe("resolveRepositoryScopes", () => {
             timeoutMs: 1_000,
         });
         expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+    });
+
+    it("Given an allow with neither repository_scope nor repository_allowlist on the universal ask, then no key is granted", async () => {
+        const { transport } = fakeTransport(() => "bare");
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual([]);
+        expect(result.visibleRepositories).toEqual([]);
+    });
+
+    it("Given a bare allow on each per-repository ask, then no key is granted", async () => {
+        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "bare"));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual([]);
+        expect(result.visibleRepositories).toEqual([]);
+    });
+
+    it("Given an allow with repository_scope organization on the universal ask, then every candidate is granted with one ask", async () => {
+        const { seen, transport } = fakeTransport(() => "org");
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+        expect(seen.keys).toEqual(["*"]);
+    });
+
+    it("Given an allowlist with the wildcard on the universal ask, then every candidate is granted", async () => {
+        const { transport } = fakeTransport(() => ({ allowlist: ["*"] }));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+    });
+
+    it("Given an allowlist naming one repository on the universal ask, then only that repository is granted", async () => {
+        const { transport } = fakeTransport(() => ({ allowlist: ["a/one"] }));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one"]);
     });
 
     it("Given an allow whose allowlist leaves the repository out, then it is not a scope", async () => {
