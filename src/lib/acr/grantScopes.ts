@@ -90,7 +90,11 @@ function requestFor(input: GrantScopeInput, key: string): AuthorizeRequest {
 
 type Verdict = { readonly allowed: boolean; readonly orgWide: boolean };
 
-/** A decision as allow / org-wide. A client-side failure refuses: never a partial answer. */
+/**
+ * A repository read decision as allow / org-wide. A client-side failure refuses: never a partial
+ * answer. An allow grants the key only through `repository_scope: organization` or an allowlist that
+ * holds the key or `*`; an allow with neither member grants nothing (fail closed).
+ */
 function verdictOf(outcome: AuthzOutcome, key: string): Verdict {
     if (!outcome.allowed) {
         if (outcome.source === "client") throw unavailable();
@@ -100,7 +104,7 @@ function verdictOf(outcome: AuthzOutcome, key: string): Verdict {
     if (obligations?.repositoryScope === "organization") return { allowed: true, orgWide: true };
     const allowlist = obligations?.repositoryAllowlist;
     return {
-        allowed: allowlist === undefined || allowlist.includes(key) || allowlist.includes("*"),
+        allowed: allowlist !== undefined && (allowlist.includes(key) || allowlist.includes("*")),
         orgWide: false,
     };
 }

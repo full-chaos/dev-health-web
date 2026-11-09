@@ -30,6 +30,10 @@ import { setupServer } from "msw/node";
 import type { Transport } from "@/lib/auth/authorize/client";
 
 const pdpCalls = vi.hoisted(() => ({ count: 0 }));
+// CHAOS-13393: every live repository-read decision web's transport saw, for the obligation cell at the end.
+const repositoryReads = vi.hoisted(
+    () => [] as { action: string; key: string; allowed: boolean; obligations: unknown }[],
+);
 const workload = vi.hoisted(() => ({ token: "" }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({
@@ -42,6 +46,36 @@ vi.mock("@/lib/auth/workload/token", () => ({
     workloadTokenConfigured: () => workload.token !== "",
 }));
 // web's own transport, counted: a cell that must ask no decision checks the count.
+function captureRepositoryReads(
+    call: { path: string; body: string },
+    response: { status: number; body: string },
+): void {
+    if (response.status !== 200) return;
+    const sent = JSON.parse(call.body) as Record<string, unknown>;
+    const got = JSON.parse(response.body) as Record<string, unknown>;
+    const batch = call.path === "/v1/authorize:batch";
+    const requests = (batch ? sent["requests"] : [sent]) as {
+        action: string;
+        resource: { key: string; type: string };
+    }[];
+    const decisions = batch
+        ? (got["decisions"] as { index: number; decision: Record<string, unknown> }[]).map(
+              (entry) => entry.decision,
+          )
+        : [got];
+    requests.forEach((request, index) => {
+        if (request.resource.type !== "repository") return;
+        const decision = decisions[index];
+        if (decision === undefined) return;
+        repositoryReads.push({
+            action: request.action,
+            key: request.resource.key,
+            allowed: decision["allowed"] === true,
+            obligations: decision["obligations"],
+        });
+    });
+}
+
 vi.mock("@/lib/acr/authorizeTransport", async () => {
     const { createAuthorizeTransport } = await import("@/lib/auth/authorize/transport");
     return {
@@ -49,7 +83,9 @@ vi.mock("@/lib/acr/authorizeTransport", async () => {
             const real = createAuthorizeTransport();
             return async (call) => {
                 pdpCalls.count += 1;
-                return real(call);
+                const response = await real(call);
+                captureRepositoryReads(call, response);
+                return response;
             };
         },
     };
@@ -497,5 +533,32 @@ describe(`ACR real-PDP equality on dev-health-ops ${fixture.opsSha} catalog ${fi
                 expect(grants.decisions).toBe(0);
             },
         );
+    });
+    // CHAOS-13393 (acp): web grants a repository only through repository_scope organization or a repository_allowlist.
+    // The live PDP must therefore put one of the two on every repository-read allow; an allow with neither is a STOP
+    // (an answer change), never a pass. Runs last: it reads every decision the cells above asked.
+    describe("repository-read allows carry repository_scope or repository_allowlist (CHAOS-13393)", () => {
+        it("every live repository-read allow carries one of the two members", () => {
+            const allows = repositoryReads.filter((read) => read.allowed);
+            appendFileSync(
+                recordPath,
+                `${JSON.stringify({ cell: "13393 obligations", reads: repositoryReads.length, allows: allows.length })}\n`,
+            );
+            expect(
+                allows.length,
+                "the cells above asked repository-read decisions",
+            ).toBeGreaterThan(0);
+            const bare = allows.filter((read) => {
+                const obligations = (read.obligations ?? {}) as Record<string, unknown>;
+                return (
+                    obligations["repository_scope"] !== "organization" &&
+                    !Array.isArray(obligations["repository_allowlist"])
+                );
+            });
+            expect(
+                bare,
+                "allows with neither repository_scope organization nor repository_allowlist",
+            ).toEqual([]);
+        });
     });
 });

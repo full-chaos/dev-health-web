@@ -52,6 +52,7 @@ function pdp(allowed: (key: string) => boolean): Transport {
                 organization_id: "org-123",
                 policy_revision: 1,
                 expires_at: new Date(Date.now() + 60_000).toISOString(),
+                ...(ok ? { obligations: { repository_scope: "organization" } } : {}),
             };
         });
         const body =
