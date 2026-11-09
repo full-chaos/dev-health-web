@@ -9,7 +9,20 @@ import { expect, test, type Response } from "@playwright/test";
  */
 
 /** The refresh values the ops mock answers to a sign-in or a refresh (`tests/mocks/handlers.ts`). */
-const OPS_REFRESH_TOKENS = ["mock-refresh-token-e2e", "mock-refreshed-refresh-token-e2e"];
+const OPS_REFRESH_TOKENS = [
+    "mock-refresh-token-e2e",
+    "mock-refreshed-refresh-token-e2e",
+    // The other sign-ins' refresh tokens and their rotated forms (a prefix for the per-signup one).
+    "mock-legacy-refresh-token-e2e",
+    "mock-refreshed-legacy-refresh-token-e2e",
+    "mock-newuser-refresh-token-e2e",
+    "mock-refreshed-newuser-refresh-token-e2e",
+    "mock-expiring-admin-refresh-token-e2e",
+    "mock-refreshed-expiring-admin-refresh-token-e2e",
+    "mock-registered-refresh-token-e2e.",
+    "mock-refreshed-registered-refresh-token-e2e.",
+    "mock-unissued-refreshed-refresh-token-e2e",
+];
 /**
  * An access or session token the mock signs is minted per answer, so its value is not known here:
  * any compact token whose header is `{"alg":"EdDSA",...` counts (the header always starts with

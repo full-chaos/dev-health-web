@@ -35,6 +35,8 @@ export interface MockTokenOptions {
     readonly now?: number;
     readonly kid?: string;
     readonly act?: string;
+    /** Seconds from `now` to `exp`; default 3600. */
+    readonly lifetime?: number;
 }
 
 function mint(
@@ -58,7 +60,7 @@ function mint(
         jti: b64u(`${who}-${audience}-${now}`).slice(0, 40).padEnd(22, "A"),
         iat: now,
         nbf: now,
-        exp: now + LIFETIME_SECONDS,
+        exp: now + (options.lifetime ?? LIFETIME_SECONDS),
         ...(options.act === undefined ? {} : { act: { sub: options.act } }),
         scope: audience === "auth-service" ? "auth:session" : "api:access",
     });
@@ -81,6 +83,17 @@ export function mockPair(who: MockWho): {
     return {
         access_token: mockAccessToken(who, { now }),
         session_access_token: mockSessionToken(who, { now }),
+    };
+}
+
+/** An admin pair web refreshes at once: it ends 301 s from now, inside the 5 min refresh window. */
+export function mockExpiringPair(nowSeconds: number = Math.floor(Date.now() / 1000)): {
+    access_token: string;
+    session_access_token: string;
+} {
+    return {
+        access_token: mockAccessToken("admin", { now: nowSeconds, lifetime: 301 }),
+        session_access_token: mockSessionToken("admin", { now: nowSeconds, lifetime: 301 }),
     };
 }
 
