@@ -52,6 +52,7 @@ function pdp(allowed: (key: string) => boolean): Transport {
                 organization_id: "org-123",
                 policy_revision: 1,
                 expires_at: new Date(Date.now() + 60_000).toISOString(),
+                ...(ok ? { obligations: { repository_scope: "organization" } } : {}),
             };
         });
         const body =
@@ -139,6 +140,59 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
             );
         },
     );
+
+    // Legacy refuses a platform admin with no membership row in its token's organization: the catalog read
+    // answers 401 (query-api edge auth) and web answers 403 not_entitled, not retryable (ops.ts readRepositoryScopes).
+    // With the switch on the same catalog read runs first, so the refusal is the same, byte for byte, and no
+    // decision is asked.
+    it("Given the catalog read is refused, then both paths refuse with the same error and no decision is asked", async () => {
+        server.use(
+            http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
+                HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true }),
+            ),
+            http.post("http://ops.example.test/graphql", () =>
+                HttpResponse.json({ error: "unauthorized" }, { status: 401 }),
+            ),
+        );
+        const refusal = async () => {
+            try {
+                await resolveOpsAuthorization(base);
+            } catch (error) {
+                const e = error as {
+                    code?: unknown;
+                    message?: unknown;
+                    retryable?: unknown;
+                    status?: unknown;
+                };
+                return JSON.stringify({
+                    code: e.code,
+                    message: e.message,
+                    retryable: e.retryable,
+                    status: e.status,
+                });
+            }
+            throw new Error("the catalog refusal did not refuse");
+        };
+        const legacy = await refusal();
+        vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
+        let decisions = 0;
+        const allowAll = pdp(() => true);
+        transportSeam.transport = async (call) => {
+            decisions += 1;
+            return allowAll(call);
+        };
+        const fromGrants = await refusal();
+        expect(fromGrants).toBe(legacy);
+        expect(legacy).toBe(
+            JSON.stringify({
+                code: acrRuntimeErrorCodes.notEntitled,
+                message: "Agent Context Runtime is not available for this organization.",
+                retryable: false,
+                status: 403,
+            }),
+        );
+        expect(decisions).toBe(0);
+    });
 
     it("Given the switch is on and no transport, then it refuses instead of falling back to the catalog", async () => {
         vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");

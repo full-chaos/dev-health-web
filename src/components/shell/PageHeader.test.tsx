@@ -84,6 +84,12 @@ describe("PageHeader — title, subtitle and actions", () => {
         expect(within(slot).getByRole("button", { name: "Export report" })).toBeInTheDocument();
     });
 
+    it("caps the actions slot at the header width so wrapping actions wrap inside it (390 px)", () => {
+        render(<PageHeader actions={<button type="button">Export report</button>} />);
+
+        expect(screen.getByTestId("page-header-actions")).toHaveClass("max-w-full", "shrink-0");
+    });
+
     it("renders no actions slot and no subtitle when none is passed", () => {
         render(<PageHeader />);
 

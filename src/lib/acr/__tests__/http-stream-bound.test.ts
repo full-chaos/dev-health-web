@@ -189,3 +189,69 @@ describe("fetchBoundedJson: a refusal before the body read cancels the body", ()
         expect(cancelled).toBe(true);
     });
 });
+
+async function listen(handler: Parameters<typeof createServer>[1]): Promise<URL> {
+    server = createServer(handler);
+    const listening = server;
+    await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+    const { port } = listening.address() as AddressInfo;
+    return new URL(`http://127.0.0.1:${port}/graphql`);
+}
+
+describe("fetchBoundedJson over real undici: a network error during the body read", () => {
+    it.each([
+        ["right after the headers", 0],
+        ["after part of the body", 1],
+    ] as const)(
+        "Given a 200 whose connection is reset %s, then it is a retryable 503 unavailable, not a raw undici error",
+        { timeout: 10_000 },
+        async (_name, chunks) => {
+            const url = await listen((_request, response) => {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                for (let index = 0; index < chunks; index += 1) response.write('{"a":');
+                setTimeout(() => response.socket?.resetAndDestroy(), 50);
+            });
+            await expect(
+                fetchBoundedJson({ headers: {}, method: "GET", timeoutMs: 5_000, url }),
+            ).rejects.toMatchObject({
+                name: "AcrRuntimeError",
+                code: acrRuntimeErrorCodes.unavailable,
+                retryable: true,
+                status: 503,
+            });
+        },
+    );
+
+    it("Given a 200 whose body stalls past the read timeout, then it is a retryable 504 timeout", async () => {
+        const url = await listen((_request, response) => {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            response.write('{"a":');
+        });
+        await expect(
+            fetchBoundedJson({ headers: {}, method: "GET", timeoutMs: 300, url }),
+        ).rejects.toMatchObject({
+            name: "AcrRuntimeError",
+            code: acrRuntimeErrorCodes.timeout,
+            retryable: true,
+            status: 504,
+        });
+    });
+
+    it("Given a body past 1 MiB, then response_too_large comes out as it is, not re-wrapped as unavailable", async () => {
+        const url = await listen((_request, response) => {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            for (let index = 0; index < OVER_THE_BOUND; index += 1) response.write(CHUNK);
+        });
+        const error: unknown = await fetchBoundedJson({
+            headers: {},
+            method: "GET",
+            timeoutMs: 5_000,
+            url,
+        }).catch((caught: unknown) => caught);
+        expect(error).toMatchObject({
+            code: acrRuntimeErrorCodes.responseTooLarge,
+            retryable: false,
+        });
+        expect((error as Error).cause).toBeUndefined();
+    });
+});

@@ -1,97 +1,46 @@
 /**
- * Build check: no page is prerendered under the nonce CSP (CHAOS-12337).
+ * CHAOS-12337 / CHAOS-12365: every page is served under the per-request CSP from `src/proxy.ts`
+ * (`script-src 'self' 'nonce-…'`). A page `next build` prerenders is fixed HTML, so its inline
+ * scripts cannot carry the nonce drawn per request. The proxy allows them by their sha256, read from
+ * the build output it serves (src/lib/csp/prerenderedScriptHashes.ts), with the same parser as this
+ * check (src/lib/csp/prerenderedCsp.mjs).
  *
- * `src/proxy.ts` sends every page `script-src 'self' 'nonce-<per request>'`. Next puts that nonce
- * on its inline scripts only when it renders the page per request. A page that `next build`
- * prerenders as static HTML has inline scripts with no nonce, so the browser blocks them, the page
- * never hydrates, and a client page shows nothing. `next dev` renders every request, so the dev
- * server e2e cannot see this; the build output can.
+ * This check reads the build output and the copy the server serves (by default the standalone copy
+ * the image ships, when there is one) and fails:
+ * - a prerendered page whose inline script the CSP served for its path does not allow (a page the
+ *   served copy lacks, or a copy from a different build);
+ * - a prerendered page with an inline event handler or a javascript: URL, which no hash allows;
+ * - a served copy it cannot read (the proxy would serve no hashes, and every such page is blocked).
  *
- * The check reads `<dist>/prerender-manifest.json` and the HTML of every prerendered route
- * (`<dist>/server/app/<route>.html`). A route with an inline `<script>` that has no `nonce`
- * (nonce or not, see `inlineScripts`) fails, by name. A route with no HTML (an image, robots.txt) is not a page.
- *
- * It fails closed: no manifest is a failure ("run next build first"), never a pass.
- *
- * `KNOWN_PRERENDERED` lists the pages that already had this defect when the check was added, each
- * with the ticket that fixes it (CHAOS-12344). A listed page passes while it is still prerendered
- * with blocked scripts. A listed page that is no longer prerendered that way fails ("remove it from
- * the list"), so the list only shrinks and never hides a fixed page. Any other page fails.
- *
- * Usage: node scripts/check-nonce-csp-pages.mjs [--dist .next]
+ * Usage: node scripts/check-nonce-csp-pages.mjs [--dist .next] [--served <dir>]
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SCRIPT_TAG = /<script\b([^>]*)>/giu;
+import {
+    executableInlineScripts,
+    htmlFileFor,
+    inlineHandlers,
+    readPrerenderedHashes,
+    scriptHash,
+    scriptHashSources,
+} from "../src/lib/csp/prerenderedCsp.mjs";
 
-/**
- * Pages prerendered with blocked scripts on main when this check was added (CHAOS-12337), each
- * with a recorded decision on CHAOS-12344 (a production-build browser survey, 2026-10-31):
- * - `/`, `/_not-found` and the `/marketing` pages have no control a user needs (0 buttons,
- *   inputs or menus); their links work without scripts. They stay static.
- * - `/_global-error` has a "Try again" button but shows only when the root layout fails, and its
- *   client-only special file cannot be made dynamic by route config. Reload still works.
- * `/auth/forgot-password` (a form) is fixed: it renders per request.
- */
-export const KNOWN_PRERENDERED = new Map(
-    [
-        "/",
-        "/_global-error",
-        "/_not-found",
-        "/marketing",
-        "/marketing/about",
-        "/marketing/billing-refunds-test",
-        "/marketing/context-fabric",
-        "/marketing/context-fabric/use-cases",
-        "/marketing/cto-architecture",
-        "/marketing/engineering-manager",
-        "/marketing/platform-devex",
-        "/marketing/privacy",
-        "/marketing/security",
-        "/marketing/terms",
-        "/marketing/vp-engineering",
-    ].map((route) => [route, "CHAOS-12344"]),
-);
-
-/**
- * Executable inline scripts: no `src` attribute (a parsed attribute, not text inside another value,
- * not `data-src`), and not a JSON data type. A nonce attribute does not count (r1 on web #1670): HTML fixed at build time
- * cannot carry the nonce the proxy draws per request, so every inline script in it is blocked.
- */
-/**
- * The attributes of a tag's text, by lower-case name: quoted values are read whole (r2), and a
- * repeated attribute keeps its first value, as HTML parsing does (r3).
- */
-function attributesOf(text) {
-    const attributes = new Map();
-    const ATTRIBUTE = /([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/gu;
-    for (const match of text.matchAll(ATTRIBUTE)) {
-        // HTML keeps the first of a repeated attribute and drops the rest (r3).
-        const name = match[1].toLowerCase();
-        if (!attributes.has(name)) attributes.set(name, match[2] ?? match[3] ?? match[4] ?? "");
-    }
-    return attributes;
-}
-
+/** Executable inline scripts in a page (the shared parser). */
 export function inlineScripts(html) {
-    let count = 0;
-    for (const match of html.matchAll(SCRIPT_TAG)) {
-        const attributes = attributesOf(match[1] ?? "");
-        if (attributes.has("src")) continue;
-        if (/^application\/(?:ld\+)?json$/iu.test((attributes.get("type") ?? "").trim())) continue;
-        count += 1;
-    }
-    return count;
+    return executableInlineScripts(html).length;
 }
 
-function htmlFileFor(dist, route) {
-    const relative = route === "/" ? "index.html" : `${route.replace(/^\//u, "")}.html`;
-    return path.join(dist, "server", "app", relative);
+/** A request path that the proxy serves this prerendered page for. */
+function requestPathFor(route) {
+    // The not-found page answers any unknown path; the global-error page any failed render.
+    if (route === "/_not-found") return "/check-nonce-csp-pages/no-such-page";
+    if (route === "/_global-error") return "/check-nonce-csp-pages/any-page";
+    return route;
 }
 
-export function checkNonceCspPages({ dist, known = KNOWN_PRERENDERED }) {
+export function checkNonceCspPages({ dist, served = dist }) {
     const manifestPath = path.join(dist, "prerender-manifest.json");
     if (!fs.existsSync(manifestPath)) {
         return {
@@ -100,42 +49,51 @@ export function checkNonceCspPages({ dist, known = KNOWN_PRERENDERED }) {
         };
     }
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const servedHashes = readPrerenderedHashes(served);
     const checked = [];
-    const failures = [];
-    const stillBlocked = new Set();
+    const failures = servedHashes.unreadable.map(
+        (file) => `${file}: unreadable, so the proxy serves no hashes`,
+    );
     for (const route of Object.keys(manifest.routes ?? {}).sort()) {
         const file = htmlFileFor(dist, route);
         if (!fs.existsSync(file)) continue;
         checked.push(route);
-        const blocked = inlineScripts(fs.readFileSync(file, "utf8"));
-        if (blocked > 0 && known.has(route)) {
-            stillBlocked.add(route);
-        } else if (blocked > 0) {
+        const html = fs.readFileSync(file, "utf8");
+        const allowed = new Set(scriptHashSources(servedHashes, requestPathFor(route)));
+        for (const script of executableInlineScripts(html)) {
+            const source = scriptHash(script);
+            if (!allowed.has(source)) {
+                failures.push(`${route}: inline script ${source} is not allowed by the served CSP`);
+            }
+        }
+        const handlers = inlineHandlers(html);
+        if (handlers > 0) {
             failures.push(
-                `${route}: prerendered with ${blocked} inline script${blocked === 1 ? "" : "s"}, which cannot carry the per-request nonce`,
+                `${route}: ${handlers} inline event handler${handlers === 1 ? "" : "s"} or javascript: URL${handlers === 1 ? "" : "s"}, which no hash in the served CSP can allow`,
             );
         }
     }
-    for (const [route, ticket] of known) {
-        if (!stillBlocked.has(route)) {
-            failures.push(
-                `${route}: on the known list (${ticket}) but not prerendered with blocked scripts: remove it from the list`,
-            );
-        }
-    }
-    failures.sort();
     return { checked, failures };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    const at = process.argv.indexOf("--dist");
-    const dist = path.resolve(at === -1 ? ".next" : process.argv[at + 1]);
-    const { checked, failures } = checkNonceCspPages({ dist });
-    console.log(`check:nonce-csp-pages: ${checked.length} prerendered page(s) checked in ${dist}`);
+    const option = (name) => {
+        const at = process.argv.indexOf(name);
+        return at === -1 ? undefined : process.argv[at + 1];
+    };
+    const dist = path.resolve(option("--dist") ?? ".next");
+    const standalone = path.join(dist, "standalone", ".next");
+    const served = path.resolve(
+        option("--served") ?? (fs.existsSync(standalone) ? standalone : dist),
+    );
+    const { checked, failures } = checkNonceCspPages({ dist, served });
+    console.log(
+        `check:nonce-csp-pages: ${checked.length} prerendered page(s) checked in ${dist}, served from ${served}`,
+    );
     if (failures.length > 0) {
         for (const failure of failures) console.error(`  FAIL ${failure}`);
         console.error(
-            'A page served under the nonce CSP must render per request (export const dynamic = "force-dynamic", or await connection()).',
+            "A prerendered page runs only the inline scripts the proxy hashes from the served build output: no event handler attributes or javascript: URLs, and serve the same build the check read.",
         );
         process.exit(1);
     }

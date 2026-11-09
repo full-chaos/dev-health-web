@@ -91,7 +91,7 @@ export function ClassificationTable({
                 </Link>
             }
         >
-            <div className="overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
+            <div className="relative overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
                 <table className="w-full text-sm" data-testid="classification-table">
                     <thead className="bg-(--card-60) text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                         <tr>

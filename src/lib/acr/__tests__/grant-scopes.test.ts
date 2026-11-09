@@ -7,10 +7,16 @@ import { resolveRepositoryScopes } from "../grantScopes";
 const TOKEN = "header.payload.signature-of-the-session-token";
 const ORG = "org-123";
 
-type Verdict = "allow" | "deny" | { allowlist: readonly string[] };
+type Verdict = "bare" | "deny" | "org" | { allowlist: readonly string[] };
 
 function decision(verdict: Verdict): Record<string, unknown> {
     const allowed = verdict !== "deny";
+    const obligations =
+        verdict === "org"
+            ? { repository_scope: "organization" }
+            : typeof verdict === "object"
+              ? { repository_allowlist: verdict.allowlist }
+              : undefined;
     return {
         schema_version: "authorization_decision.v1",
         decision_id: "dec_" + "A".repeat(26),
@@ -20,9 +26,7 @@ function decision(verdict: Verdict): Record<string, unknown> {
         organization_id: ORG,
         policy_revision: 1,
         expires_at: new Date(Date.now() + 60_000).toISOString(),
-        ...(typeof verdict === "object"
-            ? { obligations: { repository_allowlist: verdict.allowlist } }
-            : {}),
+        ...(obligations === undefined ? {} : { obligations }),
     };
 }
 
@@ -66,7 +70,7 @@ const input = (candidates: readonly string[]) => ({
 
 describe("resolveRepositoryScopes", () => {
     it("Given a universal grant, then the scopes are the candidates (one universal ask, no per-repository asks)", async () => {
-        const { seen, transport } = fakeTransport(() => "allow");
+        const { seen, transport } = fakeTransport(() => "org");
         const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
             transport,
             timeoutMs: 1_000,
@@ -78,7 +82,7 @@ describe("resolveRepositoryScopes", () => {
 
     it("Given exact grants only, then only allowed repositories reach the scopes, sorted", async () => {
         const { transport } = fakeTransport((key) =>
-            key === "a/three" ? "deny" : key === "*" ? "deny" : "allow",
+            key === "a/three" ? "deny" : key === "*" ? "deny" : "org",
         );
         const result = await resolveRepositoryScopes(input(["a/one", "a/three", "a/two"]), {
             transport,
@@ -107,12 +111,60 @@ describe("resolveRepositoryScopes", () => {
     });
 
     it("Given a member with the default grant, then every candidate is allowed by decision", async () => {
-        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "allow"));
+        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "org"));
         const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
             transport,
             timeoutMs: 1_000,
         });
         expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+    });
+
+    it("Given an allow with neither repository_scope nor repository_allowlist on the universal ask, then no key is granted", async () => {
+        const { transport } = fakeTransport(() => "bare");
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual([]);
+        expect(result.visibleRepositories).toEqual([]);
+    });
+
+    it("Given a bare allow on each per-repository ask, then no key is granted", async () => {
+        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "bare"));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual([]);
+        expect(result.visibleRepositories).toEqual([]);
+    });
+
+    it("Given an allow with repository_scope organization on the universal ask, then every candidate is granted with one ask", async () => {
+        const { seen, transport } = fakeTransport(() => "org");
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+        expect(seen.keys).toEqual(["*"]);
+    });
+
+    it("Given an allowlist with the wildcard on the universal ask, then every candidate is granted", async () => {
+        const { transport } = fakeTransport(() => ({ allowlist: ["*"] }));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one", "a/two"]);
+    });
+
+    it("Given an allowlist naming one repository on the universal ask, then only that repository is granted", async () => {
+        const { transport } = fakeTransport(() => ({ allowlist: ["a/one"] }));
+        const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
+            transport,
+            timeoutMs: 1_000,
+        });
+        expect(result.repositoryScopes).toEqual(["a/one"]);
     });
 
     it("Given an allow whose allowlist leaves the repository out, then it is not a scope", async () => {
@@ -131,7 +183,7 @@ describe("resolveRepositoryScopes", () => {
             { length: 150 },
             (_, i) => `a/r${String(i).padStart(3, "0")}`,
         );
-        const { seen, transport } = fakeTransport((key) => (key === "*" ? "deny" : "allow"));
+        const { seen, transport } = fakeTransport((key) => (key === "*" ? "deny" : "org"));
         const result = await resolveRepositoryScopes(input(candidates), {
             transport,
             timeoutMs: 1_000,
@@ -159,7 +211,7 @@ describe("resolveRepositoryScopes", () => {
             (_, i) => `a/r${String(i).padStart(3, "0")}`,
         );
         let batches = 0;
-        const ok = fakeTransport((key) => (key === "*" ? "deny" : "allow")).transport;
+        const ok = fakeTransport((key) => (key === "*" ? "deny" : "org")).transport;
         const transport: Transport = async (call) => {
             if (call.path === "/v1/authorize:batch" && ++batches === 2)
                 return { status: 500, body: "" };
