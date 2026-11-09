@@ -697,6 +697,12 @@ jobs:
                   LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
                   LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
                   LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+                  # The stack verbs (verify-user, grant-platform-admin) reach the job's throwaway Postgres service with the PG* env.
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
                   LIVE_E2E_GO_API_LOG: /tmp/dev-health-go-api.log
                   TIER: ${{ matrix.tier }}
               run: |
@@ -752,6 +758,12 @@ jobs:
                   # CHAOS-13375: the specs verify and promote their users through the stack verbs (users are owned by auth-service).
                   LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
                   LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+                  # The stack verbs (verify-user, grant-platform-admin) reach the job's throwaway Postgres service with the PG* env.
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
               # CHAOS-12138: the default backend (live job), or go-api restarted with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for
