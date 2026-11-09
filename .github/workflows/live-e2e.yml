@@ -292,6 +292,36 @@ jobs:
                   test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')${pad}" | wc -c)" -ge 32
                   echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
+            - name: Seed test superuser (public.users; the seed tool copies it into auth)
+              # CHAOS-13375: users are owned by auth-service (auth.users is the authority). The superuser is seeded BEFORE the
+              # auth-service stack starts: `up` copies public.users into the auth schema (users-backfill -insert-only), so the
+              # password hash, the superuser flag and the verified flag written here are the ones auth-service logs in with.
+              env:
+                  SUPERUSER_EMAIL: admin@devhealth.example
+                  SUPERUSER_PASSWORD: DevHealth123!Admin
+                  PGPASSWORD: postgres
+              run: |
+                  set -euo pipefail
+                  sudo apt-get update -qq
+                  sudo apt-get install -y --no-install-recommends postgresql-client
+                  python3 -m pip install --quiet bcrypt
+
+                  HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
+                  psql -h localhost -U postgres -d test_db -v ON_ERROR_STOP=1 \
+                    -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
+                  WITH o AS (
+                    INSERT INTO public.organizations (id, slug, name)
+                    VALUES (gen_random_uuid(), 'live-e2e-admin', 'Live E2E Admin')
+                    RETURNING id
+                  ), u AS (
+                    INSERT INTO public.users (id, email, password_hash, full_name, auth_provider, is_active, is_verified, is_superuser)
+                    VALUES (gen_random_uuid(), :'email', :'hash', 'Test Superuser', 'local', true, true, true)
+                    RETURNING id
+                  )
+                  INSERT INTO public.memberships (id, user_id, org_id, role, joined_at)
+                  SELECT gen_random_uuid(), u.id, o.id, 'owner', now() FROM u, o;
+                  SQL
+
             - name: Start the auth-service stack (dev-health-ops live e2e auth stack)
               # go-api issues every session through auth-service with the workload credential, as prod does: auth-service signs EdDSA
               # with its own key, and the ops script below builds it, prepares the auth schema, creates the api workload credential and
@@ -511,73 +541,13 @@ jobs:
                   echo "::error::auth-service discovery is not served over https"
                   exit 1
 
-            - name: Seed test superuser
+            - name: Smoke-test the seeded superuser login
               env:
                   BACKEND_URL: http://127.0.0.1:8099
                   SUPERUSER_EMAIL: admin@devhealth.example
                   SUPERUSER_PASSWORD: DevHealth123!Admin
-                  PGPASSWORD: postgres
               run: |
                   set -euo pipefail
-                  sudo apt-get update -qq
-                  sudo apt-get install -y --no-install-recommends postgresql-client
-                  python3 -m pip install --quiet bcrypt
-
-                  # Try to register the superuser via the public API. Tolerate
-                  # 400/409 because the fixtures step may already have created
-                  # this account with an unknown password — the SQL step below
-                  # rewrites the password hash regardless.
-                  status=$(curl -s -o /tmp/reg.json -w '%{http_code}' \
-                    -X POST "${BACKEND_URL}/api/v1/auth/register" \
-                    -H 'Content-Type: application/json' \
-                    -H "Origin: ${BACKEND_URL}" \
-                    -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\",\"full_name\":\"Test Superuser\"}")
-                  echo "register status=${status}"
-                  case "${status}" in
-                    202|400|409) ;;
-                    *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
-                  esac
-
-                  # Compute the bcrypt hash of our known password so we can
-                  # overwrite whatever hash the fixtures / register step produced.
-                  # This guarantees the smoke-test login below uses OUR password.
-                  HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
-
-                  # Overwrite password, promote to superuser, mark verified.
-                  # `\gexec` generates one UPDATE per column that actually exists
-                  # in the `users` table, so we don't hardcode a schema and we
-                  # never reference a missing column (the SQL parser would choke).
-                  # The password column is probed across three conventional names
-                  # (hashed_password / password_hash / password); flag columns
-                  # similarly across is_superuser / is_verified / email_verified /
-                  # is_active.
-                  psql -h localhost -U postgres -d test_db \
-                    -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
-                  \set ON_ERROR_STOP on
-                  SELECT format(
-                    'UPDATE users SET %I = %L WHERE email = %L',
-                    column_name, :'hash', :'email'
-                  )
-                    FROM information_schema.columns
-                   WHERE table_name='users'
-                     AND column_name IN ('hashed_password','password_hash','password')
-                  \gexec
-
-                  SELECT format(
-                    'UPDATE users SET %I = true WHERE email = %L',
-                    column_name, :'email'
-                  )
-                    FROM information_schema.columns
-                   WHERE table_name='users'
-                     AND column_name IN ('is_superuser','is_verified','email_verified','is_active')
-                  \gexec
-
-                  SELECT email,
-                         (SELECT column_name FROM information_schema.columns
-                            WHERE table_name='users' AND column_name='is_superuser') IS NOT NULL AS has_is_superuser
-                    FROM users WHERE email = :'email';
-                  SQL
-
                   # Smoke-test the credentials end-to-end so a failure at this step
                   # surfaces loudly instead of leaving us to debug opaque 'skipped'
                   # results in Playwright.
@@ -642,12 +612,7 @@ jobs:
                     curl -s -o /dev/null -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/register" \
                       -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" --data-binary @-)
                   case "${status}" in 201|202) ;; *) echo "::error::audit user register status ${status}"; exit 1 ;; esac
-                  psql -v ON_ERROR_STOP=1 -v email="${email}" <<'SQL'
-                  SELECT format('UPDATE users SET %I = true WHERE email = %L', column_name, :'email')
-                    FROM information_schema.columns
-                   WHERE table_schema = 'public' AND table_name = 'users' AND column_name IN ('is_verified', 'email_verified', 'is_active')
-                  \gexec
-                  SQL
+                  bash ci/live_e2e_auth_stack.sh verify-user "${RUNNER_TEMP}/live-e2e-auth" "${email}"
                   login_status=$(jq -n --arg e "${email}" --arg p "${password}" '{email:$e,password:$p}' |
                     curl -s -o /tmp/audit-login.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/login" \
                       -H 'Content-Type: application/json' --data-binary @-)
@@ -729,6 +694,9 @@ jobs:
                   # The Next web server alone pins the issuer and trusts the job-local CA (SSL_CERT_FILE replaces the
                   # system roots): playwright.live.config.ts puts this wrapper in front of its dev-server command only.
                   LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
+                  # CHAOS-13375: the specs verify and promote their users through the stack verbs (users are owned by auth-service).
+                  LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
+                  LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
               # CHAOS-12138: the default backend (live job), or go-api restarted with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for

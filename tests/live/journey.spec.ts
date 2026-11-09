@@ -23,7 +23,7 @@ import {
     setupUser,
     testEmail,
     userIdByEmail,
-    verifyUser,
+    verifyUserViaStack,
     type SetupUser,
 } from "./helpers";
 
@@ -111,7 +111,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true @guided"
         envFault("Cannot verify user \u2014 superuser unavailable");
         return;
     }
-    await verifyUser(request, userId, suToken);
+    verifyUserViaStack(email);
 
     const data = (await loginUser(request, email, "TestPass123!")) as {
         access_token?: string;

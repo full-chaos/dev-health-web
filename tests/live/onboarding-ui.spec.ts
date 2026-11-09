@@ -17,7 +17,7 @@ import {
     liveBackendUrl,
     testEmail,
     userIdByEmail,
-    verifyUser,
+    verifyUserViaStack,
 } from "./helpers";
 
 // The orgless guided journey (registration creates an identity only, then
@@ -96,9 +96,9 @@ test("fresh verified user lands on onboarding, not the dashboard @guided", async
         envFault("Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
-    const verified = await verifyUser(request, userId, suToken);
+    const verified = verifyUserViaStack(email);
     if (!verified) {
-        envFault("verifyUser() returned non-OK \u2014 skipping onboarding redirect test");
+        envFault("verifyUserViaStack() returned non-OK \u2014 skipping onboarding redirect test");
         return;
     }
 
@@ -143,9 +143,9 @@ test("full signup then explicit workspace creation reaches dashboard @guided", a
         envFault("Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
-    const verified = await verifyUser(request, userId, suToken);
+    const verified = verifyUserViaStack(email);
     if (!verified) {
-        envFault("verifyUser() returned non-OK \u2014 skipping journey test");
+        envFault("verifyUserViaStack() returned non-OK \u2014 skipping journey test");
         return;
     }
 
