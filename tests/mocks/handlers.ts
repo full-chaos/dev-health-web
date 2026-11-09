@@ -13,6 +13,7 @@ import {
     MOCK_ACCESS_TOKEN,
     MOCK_MEMBER_ACCESS_TOKEN,
     MOCK_REFRESHED_ACCESS_TOKEN,
+    mockExpiringAccessToken,
 } from "./mockTokens";
 import {
     getPagerDutySyncConfig,
@@ -2738,6 +2739,24 @@ export const handlers = [
                 refresh_token: "mock-member-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
+                needs_onboarding: false,
+            });
+        }
+        // The platform admin again, with an access token web must refresh on its next request.
+        if (body.email === "admin-refresh@devhealth.example" && body.password === "devhealth123") {
+            return HttpResponse.json<LoginResponseBody>({
+                user: {
+                    id: "e2e-user-1",
+                    email: body.email,
+                    org_id: "org-e2e",
+                    role: "owner",
+                    is_superuser: true,
+                    permissions: ["read", "write"],
+                },
+                access_token: mockExpiringAccessToken(),
+                refresh_token: "mock-expiring-admin-refresh-token-e2e",
+                token_type: "bearer",
+                expires_in: 301,
                 needs_onboarding: false,
             });
         }
