@@ -64,3 +64,31 @@ describe("ops mock: a refresh answers the user the sign-in answered", () => {
         expect(refreshed.user).toEqual(login.user);
     });
 });
+
+describe("ops mock: a refresh token no sign-in issued keeps the old answer", () => {
+    async function refresh(token: string): Promise<TokenRefreshResponseBody> {
+        return post<TokenRefreshResponseBody>("/api/v1/auth/refresh", { refresh_token: token });
+    }
+
+    it("Given the onboarding pair's refresh token, then its refresh and the refresh of the token it returns both keep the old answer", async () => {
+        const baseline = await refresh("never-issued-refresh-token");
+        const first = await refresh("mock-onboard-refresh");
+        expect(first.user).toEqual(baseline.user);
+        const second = await refresh(first.refresh_token);
+        expect(second.user).toEqual(baseline.user);
+    });
+
+    it.each([
+        ["a signup token the mock never issued", "mock-registered-refresh-token-e2e."],
+        [
+            "the rotated form of a signup token the mock never issued",
+            "mock-refreshed-registered-refresh-token-e2e.",
+        ],
+    ])("Given %s, then the refresh keeps the old answer", async (_name, prefix) => {
+        const baseline = await refresh("never-issued-refresh-token");
+        const forged = await refresh(
+            `${prefix}${Buffer.from("attacker@example.com").toString("base64url")}`,
+        );
+        expect(forged.user).toEqual(baseline.user);
+    });
+});
