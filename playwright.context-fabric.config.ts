@@ -30,10 +30,11 @@ export default defineConfig({
     // arrive together. `server-session-token` (CHAOS-9229) reads which variant of a module the
     // production bundler put in the server graphs. `session-token-boundary` (CHAOS-12088) reads the
     // bytes a production build serves to the page. `ask-dev-csp` (CHAOS-11939) reads the policy a
-    // production build serves. The order of these files has no effect on a
+    // production build serves. `prerendered-csp` (CHAOS-12365) surveys the prerendered pages a
+    // development server does not prerender. The order of these files has no effect on a
     // result.
     testMatch:
-        /(?:acr-context-fabric|ask-dev-csp|ask-dev-route|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|session-token-boundary|product-telemetry-flush)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|ask-dev-csp|prerendered-csp|ask-dev-route|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|session-token-boundary|product-telemetry-flush)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,
