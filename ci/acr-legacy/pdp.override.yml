@@ -1,0 +1,14 @@
+# CHAOS-13325: the real-PDP cells' layer on top of ci/acr-legacy/compose.override.yml (run-pdp-equality.sh only).
+# auth-service publishes its API listener on loopback (ACR_PDP_AUTH_PORT, ephemeral when empty) so the web code under
+# test reaches /v1/authorize and the token exchange; it admits the web workload as an authorize caller
+# (ACR_PDP_AUTHORIZE_CALLERS, the web workload principal); the membership routes are on so the runner creates the
+# wildcard and exact grants through auth-service's own grant route (no SQL into the guarded auth tables).
+services:
+    auth-service:
+        ports: !override ["127.0.0.1:${ACR_PDP_AUTH_PORT:-}:8095"]
+        environment:
+            AUTH_AUTHORIZE_CALLER_SUBJECTS: ${ACR_PDP_AUTHORIZE_CALLERS:-}
+            AUTH_MEMBERSHIP_ROUTES: "true"
+            # The membership routes need both invite keys: go-api's link signing key, as compose.yml's go-api has it.
+            AUTH_INVITE_TOKEN_SECRET: ${LINK_TOKEN_SECRET:-local-dev-link-token-secret-0123456789abcdef}
+            AUTH_INVITE_TOKEN_SECRET_PREVIOUS: ${LINK_TOKEN_SECRET:-local-dev-link-token-secret-0123456789abcdef}
