@@ -3,7 +3,7 @@ import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGuardianCompletionCoordinator } from "../owned-process-guardian-completion.mjs";
-import { waitForProcessGroupGone } from "../owned-process-posix.mjs";
+import { processIdentity, waitForProcessGroupGone } from "../owned-process-posix.mjs";
 import {
     groupHasDescendants,
     groupMemberIdentities,
@@ -91,6 +91,16 @@ function startUnrelated() {
     started.push({ kind: "unrelated", proc });
     return proc;
 }
+// Owned listeners (grandchildren) are not children of the test, so the supervisor list above cannot
+// stop them. Each one is recorded with its start time, and afterEach kills it by pid only while that
+// pid still has the same start time (no pid reuse), so a failed cleanup does not leak it past the test.
+const ownedListeners = [];
+function trackOwnedListener(listenerProcess) {
+    const identity = processIdentity(listenerProcess.pid);
+    if (identity !== undefined) ownedListeners.push(identity);
+    return listenerProcess;
+}
+
 const isRunning = (proc) => proc.exitCode === null && proc.signalCode === null;
 
 function portIsReleased(port) {
@@ -213,6 +223,11 @@ describe("run-owned-process", () => {
             ]);
             if (!exited) leaked.push(`${kind} ${proc.pid}`);
         }
+        for (const owned of ownedListeners.splice(0)) {
+            if (processIdentity(owned.pid)?.startedAt !== owned.startedAt) continue;
+            process.kill(owned.pid, "SIGKILL");
+            leaked.push(`owned listener ${owned.pid}`);
+        }
         // Loud, not silent: a process that would not stop is a failure of the test, not a skipped cleanup.
         expect(leaked).toEqual([]);
     }, 30_000);
@@ -227,7 +242,7 @@ describe("run-owned-process", () => {
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = startSupervised(["node", "-e", grandchildListener]);
-        const listenerProcess = await waitForListener(tree);
+        const listenerProcess = trackOwnedListener(await waitForListener(tree));
 
         tree.kill("SIGTERM");
         await waitForExit(tree);
@@ -238,7 +253,7 @@ describe("run-owned-process", () => {
 
     it("kills a stubborn owned grandchild before the outer shutdown budget expires", async () => {
         const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
-        const listenerProcess = await waitForListener(tree);
+        const listenerProcess = trackOwnedListener(await waitForListener(tree));
         const startedAt = Date.now();
         const stderr = collectStderr(tree);
 
@@ -254,24 +269,52 @@ describe("run-owned-process", () => {
     }, 15_000);
 
     it("does not exit after SIGKILL until the owned group is gone, even when the guardian died first", async () => {
-        // Seam: the supervisor reports the group as still alive for 40 extra polls after SIGKILL
-        // (about 1 s). On the old code it exited as soon as the guardian's death was seen.
+        // Seam: the supervisor reports the group as still alive for 10 extra polls after SIGKILL
+        // (250 ms when idle). On the old code it exited as soon as the guardian's death was seen. The fake
+        // polls spend the supervisor's 4.5 s SIGKILL budget: 40 of them overran it on a CPU-starved host.
         const tree = startSupervised(["node", "-e", stubbornGrandchildListener], {
-            env: { ...process.env, OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS: "40" },
+            env: { ...process.env, OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS: "10" },
         });
-        await waitForListener(tree);
         const stderr = collectStderr(tree);
+        trackOwnedListener(await waitForListener(tree));
 
         tree.kill("SIGTERM");
         await waitForClose(tree);
 
-        const polls = /still there for (\d+) polls/u.exec(stderr())?.[1];
-        expect(Number(polls)).toBeGreaterThanOrEqual(40);
+        // No polls line means the supervisor took another path: fail with its stderr, never read NaN.
+        const text = stderr();
+        const polls = /still there for (\d+) polls/u.exec(text)?.[1];
+        expect(
+            polls,
+            `no "still there for N polls" line in the supervisor stderr:\n${text}`,
+        ).toBeDefined();
+        expect(Number(polls)).toBeGreaterThanOrEqual(10);
+    }, 15_000);
+
+    it("finishes its group cleanup when a second SIGTERM arrives during it", async () => {
+        const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
+        const stderr = collectStderr(tree);
+        const listenerProcess = trackOwnedListener(await waitForListener(tree));
+        const closed = new Promise((resolve) =>
+            tree.once("close", (code, signal) => resolve({ code, signal })),
+        );
+
+        tree.kill("SIGTERM");
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        tree.kill("SIGTERM");
+        const { code, signal } = await closed;
+
+        expect({ code, signal }, `supervisor stderr:\n${stderr()}`).toEqual({
+            code: 0,
+            signal: null,
+        });
+        expect(await portIsReleased(listenerProcess.port)).toBe(true);
+        expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     }, 15_000);
 
     it("cleans the verified owned group when its guardian exits unexpectedly", async () => {
         const tree = startSupervised(["node", "-e", grandchildListener]);
-        const listenerProcess = await waitForListener(tree);
+        const listenerProcess = trackOwnedListener(await waitForListener(tree));
         const guardianProcessId = childProcessId(tree.pid);
 
         process.kill(guardianProcessId, "SIGKILL");
@@ -284,7 +327,8 @@ describe("run-owned-process", () => {
 
     it("cleans a descendant when its target exited before its guardian unexpectedly exits", async () => {
         const tree = startSupervised(["node", "-e", targetExitsBeforeListener]);
-        const listenerProcess = await waitForListener(tree);
+        const stderr = collectStderr(tree);
+        const listenerProcess = trackOwnedListener(await waitForListener(tree));
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const guardianProcessId = childProcessId(tree.pid);
 
@@ -292,7 +336,9 @@ describe("run-owned-process", () => {
         const code = await waitForExit(tree);
 
         expect(code).not.toBe(0);
-        expect(await portIsReleased(listenerProcess.port)).toBe(true);
+        expect(await portIsReleased(listenerProcess.port), `supervisor stderr:\n${stderr()}`).toBe(
+            true,
+        );
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     }, 15_000);
 
@@ -300,7 +346,7 @@ describe("run-owned-process", () => {
         const unrelated = startUnrelated();
         const unrelatedProcess = await waitForListener(unrelated);
         const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
-        const ownedListener = await waitForListener(tree);
+        const ownedListener = trackOwnedListener(await waitForListener(tree));
 
         tree.kill("SIGTERM");
         await waitForExit(tree);
