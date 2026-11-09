@@ -20,6 +20,13 @@ const PAGES: { name: string; path: string; ready: (page: Page) => Promise<void> 
             await expect(page.getByLabel("Invite email")).toBeVisible();
         },
     },
+    {
+        name: "sync connection detail",
+        path: "/org/admin/sync/sync-config-edit-repos",
+        ready: async (page) => {
+            await expect(page.getByTestId("sync-job-history")).toBeVisible();
+        },
+    },
 ];
 
 test.describe("no horizontal page overflow at 390px", () => {
