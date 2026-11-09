@@ -30,7 +30,7 @@ type AuditLogRowsProps = {
  */
 export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) {
     return (
-        <div className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke)">
+        <div className="relative overflow-x-auto rounded-(--radius-md) border border-(--card-stroke)">
             <table className="w-full text-left text-sm">
                 <thead className="border-b border-(--card-stroke) bg-background text-label-caps uppercase text-(--ink-muted)">
                     <tr>
