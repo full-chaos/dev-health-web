@@ -13,6 +13,12 @@ export default defineConfig({
         },
     },
     test: {
+        // CHAOS-12901: one bounded limit for every unit and component test instead of vitest's
+        // 5 s test / 10 s hook defaults, which fail heavy-setup files when the host is loaded.
+        // Measured: main on 4 pinned CPUs with 32 workers (load 110) failed 30 files on the
+        // defaults, failing tests ran 5.7 s median. 30 s keeps a real hang failing.
+        testTimeout: 30_000,
+        hookTimeout: 30_000,
         // Component tests use jsdom; lib/util tests keep node environment.
         // Projects allow different environments per directory.
         projects: [
@@ -21,8 +27,6 @@ export default defineConfig({
                 test: {
                     name: "unit",
                     environment: "node",
-                    // CHAOS-12901: bounded timeouts for the load-sensitive files it lists.
-                    setupFiles: ["src/test/loadTimeouts.ts"],
                     // next-auth imports `next/server` without an extension, which Node's ESM
                     // resolver refuses for an external dependency. Inlined, Vite resolves it, so
                     // a test can run the real handlers (CHAOS-12088 session endpoint test).
@@ -63,7 +67,7 @@ export default defineConfig({
                     // Accepted by Node 22 and 26.
                     execArgv: ["--no-experimental-webstorage"],
                     globals: true,
-                    setupFiles: ["src/test/setup.ts", "src/test/loadTimeouts.ts"],
+                    setupFiles: ["src/test/setup.ts"],
                     include: [
                         "src/components/**/*.test.tsx",
                         "src/app/**/*.test.tsx",
