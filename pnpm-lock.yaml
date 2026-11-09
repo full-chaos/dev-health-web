@@ -62,6 +62,9 @@ importers:
       next-auth:
         specifier: ^5.0.0-beta.32
         version: 5.0.0-beta.32(patch_hash=38af8bbfa3bb63d3d2105bb6c8c43f08bca1cba6127861888b8c95e25ad3e710)(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
       pino:
         specifier: ^10
         version: 10.4.0
