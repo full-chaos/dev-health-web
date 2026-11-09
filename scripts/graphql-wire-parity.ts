@@ -297,10 +297,19 @@ export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): 
     throw new Error(`none of ${candidates.join(", ")} exists under --ops-root ${opsRoot}`);
 }
 
-/** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
-export function runRegistrydump(opsRoot: string): RegistryEntry[] {
+/**
+ * Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. It first logs which path it
+ * resolved for each input (CHAOS-6493): with both layouts present a stale copy would still pass, and the log
+ * shows when no checkout the gate runs against has the old layout. stderr, so `generate`'s JSON stays clean.
+ */
+export function runRegistrydump(
+    opsRoot: string,
+    log: (line: string) => void = (line) => process.stderr.write(`${line}\n`),
+): RegistryEntry[] {
     const tool = resolveOpsPath(opsRoot, REGISTRYDUMP_PATHS);
     const routeFile = resolveOpsPath(opsRoot, QUERY_ROUTE_PATHS);
+    log(`graphql-wire-parity: using ${routeFile} (query route)`);
+    log(`graphql-wire-parity: using ${tool} (registrydump)`);
     const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
         cwd: opsRoot,
         encoding: "utf8",
