@@ -48,6 +48,8 @@ vi.mock("@/lib/logger", () => {
 
 import "@/lib/auth";
 import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+import { ISSUER, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 
 const ACCESS_TOKEN = "access-token";
 const REFRESH_TOKEN = "refresh-token";
@@ -74,7 +76,12 @@ function validationDueToken(): Token {
 }
 
 function backendAnswers(status: number, body: string): ReturnType<typeof vi.fn> {
-    const fetchMock = vi.fn(async () => new Response(body, { status }));
+    const keyed = eddsaFetch({});
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).startsWith(`${ISSUER}/.well-known/`)
+            ? keyed(input, init)
+            : new Response(body, { status }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
 }
@@ -98,10 +105,13 @@ function expectSessionEnded(token: Token): void {
 
 beforeEach(() => {
     resetValidationMemoForTests();
+    resetKeySetCacheForTests();
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 });
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
 });
 
 describe("answers that refuse the session end it", () => {
@@ -195,10 +205,8 @@ describe("an answer that confirms the user", () => {
 });
 
 describe("a good refresh starts the validation count again", () => {
-    // An HS256-shaped compact access token: the server reads exp and sid from a refreshed token.
-    const NEXT_ACCESS = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(
-        JSON.stringify({ sid: "ses_ValidationAAAAAAAAAAAAA", exp: 4102444800 }),
-    ).toString("base64url")}.${Buffer.from("sig").toString("base64url")}`;
+    // A signed access token: the server verifies a refreshed token against the key set.
+    const NEXT_ACCESS = mint({ sid: "ses_ValidationAAAAAAAAAAAAA", exp: inSeconds(1800) });
     const REFRESHED = JSON.stringify({
         access_token: NEXT_ACCESS,
         refresh_token: "next-refresh",

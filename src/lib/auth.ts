@@ -148,7 +148,6 @@ const nextAuth = NextAuth({
                             typeof credentials.org_id === "string" ? credentials.org_id : undefined,
                     },
                     {
-                        tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                         issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                         backendUrl: getBackendUrl(),
                         clientIp: request ? getClientIpFromEnv(request) : undefined,
@@ -248,7 +247,6 @@ const nextAuth = NextAuth({
             const refreshAdmin = async () => {
                 const env = getServerEnv();
                 return refreshSession(token.refresh_token as string, {
-                    tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                     issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                     backendUrl: getBackendUrl(),
                     clientIp: await refreshClientIp(),
@@ -338,7 +336,7 @@ const nextAuth = NextAuth({
                 account.access_token &&
                 !wireConfigUsable(socialWire, "social_login")
             ) {
-                // A wrong class setting is a configuration fault: no exchange is started.
+                // A missing issuer is a configuration fault: no exchange is started.
                 token.error = "social_login_failed";
             } else if (account && account.provider !== "credentials" && account.access_token) {
                 try {
@@ -370,8 +368,8 @@ const nextAuth = NextAuth({
                           )
                         : undefined;
                     if (read?.kind === "refused" || read?.kind === "unavailable") {
-                        // Under eddsa an answer that cannot be read is no sign-in: the stored
-                        // session is left as it was.
+                        // An answer that cannot be read is no sign-in: the stored session is left
+                        // as it was.
                         token.error = "social_login_failed";
                     } else if (res.ok) {
                         const data = exchange;
@@ -689,8 +687,8 @@ type ActiveOrgPair = {
     access_token: string;
     refresh_token?: string;
     expires_in?: number;
-    // Under eddsa the route read the answer: the verified access expiry and session id, the verified
-    // actor, and the service token with its expiry (CHAOS-10876). Absent under hs256_compat.
+    // The route read the answer: the verified access expiry and session id, the verified actor, and
+    // the service token with its expiry (CHAOS-10876).
     access_exp?: number;
     sid?: string;
     act_sub?: string;

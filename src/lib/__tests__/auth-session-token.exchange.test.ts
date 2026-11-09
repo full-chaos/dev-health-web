@@ -48,8 +48,8 @@ import { logSessionBranch } from "@/lib/authSessionLog";
 import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
 import { ACTOR, ISSUER, SID, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 
-// CHAOS-10876 C2: the social exchange answer under the class setting (the eddsa read only; the rest
-// of the exchange is 7.4's).
+// CHAOS-10876 C2: the social exchange answer (the access-token read only; the rest of the exchange
+// is 7.4's).
 
 type Token = Record<string, unknown>;
 type Jwt = (p: {
@@ -99,12 +99,11 @@ afterEach(() => {
     vi.unstubAllEnvs();
 });
 function eddsaEnv() {
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 }
 
 describe("the social exchange answer", () => {
-    it("(g1) under eddsa the service token, its expiry, the sid and the actor are stored and expires_at comes from the access exp", async () => {
+    it("(g1) the service token, its expiry, the sid and the actor are stored and expires_at comes from the access exp", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         const service = mint({ aud: "auth-service", exp });
@@ -124,7 +123,7 @@ describe("the social exchange answer", () => {
         expect(out.error).toBeUndefined();
     });
 
-    it("(g2) under eddsa a refused service token sets social_login_failed and leaves the stored tokens alone", async () => {
+    it("(g2) a refused service token sets social_login_failed and leaves the stored tokens alone", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(
@@ -144,7 +143,7 @@ describe("the social exchange answer", () => {
         ]);
     });
 
-    it("(g2b) under eddsa the key set unavailable sets social_login_failed and leaves the stored tokens alone", async () => {
+    it("(g2b) the key set unavailable sets social_login_failed and leaves the stored tokens alone", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -156,19 +155,20 @@ describe("the social exchange answer", () => {
         expect(out.access_token).toBe("old-access");
     });
 
-    it("(g3) under hs256_compat the exchange is unchanged: no read of the access token, a present field is counted, nothing is stored", async () => {
-        fetchMock.mockResolvedValue(
-            answerOf("not-a-decodable-token", { session_access_token: "svc-value" })(),
+    it("(g3) an HS256 access token sets social_login_failed and leaves the stored tokens alone", async () => {
+        eddsaEnv();
+        const part = (value: string) => Buffer.from(value).toString("base64url");
+        const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: SID, exp: inSeconds(1800) }))}.${part("sig")}`;
+        fetchMock.mockImplementation(
+            eddsaFetch({ [SOCIAL]: answerOf(hs256, { session_access_token: "svc-value" }) }),
         );
         const out = await jwt()({ token: stored(), user: null, account });
-        expect(out.access_token).toBe("not-a-decodable-token");
-        expect(out.refresh_token).toBe("social-refresh");
-        expect(out.session_access_token).toBeUndefined();
-        expect(out.error).toBeUndefined();
-        expect(logged()).toEqual([{ operation: "social_login", branch: "session_token_ignored" }]);
+        expect(out.error).toBe("social_login_failed");
+        expect(out.access_token).toBe("old-access");
+        expect(out.session_access_token).toBe("old-service-token");
     });
 
-    it("(g4) under eddsa an answer without the field clears the stored service token and is counted", async () => {
+    it("(g4) an answer without the field clears the stored service token and is counted", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(eddsaFetch({ [SOCIAL]: answerOf(mint({ exp })) }));
@@ -179,8 +179,8 @@ describe("the social exchange answer", () => {
         expect(logged()).toEqual([{ operation: "social_login", branch: "session_token_missing" }]);
     });
 
-    it("(g5) an unknown class sets social_login_failed and calls nothing", async () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
+    it("(g5) no pinned issuer sets social_login_failed and calls nothing", async () => {
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         const out = await jwt()({ token: stored(), user: null, account });
         expect(out.error).toBe("social_login_failed");
         expect(fetchMock).not.toHaveBeenCalled();

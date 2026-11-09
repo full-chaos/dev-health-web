@@ -48,6 +48,7 @@ import { POST as switchOrg } from "@/app/api/auth/switch-org/route";
 import { POST as changePassword } from "@/app/api/auth/change-password/route";
 
 import { fakeHandoffConsume } from "@/test/handoffConsume";
+import { ISSUER, eddsaFetch, mint } from "@/test/eddsaAnswer";
 
 const ops = fakeHandoffConsume();
 
@@ -58,11 +59,8 @@ type Cb = {
 };
 const callbacks = () => (nextAuthConfig.value as { callbacks: Cb }).callbacks;
 
-const b64 = (s: string) => Buffer.from(s).toString("base64url");
-const at = (name: string) =>
-    `${b64(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${b64(
-        JSON.stringify({ sub: name, exp: Math.floor(Date.now() / 1000) + 3600 }),
-    )}.c2ln`;
+const at = (name: string) => mint({ sub: `prn_${name}` });
+const keyed = eddsaFetch({});
 
 const ADMIN = "access-admin-1";
 const ADMIN_2 = at("admin-1-rotated");
@@ -178,10 +176,12 @@ beforeEach(() => {
     calls.length = 0;
     backend.statusImpersonating = true;
     backend.adminTokens = new Set([ADMIN, ADMIN_2]);
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             if (ops.handles(input)) return ops.answer(init);
+            if (String(input).startsWith(`${ISSUER}/.well-known/`)) return keyed(input, init);
             const url = String(input).replace("http://backend.test", "");
             const headers = new Headers(init?.headers);
             const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? null;

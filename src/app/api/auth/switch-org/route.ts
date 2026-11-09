@@ -86,8 +86,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
     const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
-    // Under eddsa the access token and the service token are read; under hs256_compat the pair is
-    // exactly what it was. A refused or unreadable answer leaves the session as it is.
+    // The access token and the service token are read. A refused or unreadable answer leaves the
+    // session as it is.
     const read = await readExchangeAnswer(
         {
             accessToken: pair.access_token,
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
                 refresh_token: pair.refresh_token,
                 expires_in: pair.expires_in,
                 user: { org_id: orgId, role: pair.user.role, is_superuser: pair.user.is_superuser },
-                ...(read.kind === "read" ? servicePairFields(read) : {}),
+                ...servicePairFields(read),
             },
             session.user?.id ?? "",
         );

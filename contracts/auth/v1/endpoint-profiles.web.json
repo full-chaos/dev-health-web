@@ -534,7 +534,7 @@
             "action": "auth.switch_org",
             "resource_resolver": "org_id from request body, verified ops-side against caller's memberships (not verified web-side).",
             "tenant_requirement": "cross_org_superuser_only",
-            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:122); the other responses were not inspected.",
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:128); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "A refusal gets ops's status with a fixed {error} body; a failed call, a 2xx without a pair or a failed seal answers a fixed 502. On success answers {org_id, sessionHandoff}: the new token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088).",
@@ -552,7 +552,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/change-password/route.ts",
-                "line": 27
+                "line": 26
             },
             "classification": "protected",
             "public_rationale": null,
@@ -561,8 +561,8 @@
                 "description": "Inline `session.access_token` presence check; forwards Bearer + body {current_password, new_password} to ops POST /api/v1/auth/change-password, which re-checks the user per request, verifies the current password, enforces the password policy and revokes every other session.",
                 "anchor": {
                     "path": "src/app/api/auth/change-password/route.ts",
-                    "line": 28,
-                    "line_end": 31
+                    "line": 27,
+                    "line_end": 30
                 }
             },
             "token_shape": {
@@ -581,7 +581,7 @@
             "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status. On success answers {ok, sessionHandoff}: the fresh token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088); a missing pair or a failed seal answers a fixed 502.",
             "gaps": [
                 "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply.",
-                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:27 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:26 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
         {
@@ -616,7 +616,7 @@
             "action": "auth.logout",
             "resource_resolver": "none: the session to revoke is the caller's own, named by the refresh token in the caller's sealed session cookie; no id comes from the request.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :90).",
+            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :89).",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "204 with no body on success; refusals and Ops failures answer a fixed {error} code (forbidden, no_session, revoke_failed) with no Ops body and no token.",
@@ -10175,17 +10175,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/onboarding/actions.ts",
-                "line": 39
+                "line": 40
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "sessionToken() (src/lib/onboarding/actions.ts:28-36) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboard, which re-validates it.",
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:29-37) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboard, which re-validates it.",
                 "anchor": {
                     "path": "src/lib/onboarding/actions.ts",
-                    "line": 28,
-                    "line_end": 36
+                    "line": 29,
+                    "line_end": 37
                 }
             },
             "token_shape": {
@@ -10214,9 +10214,9 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "Returns {ok, orgId, sessionHandoff} or {ok:false, status} plus ops's `detail` only for a validation answer (4xx except 401/403/429). The new workspace's token pair reaches the page only sealed (sealSessionHandoff: JWE under the auth secret, own salt, 120 s, bound to the user id); the page passes it to update() and cannot read it.",
             "gaps": [
-                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:40.",
-                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:39 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:39 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:41.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:40 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:40 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10232,17 +10232,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/onboarding/actions.ts",
-                "line": 120
+                "line": 136
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "sessionToken() (src/lib/onboarding/actions.ts:28-36) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboarding/skip-integration, which re-validates it.",
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:29-37) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboarding/skip-integration, which re-validates it.",
                 "anchor": {
                     "path": "src/lib/onboarding/actions.ts",
-                    "line": 28,
-                    "line_end": 36
+                    "line": 29,
+                    "line_end": 37
                 }
             },
             "token_shape": {
@@ -10271,9 +10271,9 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "Returns {ok} or {ok:false, status}; no backend text.",
             "gaps": [
-                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:121.",
-                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:120 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:120 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:137.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:136 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:136 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",

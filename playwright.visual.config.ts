@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { nextDevNodeOptions } from "./ci/next-dev-env";
+import { e2eAuthEnv } from "./ci/next-dev-env";
 
 /**
  * CHAOS-12841 (E8 AC-6): visual-regression baselines of the Ask Dev rich views, in their own config.
@@ -73,7 +73,7 @@ export default defineConfig({
             reuseExistingServer: false,
             timeout: 180_000,
             env: {
-                NODE_OPTIONS: nextDevNodeOptions(),
+                ...e2eAuthEnv(mockServerURL),
                 NEXT_DIST_DIR: ".next/visual",
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",

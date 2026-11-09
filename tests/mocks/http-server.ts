@@ -12,6 +12,7 @@ import {
 } from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
+import { mockDiscovery, mockJwks } from "./mockTokens";
 import { hardenMockServer } from "./serverSockets";
 
 const app = express();
@@ -218,6 +219,13 @@ app.use("/graphql", (req, res, next) => {
         return;
     }
     res.json(prDetailGraphQLResponse);
+});
+// The access-token issuer's discovery document and key set (EdDSA is the only access-token class).
+app.get("/.well-known/openid-configuration", (_req, res) => {
+    res.json(mockDiscovery());
+});
+app.get("/.well-known/jwks.json", (_req, res) => {
+    res.json(mockJwks());
 });
 app.use(createMiddleware(...handlers));
 

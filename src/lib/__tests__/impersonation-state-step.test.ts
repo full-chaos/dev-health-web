@@ -68,6 +68,7 @@ import { resetImpersonationStatusForTests } from "@/lib/impersonationStatusMemo"
 import { startImpersonation, stopImpersonation } from "@/lib/admin/server";
 
 import { fakeHandoffConsume } from "@/test/handoffConsume";
+import { ISSUER, eddsaFetch, mint } from "@/test/eddsaAnswer";
 
 const ops = fakeHandoffConsume();
 
@@ -85,7 +86,8 @@ const jwtOf = (claims: Obj) =>
 const MIN = 60_000;
 const ADMIN = "access-admin-1";
 const ADMIN_REFRESH = "refresh-admin-1";
-const ADMIN_2 = jwtOf({ sub: "admin-1", exp: Math.floor(Date.now() / 1000) + 3600 });
+const ADMIN_2 = mint({ sub: "prn_admin-1" });
+const keyed = eddsaFetch({});
 // auth-service's delegated session id (its session row and audit row) and its wire form, the sid.
 const DELEGATION_ID = "7f3a2b1c-0d4e-4f5a-8b6c-9d0e1f2a3b4c";
 const SID = `ses_${Buffer.from(DELEGATION_ID.replace(/-/g, ""), "hex").toString("base64url")}`;
@@ -132,10 +134,12 @@ beforeEach(() => {
     backend.stop = "ok";
     backend.status = undefined;
     backend.startBody = {};
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             if (ops.handles(input)) return ops.answer(init);
+            if (String(input).startsWith(`${ISSUER}/.well-known/`)) return keyed(input, init);
             const path = String(input).replace("http://backend.test", "");
             const bearer =
                 new Headers(init?.headers).get("authorization")?.replace("Bearer ", "") ?? null;

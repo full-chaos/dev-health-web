@@ -22,8 +22,8 @@ const PROVIDER = "6f1d0f6e-62a1-4b3a-9f0e-1f2b3c4d5e6f";
 const ORG = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 const OTHER_ORG = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const BACKEND = "http://auth.test";
-const hs256: WireConfig = { tokenClassRaw: undefined, issuer: undefined, backendUrl: BACKEND };
-const eddsa: WireConfig = { tokenClassRaw: "eddsa", issuer: ISSUER, backendUrl: BACKEND };
+const noIssuer: WireConfig = { issuer: undefined, backendUrl: BACKEND };
+const eddsa: WireConfig = { issuer: ISSUER, backendUrl: BACKEND };
 const fetchMock = vi.fn();
 const b64u = (s: string) => Buffer.from(s).toString("base64url");
 const VALID_EXP = inSeconds(1800);
@@ -245,7 +245,7 @@ describe("startOidc and startSaml", () => {
         );
         const got = await startOidc(
             { providerId: PROVIDER, redirectUri: "https://web.test/api/v1/auth/oidc/p/callback" },
-            hs256,
+            noIssuer,
         );
         expect(got).toMatchObject({ kind: "ok", redirectUrl: "https://idp.example.test/auth?x=1" });
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -259,7 +259,7 @@ describe("startOidc and startSaml", () => {
         fetchMock.mockResolvedValue(
             json(200, { redirect_url: "https://idp.example.test/sso?r=1" }),
         );
-        const got = await startSaml({ providerId: PROVIDER }, hs256);
+        const got = await startSaml({ providerId: PROVIDER }, noIssuer);
         expect(got).toMatchObject({ kind: "ok", redirectUrl: "https://idp.example.test/sso?r=1" });
         expect(String(fetchMock.mock.calls[0][0])).toBe(
             `${BACKEND}/api/v1/auth/saml/${PROVIDER}/initiate`,
@@ -268,7 +268,7 @@ describe("startOidc and startSaml", () => {
 
     it("an IdP url that is not http(s) is refused", async () => {
         fetchMock.mockResolvedValue(json(200, { redirect_url: "javascript:alert(1)" }));
-        expect(await startSaml({ providerId: PROVIDER }, hs256)).toMatchObject({
+        expect(await startSaml({ providerId: PROVIDER }, noIssuer)).toMatchObject({
             kind: "refused",
             code: "sso_failed",
         });
@@ -276,7 +276,7 @@ describe("startOidc and startSaml", () => {
 
     it("a refusal of the start call is read the same way", async () => {
         fetchMock.mockResolvedValue(json(402, { detail: { message: "x" } }));
-        expect(await startSaml({ providerId: PROVIDER }, hs256)).toMatchObject({
+        expect(await startSaml({ providerId: PROVIDER }, noIssuer)).toMatchObject({
             kind: "refused",
             code: "sso_not_licensed",
         });
@@ -287,13 +287,13 @@ describe("the dark switch", () => {
     it("with AUTH_SSO_ENABLED unset every call answers disabled and calls no backend", async () => {
         vi.stubEnv("AUTH_SSO_ENABLED", "");
         expect(
-            await startOidc({ providerId: PROVIDER, redirectUri: "https://w.test/c" }, hs256),
+            await startOidc({ providerId: PROVIDER, redirectUri: "https://w.test/c" }, noIssuer),
         ).toEqual({
             kind: "disabled",
         });
-        expect(await startSaml({ providerId: PROVIDER }, hs256)).toEqual({ kind: "disabled" });
-        expect(await completeOidc(callback, hs256)).toEqual({ kind: "disabled" });
-        expect(await completeSaml(acs, hs256)).toEqual({ kind: "disabled" });
+        expect(await startSaml({ providerId: PROVIDER }, noIssuer)).toEqual({ kind: "disabled" });
+        expect(await completeOidc(callback, noIssuer)).toEqual({ kind: "disabled" });
+        expect(await completeSaml(acs, noIssuer)).toEqual({ kind: "disabled" });
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

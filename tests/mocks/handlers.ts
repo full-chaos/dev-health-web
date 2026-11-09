@@ -9,12 +9,7 @@
 
 import { http, HttpResponse } from "msw";
 import { getEntitlementScenario } from "./entitlementScenario";
-import {
-    MOCK_ACCESS_TOKEN,
-    MOCK_MEMBER_ACCESS_TOKEN,
-    MOCK_REFRESHED_ACCESS_TOKEN,
-    mockExpiringAccessToken,
-} from "./mockTokens";
+import { mockExpiringPair, mockPair } from "./mockTokens";
 import {
     getPagerDutySyncConfig,
     pagerDutyHandlers,
@@ -2757,7 +2752,7 @@ export const handlers = [
         if (body.email === "newuser@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
                 user: orglessUser("e2e-user-new", "newuser@example.com"),
-                access_token: MOCK_ACCESS_TOKEN,
+                ...mockPair("admin"),
                 refresh_token: "mock-newuser-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2774,7 +2769,7 @@ export const handlers = [
             registeredRefreshTokens.set(refreshToken, body.email);
             return HttpResponse.json<LoginResponseBody>({
                 user: orglessUser(`e2e-user-${body.email}`, body.email),
-                access_token: MOCK_ACCESS_TOKEN,
+                ...mockPair("admin"),
                 refresh_token: refreshToken,
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2784,7 +2779,7 @@ export const handlers = [
         if (body.email === "member@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
                 user: MEMBER_USER,
-                access_token: MOCK_MEMBER_ACCESS_TOKEN,
+                ...mockPair("member"),
                 refresh_token: "mock-member-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2795,7 +2790,7 @@ export const handlers = [
         if (body.email === "admin-refresh@devhealth.example" && body.password === "devhealth123") {
             return HttpResponse.json<LoginResponseBody>({
                 user: ownerUser(body.email),
-                access_token: mockExpiringAccessToken(),
+                ...mockExpiringPair(),
                 refresh_token: "mock-expiring-admin-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 301,
@@ -2811,7 +2806,7 @@ export const handlers = [
         }
         return HttpResponse.json<LoginResponseBody>({
             user: ownerUser(body.email),
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: isCanonicalAdmin
                 ? "mock-refresh-token-e2e"
                 : "mock-legacy-refresh-token-e2e",
@@ -2831,7 +2826,7 @@ export const handlers = [
         const user = userForRefreshToken(token);
         if (user !== undefined) {
             return HttpResponse.json<TokenRefreshResponseBody>({
-                access_token: MOCK_REFRESHED_ACCESS_TOKEN,
+                ...mockPair("refreshed"),
                 refresh_token: rotatedRefreshToken(token),
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2841,7 +2836,7 @@ export const handlers = [
         // A refresh token no sign-in above issued (the onboarding pair): the answer it always had,
         // with a rotated token that maps to no sign-in either.
         return HttpResponse.json<TokenRefreshResponseBody>({
-            access_token: MOCK_REFRESHED_ACCESS_TOKEN,
+            ...mockPair("refreshed"),
             refresh_token: "mock-unissued-refreshed-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2903,7 +2898,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2921,7 +2916,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: MOCK_ACCESS_TOKEN,
+            ...mockPair("admin"),
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -3871,7 +3866,8 @@ export const handlers = [
         onboardingProgress.orgId = "org-new";
         onboardingProgress.orgName = orgName;
         return HttpResponse.json<OnboardResponseBody>({
-            access_token: "mock-onboard-token",
+            // The onboard answer's pair enters the session, so it is a verified EdDSA pair too.
+            ...mockPair("admin"),
             refresh_token: "mock-onboard-refresh",
             token_type: "bearer",
             org_id: "org-new",

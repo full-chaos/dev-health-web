@@ -19,7 +19,6 @@ export const SAML_NONCE_CLEAR = `dho_saml_login_nonce_def=; Path=${SAML_ACS_PATH
 
 export function stubSsoEnv(on: boolean): void {
     vi.stubEnv("AUTH_SSO_ENABLED", on ? "true" : "");
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubEnv("BACKEND_URL", BACKEND);
     vi.stubEnv("AUTH_URL", ORIGIN);

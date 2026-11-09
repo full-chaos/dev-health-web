@@ -63,19 +63,30 @@ vi.mock("@/lib/origin", () => ({
     getBackendUrl: () => "http://localhost:8000",
 }));
 
-import { generateKeyPairSync, sign } from "node:crypto";
-import { requireSession } from "@/lib/auth";
-import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+// The published key set: the test signer's key, or no usable key set when `unavailable` is set.
+const { keySource } = vi.hoisted(() => ({ keySource: { unavailable: false } }));
+vi.mock("@/lib/authKeySource", async () => {
+    const { keysResponse } = await import("@/test/eddsaAnswer");
+    const { keys } = (await keysResponse().json()) as { keys: unknown[] };
+    return {
+        resetKeySourceForTests: vi.fn(),
+        publishedKeysFor: vi.fn(async () =>
+            keySource.unavailable ? { ok: false, reason: "unavailable" } : { ok: true, keys },
+        ),
+    };
+});
 
-const b64u = (value: string | Uint8Array) =>
-    Buffer.from(typeof value === "string" ? new TextEncoder().encode(value) : value).toString(
-        "base64url",
-    );
-const FUTURE_EXP = 4_102_444_800;
-/** An HS256-shaped compact access token, the shape the server reads under hs256_compat. */
-const hs256Access = (
-    payload: Record<string, unknown> = { sid: "ses_RefreshedAAAAAAAAAAAAAA", exp: FUTURE_EXP },
-) => `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(JSON.stringify(payload))}.${b64u("sig")}`;
+import { requireSession } from "@/lib/auth";
+import { ISSUER, inSeconds, mint } from "@/test/eddsaAnswer";
+
+/** A signed access token, the only shape the server reads. */
+const signedAccess = (o: { sid?: string; exp?: number } = {}) =>
+    mint({ sid: o.sid ?? "ses_RefreshedAAAAAAAAAAAAAA", exp: o.exp ?? inSeconds(3000) });
+
+beforeEach(() => {
+    keySource.unavailable = false;
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
+});
 
 describe("requireSession", () => {
     beforeEach(() => {
@@ -389,7 +400,7 @@ describe("jwt callback — token lifecycle", () => {
     });
 
     it("(e) clears error on refresh success after prior transient failure", async () => {
-        const newAccessToken = hs256Access();
+        const newAccessToken = signedAccess();
         const newRefreshToken = "recovered-refresh-token";
         vi.stubGlobal(
             "fetch",
@@ -455,7 +466,7 @@ describe("jwt callback — token lifecycle", () => {
     });
 
     it("(e2) refresh success resets refresh_failures after a transient backoff", async () => {
-        const newAccessToken = hs256Access();
+        const newAccessToken = signedAccess();
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
@@ -511,7 +522,7 @@ describe("jwt callback — token lifecycle", () => {
         }) as unknown as Response;
     const rotatedAnswer = (over: Record<string, unknown> = {}) =>
         answer(200, {
-            access_token: hs256Access(),
+            access_token: signedAccess(),
             refresh_token: "rotated-refresh",
             expires_in: 3600,
             ...over,
@@ -531,7 +542,7 @@ describe("jwt callback — token lifecycle", () => {
     it("(e5) a 2xx answer without a refresh token clears both tokens and sets refresh_failed", async () => {
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValueOnce(answer(200, { access_token: hs256Access() })),
+            vi.fn().mockResolvedValueOnce(answer(200, { access_token: signedAccess() })),
         );
         const result = await getJwtCallback()({
             token: refreshDueToken(),
@@ -553,11 +564,11 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.refresh_token).toBe("rotated-refresh");
     });
 
-    it("(e7) expires_at comes from the token exp; a token without a usable exp ends the session", async () => {
-        const exp = Math.floor(Date.now() / 1000) + 7200;
+    it("(e7) expires_at comes from the token exp; a token that does not verify ends the session", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 3000;
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValueOnce(rotatedAnswer({ access_token: hs256Access({ exp }) })),
+            vi.fn().mockResolvedValueOnce(rotatedAnswer({ access_token: signedAccess({ exp }) })),
         );
         const withExp = await getJwtCallback()({
             token: refreshDueToken(),
@@ -566,18 +577,17 @@ describe("jwt callback — token lifecycle", () => {
         });
         expect(withExp.expires_at).toBe(exp * 1000);
 
-        // A body expires_in never sets the lifetime of a token whose exp web cannot read.
-        for (const payload of [
-            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA" },
-            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA", exp: 0 },
-            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA", exp: -1 },
-        ]) {
+        // A body expires_in never sets the lifetime of a token that does not verify: an expired
+        // token and an HS256 token both end the session.
+        const part = (value: string) => Buffer.from(value).toString("base64url");
+        const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: "ses_NoExpAAAAAAAAAAAAAAAAA", exp: inSeconds(3000) }))}.${part("sig")}`;
+        for (const payload of [signedAccess({ exp: inSeconds(-100) }), hs256]) {
             vi.stubGlobal(
                 "fetch",
                 vi
                     .fn()
                     .mockResolvedValueOnce(
-                        rotatedAnswer({ access_token: hs256Access(payload), expires_in: 1800 }),
+                        rotatedAnswer({ access_token: payload, expires_in: 1800 }),
                     ),
             );
             const refused = await getJwtCallback()({
@@ -585,7 +595,7 @@ describe("jwt callback — token lifecycle", () => {
                 user: null,
                 account: null,
             });
-            expect(refused.error, JSON.stringify(payload)).toBe("refresh_failed");
+            expect(refused.error).toBe("refresh_failed");
             expect(refused.access_token).toBeUndefined();
             expect(refused.refresh_token).toBeUndefined();
         }
@@ -596,10 +606,7 @@ describe("jwt callback — token lifecycle", () => {
             "fetch",
             vi.fn().mockResolvedValueOnce(
                 rotatedAnswer({
-                    access_token: hs256Access({
-                        sid: "ses_AfterRefreshAAAAAAAAAAA",
-                        exp: FUTURE_EXP,
-                    }),
+                    access_token: signedAccess({ sid: "ses_AfterRefreshAAAAAAAAAAA" }),
                 }),
             ),
         );
@@ -649,45 +656,21 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.org_id).toBeFalsy();
     });
 
-    it("(e11) a rotation followed by an unusable key set (eddsa) keeps the ROTATED refresh token and drops the access token", async () => {
-        const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-        void publicKey;
-        const issuer = "https://auth.example.test";
-        const header = b64u(JSON.stringify({ alg: "EdDSA", typ: "at+jwt", kid: "kid-1" }));
-        const exp = Math.floor(Date.now() / 1000) + 3000;
-        const payload = b64u(
-            JSON.stringify({
-                iss: issuer,
-                aud: "dev-health-api",
-                sub: "prn_AAAAAAAAAAAAAAAAAAAAAA",
-                principal_type: "human",
-                sid: "ses_AAAAAAAAAAAAAAAAAAAAAQ",
-                jti: "000000000000000000000001",
-                iat: Math.floor(Date.now() / 1000) - 10,
-                nbf: Math.floor(Date.now() / 1000) - 10,
-                exp,
-                scope: "api:access",
-            }),
-        );
-        const input = `${header}.${payload}`;
-        const access = `${input}.${b64u(sign(null, Buffer.from(input), privateKey))}`;
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
-        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", issuer);
-        resetKeySetCacheForTests();
+    it("(e11) a rotation followed by an unusable key set keeps the ROTATED refresh token and drops the access token", async () => {
+        keySource.unavailable = true;
         vi.stubGlobal(
             "fetch",
-            vi.fn(async (input: RequestInfo | URL) =>
-                String(input).endsWith("/api/v1/auth/refresh")
-                    ? rotatedAnswer({ access_token: access, refresh_token: "rotated-eddsa" })
-                    : new Response("down", { status: 503 }),
-            ),
+            vi
+                .fn()
+                .mockResolvedValueOnce(
+                    rotatedAnswer({ access_token: signedAccess(), refresh_token: "rotated-eddsa" }),
+                ),
         );
         const result = await getJwtCallback()({
             token: refreshDueToken(),
             user: null,
             account: null,
         });
-        vi.unstubAllEnvs();
         expect(result.refresh_token).toBe("rotated-eddsa");
         expect(result.access_token).toBeUndefined();
         expect(result.error).toBe("refresh_unavailable");
@@ -712,10 +695,10 @@ describe("jwt callback — token lifecycle", () => {
         expect(b.refresh_token).toBe("rotated-refresh");
     });
 
-    it("(e13) an unknown token class never ends the session at refresh: transient, refresh token kept, no call", async () => {
+    it("(e13) no pinned issuer never ends the session at refresh: transient, refresh token kept, no call", async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal("fetch", fetchMock);
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         const result = await getJwtCallback()({
             token: refreshDueToken(),
             user: null,

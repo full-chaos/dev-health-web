@@ -1,10 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn(), sealSessionHandoff: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://ops.example.test" }));
 
 import { auth, sealSessionHandoff } from "@/lib/auth";
 import { POST } from "../route";
+import { ISSUER, SID, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+
+const EXP = inSeconds(1800);
+const ACCESS = mint({ exp: EXP });
 
 const SECRET_CURRENT = "current-secret-value-1";
 const SECRET_NEW = "brand-new-secret-value-2";
@@ -19,19 +24,27 @@ function call(body: unknown) {
     );
 }
 
+// The backend answer, plus the key set the access token is verified against.
 function backend(status: number, body: unknown) {
-    const fetchMock = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { "content-type": "application/json" },
-        }),
+    const keyed = eddsaFetch({});
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).startsWith(`${ISSUER}/.well-known/`)
+            ? keyed(input, init)
+            : new Response(JSON.stringify(body), {
+                  status,
+                  headers: { "content-type": "application/json" },
+              }),
     );
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
 }
 
 describe("POST /api/auth/change-password", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
     beforeEach(() => {
+        resetKeySetCacheForTests();
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
         vi.unstubAllGlobals();
         vi.mocked(auth).mockResolvedValue({
             access_token: "session-access",
@@ -59,7 +72,7 @@ describe("POST /api/auth/change-password", () => {
 
     it("forwards the bearer and both passwords, and answers a sealed handoff of the fresh pair", async () => {
         const pair = {
-            access_token: "a2",
+            access_token: ACCESS,
             refresh_token: "r2",
             expires_in: 60,
             user: { org_id: "o" },
@@ -72,16 +85,18 @@ describe("POST /api/auth/change-password", () => {
         expect(sealSessionHandoff).toHaveBeenCalledWith(
             "activeOrg",
             {
-                access_token: "a2",
+                access_token: ACCESS,
                 refresh_token: "r2",
                 expires_in: 60,
                 user: { org_id: "o", role: undefined, is_superuser: undefined },
+                access_exp: EXP,
+                sid: SID,
             },
             "u",
         );
         const text = await response.text();
         expect(JSON.parse(text)).toEqual({ ok: true, sessionHandoff: "sealed-handoff" });
-        expect(text).not.toContain("a2");
+        expect(text).not.toContain(ACCESS);
         expect(text).not.toContain("r2");
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe("http://ops.example.test/api/v1/auth/change-password");
@@ -126,13 +141,13 @@ describe("POST /api/auth/change-password", () => {
         ["the seal fails", () => vi.mocked(sealSessionHandoff).mockRejectedValue(new Error("x"))],
         ["the answer has no pair", () => backend(200, { user: {} })],
     ])("answers 502 without the pair when %s", async (_label, arrange) => {
-        backend(200, { access_token: "a2", refresh_token: "r2", user: {} });
+        backend(200, { access_token: ACCESS, refresh_token: "r2", user: {} });
         arrange();
         const response = await call({ current_password: SECRET_CURRENT, new_password: SECRET_NEW });
         expect(response.status).toBe(502);
         const text = await response.text();
         expect(JSON.parse(text)).toEqual({ error: "Password changed. Sign in again to continue." });
-        expect(text).not.toContain("a2");
+        expect(text).not.toContain(ACCESS);
     });
 
     it("answers a generic 502 when the backend is unreachable", async () => {

@@ -5,7 +5,7 @@
  * 2026-11-05), and the browser sends every chunk back in ONE `Cookie:` request header line, which
  * nginx refuses over one `large_client_header_buffers` buffer (8k: 400 "Request Header Or Cookie
  * Too Large"). This runs the REAL Auth.js handlers and the real jwt callback of `@/lib/auth`: a
- * credentials sign-in under class eddsa with the three tokens the login answer carries (access
+ * credentials sign-in (EdDSA access tokens) with the three tokens the login answer carries (access
  * token, refresh token, session_access_token), then the session read with the cookie the
  * browser holds. The tokens are the output of the real ops minter (authapi.Issuer.Tokens over
  * token.NewFileSigner, issuer https://auth.fullchaos.dev, throwaway key); the refresh credential
@@ -52,7 +52,6 @@ beforeAll(async () => {
     vi.stubEnv("AUTH_SECRET", SECRET);
     vi.stubEnv("AUTH_URL", `${ORIGIN}/api/auth`);
     vi.stubEnv("BACKEND_URL", BACKEND);
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubGlobal("fetch", fetchMock);
     vi.useFakeTimers({ toFake: ["Date"], now: CLOCK_MS });

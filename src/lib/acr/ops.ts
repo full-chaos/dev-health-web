@@ -226,7 +226,7 @@ function opsTokenClaims(accessToken: string): Readonly<Record<string, unknown>> 
  * server only: `sessionId` is the `sid` of the server's own Ops session token, and
  * `impersonating` is true when ANY of these says so — a fresh Ops impersonation status read, the
  * session's impersonation state, an org that differs from the real org, or an Ops token minted
- * for an impersonation (`impersonating_user_id`). The status read is not cached; a failed read
+ * for an impersonation (an `act` claim naming the real actor: contracts/auth/v1 access-token.v1). The status read is not cached; a failed read
  * fails closed. Nothing here reads the request the browser sent.
  */
 export async function resolveIssuanceProvenance(input: {
@@ -260,9 +260,12 @@ export async function resolveIssuanceProvenance(input: {
         );
     }
     const claims = opsTokenClaims(input.accessToken);
+    const act = claims?.["act"];
     const impersonatedToken =
-        typeof claims?.["impersonating_user_id"] === "string" &&
-        claims["impersonating_user_id"] !== "";
+        typeof act === "object" &&
+        act !== null &&
+        typeof (act as { sub?: unknown }).sub === "string" &&
+        (act as { sub: string }).sub !== "";
     const rawSessionId = claims?.["sid"];
     const sessionId =
         typeof rawSessionId === "string" && sessionIdPattern.test(rawSessionId)

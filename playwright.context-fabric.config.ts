@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { e2eAuthEnv } from "./ci/next-dev-env";
 import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
 
 export const BFF_PORT = process.env.CONTEXT_FABRIC_BFF_PORT ?? "3012";
@@ -84,6 +85,7 @@ export default defineConfig({
             gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 120_000,
             env: {
+                ...e2eAuthEnv(OPS_MOCK_ORIGIN),
                 BACKEND_URL: OPS_MOCK_ORIGIN,
                 AUTH_SECRET: "context-fabric-production-playwright",
                 AUTH_URL: BFF_ORIGIN,
