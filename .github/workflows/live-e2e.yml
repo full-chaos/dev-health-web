@@ -648,6 +648,10 @@ jobs:
                   fi
                   invite_id="$(jq -r '.id // empty' /tmp/audit-invite.json)"
                   [[ "${invite_id}" =~ ^[0-9a-f-]{36}$ ]] || { echo "::error::create-invite answer carries no invite id"; exit 1; }
+                  # The go-api environ copy holds the job's link secret: it must be the job's own 0600 file (written under umask 077 above).
+                  environ_mode="$(stat -c '%a %U' /tmp/dev-health-go-api.environ)"
+                  echo "go-api environ copy mode=${environ_mode}"
+                  test "${environ_mode}" = "600 $(id -un)" || { echo "::error::the go-api environ copy is not 0600 and the job's own"; exit 1; }
                   # The mailed link token, built as go-api builds it (signedtoken.Build); the secret is read inside python, never printed.
                   invite_token="$(python3 -I - "${invite_id}" /tmp/dev-health-go-api.environ <<'PY'
                   import hashlib, hmac, sys, uuid
