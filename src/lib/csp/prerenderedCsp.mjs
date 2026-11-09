@@ -43,6 +43,11 @@ function urlForSchemeTest(value) {
     return value.replace(/[\t\n\r]/gu, "").replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/gu, "");
 }
 
+/** The URL parser lower-cases only A-Z in a scheme: javaſcript: (U+017F) is not javascript:. */
+function hasJavascriptScheme(url) {
+    return url.slice(0, 11).replace(/[A-Z]/gu, (c) => c.toLowerCase()) === "javascript:";
+}
+
 /** The element's attributes by lower-case name; the parser keeps the first of a repeated one. */
 function attributesOf(element) {
     return new Map(
@@ -76,7 +81,7 @@ export function inlineHandlers(html) {
             if (/^on[a-z]+$/u.test(name)) count += 1;
             else if (
                 ["href", "src", "action", "formaction"].includes(name) &&
-                /^javascript:/iu.test(urlForSchemeTest(value))
+                hasJavascriptScheme(urlForSchemeTest(value))
             )
                 count += 1;
         }
