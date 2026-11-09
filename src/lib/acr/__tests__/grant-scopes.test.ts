@@ -7,7 +7,7 @@ import { resolveRepositoryScopes } from "../grantScopes";
 const TOKEN = "header.payload.signature-of-the-session-token";
 const ORG = "org-123";
 
-type Verdict = "allow" | "bare" | "deny" | "org" | { allowlist: readonly string[] };
+type Verdict = "bare" | "deny" | "org" | { allowlist: readonly string[] };
 
 function decision(verdict: Verdict): Record<string, unknown> {
     const allowed = verdict !== "deny";
@@ -70,7 +70,7 @@ const input = (candidates: readonly string[]) => ({
 
 describe("resolveRepositoryScopes", () => {
     it("Given a universal grant, then the scopes are the candidates (one universal ask, no per-repository asks)", async () => {
-        const { seen, transport } = fakeTransport(() => "allow");
+        const { seen, transport } = fakeTransport(() => "org");
         const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
             transport,
             timeoutMs: 1_000,
@@ -82,7 +82,7 @@ describe("resolveRepositoryScopes", () => {
 
     it("Given exact grants only, then only allowed repositories reach the scopes, sorted", async () => {
         const { transport } = fakeTransport((key) =>
-            key === "a/three" ? "deny" : key === "*" ? "deny" : "allow",
+            key === "a/three" ? "deny" : key === "*" ? "deny" : "org",
         );
         const result = await resolveRepositoryScopes(input(["a/one", "a/three", "a/two"]), {
             transport,
@@ -111,7 +111,7 @@ describe("resolveRepositoryScopes", () => {
     });
 
     it("Given a member with the default grant, then every candidate is allowed by decision", async () => {
-        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "allow"));
+        const { transport } = fakeTransport((key) => (key === "*" ? "deny" : "org"));
         const result = await resolveRepositoryScopes(input(["a/one", "a/two"]), {
             transport,
             timeoutMs: 1_000,
@@ -183,7 +183,7 @@ describe("resolveRepositoryScopes", () => {
             { length: 150 },
             (_, i) => `a/r${String(i).padStart(3, "0")}`,
         );
-        const { seen, transport } = fakeTransport((key) => (key === "*" ? "deny" : "allow"));
+        const { seen, transport } = fakeTransport((key) => (key === "*" ? "deny" : "org"));
         const result = await resolveRepositoryScopes(input(candidates), {
             transport,
             timeoutMs: 1_000,
@@ -211,7 +211,7 @@ describe("resolveRepositoryScopes", () => {
             (_, i) => `a/r${String(i).padStart(3, "0")}`,
         );
         let batches = 0;
-        const ok = fakeTransport((key) => (key === "*" ? "deny" : "allow")).transport;
+        const ok = fakeTransport((key) => (key === "*" ? "deny" : "org")).transport;
         const transport: Transport = async (call) => {
             if (call.path === "/v1/authorize:batch" && ++batches === 2)
                 return { status: 500, body: "" };
