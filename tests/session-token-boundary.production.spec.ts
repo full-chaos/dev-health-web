@@ -15,6 +15,16 @@ const OPS_TOKENS = [
     "mock-refresh-token-e2e",
     MOCK_REFRESHED_ACCESS_TOKEN,
     "mock-refreshed-refresh-token-e2e",
+    // The other sign-ins' refresh tokens and their rotated forms (a prefix for the per-signup one).
+    "mock-legacy-refresh-token-e2e",
+    "mock-refreshed-legacy-refresh-token-e2e",
+    "mock-newuser-refresh-token-e2e",
+    "mock-refreshed-newuser-refresh-token-e2e",
+    "mock-expiring-admin-refresh-token-e2e",
+    "mock-refreshed-expiring-admin-refresh-token-e2e",
+    "mock-registered-refresh-token-e2e.",
+    "mock-refreshed-registered-refresh-token-e2e.",
+    "mock-unissued-refreshed-refresh-token-e2e",
 ];
 
 type Scan = { url: string; hits: string[] };

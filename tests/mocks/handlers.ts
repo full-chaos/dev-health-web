@@ -13,6 +13,7 @@ import {
     MOCK_ACCESS_TOKEN,
     MOCK_MEMBER_ACCESS_TOKEN,
     MOCK_REFRESHED_ACCESS_TOKEN,
+    mockExpiringAccessToken,
 } from "./mockTokens";
 import {
     getPagerDutySyncConfig,
@@ -27,6 +28,7 @@ import type {
     TokenValidateResponseBody,
     TokenRefreshResponseBody,
     OnboardResponseBody,
+    UserInfo,
     MockBillingPlan,
     MockCredential,
     MockSyncConfig,
@@ -2607,10 +2609,13 @@ const onboardingProgress: OnboardingProgress = { ...INITIAL_ONBOARDING_PROGRESS 
 // register handler returning a bare { registered: true } and the journey having
 // to fall back to a different canned login user). Cleared on reset.
 const registeredOrglessUsers = new Map<string, { password: string; fullName: string | null }>();
+// The refresh tokens the mock issued to those signups, by token: only these map back to the signup.
+const registeredRefreshTokens = new Map<string, string>();
 
 function resetOnboardingProgress(overrides?: Partial<OnboardingProgress>) {
     Object.assign(onboardingProgress, INITIAL_ONBOARDING_PROGRESS, overrides ?? {});
     registeredOrglessUsers.clear();
+    registeredRefreshTokens.clear();
 }
 
 /** C1 next_step derived from progress (deterministic, mirrors the backend). */
@@ -2666,6 +2671,70 @@ function buildSetupStatus() {
 // Handlers
 // ---------------------------------------------------------------------------
 
+// The users a sign-in answers, so a refresh can answer the same user (CHAOS-13394). Each sign-in
+// gets its own refresh token; a refresh rotates `mock-<x>` to `mock-refreshed-<x>`.
+function ownerUser(email: string): UserInfo {
+    return {
+        id: "e2e-user-1",
+        email,
+        org_id: "org-e2e",
+        role: "owner",
+        is_superuser: true,
+        permissions: ["read", "write"],
+    };
+}
+
+function orglessUser(id: string, email: string): UserInfo {
+    return {
+        id,
+        email,
+        org_id: null,
+        role: "member",
+        is_superuser: false,
+        permissions: ["read", "write"],
+    };
+}
+
+const MEMBER_USER: UserInfo = {
+    id: "e2e-member-1",
+    email: "member@example.com",
+    org_id: "org-e2e",
+    role: "member",
+    is_superuser: false,
+    permissions: ["read"],
+};
+
+const REGISTERED_REFRESH_PREFIX = "mock-registered-refresh-token-e2e.";
+const REFRESHED_PREFIX = "mock-refreshed-";
+
+function baseRefreshToken(token: string): string {
+    return token.startsWith(REFRESHED_PREFIX)
+        ? `mock-${token.slice(REFRESHED_PREFIX.length)}`
+        : token;
+}
+
+function rotatedRefreshToken(token: string): string {
+    return `${REFRESHED_PREFIX}${baseRefreshToken(token).slice("mock-".length)}`;
+}
+
+function userForRefreshToken(token: string): UserInfo | undefined {
+    const base = baseRefreshToken(token);
+    switch (base) {
+        case "mock-refresh-token-e2e":
+            return ownerUser("admin@devhealth.example");
+        case "mock-legacy-refresh-token-e2e":
+            return ownerUser("test@example.com");
+        case "mock-expiring-admin-refresh-token-e2e":
+            return ownerUser("admin-refresh@devhealth.example");
+        case "mock-member-refresh-token-e2e":
+            return MEMBER_USER;
+        case "mock-newuser-refresh-token-e2e":
+            return orglessUser("e2e-user-new", "newuser@example.com");
+    }
+    const email = registeredRefreshTokens.get(base);
+    return email === undefined ? undefined : orglessUser(`e2e-user-${email}`, email);
+}
+
 export const handlers = [
     ...pagerDutyHandlers,
     // ---- Auth (for e2e test authentication) ----
@@ -2687,16 +2756,9 @@ export const handlers = [
         //     by focused authentication specs.
         if (body.email === "newuser@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
-                user: {
-                    id: "e2e-user-new",
-                    email: "newuser@example.com",
-                    org_id: null,
-                    role: "member",
-                    is_superuser: false,
-                    permissions: ["read", "write"],
-                },
+                user: orglessUser("e2e-user-new", "newuser@example.com"),
                 access_token: MOCK_ACCESS_TOKEN,
-                refresh_token: "mock-refresh-token-e2e",
+                refresh_token: "mock-newuser-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
                 needs_onboarding: true,
@@ -2708,17 +2770,12 @@ export const handlers = [
         // genuine same-user signup -> signin -> onboarding flow (CHAOS-2670).
         const registered = registeredOrglessUsers.get(body.email);
         if (registered && body.password === registered.password) {
+            const refreshToken = `${REGISTERED_REFRESH_PREFIX}${Buffer.from(body.email).toString("base64url")}`;
+            registeredRefreshTokens.set(refreshToken, body.email);
             return HttpResponse.json<LoginResponseBody>({
-                user: {
-                    id: `e2e-user-${body.email}`,
-                    email: body.email,
-                    org_id: null,
-                    role: "member",
-                    is_superuser: false,
-                    permissions: ["read", "write"],
-                },
+                user: orglessUser(`e2e-user-${body.email}`, body.email),
                 access_token: MOCK_ACCESS_TOKEN,
-                refresh_token: "mock-refresh-token-e2e",
+                refresh_token: refreshToken,
                 token_type: "bearer",
                 expires_in: 86400,
                 needs_onboarding: true,
@@ -2726,18 +2783,22 @@ export const handlers = [
         }
         if (body.email === "member@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
-                user: {
-                    id: "e2e-member-1",
-                    email: body.email,
-                    org_id: "org-e2e",
-                    role: "member",
-                    is_superuser: false,
-                    permissions: ["read"],
-                },
+                user: MEMBER_USER,
                 access_token: MOCK_MEMBER_ACCESS_TOKEN,
                 refresh_token: "mock-member-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
+                needs_onboarding: false,
+            });
+        }
+        // The platform admin again, with an access token web must refresh on its next request.
+        if (body.email === "admin-refresh@devhealth.example" && body.password === "devhealth123") {
+            return HttpResponse.json<LoginResponseBody>({
+                user: ownerUser(body.email),
+                access_token: mockExpiringAccessToken(),
+                refresh_token: "mock-expiring-admin-refresh-token-e2e",
+                token_type: "bearer",
+                expires_in: 301,
                 needs_onboarding: false,
             });
         }
@@ -2749,16 +2810,11 @@ export const handlers = [
             return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
         }
         return HttpResponse.json<LoginResponseBody>({
-            user: {
-                id: "e2e-user-1",
-                email: body.email,
-                org_id: "org-e2e",
-                role: "owner",
-                is_superuser: true,
-                permissions: ["read", "write"],
-            },
+            user: ownerUser(body.email),
             access_token: MOCK_ACCESS_TOKEN,
-            refresh_token: "mock-refresh-token-e2e",
+            refresh_token: isCanonicalAdmin
+                ? "mock-refresh-token-e2e"
+                : "mock-legacy-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
             needs_onboarding: false,
@@ -2769,10 +2825,24 @@ export const handlers = [
         HttpResponse.json<TokenValidateResponseBody>({ valid: true }),
     ),
 
-    http.post("*/api/v1/auth/refresh", () =>
-        HttpResponse.json<TokenRefreshResponseBody>({
+    http.post("*/api/v1/auth/refresh", async ({ request }) => {
+        const body = (await request.json().catch(() => null)) as { refresh_token?: unknown } | null;
+        const token = typeof body?.refresh_token === "string" ? body.refresh_token : "";
+        const user = userForRefreshToken(token);
+        if (user !== undefined) {
+            return HttpResponse.json<TokenRefreshResponseBody>({
+                access_token: MOCK_REFRESHED_ACCESS_TOKEN,
+                refresh_token: rotatedRefreshToken(token),
+                token_type: "bearer",
+                expires_in: 86400,
+                user,
+            });
+        }
+        // A refresh token no sign-in above issued (the onboarding pair): the answer it always had,
+        // with a rotated token that maps to no sign-in either.
+        return HttpResponse.json<TokenRefreshResponseBody>({
             access_token: MOCK_REFRESHED_ACCESS_TOKEN,
-            refresh_token: "mock-refreshed-refresh-token-e2e",
+            refresh_token: "mock-unissued-refreshed-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
             user: {
@@ -2782,8 +2852,8 @@ export const handlers = [
                 role: "owner",
                 is_superuser: false,
             },
-        }),
-    ),
+        });
+    }),
 
     http.get("*/api/v1/auth/me/organizations", () =>
         HttpResponse.json({
