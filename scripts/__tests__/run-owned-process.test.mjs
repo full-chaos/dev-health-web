@@ -295,14 +295,15 @@ describe("run-owned-process", () => {
         const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
         const stderr = collectStderr(tree);
         const listenerProcess = trackOwnedListener(await waitForListener(tree));
-        const closed = new Promise((resolve) =>
-            tree.once("close", (code, signal) => resolve({ code, signal })),
+        // "exit", not "close": a group left behind keeps the inherited stdio pipes open.
+        const exited = new Promise((resolve) =>
+            tree.once("exit", (code, signal) => resolve({ code, signal })),
         );
 
         tree.kill("SIGTERM");
         await new Promise((resolve) => setTimeout(resolve, 200));
         tree.kill("SIGTERM");
-        const { code, signal } = await closed;
+        const { code, signal } = await exited;
 
         expect({ code, signal }, `supervisor stderr:\n${stderr()}`).toEqual({
             code: 0,
