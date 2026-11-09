@@ -148,7 +148,7 @@ describe("readRepositoryScopes non-200 answers", () => {
                 });
             });
 
-            it("Given a 200 whose body is not UTF-8, then the decode error is thrown as it is", async () => {
+            it("Given a 200 whose body is not UTF-8, then it is a retryable 503 unavailable, as a non-JSON body is", async () => {
                 answer(
                     () =>
                         new HttpResponse(new Uint8Array([0x7b, 0xff, 0xfe, 0x7d]), {
@@ -156,10 +156,39 @@ describe("readRepositoryScopes non-200 answers", () => {
                         }),
                 );
                 await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
-                    name: "TypeError",
-                    code: "ERR_ENCODING_INVALID_ENCODED_DATA",
+                    name: "AcrRuntimeError",
+                    code: acrRuntimeErrorCodes.unavailable,
+                    retryable: true,
+                    status: 503,
                 });
             });
+
+            it(
+                "Given a 200 that streams past 1 MiB with no Content-Length and never ends, then it is response_too_large, not retryable",
+                { timeout: 5_000 },
+                async () => {
+                    answer(() => {
+                        const chunk = new Uint8Array(64 * 1_024).fill(0x20);
+                        let sent = 0;
+                        const body = new ReadableStream<Uint8Array>({
+                            pull(controller) {
+                                if (sent > 1_048_576) return new Promise<void>(() => undefined);
+                                sent += chunk.byteLength;
+                                controller.enqueue(chunk);
+                                return undefined;
+                            },
+                        });
+                        return new HttpResponse(body, {
+                            headers: { "Content-Type": "application/json" },
+                        });
+                    });
+                    await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+                        code: acrRuntimeErrorCodes.responseTooLarge,
+                        retryable: false,
+                        status: 503,
+                    });
+                },
+            );
         },
     );
 
