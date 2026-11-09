@@ -1877,17 +1877,12 @@ describe("SyncConfigForm", () => {
 
                 await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-                // 5 s, not the 1 s default: under CPU contention (CHAOS-13439) the re-render
-                // after the confirmed save took more than 1 s. Same bound as the Sankey fix.
-                await waitFor(
-                    () => {
-                        expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(1);
-                        expect(
-                            screen.getByText(/Changed:.*Datasets: -Pull Requests/),
-                        ).toBeInTheDocument();
-                    },
-                    { timeout: 5000 },
-                );
+                await waitFor(() => {
+                    expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(1);
+                    expect(
+                        screen.getByText(/Changed:.*Datasets: -Pull Requests/),
+                    ).toBeInTheDocument();
+                });
                 expect(screen.queryByRole("alert")).not.toBeInTheDocument();
                 expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -1896,19 +1891,14 @@ describe("SyncConfigForm", () => {
                 // time against the original page-load snapshot, and since
                 // there's nothing destructive left staged, no confirm dialog
                 // should reappear.
-                const saveButtonAgain = await screen.findByRole(
-                    "button",
-                    { name: "Update Configuration" },
-                    { timeout: 5000 },
-                );
+                const saveButtonAgain = await screen.findByRole("button", {
+                    name: "Update Configuration",
+                });
                 await userEvent.click(saveButtonAgain);
                 expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-                await waitFor(
-                    () => {
-                        expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(2);
-                    },
-                    { timeout: 5000 },
-                );
+                await waitFor(() => {
+                    expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(2);
+                });
                 expect(screen.getAllByText(/Changed:/)).toHaveLength(1);
             });
 
