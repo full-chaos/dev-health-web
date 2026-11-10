@@ -465,7 +465,7 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
         // and their session organization.
         for (const role of ["admin", "member", "viewer"] as const) {
             const email = testEmail(`g3-${role}`);
-            // Users are owned by auth-service: POST /api/v1/admin/users answers 409 operation_moved (CHAOS-13376), so the user
+            // Users are owned by auth-service: the user
             // registers through the prod route and is verified through the stack verb; the membership route is not refused while
             // owned (ops apiservice/admin/orgs.go:29 has no owned guard; orgs_provision.go:121 writes through the auth change path).
             expectRegisterAccepted(
@@ -529,41 +529,34 @@ test.describe("admin.users per caller class, legacy decides @admin-users-legacy"
                 answers.classes[cls]?.calls,
                 `legacy: ${cls} admin.users go-api create requests`,
             ).toBe(want ? 1 : 0);
-            // KNOWN DIVERGENCE CHAOS-13376: while users are owned, go-api refuses the create (409 operation_moved), so the
-            // superuser's request reaches go-api (calls 1) and no row is created. When 13376 lands this reads true and goes red.
-            expect(answers.classes[cls]?.row, `legacy: ${cls} admin.users created row`).toBe(false);
+            // While users are owned, go-api forwards the create to auth-service (ops #5996), so an allowed create makes a row.
+            expect(answers.classes[cls]?.row, `legacy: ${cls} admin.users created row`).toBe(want);
         }
         expect(pdpDecideLines(webLogPath()), "the legacy pass logged a PDP verdict").toBe(0);
     });
 });
 
 test.describe("admin.users create under owned users @admin-users-legacy", () => {
-    // KNOWN DIVERGENCE CHAOS-13376 (not intended behaviour): the /superadmin/users/new flow sends POST /api/v1/admin/users, and while
-    // auth-service owns users go-api answers 409 operation_moved (ops apiservice/admin/users.go:246-248; body from
-    // internal/api/usersowned/usersowned.go:78 Write via policy.WriteDetail, internal/api/policy/respond.go:95). When 13376 lands
-    // the create answers 201, and this test goes red on purpose: replace it with the create-and-row assertion.
-    test("known divergence 13376: the superuser's platform-user create is refused 409 operation_moved", async ({
+    // While auth-service owns users, go-api forwards POST /api/v1/admin/users to auth-service and answers 201 with the
+    // read-back row (ops internal/apiservice/admin/users_owned_forward.go createUserInAuth, writeUserReadBack;
+    // users_owned_forward_test.go TestUsersOwnedPlatformCreateForwardsToAuth). This closed known divergence CHAOS-13376.
+    test("the superuser's platform-user create is forwarded to auth-service and answers 201 with the row", async ({
         request,
     }) => {
         const superToken = (await getSuperuserToken(request)) as string;
         expect(superToken, "the seeded superuser cannot log in").not.toBeNull();
-        const email = testEmail("kd-13376");
+        const email = testEmail("owned-create");
         const res = await request.post(`${liveBackendUrl}${ADMIN_USERS_ROUTE}`, {
             headers: authHeaders(superToken),
-            data: { email, password: PASSWORD, full_name: "KD 13376" },
+            data: { email, password: PASSWORD, full_name: "Owned Create" },
         });
         expect(
             res.status(),
             `create answered ${res.status()}: ${(await res.text()).slice(0, 500)}`,
-        ).toBe(409);
-        expect(await res.json()).toEqual({
-            detail: {
-                message:
-                    "This operation is served by the authentication service while it owns users",
-                reason: "operation_moved",
-            },
-        });
-        expect(await userIdByEmail(request, email, superToken), "no row is created").toBe("");
+        ).toBe(201);
+        const body = await res.json();
+        expect(body).toMatchObject({ email, full_name: "Owned Create", is_superuser: false });
+        expect(await userIdByEmail(request, email, superToken), "the row is created").toBe(body.id);
     });
 });
 
