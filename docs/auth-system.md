@@ -57,6 +57,8 @@ parallel callbacks of the same access token; a memo hit keeps the memo's check t
 check past that bound. Transient answers keep the session and retry after backoff. The drill
 `scripts/drills/session-forced-signout/drill.sh` measures the bound and the recovery after an auth-service restart.
 
+See [session recovery](runbooks/session-recovery.md), [forced sign-out](runbooks/forced-sign-out.md), and [release notes](release-notes.md).
+
 **Service session token** (`session_access_token`, aud `auth-service`; PR C1): the
 login and refresh answers carry a second token for the auth-service routes that refuse the access
 token's audience. `readAnswerTokens` (`src/lib/authServiceWire.ts`) reads it against the access token
