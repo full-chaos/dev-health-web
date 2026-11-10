@@ -52,13 +52,13 @@ jobs:
         # Three jobs, each with its own stack boot: the live tier, the guided-onboarding tier and the web decisions tier (flip
         # F11) share no login rate-limit window, process or state (auth-service allows 10 logins per address and account in
         # 15 min). The "live" job keeps the check name live-e2e.
-        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'web-decisions-classes' && 'live-e2e-web-decisions-classes' || matrix.tier == 'web-decisions-admin-users' && 'live-e2e-web-decisions-admin-users' || matrix.tier == 'guided' && 'live-e2e-guided' || 'live-e2e' }}
+        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'web-decisions-classes' && 'live-e2e-web-decisions-classes' || matrix.tier == 'web-decisions-admin-users' && 'live-e2e-web-decisions-admin-users' || matrix.tier == 'guided' && 'live-e2e-guided' || matrix.tier == 'auth-journeys' && 'live-e2e-auth-journeys' || 'live-e2e' }}
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         strategy:
             fail-fast: false
             matrix:
-                tier: [live, guided, web-decisions, web-decisions-classes, web-decisions-admin-users]
+                tier: [live, guided, auth-journeys, web-decisions, web-decisions-classes, web-decisions-admin-users]
         runs-on: ubuntu-latest
         timeout-minutes: 25
         # Service images and the traefik image come from the ghcr.io mirror.
@@ -743,7 +743,7 @@ jobs:
                       web-decisions-logs/live-results-web-decisions-admin-users-enforce.json
 
             - name: Run live backend e2e tier
-              if: matrix.tier == 'live' || matrix.tier == 'guided'
+              if: matrix.tier == 'live' || matrix.tier == 'guided' || matrix.tier == 'auth-journeys'
               env:
                   TIER: ${{ matrix.tier }}
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
@@ -767,12 +767,15 @@ jobs:
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
               # CHAOS-12138: the default backend (live job), or go-api restarted with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for
-              # the @guided specs (guided job). Any skip fails the tier.
+              # the @guided specs (guided job), or the auth journeys (UI sign-in; its own job: auth-service budgets logins per
+              # address and account). Any skip fails the tier.
               run: |
                   mkdir -p web-live-logs
                   if [ "${TIER}" = guided ]; then
                     bash ci/live-e2e-restart-go-api.sh
                     LIVE_WEB_LOG=web-live-logs/web-server-guided.log bash ci/run_tests.sh live-e2e-guided
+                  elif [ "${TIER}" = auth-journeys ]; then
+                    LIVE_WEB_LOG=web-live-logs/web-server-auth-journeys.log bash ci/run_tests.sh live-e2e-auth-journeys
                   else
                     LIVE_WEB_LOG=web-live-logs/web-server-live.log bash ci/run_tests.sh live-e2e
                   fi
