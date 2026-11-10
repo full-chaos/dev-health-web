@@ -8,6 +8,7 @@ import { Section } from "@/components/ui/Section";
 import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { categorizeRefusalMessage } from "@/lib/admin/categorizeRefusals";
+import { keyAfterConnectionChange } from "@/lib/admin/apiKeyReset";
 import {
     CATEGORIZE_PROVIDERS,
     categorizeProviderFor,
@@ -172,6 +173,13 @@ function PurposeForm({
     function changeProvider(next: string) {
         setProvider(next);
         if (isCategorize) {
+            setApiKey(
+                keyAfterConnectionChange(
+                    { provider, baseUrl },
+                    { provider: next, baseUrl: "" },
+                    apiKey,
+                ),
+            );
             setModel(categorizeProviderFor(next)?.models[0] ?? "");
             setBaseUrl("");
         }
