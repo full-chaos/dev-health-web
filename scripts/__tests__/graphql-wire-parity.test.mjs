@@ -428,6 +428,43 @@ describe("resolveOpsPath", () => {
     });
 });
 
+describe("the ops paths runRegistrydump logs (CHAOS-6493)", () => {
+    it.each([
+        ["after the move", [QUERY_ROUTE_PATHS[0], REGISTRYDUMP_PATHS[0]], 0],
+        ["before the move", [QUERY_ROUTE_PATHS[1], REGISTRYDUMP_PATHS[1]], 1],
+        ["both present", [...QUERY_ROUTE_PATHS, ...REGISTRYDUMP_PATHS], 0],
+    ])(
+        "names the route file and registrydump it resolved in an ops checkout %s",
+        (_name, present, want) => {
+            const root = mkdtempSync(path.join(tmpdir(), "wire-parity-log-"));
+            const bin = mkdtempSync(path.join(tmpdir(), "wire-parity-log-bin-"));
+            for (const relative of present) {
+                if (relative.endsWith(".go")) {
+                    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+                    writeFileSync(path.join(root, relative), "package x\n");
+                } else {
+                    mkdirSync(path.join(root, relative), { recursive: true });
+                }
+            }
+            writeFileSync(path.join(bin, "go"), "#!/bin/sh\necho '[]'\n", { mode: 0o755 });
+            const savedPath = process.env.PATH;
+            process.env.PATH = `${bin}${path.delimiter}${savedPath}`;
+            const lines = [];
+            try {
+                expect(runRegistrydump(root, (line) => lines.push(line))).toEqual([]);
+                expect(lines).toEqual([
+                    `graphql-wire-parity: using ${QUERY_ROUTE_PATHS[want]} (query route)`,
+                    `graphql-wire-parity: using ${REGISTRYDUMP_PATHS[want]} (registrydump)`,
+                ]);
+            } finally {
+                process.env.PATH = savedPath;
+                rmSync(root, { recursive: true, force: true });
+                rmSync(bin, { recursive: true, force: true });
+            }
+        },
+    );
+});
+
 describe("the Go toolchain registrydump runs with", () => {
     /** An ops checkout stand-in: a go.mod, the registrydump and route paths, and nothing else. */
     function opsWithGoMod(goMod) {
