@@ -175,6 +175,66 @@ describe("ByoLlmPurposeOverrides", () => {
         expect(save).not.toHaveBeenCalled();
     });
 
+    it.each([
+        ["clef", "clef", "typesafe"],
+        ["typesafe", "jev-1.13.0", "clef"],
+    ])(
+        "drops a typed key when switching a stored categorize override from %s (%s) to %s",
+        async (provider, model, next) => {
+            load.mockResolvedValue({
+                data: {
+                    provider: "anthropic",
+                    categorize_byo: true,
+                    purposes: {
+                        categorize: {
+                            purpose: "categorize",
+                            provider,
+                            model,
+                            api_key: "stored…1234",
+                        },
+                    },
+                },
+            });
+            save.mockResolvedValue({
+                data: {
+                    purpose: "categorize",
+                    provider: next,
+                    model: next === "clef" ? "clef" : "jev-1.13.0",
+                },
+            });
+            renderIt();
+            await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+            await userEvent.type(screen.getByLabelText("API Key"), "old-provider-key");
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), next);
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            expect(save).not.toHaveBeenCalled();
+            expect(await screen.findByRole("alert")).toHaveTextContent("own API key");
+        },
+    );
+
+    it.each([
+        ["clef", "typesafe"],
+        ["typesafe", "clef"],
+    ])(
+        "drops a typed key when switching a new categorize override from %s to %s",
+        async (provider, next) => {
+            await openCategorize();
+            save.mockResolvedValue({
+                data: {
+                    purpose: "categorize",
+                    provider: next,
+                    model: next === "clef" ? "clef" : "jev-1.13.0",
+                },
+            });
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), provider);
+            await userEvent.type(screen.getByLabelText("API Key"), "old-provider-key");
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), next);
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            expect(save).not.toHaveBeenCalled();
+            expect(await screen.findByRole("alert")).toHaveTextContent("own API key");
+        },
+    );
+
     it("keeps the stored key when the provider is unchanged", async () => {
         load.mockResolvedValue({
             data: {
