@@ -50,6 +50,7 @@
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:e2e:live:ask-dev": "LIVE_ASK_DEV=1 playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
+        "test:wrong-class": "vitest run -c vitest.wrong-class.config.ts",
         "ask-dev-oracle:check": "bash scripts/ask-dev-oracle/check.sh",
         "test:ci": "bash ci/run_tests.sh ci"
     },
