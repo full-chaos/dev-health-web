@@ -403,7 +403,7 @@ The refresh in the `[...nextauth]` jwt callback also goes through `authServiceWi
 ## Wave 11 diff against Wave 0 (CHAOS-11252)
 
 Wave 0 is web #910, merge `11e6290acec6`: 171 rows. This inventory, regenerated against
-`364aa7c269ce`, has 184 rows: 30 added, 17 removed,
+`50667d4d85f7`, has 184 rows: 30 added, 17 removed,
 154 changed, 0 unchanged. Each line names the commit that made the change; the
 commit's pull request and ticket are the reason. The regeneration itself changed only the
 header (`generated_at`, `source_commit`); no row changed. `source.file:line` already matches

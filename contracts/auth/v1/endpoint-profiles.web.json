@@ -1,7 +1,7 @@
 {
     "schema_version": "endpoint-profile.v1",
-    "generated_at": "2026-11-09T19:42:36Z",
-    "source_commit": "364aa7c269ce4204ff08f31a2b9b007a108f0184",
+    "generated_at": "2026-11-10T02:16:17Z",
+    "source_commit": "50667d4d85f75edae0b4803b2ccb7ab5514f38a1",
     "credential_class_source": "contracts/auth/v1/credential-classes.json",
     "rows": [
         {
