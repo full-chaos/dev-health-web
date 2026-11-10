@@ -420,6 +420,10 @@ jobs:
               env:
                   WEB_OPS_CONTRACT_ROOT: ${{ github.workspace }}/.ops-contract
               run: bash ci/run_tests.sh access-token-corpus
+            - name: Run the web wrong-class matrix gate
+              env:
+                  WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.json
+              run: pnpm test:wrong-class
             - run: bash ci/run_tests.sh quality
             - name: Lint baseline diagnostics (CHAOS-8789)
               # Diagnostic only: splits lint output into changed-path findings
