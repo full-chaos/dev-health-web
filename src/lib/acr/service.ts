@@ -22,9 +22,9 @@ import {
     resolveOpsAuthorization,
     resolveOpsCredentialIssuanceAuthorization,
 } from "./ops";
+import { isRepositoryKey } from "@/lib/auth/authorize/repositoryKey";
 import { contextPacketRequest, parseContextPacketForm, parseEvidenceSelection } from "./protocol";
 
-const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 // Opaque handle minted by ACR for the /acr/authorize flow — 43 base64url
 // characters (the un-padded encoding of a 256-bit value).
 const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
@@ -308,7 +308,7 @@ function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
     if (
         scopes.length === 0 ||
         scopes.length > 100 ||
-        scopes.some((scope) => !repositoryScope.test(scope)) ||
+        scopes.some((scope) => !isRepositoryKey(scope)) ||
         sorted.some((scope, index) => scope !== scopes[index]) ||
         new Set(scopes).size !== scopes.length
     ) {

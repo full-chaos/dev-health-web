@@ -110,6 +110,20 @@ describe("resolveOpsAuthorization with ACR_SCOPES_FROM_GRANTS", () => {
         });
     });
 
+    it("Given a catalog that carries a nested repository key, then it is a scope; a 21-segment name refuses 503", async () => {
+        installOps(["a/one", "group/subgroup/repo"]);
+        const ok = await resolveOpsAuthorization(base);
+        expect(ok.repositoryScopes).toEqual(["a/one", "group/subgroup/repo"]);
+        installOps(["a/one", "g/".repeat(20) + "x"]);
+        await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+            code: acrRuntimeErrorCodes.unavailable,
+        });
+        installOps(["alpha"]);
+        await expect(resolveOpsAuthorization(base)).rejects.toMatchObject({
+            code: acrRuntimeErrorCodes.unavailable,
+        });
+    });
+
     it("Given the switch is on and a universal grant, then scopes are every inventory repository and any of them can be selected", async () => {
         vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "true");
         installOps(["a/one", "a/two"]);

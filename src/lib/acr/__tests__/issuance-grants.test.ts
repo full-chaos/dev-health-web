@@ -412,6 +412,74 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
         expect(observed.acrScopes.at(-1)).toEqual(["acme/beta"]);
     });
 
+    const NESTED = "group/subgroup/repo";
+    const keyOf = (n: number) => "g/".repeat(n - 1) + "x";
+
+    it("Given an org-wide caller who names a nested repository key, when approving the device, then the key is sent byte-equal and no catalog is read", async () => {
+        const response = await deviceApprove([NESTED]);
+        expect(response.status).toBe(200);
+        const sent = observed.acrBodies.at(-1)?.["repository_scopes"] as string[];
+        expect(sent).toHaveLength(1);
+        expect(sent[0]).toBe(NESTED);
+        expect(observed.acrScopes.at(-1)).toEqual([NESTED]);
+        expect(observed.catalogReads).toBe(0);
+    });
+
+    it("Given an org-wide caller who names a nested repository key, when approving consent, then the key is sent byte-equal on approve", async () => {
+        const response = await consentApprove([NESTED]);
+        expect(response.status).toBe(200);
+        expect(observed.acrScopes).toEqual([["*"], [NESTED]]);
+        const sent = observed.acrBodies.at(-1)?.["repository_scopes"] as string[];
+        expect(sent[0]).toBe(NESTED);
+    });
+
+    it("Given a named list of a two-segment and nested keys in byte order, then both are sent in that order", async () => {
+        expect((await deviceApprove(["acme/alpha", NESTED])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(["acme/alpha", NESTED]);
+        expect((await consentApprove(["acme/alpha", NESTED])).status).toBe(200);
+    });
+
+    it("Given an exact-grant holder who names a nested key it may read, then it is sent; one it may not read is refused 403", async () => {
+        seam.transport = pdp({
+            issue: { allowlist: [NESTED] },
+            read: () => ({ allowlist: [NESTED] }),
+        });
+        expect((await deviceApprove([NESTED])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual([NESTED]);
+        const before = observed.acrBodies.length;
+        expect((await deviceApprove(["group/subgroup/other"])).status).toBe(403);
+        expect(observed.acrBodies).toHaveLength(before);
+    });
+
+    it("Given a named key of 20 segments, then it is sent; a key of 21 segments or 1 segment is refused 400 with nothing sent", async () => {
+        expect((await deviceApprove([keyOf(20)])).status).toBe(200);
+        expect((await consentApprove([keyOf(20)])).status).toBe(200);
+        const before = observed.acrBodies.length;
+        for (const bad of [keyOf(21), "alpha"]) {
+            expect((await deviceApprove([bad])).status).toBe(400);
+            expect((await consentApprove([bad])).status).toBe(400);
+        }
+        expect(observed.acrBodies).toHaveLength(before);
+    });
+
+    it("Given a named uppercase nested key or an unsorted or repeated nested list, then it is refused 400 with nothing sent", async () => {
+        const before = observed.acrBodies.length;
+        for (const bad of [["Group/subgroup/repo"], [NESTED, "acme/alpha"], [NESTED, NESTED]]) {
+            expect((await deviceApprove(bad)).status).toBe(400);
+            expect((await consentApprove(bad)).status).toBe(400);
+        }
+        expect(observed.acrBodies).toHaveLength(before);
+    });
+
+    it("Given the grants allow only a nested key, then a `*` request sends that key and a mixed allowlist sends both (already held)", async () => {
+        seam.transport = pdp({ issue: { allowlist: [NESTED] }, read: () => "deny" });
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual([NESTED]);
+        seam.transport = pdp({ issue: { allowlist: ["acme/alpha", NESTED] }, read: () => "deny" });
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(["acme/alpha", NESTED]);
+    });
+
     // The real PDP never gives this pair: the same grant rows make both decisions (ops scope.go:20-50, A5/A6). The
     // issue allowlist is the answer: a named allow never issues "*".
     it('Given the credential.issue allow names repositories and the reads are org-wide, then the named allowlist is sent, never ["*"], with no read decision', async () => {
