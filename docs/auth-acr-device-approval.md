@@ -52,7 +52,7 @@ What the PDP decides for this action is set in `contracts/auth/v1` of the Ops re
 - `acr.credential.issue` has scope organization, risk high, cache class `none`, impersonation
   `denied`, repository scope `filtered`, and platform admin `allowed`
   (`vocabulary/actions.v1.json`).
-- The viewer, member, admin and owner roles hold the action (`roles.v1.json`).
+- The viewer, member, admin and owner roles hold the action (`vocabulary/roles.v1.json`).
 - A principal with no grant row of any state, or with a live wildcard grant, gets
   `repository_scope: organization` and no allowlist. Any other principal gets an allowlist of its
   live grants whose role holds the action, sorted, unique, at most 256. One more is a deny with
