@@ -6,6 +6,7 @@ import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
 import { getClientIpFromEnv } from "@/lib/client-ip";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+// Flow and token diagrams: src/lib/acr/device-approval-architecture.md (public page: docs/auth-acr-device-approval.md)
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
