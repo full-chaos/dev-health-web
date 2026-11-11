@@ -182,6 +182,8 @@ describe("sync-acr-contracts", () => {
             "schemas/credential_ack_response.v1.schema.json",
             "schemas/credential_lifecycle_list.v1.schema.json",
             "schemas/credential_revoke_on_behalf_request.v1.schema.json",
+            "schemas/credential_revoke_organization_request.v1.schema.json",
+            "schemas/credential_revoke_organization_response.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
             "schemas/credential_revoke_response.v1.schema.json",
             "schemas/credential_rotate_request.v1.schema.json",
