@@ -658,7 +658,7 @@ describe("S7 no path needs or regains the delegated service token", () => {
     });
 
     // Static census of the source: the delegated service token has no field, the service bearer has
-    // one user (change-password, refused while impersonating), and every write of a session's
+    // two users (change-password and switch-org, each refused while impersonating), and every write of a session's
     // service token outside setServiceToken (auth.ts; fed by login, refresh, social, activeOrg and
     // SSO answers of the administrator) clears it.
     const sources = (dir: string): string[] =>
@@ -677,22 +677,26 @@ describe("S7 no path needs or regains the delegated service token", () => {
         expect(files.filter((f) => f.text.includes("imp_session_access_token"))).toEqual([]);
     });
 
-    it("the service bearer has one user, refused while impersonating before any call", () => {
+    it("the service bearer has two users, each refused while impersonating before any call", () => {
         const users = files
             .filter((f) => /\bserviceBearer\(/.test(f.text))
             .map((f) => f.path)
             .sort();
         expect(users).toEqual([
             "src/app/api/auth/change-password/route.ts",
+            "src/app/api/auth/switch-org/route.ts",
             "src/lib/authServiceOutcome.ts",
         ]);
-        const route = files.find(
-            (f) => f.path === "src/app/api/auth/change-password/route.ts",
-        )!.text;
-        expect(route.indexOf("session.user?.is_impersonating")).toBeGreaterThan(-1);
-        expect(route.indexOf("session.user?.is_impersonating")).toBeLessThan(
-            route.indexOf("serviceBearer(session)"),
-        );
+        for (const path of [
+            "src/app/api/auth/change-password/route.ts",
+            "src/app/api/auth/switch-org/route.ts",
+        ]) {
+            const route = files.find((f) => f.path === path)!.text;
+            expect(route.indexOf("session.user?.is_impersonating")).toBeGreaterThan(-1);
+            expect(route.indexOf("session.user?.is_impersonating")).toBeLessThan(
+                route.indexOf("serviceBearer(session)"),
+            );
+        }
     });
 
     it("every other write of a session service token clears it", () => {

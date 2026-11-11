@@ -511,17 +511,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/switch-org/route.ts",
-                "line": 11
+                "line": 12
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "Inline `session.access_token` presence check; forwards Bearer + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership. The new token pair is returned only as a sealed session handoff (sealSessionHandoff).",
+                "description": "Inline `session.access_token` presence check; forwards the session service Bearer (serviceBearer: session_access_token, else access_token) + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership. The new token pair is returned only as a sealed session handoff (sealSessionHandoff).",
                 "anchor": {
                     "path": "src/app/api/auth/switch-org/route.ts",
-                    "line": 12,
-                    "line_end": 15
+                    "line": 13,
+                    "line_end": 16
                 }
             },
             "token_shape": {
@@ -534,13 +534,13 @@
             "action": "auth.switch_org",
             "resource_resolver": "org_id from request body, verified ops-side against caller's memberships (not verified web-side).",
             "tenant_requirement": "cross_org_superuser_only",
-            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:128); the other responses were not inspected.",
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:129); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "A refusal gets ops's status with a fixed {error} body; a failed call, a 2xx without a pair or a failed seal answers a fixed 502. On success answers {org_id, sessionHandoff}: the new token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088).",
             "gaps": [
                 "FINDING: this is a mutating POST with NO explicit Origin/CSRF check -- unlike acr/device/route.ts (origin check) and _proxy.ts's hasValidMutationOrigin(). '/api/auth' also bypasses proxy.ts's own auth/org gate (PREFIX_PUBLIC_PATH). The only CSRF defense is the Auth.js session cookie's SameSite attribute (not independently verified in this pass -- next-auth default, not a repo-level override).",
-                "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:11 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:12 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
         {
