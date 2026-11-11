@@ -19,12 +19,6 @@ export const EVIDENCE_READ_ACTION = "acr.evidence.read";
 const CREDENTIAL_ISSUE_ACTION = "acr.credential.issue";
 const MAX_BATCH = 100;
 const DEFAULT_TIMEOUT_MS = 5_000;
-/**
- * The repository key of the empty-catalog probe (D6857-2): a canonical key no organization holds. An
- * org-wide caller's decision for it carries `repository_scope: organization` like any key; any
- * other answer is not org-wide.
- */
-export const ORG_WIDE_PROBE_KEY = "dev-health-acr-probe/no-such-repository";
 
 export type RepositoryReadAction = typeof CONTEXT_READ_ACTION | typeof EVIDENCE_READ_ACTION;
 
@@ -153,21 +147,15 @@ export async function resolveRepositoryDecisions(
     return { orgWide, repositoryScopes: allowed, visibleRepositories: allowed };
 }
 
-/**
- * The empty-catalog probe (D6857-2): one repository read decision for `ORG_WIDE_PROBE_KEY`. True only
- * when it allows with `repository_scope: organization`.
- */
-export async function probeOrgWide(
-    input: { readonly accessToken: string; readonly orgId: string },
-    deps: GrantScopeDeps = defaultDeps(),
-): Promise<boolean> {
-    if (deps.transport === null) throw unavailable();
-    const outcome = await authorize(requestFor({ ...input, candidates: [] }, ORG_WIDE_PROBE_KEY), {
-        timeoutMs: deps.timeoutMs,
-        transport: deps.transport,
-    });
-    return verdictOf(outcome, ORG_WIDE_PROBE_KEY).orgWide;
-}
+export type CredentialIssueVerdict = Verdict & {
+    /**
+     * The allow's `repository_allowlist`: the repositories of the principal's live grants whose role holds the
+     * action (ops scope.go). Empty for an org-wide allow, a deny, and an allow that carries no list (fail closed).
+     */
+    readonly repositoryAllowlist: readonly string[];
+    /** A deny `repository_allowlist_too_large`: more grants than one decision may list. */
+    readonly overLimit: boolean;
+};
 
 /**
  * One `acr.credential.issue` decision on the session organization (device approval, consent). A
@@ -178,7 +166,7 @@ export async function probeOrgWide(
 export async function decideCredentialIssue(
     input: { readonly accessToken: string; readonly orgId: string },
     deps: GrantScopeDeps = defaultDeps(),
-): Promise<Verdict> {
+): Promise<CredentialIssueVerdict> {
     if (deps.transport === null) throw unavailable();
     const outcome = await authorize(
         {
@@ -191,11 +179,20 @@ export async function decideCredentialIssue(
     );
     if (!outcome.allowed) {
         if (outcome.source === "client") throw unavailable();
-        return { allowed: false, orgWide: false };
+        return {
+            allowed: false,
+            orgWide: false,
+            overLimit: outcome.decision.reasonCode === "repository_allowlist_too_large",
+            repositoryAllowlist: [],
+        };
     }
+    const obligations = outcome.decision.obligations;
+    const orgWide = obligations?.repositoryScope === "organization";
     return {
         allowed: true,
-        orgWide: outcome.decision.obligations?.repositoryScope === "organization",
+        orgWide,
+        overLimit: false,
+        repositoryAllowlist: orgWide ? [] : (obligations?.repositoryAllowlist ?? []),
     };
 }
 

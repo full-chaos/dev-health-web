@@ -50,3 +50,6 @@ src/lib/ask-dev/__tests__/oracle
 # Verbatim copy of the ops action catalog (sha256-checked against the pinned ops file)
 src/lib/auth/platform/__tests__/testdata/ops-actions.v1.json
 src/lib/auth/__tests__/testdata/ops-reason-codes.json
+
+# Verbatim copies of ops authorization_decision.v1 examples and roles.v1.json at the live vendor pin 5389c1f1
+src/lib/acr/__tests__/testdata/ops-5389c1f1/

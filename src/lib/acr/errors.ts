@@ -5,6 +5,8 @@ export const acrRuntimeErrorCodes = {
     invalidRequest: "invalid_request",
     unauthenticated: "unauthenticated",
     notEntitled: "not_entitled",
+    // CHAOS-13541: a `*` credential over the decision point's allowlist bound (more than 256 repository grants).
+    grantLimitExceeded: "grant_limit_exceeded",
     repositoryNotAvailable: "repository_not_available",
     incompatible: "incompatible",
     malformedResponse: "malformed_response",
@@ -90,6 +92,8 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "Agent Context Runtime returned an invalid response.";
         case acrRuntimeErrorCodes.notEntitled:
             return "Agent Context Runtime is not available for this organization.";
+        case acrRuntimeErrorCodes.grantLimitExceeded:
+            return "This account holds more than 256 repository grants in this organization. One credential covers at most 256 repositories.";
         case acrRuntimeErrorCodes.rateLimited:
             return "Too many attempts. Please wait and try again.";
         case acrRuntimeErrorCodes.repositoryNotAvailable:
