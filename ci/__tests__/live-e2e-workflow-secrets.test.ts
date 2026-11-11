@@ -4,8 +4,65 @@ import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(join(__dirname, "../../.github/workflows/live-e2e.yml"), "utf8");
 const lines = workflow.split("\n");
+const liveConfig = readFileSync(join(__dirname, "../../playwright.live.config.ts"), "utf8");
+
+function stepBlock(name: string): string {
+    const start = lines.findIndex((line) => line.includes(`- name: ${name}`));
+    expect(start, `no step ${name}`).toBeGreaterThan(0);
+    const next = lines.slice(start + 1).findIndex((line) => /^\s+- name: /.test(line));
+    return lines.slice(start, next < 0 ? undefined : start + 1 + next).join("\n");
+}
 
 describe("live-e2e workflow keeps bearers and CA trust out of the wrong places", () => {
+    it("enables loopback mail only for auth journeys, between auth and go-api startup", () => {
+        const name = "Capture auth mail on the loopback sink (auth-journeys)";
+        const step = stepBlock(name);
+        expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-journeys'");
+        expect(step).toMatch(
+            /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-mail "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
+        );
+        expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
+        expect(step).not.toMatch(/SECRET|TOKEN|PASSWORD|^\s+env:/m);
+        expect(workflow.indexOf(name)).toBeGreaterThan(
+            workflow.indexOf("- name: Start the auth-service stack"),
+        );
+        expect(workflow.indexOf(name)).toBeLessThan(
+            workflow.indexOf("- name: Start dev-health-ops go-api and query-api"),
+        );
+    });
+
+    it("uploads the sink log on failure and never reads mail tokens in a workflow step", () => {
+        const upload = stepBlock("Upload API logs on failure");
+        expect(upload).toMatch(/^\s+if: failure\(\)$/m);
+        expect(upload).toContain("${{ runner.temp }}/live-e2e-auth/logs/smtpsink.log");
+        expect(workflow).not.toContain("mail-token");
+    });
+
+    it("disables trace, screenshots and video for auth journeys with tokens in page URLs", () => {
+        const project = liveConfig.match(/name: "auth-journeys",([\s\S]*?)\n\s{14}},/)?.[1];
+        expect(project).toBeDefined();
+        const use = project?.match(/use: \{([^}]+)\}/)?.[1];
+        for (const setting of ["trace", "screenshot", "video"]) {
+            expect(use).toMatch(new RegExp(`${setting}: "off"`));
+        }
+    });
+
+    it("selects both auth specs and excludes web decisions from auth journeys", () => {
+        const pattern = liveConfig.match(/const AUTH_JOURNEY_SPECS = \/(.+)\//)?.[1];
+        expect(pattern).toBeDefined();
+        const matcher = new RegExp(pattern!);
+        for (const file of ["auth-signin-live.spec.ts", "auth-recovery-live.spec.ts"]) {
+            expect(matcher.test(file)).toBe(true);
+        }
+        for (const file of [
+            "web-decisions.spec.ts",
+            "web-decisions-classes.spec.ts",
+            "web-decisions-admin-users.spec.ts",
+        ]) {
+            expect(matcher.test(file)).toBe(false);
+        }
+    });
+
     it("never prints a response file that can hold a token", () => {
         const printed = lines.filter((line) =>
             /^\s*(cat|tee)\b.*\/tmp\/(login|reg|audit-login)\.json/.test(line),

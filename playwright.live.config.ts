@@ -4,10 +4,10 @@ import { nextDevNodeOptions } from "./ci/next-dev-env";
 const guided =
     process.env.LIVE_GUIDED_ONBOARDING === "true" || process.env.LIVE_GUIDED_ONBOARDING === "1";
 
-// The auth journeys tier: UI sign-in specs against auth-service, in their own job (the per-address login limit).
+// The auth journeys tier: UI sign-in and recovery against auth-service, in their own job (the per-address login limit).
 const authJourneys =
     process.env.LIVE_AUTH_JOURNEYS === "true" || process.env.LIVE_AUTH_JOURNEYS === "1";
-const AUTH_JOURNEY_SPECS = /auth-signin-live\.spec\.ts/;
+const AUTH_JOURNEY_SPECS = /auth-(signin|recovery)-live\.spec\.ts/;
 
 const liveBackendUrl =
     process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
@@ -79,7 +79,14 @@ export default defineConfig({
                   name: "auth-journeys",
                   testMatch: AUTH_JOURNEY_SPECS,
                   timeout: 120_000,
-                  use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                  // Reset tokens appear in page URLs; never capture browser artifacts in this tier.
+                  use: {
+                      baseURL: "http://127.0.0.1:3002",
+                      headless: true,
+                      trace: "off",
+                      screenshot: "off",
+                      video: "off",
+                  },
               },
           ]
         : webDecisions
