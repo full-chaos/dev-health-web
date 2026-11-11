@@ -25,6 +25,8 @@ import credentialAckRequestSchema from "./contracts/schemas/credential_ack_reque
 import credentialAckResponseSchema from "./contracts/schemas/credential_ack_response.v1.schema.json";
 import credentialLifecycleListSchema from "./contracts/schemas/credential_lifecycle_list.v1.schema.json";
 import credentialRevokeOnBehalfRequestSchema from "./contracts/schemas/credential_revoke_on_behalf_request.v1.schema.json";
+import credentialRevokeOrganizationRequestSchema from "./contracts/schemas/credential_revoke_organization_request.v1.schema.json";
+import credentialRevokeOrganizationResponseSchema from "./contracts/schemas/credential_revoke_organization_response.v1.schema.json";
 import credentialRevokeRequestSchema from "./contracts/schemas/credential_revoke_request.v1.schema.json";
 import credentialRevokeResponseSchema from "./contracts/schemas/credential_revoke_response.v1.schema.json";
 import credentialRotateRequestSchema from "./contracts/schemas/credential_rotate_request.v1.schema.json";
@@ -77,6 +79,8 @@ export const acrSchemas = {
     credentialAckResponse: credentialAckResponseSchema,
     credentialLifecycleList: credentialLifecycleListSchema,
     credentialRevokeOnBehalfRequest: credentialRevokeOnBehalfRequestSchema,
+    credentialRevokeOrganizationRequest: credentialRevokeOrganizationRequestSchema,
+    credentialRevokeOrganizationResponse: credentialRevokeOrganizationResponseSchema,
     credentialRevokeRequest: credentialRevokeRequestSchema,
     credentialRevokeResponse: credentialRevokeResponseSchema,
     credentialRotateRequest: credentialRotateRequestSchema,
@@ -130,6 +134,10 @@ const acrSchemaFiles = {
     "credential_ack_response.v1.schema.json": credentialAckResponseSchema,
     "credential_lifecycle_list.v1.schema.json": credentialLifecycleListSchema,
     "credential_revoke_on_behalf_request.v1.schema.json": credentialRevokeOnBehalfRequestSchema,
+    "credential_revoke_organization_request.v1.schema.json":
+        credentialRevokeOrganizationRequestSchema,
+    "credential_revoke_organization_response.v1.schema.json":
+        credentialRevokeOrganizationResponseSchema,
     "credential_revoke_request.v1.schema.json": credentialRevokeRequestSchema,
     "credential_revoke_response.v1.schema.json": credentialRevokeResponseSchema,
     "credential_rotate_request.v1.schema.json": credentialRotateRequestSchema,
