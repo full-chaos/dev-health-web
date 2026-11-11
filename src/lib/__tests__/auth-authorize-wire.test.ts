@@ -232,4 +232,15 @@ describe("permissions of the sign-in answer are not read", () => {
         expect(token.permissions).toBeUndefined();
         expect(session.user.permissions).toBeUndefined();
     });
+
+    it("signs in the same with the field ABSENT from the answer: the identity fields arrive, permissions stay undefined", async () => {
+        answer(() => json(200, { ...body(ACCESS), user }));
+        const authorized = await authorize()(creds);
+        const token = await jwt()({ token: {}, user: authorized as Record<string, unknown> });
+        const session = await sessionCb()({ session: { user: {} }, token });
+        expect(authorized?.id).toBe(user.id);
+        expect(token.id).toBe(user.id);
+        expect(session.user.id).toBe(user.id);
+        expect(session.user.permissions).toBeUndefined();
+    });
 });
