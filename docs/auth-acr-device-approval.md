@@ -87,9 +87,6 @@ On 2026-11-11 ACR checks the approval itself and does not call the PDP:
 - it requires the requested repositories to lie within the grant of the principal: `["*"]` only for
   a principal whose grant is `["*"]`, named repositories only within the grant.
 
-A later change adds a PDP check in ACR and changes the approver decision. Until that change is
-live, the web decision in section 3 is the only PDP decision on this path.
-
 ## 7. The assertion key
 
 Web signs with an Ed25519 key that is a file, and ACR verifies with a key set that names each key by
