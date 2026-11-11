@@ -19,6 +19,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         ),
         ...(
             | "context:read"
@@ -28,6 +29,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         )[],
     ];
     created_at: string;
@@ -5100,6 +5102,25 @@ export interface OnBehalfCredentialRevocationRequestV1 {
     schema_version: "credential_revoke_on_behalf_request.v1";
     actor_type: "user" | "admin";
     actor_id: string;
+}
+
+/**
+ * The body of POST /internal/v1/organization/credentials/revoke: the admin the Auth Control Plane authorized and why every credential of the organization is revoked. The caller's workload binding names the organization; the body never does.
+ */
+export interface OrganizationCredentialRevocationRequestV1 {
+    schema_version: "credential_revoke_organization_request.v1";
+    actor_id: string;
+    reason: "organization_disabled" | "organization_deleted";
+}
+
+/**
+ * The answer of one POST /internal/v1/organization/credentials/revoke call. revoked counts the credentials revoked that the caller's workload binding did not mint; caller_revoked counts those it did, the calling credential among them. more is true while live credentials the binding did not mint remain; the caller then calls again, and the call that answers more false has revoked the binding's own credentials too.
+ */
+export interface OrganizationCredentialRevocationResponseV1 {
+    schema_version: "credential_revoke_organization_response.v1";
+    revoked: number;
+    caller_revoked: number;
+    more: boolean;
 }
 
 export interface SelfCredentialRevocationRequestV1 {
