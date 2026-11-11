@@ -82,7 +82,6 @@ function makeSession(
             org_id: "org-1",
             role: "member",
             is_superuser: false,
-            permissions: ["read"],
             needs_onboarding: false,
             is_impersonating: false,
             impersonated_user_id: undefined,
