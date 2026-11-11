@@ -238,6 +238,9 @@ app.get("/.well-known/jwks.json", (_req, res) => {
 });
 // CHAOS-13541 consent screenshot (playwright.chaos-13541.config.ts): auth-service's workload-token
 // exchange and /v1/authorize. Each answers one known request shape only and refuses every other one.
+// Both files are read once here, so no handler touches the file system.
+const workloadSubject = readFileSync(WORKLOAD_SUBJECT_FILE, "utf8").trim();
+const pdpDecision = readFileSync(PDP_DECISION_FILE);
 const refuseShape = (res: express.Response, route: string) =>
     res.status(400).json({
         error: "invalid_request",
@@ -254,7 +257,7 @@ app.post("/internal/v1/token/exchange", express.urlencoded({ extended: false }),
         req.is("application/x-www-form-urlencoded") &&
         hasExactKeys(body, ["audience", "grant_type", "subject_token", "subject_token_type"]) &&
         body.grant_type === TOKEN_EXCHANGE_GRANT &&
-        body.subject_token === readFileSync(WORKLOAD_SUBJECT_FILE, "utf8").trim() &&
+        body.subject_token === workloadSubject &&
         body.subject_token_type === JWT_TOKEN_TYPE &&
         body.audience === WORKLOAD_AUDIENCE;
     if (!known) {
@@ -301,7 +304,7 @@ app.post("/v1/authorize", (req, res) => {
         refuseShape(res, "/v1/authorize");
         return;
     }
-    res.type("application/json").send(readFileSync(PDP_DECISION_FILE));
+    res.type("application/json").send(pdpDecision);
 });
 app.use(createMiddleware(...handlers));
 
