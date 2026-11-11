@@ -339,11 +339,6 @@ jobs:
               run: bash ci/live_e2e_auth_stack.sh up "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 
-            - name: Capture auth mail on the loopback sink (auth-journeys)
-              if: matrix.tier == 'auth-journeys'
-              run: bash ci/live_e2e_auth_stack.sh enable-mail "${RUNNER_TEMP}/live-e2e-auth"
-              working-directory: dev-health-ops
-
             - name: Start dev-health-ops go-api and query-api
               # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
               # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
