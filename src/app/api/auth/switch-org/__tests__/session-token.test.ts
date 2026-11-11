@@ -93,7 +93,7 @@ describe("POST /api/auth/switch-org under eddsa", () => {
         });
     });
 
-    it("its own Bearer stays access_token, not the service token", async () => {
+    it("its own Bearer is the session service token, not the access token", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(
@@ -104,8 +104,36 @@ describe("POST /api/auth/switch-org under eddsa", () => {
         await call();
         const sent = fetchMock.mock.calls.find(([u]) => String(u).endsWith(SWITCH));
         expect((sent?.[1] as RequestInit).headers as Record<string, string>).toMatchObject({
+            Authorization: "Bearer session-service",
+        });
+    });
+
+    it("a session without a service token sends the access token", async () => {
+        eddsaEnv();
+        vi.mocked(auth).mockResolvedValue({
+            access_token: "session-access",
+            user: { id: "user-1" },
+            expires: "2026-12-31T00:00:00.000Z",
+        } as never);
+        const exp = inSeconds(1800);
+        fetchMock.mockImplementation(eddsaFetch({ [SWITCH]: answer(exp) }));
+        await call();
+        const sent = fetchMock.mock.calls.find(([u]) => String(u).endsWith(SWITCH));
+        expect((sent?.[1] as RequestInit).headers as Record<string, string>).toMatchObject({
             Authorization: "Bearer session-access",
         });
+    });
+
+    it("an impersonating session is refused with 403 and no backend call", async () => {
+        eddsaEnv();
+        vi.mocked(auth).mockResolvedValue({
+            access_token: "session-access",
+            user: { id: "user-1", is_impersonating: true },
+            expires: "2026-12-31T00:00:00.000Z",
+        } as never);
+        const response = await call();
+        expect(response.status).toBe(403);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("a refused service token leaves the session unchanged: the fixed 502 and no seal", async () => {

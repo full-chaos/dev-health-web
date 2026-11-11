@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth, sealSessionHandoff } from "@/lib/auth";
 import { servicePairFields } from "@/lib/authServicePair";
+import { serviceBearer } from "@/lib/authServiceOutcome";
 import { logger } from "@/lib/logger";
 import { readExchangeAnswer, wireConfigFromEnv, wireConfigUsable } from "@/lib/authServiceWire";
 import { getBackendUrl } from "@/lib/origin";
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
         response = await fetch(`${getBackendUrl()}/api/v1/auth/switch-org`, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${session.access_token}`,
+                Authorization: `Bearer ${serviceBearer(session)}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ org_id: payload.org_id }),
