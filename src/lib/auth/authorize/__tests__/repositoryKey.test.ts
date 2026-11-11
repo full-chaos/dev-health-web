@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { isRepositoryKey } from "../repositoryKey";
 import { parseDecision } from "../decision";
 import { buildRequestBody } from "../request";
 
@@ -140,5 +141,48 @@ describe("copied acr schemas hold the acr slug pattern", () => {
         for (const c of CELLS) {
             expect(re.test(c.slug) && c.slug.length <= 255, c.name).toBe(c.valid);
         }
+    });
+});
+
+// The cell table of dev-health-ops internal/auth/repokey/cells.Table (ops 5389c1f1), run through the one web rule.
+describe("repository key rule: the ops cells table (isRepositoryKey)", () => {
+    const seg = (n: number) => "a".repeat(n);
+    const OPS_CELLS: ReadonlyArray<readonly [string, string, boolean]> = [
+        ["two segments", "acme/web", true],
+        ["three segments", "acme/grp/web", true],
+        ["twenty segments", "g/".repeat(19) + "x", true],
+        ["255 bytes", `${seg(100)}/${seg(100)}/${seg(53)}`, true],
+        ["100-character segments", `${seg(100)}/${seg(100)}`, true],
+        ["dot-leading last segment", "acme/grp/.github", true],
+        ["dots and dashes inside", "acme/g.r_p-1/we.b_2-x", true],
+        ["21 segments", "g/".repeat(20) + "x", false],
+        ["256 bytes", `${seg(100)}/${seg(100)}/${seg(54)}`, false],
+        ["uppercase", "Acme/Grp/Web", false],
+        ["dot segment", "acme/./web", false],
+        ["dot-dot segment", "acme/../web", false],
+        ["dot-dot last", "acme/grp/..", false],
+        ["dot last", "acme/grp/.", false],
+        ["leading dot group", "acme/.grp/web", false],
+        ["leading dot owner", ".acme/web", false],
+        ["group ends dot", "acme/grp./web", false],
+        ["group starts hyphen", "acme/-grp/web", false],
+        ["repo starts hyphen", "acme/-web", false],
+        ["repo ends underscore", "acme/web_", false],
+        ["101-character group", `acme/${seg(101)}/web`, false],
+        ["101-character last", `acme/${seg(101)}`, false],
+        ["one segment", "acme", false],
+        ["empty", "", false],
+        ["empty segment", "acme//web", false],
+        ["trailing slash", "acme/grp/", false],
+        ["leading slash", "/acme/web", false],
+        ["owner wildcard", "acme/*", false],
+        ["group wildcard", "acme/*/web", false],
+        ["space", "acme/g rp/web", false],
+        ["newline", "acme/web\n", false],
+        ["non-ASCII letter", "acme/wéb", false],
+        ["kelvin sign", "acme/Keep", false],
+    ];
+    it.each(OPS_CELLS)("%s", (_name, key, valid) => {
+        expect(isRepositoryKey(key)).toBe(valid);
     });
 });
