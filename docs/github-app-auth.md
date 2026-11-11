@@ -56,13 +56,12 @@ See [`src/lib/auth.ts`](../src/lib/auth.ts) for the JWT callback that exchanges 
 
 The same session shape as credentials login:
 
-| Field              | Source                                                          |
-| ------------------ | --------------------------------------------------------------- |
-| `access_token`     | Backend JWT returned by `/api/v1/auth/social-login`             |
-| `role`             | User's role from backend                                        |
-| `is_superuser`     | Boolean from backend                                            |
-| `permissions`      | Empty array (social login does not return granular permissions) |
-| `needs_onboarding` | Whether the user needs to complete onboarding                   |
+| Field              | Source                                              |
+| ------------------ | --------------------------------------------------- |
+| `access_token`     | Backend JWT returned by `/api/v1/auth/social-login` |
+| `role`             | User's role from backend                            |
+| `is_superuser`     | Boolean from backend                                |
+| `needs_onboarding` | Whether the user needs to complete onboarding       |
 
 ## Checking which providers are enabled
 

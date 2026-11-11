@@ -13,8 +13,6 @@ export interface SessionUser {
     orgId?: string;
     role?: string;
     isSuperuser: boolean;
-    /** The answer's value, as it came: the session carries it unchanged. */
-    permissions?: unknown;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -35,7 +33,6 @@ function readUser(v: unknown): SessionUser | undefined {
         ...(orgId === undefined ? {} : { orgId }),
         ...(role === undefined ? {} : { role }),
         isSuperuser: v.is_superuser === true,
-        ...(v.permissions === undefined ? {} : { permissions: v.permissions }),
     };
 }
 

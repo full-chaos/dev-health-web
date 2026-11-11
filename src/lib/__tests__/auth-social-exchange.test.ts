@@ -231,33 +231,30 @@ describe("W-2 a failed exchange", () => {
 });
 
 describe("W-5 a social new user", () => {
-    it.each(PROVIDERS)(
-        "%s: no org at login, onboarding needed, flagged new, no permissions",
-        async (provider) => {
-            eddsaEnv();
-            fetchMock.mockImplementation(
-                answerWith(() =>
-                    json({
-                        ...answerBody(mint({ exp: inSeconds(1800) })),
-                        user: { id: "new-user", org_id: null, role: null, is_superuser: false },
-                        needs_onboarding: true,
-                        is_new_user: true,
-                    }),
-                ),
-            );
-            const out = await jwt()({
-                token: {},
-                user: { id: "p" },
-                account: accountOf(provider),
-            });
-            expect(out.id).toBe("new-user");
-            expect(out.org_id).toBeUndefined();
-            expect(out.needs_onboarding).toBe(true);
-            expect(out.is_new_user).toBe(true);
-            expect(out.permissions).toEqual([]);
-            expect(out.error).toBeUndefined();
-        },
-    );
+    it.each(PROVIDERS)("%s: no org at login, onboarding needed, flagged new", async (provider) => {
+        eddsaEnv();
+        fetchMock.mockImplementation(
+            answerWith(() =>
+                json({
+                    ...answerBody(mint({ exp: inSeconds(1800) })),
+                    user: { id: "new-user", org_id: null, role: null, is_superuser: false },
+                    needs_onboarding: true,
+                    is_new_user: true,
+                }),
+            ),
+        );
+        const out = await jwt()({
+            token: {},
+            user: { id: "p" },
+            account: accountOf(provider),
+        });
+        expect(out.id).toBe("new-user");
+        expect(out.org_id).toBeUndefined();
+        expect(out.needs_onboarding).toBe(true);
+        expect(out.is_new_user).toBe(true);
+        expect(out.permissions).toBeUndefined();
+        expect(out.error).toBeUndefined();
+    });
 
     it("a returning member keeps the org and needs no onboarding", async () => {
         eddsaEnv();
