@@ -9,6 +9,7 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 - **Central Config**: `src/lib/auth.ts`
 - **Exports**: `auth`, `handlers`, `signIn`, `signOut`
 - **Provider**: Custom `CredentialsProvider` authenticating against the backend API.
+- **Summary reference** (Auth.js config, authorization, ACR assertion, rollback switches): [auth-web-reference.md](auth-web-reference.md).
 
 ## Authentication Flow
 
