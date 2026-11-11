@@ -14,6 +14,8 @@ const PINNED: Readonly<Record<string, string>> = {
         "ad9ced87be097609cbce26768a4f517a2f36eaab5f60f4f2cf970f8655302c04",
     "decision-valid-allowlist-at-the-bound.json":
         "53e75ee7f6059791ed1e861485627ffa5e936f3b1d2893e8e2536ba1dce3d120",
+    "decision-valid-allow-allowlist-wildcard.json":
+        "021f7523f972eed8901e4d73eb3a1fba33f02b0ec43ec6bf4c73a45ef2030526",
     "decision-valid-allowlist-nested-keys.json":
         "6b96d4666eca1abb5b4e6e7ffa3abefdc0bc2213d6d394724de3537422ba9512",
     "decision-valid-empty-allowlist.json":

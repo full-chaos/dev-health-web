@@ -64,6 +64,7 @@ import tooLarge from "./testdata/ops-5389c1f1/decision-valid-reason-repository-a
 import atTheBound from "./testdata/ops-5389c1f1/decision-valid-allowlist-at-the-bound.json";
 import overTheBound from "./testdata/ops-5389c1f1/decision-invalid-allowlist-over-the-bound.json";
 import nestedKeys from "./testdata/ops-5389c1f1/decision-valid-allowlist-nested-keys.json";
+import wildcardAllowlist from "./testdata/ops-5389c1f1/decision-valid-allow-allowlist-wildcard.json";
 
 // The log message of src/lib/acr/grantScopes.ts, spelled here so this file runs (red) on a tree without it.
 const GRANT_DECISION_MESSAGE = "acr scopes decided from grants";
@@ -663,15 +664,43 @@ describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue al
         expect(observed.acrBodies).toEqual([]);
     });
 
-    // A3: the allowlist passes the same canonical check as the catalog scopes did (ops.ts canonicalRepositoryScopes):
-    // a nested key the PDP may list is not a canonical owner/repo scope, so it refuses as a bad catalog name did.
-    it("Given an allowlist with a nested repository key, then it refuses 503 unavailable and nothing is sent", async () => {
+    // A3: the allowlist passes the canonical check (sorted, no repeat) with the full repository key grammar, 2-20
+    // segments: the one rule of ops (internal/auth/repokey/repokey.go:27-39), the decision point and ACR
+    // (internal/reposlug/reposlug.go:73-87). ACR takes a nested key in a device approval
+    // (internal/contracts/v1/validate_device.go:202-213), in a web assertion (internal/auth/web_assertion_binding.go:65-80)
+    // and in its read check (internal/auth/repository.go:51-72). No regression: no `*` request is refused for it.
+    it("Given an allowlist with nested repository keys (GitLab subgroups), then every key is sent", async () => {
         seam.transport = issueAnswers(nestedKeys);
+        const keys = nestedKeys.obligations.repository_allowlist;
+        expect(keys).toContain("acme/platform/web");
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(keys);
+        expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual(keys);
+        expect(observed.catalogReads).toBe(0);
+    });
+
+    // A named allow never issues `*`: an allowlist that holds "*" (a valid wire example the decision core never emits,
+    // ops authorize_wire.go:148) is not a repository key, so it refuses.
+    it('Given an allowlist that holds "*", then it refuses 503 unavailable and nothing is sent', async () => {
+        seam.transport = issueAnswers(wildcardAllowlist);
         const response = await deviceApprove(["*"]);
         expect(response.status).toBe(503);
-        expect((await errorOf(response)).code).toBe("unavailable");
         expect(observed.acrBodies).toEqual([]);
-        expect(observed.catalogReads).toBe(0);
+    });
+
+    // The decision point sends its allowlist sorted (ops scope.go:46-50); a list out of byte order refuses.
+    it("Given an allowlist out of byte order, then it refuses 503 unavailable and nothing is sent", async () => {
+        const unsorted = {
+            ...severalKeys,
+            obligations: {
+                ...severalKeys.obligations,
+                repository_allowlist: [...SEVERAL_KEYS].reverse(),
+            },
+        };
+        seam.transport = issueAnswers(unsorted);
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(503);
+        expect(observed.acrBodies).toEqual([]);
     });
 
     it("Given a named credential.issue allow and a named request, then the per-key read decision decides and the catalog is not read", async () => {

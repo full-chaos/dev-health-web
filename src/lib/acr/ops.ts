@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+import { isRepositoryKey } from "@/lib/auth/authorize/repositoryKey";
 import { getBackendUrl } from "@/lib/origin";
 import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
@@ -104,11 +105,21 @@ export function compareScopeBytes(left: string, right: string): number {
     return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function canonicalRepositoryScopes(values: readonly string[]): readonly string[] {
-    const canonical = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
+const OWNER_REPO_SCOPE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
+const isOwnerRepoScope = (value: string): boolean => OWNER_REPO_SCOPE.test(value);
+
+/**
+ * A scope list as ACR takes it: every value a repository key (`isKey`), sorted by bytes, no repeat;
+ * anything else refuses (unavailable). Catalog names use the owner/repo form; a grant allowlist uses
+ * the full repository key grammar (2-20 segments), the one rule ops, the decision point and ACR hold.
+ */
+function canonicalRepositoryScopes(
+    values: readonly string[],
+    isKey: (value: string) => boolean = isOwnerRepoScope,
+): readonly string[] {
     const sorted = [...values].sort(compareScopeBytes);
     if (
-        values.some((value) => value !== value.toLowerCase() || !canonical.test(value)) ||
+        values.some((value) => value !== value.toLowerCase() || !isKey(value)) ||
         values.some((value, index) => value !== sorted[index]) ||
         new Set(values).size !== values.length
     ) {
@@ -387,7 +398,7 @@ export async function resolveDecidedIssuanceScopes(input: {
             return input.requested;
         }
         if (wildcard) {
-            const granted = canonicalRepositoryScopes(issue.repositoryAllowlist);
+            const granted = canonicalRepositoryScopes(issue.repositoryAllowlist, isRepositoryKey);
             if (granted.length === 0) {
                 log("no_scopes", [], "named", null);
                 throw issueRefused();
