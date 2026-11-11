@@ -56,11 +56,18 @@ import { POST as contextPacketRoute } from "@/app/api/agent-context/context-pack
 import { GET as evidenceRoute } from "@/app/api/agent-context/evidence/[evidenceRefId]/route";
 import OAuthAuthorizePage from "@/app/acr/authorize/page";
 import { authorizeAskDevBrowser } from "../service";
+// ops authorization_decision.v1 examples, byte copies at the live vendor pin 5389c1f1 (wire: ops
+// internal/auth/authapi/authorize_wire.go:78-153; checked by sha256 in issue-allowlist-vocabulary.test.ts).
+import severalKeys from "./testdata/ops-5389c1f1/decision-valid-allow-allowlist-several-keys.json";
+import emptyAllowlist from "./testdata/ops-5389c1f1/decision-valid-empty-allowlist.json";
+import tooLarge from "./testdata/ops-5389c1f1/decision-valid-reason-repository-allowlist-too-large.json";
+import atTheBound from "./testdata/ops-5389c1f1/decision-valid-allowlist-at-the-bound.json";
+import overTheBound from "./testdata/ops-5389c1f1/decision-invalid-allowlist-over-the-bound.json";
+import nestedKeys from "./testdata/ops-5389c1f1/decision-valid-allowlist-nested-keys.json";
+import wildcardAllowlist from "./testdata/ops-5389c1f1/decision-valid-allow-allowlist-wildcard.json";
 
-// The log message and the empty-catalog probe key of src/lib/acr/grantScopes.ts, spelled here so this file runs (red)
-// on a tree without them.
+// The log message of src/lib/acr/grantScopes.ts, spelled here so this file runs (red) on a tree without it.
 const GRANT_DECISION_MESSAGE = "acr scopes decided from grants";
-const ORG_WIDE_PROBE_KEY = "dev-health-acr-probe/no-such-repository";
 const ORG = "org-123";
 const WEB_ORIGIN = "https://app.example.test";
 const ACR = "https://acr.example.test";
@@ -405,12 +412,15 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
         expect(observed.acrScopes.at(-1)).toEqual(["acme/beta"]);
     });
 
-    it('Given the credential.issue allow is not org-wide but context.read is (wildcard grant), then ["*"] is sent', async () => {
+    // The real PDP never gives this pair: the same grant rows make both decisions (ops scope.go:20-50, A5/A6). The
+    // issue allowlist is the answer: a named allow never issues "*".
+    it('Given the credential.issue allow names repositories and the reads are org-wide, then the named allowlist is sent, never ["*"], with no read decision', async () => {
         seam.transport = pdp({ issue: { allowlist: CATALOG }, read: () => "org-wide" });
         const response = await deviceApprove(["*"]);
         expect(response.status).toBe(200);
-        expect(observed.acrScopes.at(-1)).toEqual(["*"]);
-        expect(readAsks().every((a) => a.action === "acr.context.read")).toBe(true);
+        expect(observed.acrScopes.at(-1)).toEqual(CATALOG);
+        expect(readAsks()).toEqual([]);
+        expect(observed.catalogReads).toBe(0);
     });
 
     it('Given a platform admin with no membership row (credential.issue org-wide, every read denied), then ["*"] is sent with no read decision and no catalog read', async () => {
@@ -468,12 +478,14 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
         expect(observed.acrBodies).toEqual([]);
     });
 
-    it('Given an empty catalog and an org-wide caller, then the probe key decides and ["*"] is sent', async () => {
+    // The empty-catalog probe is gone: an org-wide principal is org-wide at acr.credential.issue by the same row rule.
+    it("Given an empty credential.issue allowlist and org-wide reads, then it is refused 403 with no probe, no read decision and no catalog read", async () => {
         seam.transport = pdp({ issue: { allowlist: [] }, read: () => "org-wide" });
         installOps({ catalog: [] });
-        expect((await deviceApprove(["*"])).status).toBe(200);
-        expect(observed.acrScopes.at(-1)).toEqual(["*"]);
-        expect(readAsks().map((a) => a.key)).toContain(ORG_WIDE_PROBE_KEY);
+        expect((await deviceApprove(["*"])).status).toBe(403);
+        expect(observed.acrBodies).toEqual([]);
+        expect(readAsks()).toEqual([]);
+        expect(observed.catalogReads).toBe(0);
     });
 
     it("Given an empty catalog and an exact-grant holder, then it is refused 403", async () => {
@@ -630,6 +642,187 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
             expect(response.status).toBe(403);
             expect(asked).toEqual([]);
             expect(observed.acrBodies).toEqual([]);
+        },
+    );
+});
+
+// CHAOS-13541 (11205 P1): a `*` request whose acr.credential.issue allow is not org-wide takes its scopes from that
+// allow's repository_allowlist (ops internal/auth/authorization/scope.go:20-50, :58-94 at 5389c1f1). No catalog read
+// and no read decision on the issuance path; a named request keeps its per-key decisions.
+// acr.credential.issue answers with the ops example decision, verbatim; the reads (named requests only) use the double.
+function issueAnswers(doc: unknown, read: Policy["read"] = () => "deny"): Transport {
+    const reads = pdp({ issue: "deny", read });
+    return async (call) => {
+        const parsed = JSON.parse(call.body) as Record<string, unknown>;
+        if (call.path === "/v1/authorize" && parsed["action"] === "acr.credential.issue") {
+            expect(parsed["principal_reference"]).toBe(TOKEN);
+            const resource = parsed["resource"] as Record<string, unknown>;
+            asked.push({
+                action: "acr.credential.issue",
+                type: String(resource["type"]),
+                key: String(resource["key"]),
+                organizationId: resource["organization_id"],
+            });
+            return { status: 200, body: JSON.stringify(doc) };
+        }
+        return reads(call);
+    };
+}
+const SEVERAL_KEYS = ["acme/api", "acme/web", "full-chaos/dev-health-ops"];
+const errorOf = async (response: Response) =>
+    ((await response.json()) as { error: { code: string; message: string } }).error;
+
+describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue allowlist", () => {
+    it.each([
+        ["device approve", () => deviceApprove(["*"]), 1],
+        ["consent approve", () => consentApprove(["*"]), 2],
+    ])(
+        "Given a named credential.issue allow, when %s for every repository, then the allowlist is sent with no catalog read and no read decision",
+        async (_n, call, assertions) => {
+            seam.transport = issueAnswers(severalKeys);
+            const response = await call();
+            expect(response.status).toBe(200);
+            expect(observed.catalogReads).toBe(0);
+            expect(readAsks()).toEqual([]);
+            expect(observed.acrScopes).toEqual(Array(assertions).fill(SEVERAL_KEYS));
+            expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual(SEVERAL_KEYS);
+        },
+    );
+
+    // A1 (answer change, wider): the grant set decides, not the catalog. full-chaos/dev-health-ops is not in CATALOG.
+    it("Given a grant on a repository absent from the analytics catalog, then that repository is issued", async () => {
+        seam.transport = issueAnswers(severalKeys);
+        expect(CATALOG).not.toContain("full-chaos/dev-health-ops");
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toContain("full-chaos/dev-health-ops");
+    });
+
+    it("Given an empty credential.issue allowlist (no live grant), then it is refused 403 no_scopes with no catalog read and no read decision", async () => {
+        seam.transport = issueAnswers(emptyAllowlist, () => "org-wide");
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(403);
+        expect((await errorOf(response)).code).toBe("not_entitled");
+        expect(observed.acrBodies).toEqual([]);
+        expect(observed.catalogReads).toBe(0);
+        expect(readAsks()).toEqual([]);
+        expect(grantLines().map((l) => (l.fields as { outcome: string }).outcome)).toEqual([
+            "no_scopes",
+        ]);
+    });
+
+    it("Given 256 granted repositories (the allowlist bound), then all 256 are sent", async () => {
+        seam.transport = issueAnswers(atTheBound);
+        const keys = atTheBound.obligations.repository_allowlist;
+        expect(keys).toHaveLength(256);
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(keys);
+        expect(observed.catalogReads).toBe(0);
+    });
+
+    // pm D6973: over 256 explicit grants the PDP denies repository_allowlist_too_large (ops obligations.go:7-10;
+    // it never truncates). The refusal names the cap.
+    it.each([
+        ["device approve", () => deviceApprove(["*"])],
+        ["consent approve", () => consentApprove(["*"])],
+    ])(
+        "Given 257 granted repositories (the PDP denies repository_allowlist_too_large), when %s, then it is refused 403 grant_limit_exceeded naming the 256 cap",
+        async (_n, call) => {
+            seam.transport = issueAnswers(tooLarge);
+            const response = await call();
+            expect(response.status).toBe(403);
+            const error = await errorOf(response);
+            expect(error.code).toBe("grant_limit_exceeded");
+            expect(error.message).toContain("256");
+            expect(observed.acrBodies).toEqual([]);
+            expect(observed.catalogReads).toBe(0);
+            expect(grantLines().map((l) => (l.fields as { outcome: string }).outcome)).toEqual([
+                "denied",
+            ]);
+        },
+    );
+
+    // RISK-NOTES (pre-existing): acr.credential.issue decides first for every request, so over 256 grants a named
+    // request is refused too; it gets the same code and cap message.
+    it("Given 257 granted repositories and a named request, then it is refused 403 grant_limit_exceeded naming the 256 cap", async () => {
+        seam.transport = issueAnswers(tooLarge, () => ({ allowlist: ["acme/api"] }));
+        const response = await deviceApprove(["acme/api"]);
+        expect(response.status).toBe(403);
+        const error = await errorOf(response);
+        expect(error.code).toBe("grant_limit_exceeded");
+        expect(error.message).toContain("256");
+        expect(observed.acrBodies).toEqual([]);
+        expect(readAsks()).toEqual([]);
+    });
+
+    it("Given an allow that lists 257 keys (not per contract), then the client refuses it 503 and nothing is sent", async () => {
+        seam.transport = issueAnswers(overTheBound);
+        expect(overTheBound.obligations.repository_allowlist).toHaveLength(257);
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(503);
+        expect(observed.acrBodies).toEqual([]);
+    });
+
+    // A3: the allowlist passes the canonical check (sorted, no repeat) with the full repository key grammar, 2-20
+    // segments: the one rule of ops (internal/auth/repokey/repokey.go:27-39), the decision point and ACR
+    // (internal/reposlug/reposlug.go:73-87). ACR takes a nested key in a device approval
+    // (internal/contracts/v1/validate_device.go:202-213), in a web assertion (internal/auth/web_assertion_binding.go:65-80)
+    // and in its read check (internal/auth/repository.go:51-72). No regression: no `*` request is refused for it.
+    it("Given an allowlist with nested repository keys (GitLab subgroups), then every key is sent", async () => {
+        seam.transport = issueAnswers(nestedKeys);
+        const keys = nestedKeys.obligations.repository_allowlist;
+        expect(keys).toContain("acme/platform/web");
+        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(keys);
+        expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual(keys);
+        expect(observed.catalogReads).toBe(0);
+    });
+
+    // A named allow never issues `*`: an allowlist that holds "*" (a valid wire example the decision core never emits,
+    // ops authorize_wire.go:148) is not a repository key, so it refuses.
+    it('Given an allowlist that holds "*", then it refuses 503 unavailable and nothing is sent', async () => {
+        seam.transport = issueAnswers(wildcardAllowlist);
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(503);
+        expect(observed.acrBodies).toEqual([]);
+    });
+
+    // The decision point sends its allowlist sorted (ops scope.go:46-50); a list out of byte order refuses.
+    it("Given an allowlist out of byte order, then it refuses 503 unavailable and nothing is sent", async () => {
+        const unsorted = {
+            ...severalKeys,
+            obligations: {
+                ...severalKeys.obligations,
+                repository_allowlist: [...SEVERAL_KEYS].reverse(),
+            },
+        };
+        seam.transport = issueAnswers(unsorted);
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(503);
+        expect(observed.acrBodies).toEqual([]);
+    });
+
+    it("Given a named credential.issue allow and a named request, then the per-key read decision decides and the catalog is not read", async () => {
+        seam.transport = issueAnswers(severalKeys, () => ({ allowlist: ["acme/api"] }));
+        expect((await deviceApprove(["acme/api"])).status).toBe(200);
+        expect(observed.acrScopes.at(-1)).toEqual(["acme/api"]);
+        expect(readAsks().map((a) => a.key)).toEqual(["*", "acme/api"]);
+        expect(observed.catalogReads).toBe(0);
+    });
+
+    // Rule 1 (PRODUCT RULES f7cb775dde89): "Platform admins never need org membership; the legacy behaviour stays."
+    // ops golden vector allow-platform-admin-no-membership-issues-acr-credential.json: org-wide allow.
+    it.each([
+        ["device approve", () => deviceApprove(["*"])],
+        ["consent approve", () => consentApprove(["*"])],
+    ])(
+        'Given a platform admin with no membership, when %s for every repository, then ["*"] is sent with no catalog read and no read decision',
+        async (_n, call) => {
+            seam.transport = pdp({ issue: "org-wide", read: () => "deny" });
+            signIn({ is_superuser: true });
+            expect((await call()).status).toBe(200);
+            expect(observed.acrScopes.at(-1)).toEqual(["*"]);
+            expect(observed.catalogReads).toBe(0);
+            expect(readAsks()).toEqual([]);
         },
     );
 });

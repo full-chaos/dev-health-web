@@ -139,6 +139,7 @@ describe("nextDevNodeOptions", () => {
 describe("playwright dev-server configs", () => {
     const configs = [
         "playwright.config.ts",
+        "playwright.chaos-13541.config.ts",
         "playwright.customer-push.config.ts",
         "playwright.navigation.config.ts",
         "playwright.onboarding.config.ts",

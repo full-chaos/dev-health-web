@@ -130,6 +130,7 @@ describe("OAuthAuthorizePage", () => {
         [acrRuntimeErrorCodes.alreadyCompleted, "completed"],
         [acrRuntimeErrorCodes.invalidRequest, "invalid"],
         [acrRuntimeErrorCodes.unavailable, "unavailable"],
+        [acrRuntimeErrorCodes.grantLimitExceeded, "grantLimit"],
     ] as const)("renders the matching state when ACR reports %s", async (code, expectedState) => {
         openOAuthConsentMock.mockRejectedValue(new AcrRuntimeError(code, "redacted"));
 

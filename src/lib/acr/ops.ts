@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+import { isRepositoryKey } from "@/lib/auth/authorize/repositoryKey";
 import { getBackendUrl } from "@/lib/origin";
 import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
@@ -14,7 +15,6 @@ import {
     EVIDENCE_READ_ACTION,
     type GrantDecisionOutcome,
     logGrantDecision,
-    probeOrgWide,
     resolveRepositoryDecisions,
 } from "./grantScopes";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
@@ -105,11 +105,21 @@ export function compareScopeBytes(left: string, right: string): number {
     return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function canonicalRepositoryScopes(values: readonly string[]): readonly string[] {
-    const canonical = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
+const OWNER_REPO_SCOPE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
+const isOwnerRepoScope = (value: string): boolean => OWNER_REPO_SCOPE.test(value);
+
+/**
+ * A scope list as ACR takes it: every value a repository key (`isKey`), sorted by bytes, no repeat;
+ * anything else refuses (unavailable). Catalog names use the owner/repo form; a grant allowlist uses
+ * the full repository key grammar (2-20 segments), the one rule ops, the decision point and ACR hold.
+ */
+function canonicalRepositoryScopes(
+    values: readonly string[],
+    isKey: (value: string) => boolean = isOwnerRepoScope,
+): readonly string[] {
     const sorted = [...values].sort(compareScopeBytes);
     if (
-        values.some((value) => value !== value.toLowerCase() || !canonical.test(value)) ||
+        values.some((value) => value !== value.toLowerCase() || !isKey(value)) ||
         values.some((value, index) => value !== sorted[index]) ||
         new Set(values).size !== values.length
     ) {
@@ -333,15 +343,23 @@ function issueRefused(): AcrRuntimeError {
     );
 }
 
+function grantLimitRefused(): AcrRuntimeError {
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.grantLimitExceeded,
+        "More repository grants than one credential may list.",
+        { status: 403 },
+    );
+}
+
 /**
  * ACR_SCOPES_FROM_GRANTS on (D6857-2): the decision and the repository scopes of one
  * `credential:issue` call (device approval, consent). `acr.credential.issue` on the session
- * organization decides first: a deny refuses (403). The organization-wide `["*"]` is sent only when a
- * decision carries `repository_scope: organization`: the `acr.credential.issue` allow, or else an
- * `acr.context.read` allow over the catalog names (for an empty catalog, the probe key's decision).
- * Otherwise the scopes are the names an `acr.context.read` decision allows; none refuses (403).
- * Requested names are never widened: an org-wide caller sends them as asked. Every outcome logs one
- * Info line (logGrantDecision).
+ * organization decides first: a deny refuses (403; over the allowlist bound, grant_limit_exceeded).
+ * The organization-wide `["*"]` is sent only when a decision carries `repository_scope: organization`.
+ * A `["*"]` request with a named allow takes the allow's own `repository_allowlist` (the live grant
+ * set; no catalog read, no read decision); an empty list refuses (403). Named requests keep their
+ * per-key `acr.context.read` decisions. Requested names are never widened: an org-wide caller sends
+ * them as asked. Every outcome logs one Info line (logGrantDecision).
  */
 export async function resolveDecidedIssuanceScopes(input: {
     readonly accessToken: string;
@@ -373,31 +391,25 @@ export async function resolveDecidedIssuanceScopes(input: {
         const issue = await decideCredentialIssue(session);
         if (!issue.allowed) {
             log("denied", [], null, null);
-            throw issueRefused();
+            throw issue.overLimit ? grantLimitRefused() : issueRefused();
         }
         if (issue.orgWide) {
             log("allowed", input.requested, "org-wide", "acr.credential.issue");
             return input.requested;
         }
-        let orgWide: boolean;
-        let named: readonly string[];
         if (wildcard) {
-            const candidates = await readCatalogCandidates(input);
-            if (candidates.length === 0) {
-                orgWide = await probeOrgWide(session);
-                named = [];
-            } else {
-                ({ orgWide, repositoryScopes: named } = await resolveRepositoryDecisions({
-                    ...session,
-                    candidates,
-                }));
+            const granted = canonicalRepositoryScopes(issue.repositoryAllowlist, isRepositoryKey);
+            if (granted.length === 0) {
+                log("no_scopes", [], "named", null);
+                throw issueRefused();
             }
-        } else {
-            ({ orgWide, repositoryScopes: named } = await resolveRepositoryDecisions({
-                ...session,
-                candidates: input.requested,
-            }));
+            log("allowed", granted, "named", null);
+            return granted;
         }
+        const { orgWide, repositoryScopes: named } = await resolveRepositoryDecisions({
+            ...session,
+            candidates: input.requested,
+        });
         if (orgWide) {
             log("allowed", input.requested, "org-wide", CONTEXT_READ_ACTION);
             return input.requested;

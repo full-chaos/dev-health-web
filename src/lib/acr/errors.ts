@@ -1,10 +1,14 @@
 import "server-only";
 
+import { GRANT_LIMIT_EXCEEDED_CODE, GRANT_LIMIT_MESSAGE } from "./grantLimit";
+
 export const acrRuntimeErrorCodes = {
     configuration: "configuration",
     invalidRequest: "invalid_request",
     unauthenticated: "unauthenticated",
     notEntitled: "not_entitled",
+    // CHAOS-13541: a `*` credential over the decision point's allowlist bound (more than 256 repository grants).
+    grantLimitExceeded: GRANT_LIMIT_EXCEEDED_CODE,
     repositoryNotAvailable: "repository_not_available",
     incompatible: "incompatible",
     malformedResponse: "malformed_response",
@@ -90,6 +94,8 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "Agent Context Runtime returned an invalid response.";
         case acrRuntimeErrorCodes.notEntitled:
             return "Agent Context Runtime is not available for this organization.";
+        case acrRuntimeErrorCodes.grantLimitExceeded:
+            return GRANT_LIMIT_MESSAGE;
         case acrRuntimeErrorCodes.rateLimited:
             return "Too many attempts. Please wait and try again.";
         case acrRuntimeErrorCodes.repositoryNotAvailable:

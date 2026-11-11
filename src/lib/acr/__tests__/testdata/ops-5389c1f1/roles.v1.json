@@ -1,0 +1,132 @@
+{
+  "schema_version": "roles.v1",
+  "catalog_version": 18,
+  "description": "The closed role catalog. Each role lists its actions explicitly; there is no inheritance, wildcard or all-actions role. A platform role holds only platform actions; an organization role holds only organization actions.",
+  "roles": [
+    {
+      "role": "viewer",
+      "scope": "organization",
+      "actions": [
+        "acr.context.read",
+        "acr.credential.issue",
+        "acr.evidence.read",
+        "analytics.read",
+        "billing.read",
+        "git.read",
+        "license.read",
+        "members.read",
+        "metrics.read",
+        "org.read",
+        "reports.write",
+        "settings.read",
+        "teams.read",
+        "work_items.read"
+      ]
+    },
+    {
+      "role": "member",
+      "scope": "organization",
+      "actions": [
+        "acr.context.read",
+        "acr.credential.issue",
+        "acr.evidence.read",
+        "analytics.export",
+        "analytics.read",
+        "billing.read",
+        "git.read",
+        "license.read",
+        "members.read",
+        "metrics.read",
+        "org.read",
+        "reports.write",
+        "settings.read",
+        "teams.read",
+        "work_items.read"
+      ]
+    },
+    {
+      "role": "admin",
+      "scope": "organization",
+      "actions": [
+        "acr.context.read",
+        "acr.credential.issue",
+        "acr.evidence.read",
+        "analytics.export",
+        "analytics.read",
+        "billing.manage",
+        "billing.read",
+        "git.read",
+        "git.sync",
+        "integrations.read",
+        "integrations.write",
+        "license.read",
+        "members.invite",
+        "members.manage",
+        "members.read",
+        "metrics.compute",
+        "metrics.read",
+        "org.read",
+        "org.write",
+        "reports.write",
+        "settings.read",
+        "settings.write",
+        "teams.read",
+        "teams.write",
+        "work_items.read",
+        "work_items.sync"
+      ]
+    },
+    {
+      "role": "owner",
+      "scope": "organization",
+      "actions": [
+        "acr.context.read",
+        "acr.credential.issue",
+        "acr.evidence.read",
+        "analytics.export",
+        "analytics.read",
+        "billing.manage",
+        "billing.read",
+        "git.read",
+        "git.sync",
+        "integrations.read",
+        "integrations.write",
+        "license.read",
+        "members.invite",
+        "members.manage",
+        "members.read",
+        "metrics.compute",
+        "metrics.read",
+        "org.delete",
+        "org.read",
+        "org.write",
+        "reports.write",
+        "settings.read",
+        "settings.write",
+        "teams.read",
+        "teams.write",
+        "work_items.read",
+        "work_items.sync"
+      ]
+    },
+    {
+      "role": "platform_admin",
+      "scope": "platform",
+      "actions": [
+        "admin.orgs",
+        "admin.users",
+        "admin.impersonate",
+        "admin.billing",
+        "admin.flags",
+        "admin.audit",
+        "admin.telemetry",
+        "admin.stats"
+      ]
+    },
+    {
+      "role": "platform_owner",
+      "scope": "platform",
+      "actions": []
+    }
+  ]
+}
