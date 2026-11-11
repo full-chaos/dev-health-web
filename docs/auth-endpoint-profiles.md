@@ -229,6 +229,9 @@ kid after it.
 
 ### `credential:issue` provenance and the impersonation refusal (CHAOS-12095)
 
+The device approval flow and the approver decision are described in
+[auth-acr-device-approval.md](auth-acr-device-approval.md).
+
 Every `credential:issue` call (`previewDeviceAuthorization`, `approveDeviceAuthorization`,
 `previewOAuthConsent`, `openOAuthConsent`, `decideOAuthConsent` in `src/lib/acr/service.ts`) starts
 in `issuanceContext()`. The web **server** derives two values, and the browser never supplies them
