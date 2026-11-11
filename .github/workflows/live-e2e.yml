@@ -295,20 +295,24 @@ jobs:
             - name: Provide psql from the postgres service image (no apt on the runner)
               # The hosted runner's apt mirrors stopped resolving on 2026-11-11, and every later psql call (this job and
               # ops ci/live_e2e_auth_stack.sh) runs on the host. psql runs from the service container's own image, so the
-              # client major equals the server major. Host paths are mounted at the same paths, so `psql -f <host file>` works.
+              # client major equals the server major. Host paths are mounted at the same paths, so `psql -f <host file>` works,
+              # and the caller's whole environment is passed by name, so `\getenv` (ops auth-provision SQL) reads the same values.
               run: |
                   set -euo pipefail
                   img="$(docker inspect -f '{{.Image}}' "${{ job.services.postgres.id }}")"
                   bin="${RUNNER_TEMP}/pgbin"
                   mkdir -p "${bin}"
-                  cat > "${bin}/psql" <<EOF
+                  cat > "${bin}/psql" <<'EOF'
                   #!/usr/bin/env bash
                   set -euo pipefail
-                  exec docker run --rm -i --network host -u "\$(id -u):\$(id -g)" -e HOME=/tmp \\
-                    -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE -e PGCONNECT_TIMEOUT \\
-                    -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" -v "${RUNNER_TEMP}:${RUNNER_TEMP}" -v /tmp:/tmp \\
-                    -w "\$PWD" "${img}" psql "\$@"
+                  envs=()
+                  for n in $(compgen -e); do
+                    case "${n}" in PATH | HOME | HOSTNAME | PWD | OLDPWD | SHLVL | _ | USER | LOGNAME | SHELL | TMPDIR) ;; *) envs+=(-e "${n}") ;; esac
+                  done
+                  exec docker run --rm -i --network host -u "$(id -u):$(id -g)" -e HOME=/tmp "${envs[@]}" \
+                    -v "__WS__:__WS__" -v "__RT__:__RT__" -v /tmp:/tmp -w "${PWD}" "__IMG__" psql "$@"
                   EOF
+                  sed -i -e "s#__WS__#${GITHUB_WORKSPACE}#g" -e "s#__RT__#${RUNNER_TEMP}#g" -e "s#__IMG__#${img}#g" "${bin}/psql"
                   chmod +x "${bin}/psql"
                   echo "${bin}" >> "${GITHUB_PATH}"
                   "${bin}/psql" --version
