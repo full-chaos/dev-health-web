@@ -90,8 +90,8 @@ Web signs an assertion for the Agent Context Runtime (ACR) service. It is sent a
 - Claims: `aud`, `body_sha256` (of the request body), `exp` (`iat` + 30 s), `iat`, `iss`, `jti`
   (random UUID), `method`, `nbf`, `org_id`, `path`, `permissions`, `repository_scopes`, `sub`.
   `permissions` holds `context:read`, `evidence:read` or `credential:issue`. A `credential:issue`
-  assertion also carries `impersonating` and, when known, `sid`; web derives both on the server,
-  never from the browser.
+  assertion also carries `impersonating` and, when known, `sid`, but only when `ACR_OAUTH_ISSUER` is
+  set (otherwise both are omitted); web derives both on the server, never from the browser.
 - Routes that mint one: `POST /api/acr/device`, `POST /api/agent-context/context-packets`,
   `GET /api/agent-context/evidence/[evidenceRefId]`.
 - Configuration (`src/lib/acr/config.ts`): `ACR_API_ORIGIN`, `ACR_WEB_ASSERTION_ISSUER`,
@@ -105,8 +105,8 @@ Web signs an assertion for the Agent Context Runtime (ACR) service. It is sent a
   `ACR_SCOPES_FROM_GRANTS` on (`1` or `true`, any case), scopes come from PDP decisions for
   `acr.context.read` and `acr.evidence.read`, and device approval and consent first ask
   `acr.credential.issue`. In that mode a missing transport or an invalid answer refuses the request;
-  it never falls back to the catalog. Each decision writes one `acr scopes decided from grants` log
-  line (route, organization, outcome, scopes; no credential).
+  it never falls back to the catalog. Each scope resolution (one or more PDP decisions) writes one
+  `acr scopes decided from grants` log line (route, organization, outcome, scopes; no credential).
 
 Key rotation order and the drill: [auth-endpoint-profiles.md](auth-endpoint-profiles.md), section
 "Rotating the web assertion key".
