@@ -156,6 +156,7 @@ describe("approver reference vector", () => {
     it("is exactly what the real signers emit", () => {
         const built = buildVector();
         if (process.env.UPDATE_VECTORS === "1") writeFileSync(VECTOR_FILE, built);
-        expect(readFileSync(VECTOR_FILE, "utf8")).toBe(built);
+        // Compared as JSON: the formatter may re-wrap the file; every token string must be equal.
+        expect(JSON.parse(readFileSync(VECTOR_FILE, "utf8"))).toEqual(JSON.parse(built));
     });
 });

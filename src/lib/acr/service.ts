@@ -255,6 +255,7 @@ async function issueWith(
 ): Promise<IssuanceCall> {
     const authorization = await resolveOpsCredentialIssuanceAuthorization({
         accessToken: context.session.accessToken,
+        approverSessionId: context.provenance.sessionId,
         orgId: context.session.orgId,
         // The claims follow ACR_OAUTH_ISSUER (an ACR without their parser refuses them); the
         // impersonation refusal in issuanceContext does not.
@@ -605,6 +606,7 @@ export async function authorizeAskDevBrowser(input: {
         // this server from one address. The assertion is org-wide, as the consent route's is.
         const authorization = await resolveOpsCredentialIssuanceAuthorization({
             accessToken: session.accessToken,
+            approverSessionId: undefined,
             orgId: session.orgId,
             provenance: issuanceProvenanceClaimsEnabled() ? provenance : undefined,
             repositoryScopes: ["*"],
