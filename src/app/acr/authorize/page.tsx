@@ -41,7 +41,8 @@ export default async function OAuthAuthorizePage({
     // the return/JSX happens after the catch. The impersonation refusal is in the
     // service, by the impersonation state (CHAOS-12095): "denied".
     let opening: Awaited<ReturnType<typeof openOAuthConsent>> | undefined;
-    let errorState: "completed" | "denied" | "expired" | "invalid" | "unavailable" | undefined;
+    let errorState:
+        "completed" | "denied" | "expired" | "grantLimit" | "invalid" | "unavailable" | undefined;
     try {
         opening = await openOAuthConsent({ handle, signal: new AbortController().signal });
     } catch (error) {
@@ -62,6 +63,11 @@ export default async function OAuthAuthorizePage({
             error.code === acrRuntimeErrorCodes.notEntitled
         ) {
             errorState = "denied";
+        } else if (
+            error instanceof AcrRuntimeError &&
+            error.code === acrRuntimeErrorCodes.grantLimitExceeded
+        ) {
+            errorState = "grantLimit";
         } else {
             errorState = "unavailable";
         }

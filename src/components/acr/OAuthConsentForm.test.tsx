@@ -43,6 +43,46 @@ describe("OAuthConsentForm", () => {
         expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     });
 
+    // pm D6973: the consent page names the 256 cap for grant_limit_exceeded (preview: the page's initial state;
+    // approve: the decision response), not the generic refusal text.
+    it("Given a grantLimit state, when rendered, then names the 256 cap", () => {
+        render(<OAuthConsentForm initialState="grantLimit" />);
+
+        expect(screen.getByRole("heading", { name: "Too many repository grants" })).toBeVisible();
+        expect(
+            screen.getByText(/more than 256 repository grants in this organization/i),
+        ).toBeVisible();
+    });
+
+    it("Given the server refuses grant_limit_exceeded on approve, when approving, then names the 256 cap, not the generic refusal", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        error: {
+                            code: "grant_limit_exceeded",
+                            message: "redacted",
+                            retryable: false,
+                        },
+                    }),
+                    { status: 403 },
+                ),
+            ),
+        );
+        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+        expect(
+            await screen.findByRole("heading", { name: "Too many repository grants" }),
+        ).toBeVisible();
+        expect(
+            screen.getAllByText(/more than 256 repository grants in this organization/i).length,
+        ).toBeGreaterThan(0);
+        expect(screen.queryByText("We could not complete this request.")).toBeNull();
+    });
+
     it("Given an invalid state, when rendered, then names the other-account cause and the fix", () => {
         render(<OAuthConsentForm initialState="invalid" />);
 

@@ -6,6 +6,47 @@ import { DeviceApprovalForm } from "./DeviceApprovalForm";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("DeviceApprovalForm", () => {
+    // pm D6973: a refusal over the decision point's 256-key allowlist bound names the cap (grant_limit_exceeded).
+    it.each(["preview", "approve"] as const)(
+        "Given the server refuses grant_limit_exceeded on %s, when submitting, then the page names the 256 cap, not the generic refusal",
+        async (step) => {
+            const refusal = new Response(
+                JSON.stringify({
+                    error: {
+                        code: "grant_limit_exceeded",
+                        message: "redacted",
+                        retryable: false,
+                    },
+                }),
+                { status: 403 },
+            );
+            const fetchMock = vi.fn();
+            if (step === "approve") {
+                fetchMock.mockResolvedValueOnce(
+                    new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
+                );
+            }
+            fetchMock.mockResolvedValueOnce(refusal);
+            vi.stubGlobal("fetch", fetchMock);
+
+            render(<DeviceApprovalForm />);
+            fireEvent.change(screen.getByLabelText("Verification code"), {
+                target: { value: "EP23TUGG" },
+            });
+            fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+            if (step === "approve") {
+                await screen.findByRole("heading", { name: "Review device access" });
+                fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+            }
+
+            expect(
+                await screen.findByText(/more than 256 repository grants in this organization/i),
+            ).toBeVisible();
+            expect(screen.queryByText("We could not approve this request.")).toBeNull();
+            expect(screen.queryByText("We could not preview this request.")).toBeNull();
+        },
+    );
+
     it.each([
         ["pending", "Approve device access"],
         ["review", "Review device access"],

@@ -642,6 +642,19 @@ describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue al
         },
     );
 
+    // RISK-NOTES (pre-existing): acr.credential.issue decides first for every request, so over 256 grants a named
+    // request is refused too; it gets the same code and cap message.
+    it("Given 257 granted repositories and a named request, then it is refused 403 grant_limit_exceeded naming the 256 cap", async () => {
+        seam.transport = issueAnswers(tooLarge, () => ({ allowlist: ["acme/api"] }));
+        const response = await deviceApprove(["acme/api"]);
+        expect(response.status).toBe(403);
+        const error = await errorOf(response);
+        expect(error.code).toBe("grant_limit_exceeded");
+        expect(error.message).toContain("256");
+        expect(observed.acrBodies).toEqual([]);
+        expect(readAsks()).toEqual([]);
+    });
+
     it("Given an allow that lists 257 keys (not per contract), then the client refuses it 503 and nothing is sent", async () => {
         seam.transport = issueAnswers(overTheBound);
         expect(overTheBound.obligations.repository_allowlist).toHaveLength(257);
