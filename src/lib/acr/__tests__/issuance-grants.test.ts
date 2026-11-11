@@ -516,6 +516,104 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
         },
     );
 
+    // The approver's membership is revoked. The decision the real PDP gives for acr.credential.issue on the
+    // session org, verbatim: ops contracts/auth/v1/examples/authorization_decision/decision-valid-reason-no-membership.json
+    // (live pin 5389c1f1, blob fcf4f8fa). The decision core denies a removed or suspended membership no_membership
+    // (ops internal/auth/authorization/evaluate.go:139-147; vector contracts/auth/v1/golden/decision/vectors/membership-removed.json).
+    it("Given the approver's membership is revoked (the PDP denies no_membership), when approving, then it is refused 403 and ACR is never called", async () => {
+        const noMembership = {
+            allowed: false,
+            decision_id: "dec_EXAMPLE0000000000000000106",
+            expires_at: "2026-09-03T05:00:30Z",
+            organization_id: "org_EXAMPLE0000000000000001",
+            policy_revision: 42,
+            principal_id: "prn_EXAMPLE0000000000000001",
+            reason_code: "no_membership",
+            schema_version: "authorization_decision.v1",
+        };
+        seam.transport = async (call) => {
+            const parsed = JSON.parse(call.body) as {
+                action: string;
+                principal_reference: string;
+                resource: Record<string, unknown>;
+            };
+            expect(call.path).toBe("/v1/authorize");
+            expect(parsed.principal_reference).toBe(TOKEN);
+            asked.push({
+                action: parsed.action,
+                type: String(parsed.resource["type"]),
+                key: String(parsed.resource["key"]),
+                organizationId: parsed.resource["organization_id"],
+            });
+            return { status: 200, body: JSON.stringify(noMembership) };
+        };
+        const response = await deviceApprove(["*"]);
+        expect(response.status).toBe(403);
+        expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+            "not_entitled",
+        );
+        expect(issueAsks()).toHaveLength(1);
+        expect(observed.acrBodies).toEqual([]);
+        expect(grantLines().map((l) => (l.fields as { outcome: string }).outcome)).toEqual([
+            "denied",
+        ]);
+    });
+
+    // The organization's entitlement has lapsed. The PDP has no entitlement input (ops
+    // internal/auth/authapi/authorize_cache.go:121-122), so it allows; the refusal comes from the Ops licensing
+    // read after the decision (ops.ts requireAcrEntitlement). The bodies follow the live handler
+    // (ops internal/api/orgs/orgs.go:208-305, key set :276-305, is_valid :303): an expired org override closes
+    // agent_context_runtime (ops internal/api/licensing/decide_test.go:92-101), and a license row that is no
+    // longer valid reads is_valid false.
+    it.each([
+        [
+            "an expired org override closes agent_context_runtime",
+            {
+                org_id: ORG,
+                tier: "community",
+                licensed_users: null,
+                licensed_repos: null,
+                features: { agent_context_runtime: false },
+                features_override: null,
+                limits_override: null,
+                expires_at: null,
+                is_valid: true,
+                limits: {},
+            },
+        ],
+        [
+            "the license is no longer valid",
+            {
+                org_id: ORG,
+                tier: "team",
+                licensed_users: 10,
+                licensed_repos: 10,
+                features: { agent_context_runtime: true },
+                features_override: null,
+                limits_override: null,
+                expires_at: "2026-10-01T00:00:00Z",
+                is_valid: false,
+                limits: {},
+            },
+        ],
+    ])(
+        "Given the organization's entitlement has lapsed (%s), when approving, then it is refused 403 and ACR is never called",
+        async (_n, entitlement) => {
+            server.use(
+                http.get(`${OPS}/api/v1/licensing/entitlements/:orgId`, () =>
+                    HttpResponse.json(entitlement),
+                ),
+            );
+            const response = await deviceApprove(["*"]);
+            expect(response.status).toBe(403);
+            expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+                "not_entitled",
+            );
+            expect(issueAsks()).toHaveLength(1);
+            expect(observed.acrBodies).toEqual([]);
+        },
+    );
+
     it.each([
         ["no transport", null],
         ["a 503 from the decision point", (async () => ({ status: 503, body: "" })) as Transport],
