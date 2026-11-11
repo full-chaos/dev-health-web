@@ -213,7 +213,7 @@ describe("jwt callback on login", () => {
     });
 });
 
-describe("permissions pass through from the sign-in answer to the session", () => {
+describe("permissions of the sign-in answer are not read", () => {
     type Session = (p: {
         session: { user: Record<string, unknown> };
         token: Record<string, unknown>;
@@ -221,39 +221,26 @@ describe("permissions pass through from the sign-in answer to the session", () =
     const sessionCb = (): Session =>
         (nextAuthConfig.value as { callbacks: { session: Session } }).callbacks.session;
 
-    // The value is read from the base 3348b611 code: authorize passed `data.user.permissions` as it
-    // came, jwt copied `user.permissions` to the token, session copied it to `session.user`.
-    async function signIn(userPermissions: { present: boolean; value?: unknown }) {
-        const answerUser: Record<string, unknown> = { ...user };
-        if (userPermissions.present) answerUser.permissions = userPermissions.value;
-        answer(() => json(200, { ...body(ACCESS), user: answerUser }));
+    it("drops permissions at authorize, the token and the session", async () => {
+        answer(() =>
+            json(200, { ...body(ACCESS), user: { ...user, permissions: ["read", "write"] } }),
+        );
         const authorized = await authorize()(creds);
         const token = await jwt()({ token: {}, user: authorized as Record<string, unknown> });
         const session = await sessionCb()({ session: { user: {} }, token });
-        return { authorized, token, session };
-    }
-
-    it("carries a non-empty permissions array from the answer to authorize, the token and the session", async () => {
-        const { authorized, token, session } = await signIn({
-            present: true,
-            value: ["read", "write"],
-        });
-        expect(authorized?.permissions).toEqual(["read", "write"]);
-        expect(token.permissions).toEqual(["read", "write"]);
-        expect(session.user.permissions).toEqual(["read", "write"]);
-    });
-
-    it("carries an empty permissions array as an empty array", async () => {
-        const { authorized, token, session } = await signIn({ present: true, value: [] });
-        expect(authorized?.permissions).toEqual([]);
-        expect(token.permissions).toEqual([]);
-        expect(session.user.permissions).toEqual([]);
-    });
-
-    it("leaves permissions undefined at every step when the answer has none, as the base did", async () => {
-        const { authorized, token, session } = await signIn({ present: false });
         expect(authorized?.permissions).toBeUndefined();
         expect(token.permissions).toBeUndefined();
+        expect(session.user.permissions).toBeUndefined();
+    });
+
+    it("signs in the same with the field ABSENT from the answer: the identity fields arrive, permissions stay undefined", async () => {
+        answer(() => json(200, { ...body(ACCESS), user }));
+        const authorized = await authorize()(creds);
+        const token = await jwt()({ token: {}, user: authorized as Record<string, unknown> });
+        const session = await sessionCb()({ session: { user: {} }, token });
+        expect(authorized?.id).toBe(user.id);
+        expect(token.id).toBe(user.id);
+        expect(session.user.id).toBe(user.id);
         expect(session.user.permissions).toBeUndefined();
     });
 });

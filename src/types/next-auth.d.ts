@@ -13,7 +13,6 @@ declare module "next-auth" {
             real_org_id?: string;
             role?: string;
             is_superuser?: boolean;
-            permissions?: string[];
             needs_onboarding?: boolean;
             /** True for the sign-in that created the account (social sign-in only). */
             is_new_user?: boolean;
@@ -35,7 +34,6 @@ declare module "next-auth" {
         org_id?: string;
         role?: string;
         is_superuser?: boolean;
-        permissions?: string[];
         needs_onboarding?: boolean;
         access_token?: string;
         refresh_token?: string;
@@ -58,7 +56,6 @@ declare module "next-auth/jwt" {
         org_id?: string;
         role?: string;
         is_superuser?: boolean;
-        permissions?: string[];
         needs_onboarding?: boolean;
         is_new_user?: boolean;
         access_token?: string;

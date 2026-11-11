@@ -618,14 +618,14 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.sid).toBe("ses_AfterRefreshAAAAAAAAAAA");
     });
 
-    it("(e9) permissions and is_new_user of the token are untouched by a refresh, as before", async () => {
+    it("(e9) is_new_user of the token is untouched by a refresh, as before", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(rotatedAnswer()));
         const result = await getJwtCallback()({
-            token: refreshDueToken({ permissions: ["read"], is_new_user: true }),
+            token: refreshDueToken({ is_new_user: true }),
             user: null,
             account: null,
         });
-        expect(result.permissions).toEqual(["read"]);
+        expect(result.permissions).toBeUndefined();
         expect(result.is_new_user).toBe(true);
     });
 

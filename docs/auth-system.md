@@ -100,7 +100,6 @@ is watched.
 - `access_token`: Backend API bearer token — **server only** (see below)
 - `role`: User's primary role (e.g., "admin", "viewer")
 - `is_superuser`: Boolean flag for global access
-- `permissions`: Array of specific permission strings
 
 **The Ops token never reaches page JS (CHAOS-12088).** Server code (`auth()`, `src/proxy.ts`,
 route handlers, server actions) reads `session.access_token` from the in-process session. The
