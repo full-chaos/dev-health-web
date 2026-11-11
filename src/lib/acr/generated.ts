@@ -19,6 +19,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         ),
         ...(
             | "context:read"
@@ -28,6 +29,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         )[],
     ];
     created_at: string;

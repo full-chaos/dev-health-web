@@ -1,9 +1,9 @@
 {
-  "source_commit": "93c40dd8061c0876ec3363cd89b0fed283735248",
+  "source_commit": "4615b25fd72257e21c4e81a3235b128efeae2a9a",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "a5f5dbed4d12d2a4914789ffdeea212e88b0e014eac11d828bfa314140b06b1d"
+      "sha256": "6b142944d4d9857b677588dd1b482dba3bd0533914c27bb2505f904477c7dd61"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "34664aeb01756ba4dc36b453dddf98d86d76682cd37f06d2a1f6819de6781012"
+      "sha256": "29cd26837cff0d99b790461023b7519bd4d69f55c8c44b6c67d16058f0c49827"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
