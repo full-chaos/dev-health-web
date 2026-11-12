@@ -4,7 +4,7 @@
 // signers emit now. ACR (pair check) and ops (policy decision point) verify the same file with their
 // real Go verifiers. Refresh: UPDATE_VECTORS=1 pnpm vitest run src/lib/acr/__tests__/approver-vector.test.ts
 import { createPrivateKey, createPublicKey } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -158,5 +158,38 @@ describe("approver reference vector", () => {
         if (process.env.UPDATE_VECTORS === "1") writeFileSync(VECTOR_FILE, built);
         // Compared as JSON: the formatter may re-wrap the file; every token string must be equal.
         expect(JSON.parse(readFileSync(VECTOR_FILE, "utf8"))).toEqual(JSON.parse(built));
+    });
+
+    it("names its seed and public key only in tests", () => {
+        const needles = [SEED.toString("hex"), String(publicJwk.x)];
+        const skipDirs = new Set([
+            ".git",
+            ".next",
+            "__tests__",
+            "build",
+            "coverage",
+            "node_modules",
+            "out",
+        ]);
+        const isTest = (name: string) => /\.(test|spec)\.[cm]?[jt]sx?$/u.test(name);
+        const hits: string[] = [];
+        let scanned = 0;
+        const walk = (dir: string) => {
+            for (const entry of readdirSync(dir, { withFileTypes: true })) {
+                const file = join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    if (!skipDirs.has(entry.name)) walk(file);
+                    continue;
+                }
+                if (!entry.isFile() || isTest(entry.name) || statSync(file).size > 8 * 1024 * 1024)
+                    continue;
+                const text = readFileSync(file, "latin1");
+                scanned++;
+                if (needles.some((needle) => text.includes(needle))) hits.push(file);
+            }
+        };
+        walk(join(__dirname, "../../../.."));
+        expect(scanned).toBeGreaterThan(0);
+        expect(hits).toEqual([]);
     });
 });

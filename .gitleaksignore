@@ -7,3 +7,14 @@ src/lib/__tests__/authSso.verify.test.ts:generic-api-key:168
 # throwaway-key fixtures from the ops minter (CHAOS-13105 harness), not secrets
 src/app/api/auth/[...nextauth]/__tests__/session-cookie-bytes.test.ts:jwt:37
 src/app/api/auth/[...nextauth]/__tests__/session-cookie-bytes.test.ts:jwt:39
+# cross-implementation test vector signed with the public test seed; no deployed verifier trusts this key
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:32
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:33
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:43
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:44
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:54
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:55
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:65
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:66
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:76
+src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:77
