@@ -78,6 +78,8 @@ function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: strin
                   `${IDP}/userinfo`,
                   "-jwks-uri",
                   `${IDP}/jwks`,
+                  "-allowed-domains",
+                  idpDomain,
               ]
             : [
                   "-entity-id",
@@ -90,6 +92,8 @@ function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: strin
                   `urn:live-e2e:sp:${suffix}`,
                   "-acs-base",
                   WEB,
+                  "-allowed-domains",
+                  idpDomain,
               ];
     let out = "";
     try {
@@ -229,20 +233,28 @@ test.describe("@auth-sso single sign-on", () => {
         await expect(page).toHaveURL(/\/auth\/signin(?:\?|$)/u);
     });
 
-    test("OIDC and SAML: a second IdP user signs in as their own account", async ({
+    test("OIDC and SAML: an IdP user outside the allowed domains is refused", async ({ page }) => {
+        // A restart gives the IdP a new SAML key: a second SAML provider is seeded after it.
+        restartIdp(`mallory-${suffix}@other-domain.example.com`, oidcId);
+        const samlTwo = seedProvider(ownerEmail, "saml", `live-saml2-${suffix}`);
+        await startSso(page, "oidc", oidcId);
+        await expectRefused(page);
+        await startSso(page, "saml", samlTwo);
+        await expectRefused(page);
+    });
+
+    test("OIDC and SAML: a second IdP user in the allowed domain signs in as their own account", async ({
         page,
         browser,
     }) => {
-        // The seeded providers carry no domain filter (the verb stores an empty list), so this is not a refusal cell. A restart
-        // gives the IdP a new SAML key: a second SAML provider is seeded after it.
         restartIdp(idpEmail("bob"), oidcId);
-        const samlTwo = seedProvider(ownerEmail, "saml", `live-saml2-${suffix}`);
+        const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`);
         await startSso(page, "oidc", oidcId);
         await expectSignedInAs(page, idpEmail("bob"));
         const context = await browser.newContext({ baseURL: WEB, ignoreHTTPSErrors: true });
         try {
             const other = await context.newPage();
-            await startSso(other, "saml", samlTwo);
+            await startSso(other, "saml", samlThree);
             await expectSignedInAs(other, idpEmail("bob"));
         } finally {
             await context.close();
