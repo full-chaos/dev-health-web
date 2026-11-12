@@ -112,7 +112,13 @@ const input = (read: "context" | "evidence", selectedRepository?: string) => ({
     ...(selectedRepository === undefined ? {} : { selectedRepository }),
 });
 
-const cell = (sw: string, reader: Reader, count: number, result: string, log: string): void => {
+const cell = (
+    sw: string,
+    reader: Reader | "impersonating reader",
+    count: number,
+    result: string,
+    log: string,
+): void => {
     if (process.env.CELL_LOG)
         appendFileSync(
             process.env.CELL_LOG,
@@ -282,6 +288,9 @@ describe("web read path: the ops read listing", () => {
                     (entry) => entry.fields["module"] === "acr-read-listing",
                 );
                 expect(line?.fields).toMatchObject({ reason, route: "context" });
+                expect(
+                    seam.logs.filter((entry) => entry.fields["module"] === "acr-read-listing"),
+                ).toHaveLength(1);
             },
         );
 
@@ -311,6 +320,152 @@ describe("web read path: the ops read listing", () => {
             });
             const result = await resolveOpsAuthorization(input("context"));
             expect(result.repositoryScopes).toEqual([]);
+        });
+
+        it("a no-access reader with no selected repository gets empty scopes", async () => {
+            installOps(3, { n: 0 });
+            seam.transport = listing("no-grant user", 3, []);
+            const result = await resolveOpsAuthorization(input("context"));
+            expect(result.repositoryScopes).toEqual([]);
+        });
+
+        describe("an impersonating reader (token with an act claim) is answered as the per-key path answers it", () => {
+            const IMPERSONATED = "header.payload.impersonated-token-with-act-claim";
+            type Mode = "org-wide" | "impersonation_denied";
+
+            function pdp(mode: Mode, asked: { action: string; path: string; token: string }[]) {
+                const base = {
+                    schema_version: "authorization_decision.v1",
+                    organization_id: "org-123",
+                    policy_revision: 1,
+                    principal_id: "prn_abc",
+                    expires_at: new Date(Date.now() + 60_000).toISOString(),
+                };
+                const one = (): Record<string, unknown> =>
+                    mode === "org-wide"
+                        ? {
+                              ...base,
+                              decision_id: "dec_" + "A".repeat(26),
+                              allowed: true,
+                              reason_code: "allowed_by_membership_default",
+                              obligations: {
+                                  tenant_scope: "org-123",
+                                  repository_scope: "organization",
+                              },
+                          }
+                        : {
+                              ...base,
+                              decision_id: "dec_" + "A".repeat(26),
+                              allowed: false,
+                              reason_code: "impersonation_denied",
+                          };
+                const transport: Transport = async (call) => {
+                    const body = JSON.parse(call.body) as {
+                        action?: string;
+                        principal?: { reference?: string; access_token?: string };
+                        requests?: { action: string }[];
+                    };
+                    const actions = body.requests?.map((r) => r.action) ?? [body.action ?? ""];
+                    for (const action of actions) {
+                        asked.push({
+                            action,
+                            path: call.path,
+                            token: call.body.includes(IMPERSONATED) ? "own" : "other",
+                        });
+                    }
+                    if (call.path === "/v1/authorize:batch") {
+                        return {
+                            status: 200,
+                            body: JSON.stringify({
+                                schema_version: "authorization_batch_response.v1",
+                                decisions: (body.requests ?? []).map((_, index) => ({
+                                    decision: one(),
+                                    index,
+                                })),
+                            }),
+                        };
+                    }
+                    return { status: 200, body: JSON.stringify(one()) };
+                };
+                return transport;
+            }
+
+            it.each(["context", "evidence"] as const)(
+                "org-wide allow, %s read: ON listing = ['*'] of the same set the per-key path allows; read action only, never credential.issue",
+                async (read) => {
+                    const action = read === "evidence" ? "acr.evidence.read" : "acr.context.read";
+                    installOps(3, { n: 0 });
+                    const perKey: { action: string; path: string; token: string }[] = [];
+                    seam.transport = pdp("org-wide", perKey);
+                    const legacy = await resolveOpsAuthorization({
+                        ...input(read),
+                        accessToken: IMPERSONATED,
+                        read: undefined,
+                    });
+                    const listed: { action: string; path: string; token: string }[] = [];
+                    seam.transport = pdp("org-wide", listed);
+                    const result = await resolveOpsAuthorization({
+                        ...input(read),
+                        accessToken: IMPERSONATED,
+                    });
+                    expect(legacy.repositoryScopes).toEqual(repos(3));
+                    expect(result.repositoryScopes).toEqual(["*"]);
+                    expect(listed).toEqual([
+                        { action, path: "/v1/authorize:repositories", token: "own" },
+                    ]);
+                    expect(listed.some((c) => c.action === "acr.credential.issue")).toBe(false);
+                    expect(perKey.some((c) => c.action === "acr.credential.issue")).toBe(false);
+                    cell(
+                        `on/${read}`,
+                        "impersonating reader",
+                        3,
+                        "200 scopes=[*] (per-key: 3 names)",
+                        "none",
+                    );
+                },
+            );
+
+            it.each(["context", "evidence"] as const)(
+                "impersonation_denied, %s read: same refusal as the per-key path (empty scopes; selected repository 404), no 503",
+                async (read) => {
+                    installOps(3, { n: 0 });
+                    seam.transport = pdp("impersonation_denied", []);
+                    const legacy = await resolveOpsAuthorization({
+                        ...input(read),
+                        accessToken: IMPERSONATED,
+                        read: undefined,
+                    });
+                    const listed = await resolveOpsAuthorization({
+                        ...input(read),
+                        accessToken: IMPERSONATED,
+                    });
+                    expect(legacy.repositoryScopes).toEqual([]);
+                    expect(listed.repositoryScopes).toEqual(legacy.repositoryScopes);
+                    for (const run of [
+                        resolveOpsAuthorization({
+                            ...input(read, repo(0)),
+                            accessToken: IMPERSONATED,
+                            read: undefined,
+                        }),
+                        resolveOpsAuthorization({
+                            ...input(read, repo(0)),
+                            accessToken: IMPERSONATED,
+                        }),
+                    ]) {
+                        await expect(run).rejects.toMatchObject({
+                            code: acrRuntimeErrorCodes.repositoryNotAvailable,
+                            status: 404,
+                        });
+                    }
+                    cell(
+                        `on/${read}`,
+                        "impersonating reader",
+                        3,
+                        "empty scopes / 404 (same as per-key)",
+                        "none",
+                    );
+                },
+            );
         });
 
         it("a named reader selecting a repository outside the list gets 404", async () => {
