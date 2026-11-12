@@ -6,8 +6,9 @@ test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(120_000);
 
 const WEB = "http://127.0.0.1:3002";
-// The fixed user of the stand-in (ops ci/live_e2e_stub/github.json): GitHub id 920001.
-const gitHubEmail = "live-social@example.test";
+// The fixed user of the stand-in (ops ci/live_e2e_stub/github.json): GitHub id 920001. A .test address is refused by the ops
+// e-mail rule (special-use domain), so the fixture and this constant use example.com.
+const gitHubEmail = "live-social@example.com";
 const authorizeUrl = "https://github.com/login/oauth/authorize*";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
@@ -20,6 +21,11 @@ async function sessionBody(page: Page): Promise<SessionBody | undefined> {
     const response = await page.request.get("/api/auth/session");
     if (!response.ok()) return undefined;
     return (await response.json()) as SessionBody;
+}
+
+/** A refused social login must leave no session error behind a successful one. */
+async function expectNoSessionError(page: Page) {
+    expect((await sessionBody(page))?.error, "session.error").toBeUndefined();
 }
 
 async function sessionUser(page: Page): Promise<SessionUser | undefined> {
@@ -120,6 +126,7 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expect
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
+        await expectNoSessionError(page);
         firstUserId = (await sessionUser(page))?.id;
         expect(firstUserId, "session.user.id").toMatch(UUID);
     });
@@ -130,6 +137,7 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expect
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
+        await expectNoSessionError(page);
         const secondUserId = (await sessionUser(page))?.id;
         expect(secondUserId, "session.user.id").toMatch(UUID);
         expect(secondUserId).toBe(firstUserId);
