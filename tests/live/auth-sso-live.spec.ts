@@ -1,4 +1,5 @@
 /** UI single sign-on (OIDC and SAML) against auth-service and the ops IdP stand-in (idpstub). */
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
@@ -20,10 +21,10 @@ test.setTimeout(180_000);
 const WEB = "http://127.0.0.1:3002";
 const IDP = "https://localhost:9443";
 const ownerPassword = "TestPass123!TestPass123!";
-const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+const suffix = `${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
 const allowedDomain = "sso-idp.example.test";
 const clientId = `live-oidc-${suffix}`;
-const clientSecret = `live-secret-${suffix}-${Math.random().toString(36).slice(2)}`;
+const clientSecret = `live-secret-${randomBytes(16).toString("hex")}`;
 const idpEmail = (local: string, domain = allowedDomain) => `${local}-${suffix}@${domain}`;
 
 let ownerToken = "";
