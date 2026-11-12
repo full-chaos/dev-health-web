@@ -14,11 +14,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 type SessionUser = { email?: string; id?: string };
 
-async function sessionUser(page: Page): Promise<SessionUser | undefined> {
+type SessionBody = { user?: SessionUser; error?: string } | null;
+
+async function sessionBody(page: Page): Promise<SessionBody | undefined> {
     const response = await page.request.get("/api/auth/session");
     if (!response.ok()) return undefined;
-    const body = (await response.json()) as { user?: SessionUser } | null;
-    return body?.user;
+    return (await response.json()) as SessionBody;
+}
+
+async function sessionUser(page: Page): Promise<SessionUser | undefined> {
+    return (await sessionBody(page))?.user;
 }
 
 /**
@@ -36,7 +41,12 @@ const approve = (state: string) =>
     `${WEB}/api/auth/callback/github?code=live-code&state=${encodeURIComponent(state)}`;
 
 async function clickGitHub(page: Page) {
+    // The page fetches its CSRF token on load; a click before that cookie is set posts without it (MissingCSRF).
+    const csrf = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/api/auth/csrf" && response.ok(),
+    );
     await page.goto("/auth/signin");
+    await csrf;
     await page.getByRole("button", { name: "Continue with GitHub", exact: true }).click();
 }
 
@@ -53,6 +63,34 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expect(
             page.getByRole("button", { name: "Continue with GitHub", exact: true }),
         ).toBeVisible();
+    });
+
+    // RECORD ONLY (no assertion on the answers): what a browser holding the session of a login the backend refused can reach.
+    test("repro: what a refused social login leaves reachable", async ({ page }) => {
+        await answerAuthorize(page, approve);
+        await clickGitHub(page);
+        await expect
+            .poll(async () => (await sessionBody(page)) !== undefined, { timeout: 60_000 })
+            .toBe(true);
+        await page.waitForTimeout(3_000);
+        const record: Record<string, string> = {};
+        const body = await sessionBody(page);
+        record.session = `user=${String(body?.user !== undefined)} email=${String(
+            body?.user?.email !== undefined,
+        )} id=${String(body?.user?.id !== undefined)} error=${String(body?.error ?? "none")} keys=${Object.keys(body ?? {}).join(",")}`;
+        const dashboard = await page.goto("/dashboard");
+        const landed = new URL(page.url());
+        record.dashboard = `status=${String(dashboard?.status())} path=${landed.pathname} error=${landed.searchParams.get("error") ?? "none"}`;
+        const graphql = await page.request.post("/graphql", {
+            data: { query: "{ __typename }" },
+            headers: { "content-type": "application/json" },
+        });
+        const text = await graphql.text();
+        record.graphql = `status=${String(graphql.status())} bytes=${String(text.length)} errors=${String(text.includes('"errors"'))} data=${String(text.includes('"data"'))}`;
+        for (const [name, answer] of Object.entries(record)) {
+            console.log(`REPRO ${name}: ${answer}`);
+            test.info().annotations.push({ type: `repro-${name}`, description: answer });
+        }
     });
 
     test("the GitHub user signs in and a session names the provider's e-mail", async ({ page }) => {
