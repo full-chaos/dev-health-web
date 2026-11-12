@@ -1,20 +1,11 @@
 /** UI single sign-on (OIDC and SAML) against auth-service and the ops IdP stand-in (idpstub). */
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import {
-    authHeaders,
-    envFault,
-    liveBackendUrl,
-    loginUser,
-    registerUser,
-    stackVerb,
-    testEmail,
-    verifyUserViaStack,
-} from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import { envFault, registerUser, stackVerb, testEmail, verifyUserViaStack } from "./helpers";
 
-// One owner, two providers, one stack: the cells run in order and spend no retries (the budget is small).
+// One owner, seeded providers, one stack: the cells run in order and spend no retries (the budget is small).
 test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(180_000);
 
@@ -22,12 +13,12 @@ const WEB = "http://127.0.0.1:3002";
 const IDP = "https://localhost:9443";
 const ownerPassword = "TestPass123!TestPass123!";
 const suffix = `${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
-const allowedDomain = "sso-idp.example.test";
+const idpDomain = "sso-idp.example.com";
 const clientId = `live-oidc-${suffix}`;
 const clientSecret = `live-secret-${randomBytes(16).toString("hex")}`;
-const idpEmail = (local: string, domain = allowedDomain) => `${local}-${suffix}@${domain}`;
+const idpEmail = (local: string) => `${local}-${suffix}@${idpDomain}`;
 
-let ownerToken = "";
+let ownerEmail = "";
 let oidcId = "";
 let samlId = "";
 let capturedAcs: { body: string; cookie: string } | undefined;
@@ -41,19 +32,11 @@ function stackState(): string {
     return state;
 }
 
-/** The IdP stand-in's current SAML signing certificate (it is generated at every start). */
-function idpSamlCert(): string {
-    return readFileSync(join(stackState(), "idp", "saml-cert.pem"), "utf8");
-}
-
-/** Restart the IdP with one default user. The OIDC redirect allow-list is exact, so it names the provider ids. */
-function restartIdp(email: string, ids?: { oidc: string; saml: string }): void {
-    const redirect = ids
-        ? `${WEB}/api/v1/auth/oidc/${ids.oidc}/callback`
-        : `${WEB}/api/v1/auth/oidc/pending/callback`;
-    const acs = ids
-        ? `${WEB}/api/v1/auth/saml/${ids.saml}/acs`
-        : `${WEB}/api/v1/auth/saml/pending/acs`;
+/**
+ * Start the IdP with one default user. The OIDC redirect allow-list is exact, so it names the OIDC provider id. No -acs-url: the
+ * IdP then accepts any ACS, and the SAML provider is seeded after the start (its certificate is generated at every start).
+ */
+function restartIdp(email: string, oidcProviderId: string): void {
     stackVerb("stop-idp");
     stackVerb(
         "start-idp",
@@ -62,74 +45,71 @@ function restartIdp(email: string, ids?: { oidc: string; saml: string }): void {
         "-client-secret",
         clientSecret,
         "-redirect-uri",
-        redirect,
-        "-acs-url",
-        acs,
+        `${WEB}/api/v1/auth/oidc/${oidcProviderId}/callback`,
         "-user",
-        `sub-${suffix},${email},SSO Live User`,
+        `sub-${email},${email},SSO Live User`,
     );
 }
 
-function providerBody(protocol: "oidc" | "saml", cert: string) {
-    const common = {
-        name: `live-${protocol}-${suffix}`,
-        protocol,
-        auto_provision_users: true,
-        default_role: "member",
-        allowed_domains: [allowedDomain],
-    };
-    return protocol === "oidc"
-        ? {
-              ...common,
-              oidc_config: { client_id: clientId, client_secret: clientSecret, issuer: IDP },
-          }
-        : {
-              ...common,
-              saml_config: {
-                  entity_id: `${IDP}/saml/metadata`,
-                  sso_url: `${IDP}/saml/sso`,
-                  certificate: cert,
-              },
-          };
-}
-
-async function createProvider(
-    request: APIRequestContext,
-    protocol: "oidc" | "saml",
-    cert: string,
-): Promise<string> {
-    const created = await request.post(`${liveBackendUrl}/api/v1/auth/sso/providers`, {
-        headers: authHeaders(ownerToken),
-        data: providerBody(protocol, cert),
-    });
-    expect([200, 201], `create ${protocol} provider: ${String(created.status())}`).toContain(
-        created.status(),
-    );
-    const id = ((await created.json()) as { id?: string }).id ?? "";
-    expect(id).toMatch(/^[0-9a-f-]{36}$/);
-    const activated = await request.post(
-        `${liveBackendUrl}/api/v1/auth/sso/providers/${id}/activate`,
-        {
-            headers: authHeaders(ownerToken),
-        },
-    );
-    expect(activated.status(), `activate ${protocol} provider`).toBe(200);
-    return id;
-}
-
-/** The IdP signs with a new key at every start: register the current certificate with the SAML provider. */
-async function refreshSamlCert(request: APIRequestContext): Promise<void> {
-    const patched = await request.patch(`${liveBackendUrl}/api/v1/auth/sso/providers/${samlId}`, {
-        headers: authHeaders(ownerToken),
-        data: {
-            saml_config: {
-                entity_id: `${IDP}/saml/metadata`,
-                sso_url: `${IDP}/saml/sso`,
-                certificate: idpSamlCert(),
+/**
+ * The provider CRUD routes are not served by go-api (ops internal/api/sso/sso.go:18-20), so a provider is seeded by the ops
+ * stack verb into the organization the admin e-mail owns. The client secret goes by environment, never by argument.
+ * Returns the provider id the verb printed.
+ */
+function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: string): string {
+    const script = process.env.LIVE_E2E_STACK_SCRIPT;
+    const state = stackState();
+    if (!script) {
+        envFault("LIVE_E2E_STACK_SCRIPT names the ops auth stack script");
+        return "";
+    }
+    const args =
+        protocol === "oidc"
+            ? [
+                  "-issuer",
+                  IDP,
+                  "-client-id",
+                  clientId,
+                  "-authorization-endpoint",
+                  `${IDP}/authorize`,
+                  "-token-endpoint",
+                  `${IDP}/token`,
+                  "-userinfo-endpoint",
+                  `${IDP}/userinfo`,
+                  "-jwks-uri",
+                  `${IDP}/jwks`,
+              ]
+            : [
+                  "-entity-id",
+                  `${IDP}/saml/metadata`,
+                  "-sso-url",
+                  `${IDP}/saml/sso`,
+                  "-cert-file",
+                  join(state, "idp", "saml-cert.pem"),
+                  "-sp-entity-id",
+                  `urn:live-e2e:sp:${suffix}`,
+                  "-acs-base",
+                  WEB,
+              ];
+    let out = "";
+    try {
+        out = execFileSync(
+            "bash",
+            [script, "seed-sso-provider", state, adminEmail, protocol, "-name", name, ...args],
+            {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+                timeout: 60_000,
+                env: { ...process.env, SSO_CLIENT_SECRET: clientSecret },
             },
-        },
-    });
-    expect(patched.status(), "update the SAML provider certificate").toBe(200);
+        );
+    } catch {
+        // execFileSync errors carry argv and captured output.
+        throw new Error(`seeding the ${protocol} provider failed`);
+    }
+    const id = /^seeded (?:oidc|saml) provider ([0-9a-f-]{36})$/mu.exec(out)?.[1] ?? "";
+    expect(id, `the ${protocol} seed printed no provider id`).toMatch(/^[0-9a-f-]{36}$/u);
+    return id;
 }
 
 async function sessionEmail(page: Page): Promise<string | undefined> {
@@ -157,8 +137,8 @@ async function expectRefused(page: Page) {
 }
 
 test.describe("@auth-sso single sign-on", () => {
-    test("an organization owner registers an OIDC and a SAML provider", async ({ request }) => {
-        const ownerEmail = testEmail("sso-owner");
+    test("an organization owner has an OIDC and a SAML provider seeded", async ({ request }) => {
+        ownerEmail = testEmail("sso-owner");
         await registerUser(request, ownerEmail, ownerPassword);
         let verified = false;
         try {
@@ -167,18 +147,10 @@ test.describe("@auth-sso single sign-on", () => {
             envFault("Owner verification failed");
         }
         if (!verified) envFault("Owner could not be verified");
-        const login = await loginUser(request, ownerEmail, ownerPassword);
-        ownerToken = typeof login.access_token === "string" ? login.access_token : "";
-        expect(ownerToken, "the owner login gave no access token").not.toBe("");
-
-        // The SAML provider needs the IdP certificate and the redirect allow-list needs the provider ids: start the IdP
-        // once to read the certificate, create both providers, then restart it with the real URLs and register its new key.
-        restartIdp(idpEmail("seed"));
-        const cert = idpSamlCert();
-        oidcId = await createProvider(request, "oidc", cert);
-        samlId = await createProvider(request, "saml", cert);
-        restartIdp(idpEmail("alice"), { oidc: oidcId, saml: samlId });
-        await refreshSamlCert(request);
+        // The owner's own organization is the one register created: the verb seeds into the earliest membership of the e-mail.
+        oidcId = seedProvider(ownerEmail, "oidc", `live-oidc-${suffix}`);
+        restartIdp(idpEmail("alice"), oidcId);
+        samlId = seedProvider(ownerEmail, "saml", `live-saml-${suffix}`);
     });
 
     test("OIDC: the sign-in page takes the provider id and signs the IdP user in", async ({
@@ -257,18 +229,23 @@ test.describe("@auth-sso single sign-on", () => {
         await expect(page).toHaveURL(/\/auth\/signin(?:\?|$)/u);
     });
 
-    test("OIDC and SAML: an IdP user outside the allowed domains is refused", async ({
+    test("OIDC and SAML: a second IdP user signs in as their own account", async ({
         page,
-        request,
+        browser,
     }) => {
-        restartIdp(idpEmail("mallory", "other-domain.example.test"), {
-            oidc: oidcId,
-            saml: samlId,
-        });
-        await refreshSamlCert(request);
+        // The seeded providers carry no domain filter (the verb stores an empty list), so this is not a refusal cell. A restart
+        // gives the IdP a new SAML key: a second SAML provider is seeded after it.
+        restartIdp(idpEmail("bob"), oidcId);
+        const samlTwo = seedProvider(ownerEmail, "saml", `live-saml2-${suffix}`);
         await startSso(page, "oidc", oidcId);
-        await expectRefused(page);
-        await startSso(page, "saml", samlId);
-        await expectRefused(page);
+        await expectSignedInAs(page, idpEmail("bob"));
+        const context = await browser.newContext({ baseURL: WEB, ignoreHTTPSErrors: true });
+        try {
+            const other = await context.newPage();
+            await startSso(other, "saml", samlTwo);
+            await expectSignedInAs(other, idpEmail("bob"));
+        } finally {
+            await context.close();
+        }
     });
 });
