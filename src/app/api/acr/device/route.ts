@@ -141,3 +141,5 @@ export async function POST(request: Request): Promise<NextResponse> {
         );
     }
 }
+
+// Flow and token diagrams: src/lib/acr/device-approval-architecture.md (public page: docs/auth-acr-device-approval.md)

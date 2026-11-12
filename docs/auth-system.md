@@ -10,6 +10,7 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 - **Exports**: `auth`, `handlers`, `signIn`, `signOut`
 - **Provider**: Custom `CredentialsProvider` authenticating against the backend API.
 - **Summary reference** (Auth.js config, authorization, ACR assertion, rollback switches): [auth-web-reference.md](auth-web-reference.md).
+- **ACR device approval** (sequence and token diagrams, the approver decision, why web is in the path): [auth-acr-device-approval.md](auth-acr-device-approval.md).
 
 ## Authentication Flow
 

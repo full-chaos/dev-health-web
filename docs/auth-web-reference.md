@@ -111,6 +111,8 @@ Web signs an assertion for the Agent Context Runtime (ACR) service. It is sent a
 Key rotation order and the drill: [auth-endpoint-profiles.md](auth-endpoint-profiles.md), section
 "Rotating the web assertion key".
 
+The device approval flow and the approver decision: [auth-acr-device-approval.md](auth-acr-device-approval.md).
+
 ## 4. Rollback
 
 Each switch below is read per request from the server environment. In the deploy chart they are
