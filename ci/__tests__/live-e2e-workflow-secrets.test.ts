@@ -159,7 +159,7 @@ describe("live-e2e workflow enables SSO only for the auth-sso tier", () => {
         );
     });
 
-    it("carries no licence, JIT or SSO state key in a workflow value or a repo values file", () => {
+    it("carries no licence, JIT, SSO switch or SSO state key value in the workflow file", () => {
         for (const needle of [
             "AUTH_SSO_JIT",
             "AUTH_SSO_STATE_KEY",

@@ -98,7 +98,7 @@ async function createProvider(
     protocol: "oidc" | "saml",
     cert: string,
 ): Promise<string> {
-    const created = await request.post(`${liveBackendUrl}/api/v1/sso/providers`, {
+    const created = await request.post(`${liveBackendUrl}/api/v1/auth/sso/providers`, {
         headers: authHeaders(ownerToken),
         data: providerBody(protocol, cert),
     });
@@ -107,16 +107,19 @@ async function createProvider(
     );
     const id = ((await created.json()) as { id?: string }).id ?? "";
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
-    const activated = await request.post(`${liveBackendUrl}/api/v1/sso/providers/${id}/activate`, {
-        headers: authHeaders(ownerToken),
-    });
+    const activated = await request.post(
+        `${liveBackendUrl}/api/v1/auth/sso/providers/${id}/activate`,
+        {
+            headers: authHeaders(ownerToken),
+        },
+    );
     expect(activated.status(), `activate ${protocol} provider`).toBe(200);
     return id;
 }
 
 /** The IdP signs with a new key at every start: register the current certificate with the SAML provider. */
 async function refreshSamlCert(request: APIRequestContext): Promise<void> {
-    const patched = await request.patch(`${liveBackendUrl}/api/v1/sso/providers/${samlId}`, {
+    const patched = await request.patch(`${liveBackendUrl}/api/v1/auth/sso/providers/${samlId}`, {
         headers: authHeaders(ownerToken),
         data: {
             saml_config: {
@@ -224,6 +227,20 @@ test.describe("@auth-sso single sign-on", () => {
 
     test("OIDC: a callback with a forged code and state is refused", async ({ page }) => {
         await page.goto(`/api/v1/auth/oidc/${oidcId}/callback?code=forged&state=forged`);
+        await expectRefused(page);
+    });
+
+    test("OIDC: a forged code with the real state of a started flow is refused", async ({
+        page,
+    }) => {
+        await page.route(`${IDP}/authorize*`, (route) => {
+            const query = new URL(route.request().url()).searchParams;
+            const target = new URL(query.get("redirect_uri") ?? "");
+            target.searchParams.set("code", "forged");
+            target.searchParams.set("state", query.get("state") ?? "");
+            return route.fulfill({ status: 302, headers: { location: target.toString() } });
+        });
+        await startSso(page, "oidc", oidcId);
         await expectRefused(page);
     });
 
