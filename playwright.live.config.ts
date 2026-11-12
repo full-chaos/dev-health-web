@@ -9,6 +9,11 @@ const authJourneys =
     process.env.LIVE_AUTH_JOURNEYS === "true" || process.env.LIVE_AUTH_JOURNEYS === "1";
 const AUTH_JOURNEY_SPECS = /auth-(signin|recovery)-live\.spec\.ts/;
 
+// The auth social tier: GitHub sign-in through the ops provider stand-in, in its own job (enable-social edits the runner's
+// hosts file and binds :443).
+const authSocial = process.env.LIVE_AUTH_SOCIAL === "true" || process.env.LIVE_AUTH_SOCIAL === "1";
+const AUTH_SOCIAL_SPECS = /auth-social-live\.spec\.ts/;
+
 const liveBackendUrl =
     process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
@@ -73,13 +78,13 @@ export default defineConfig({
             : { grepInvert: /@guided/ }),
     /* Run onboarding-ui first — it exercises the browser signup form and is
      sensitive to the backend's 3-per-hour register rate limit. */
-    projects: authJourneys
+    projects: authSocial
         ? [
               {
-                  name: "auth-journeys",
-                  testMatch: AUTH_JOURNEY_SPECS,
+                  name: "auth-social",
+                  testMatch: AUTH_SOCIAL_SPECS,
                   timeout: 120_000,
-                  // Reset tokens appear in page URLs; never capture browser artifacts in this tier.
+                  // Authorization codes and state appear in page URLs; never capture browser artifacts in this tier.
                   use: {
                       baseURL: "http://127.0.0.1:3002",
                       headless: true,
@@ -89,66 +94,83 @@ export default defineConfig({
                   },
               },
           ]
-        : webDecisions
+        : authJourneys
           ? [
                 {
-                    name: `web-decisions-${webDecisions}`,
-                    testMatch: decisionsSpec,
-                    timeout:
-                        webDecisions?.startsWith("classes-") ||
-                        webDecisions?.startsWith("admin-users-")
-                            ? 300_000
-                            : 120_000,
-                    use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                    name: "auth-journeys",
+                    testMatch: AUTH_JOURNEY_SPECS,
+                    timeout: 120_000,
+                    // Reset tokens appear in page URLs; never capture browser artifacts in this tier.
+                    use: {
+                        baseURL: "http://127.0.0.1:3002",
+                        headless: true,
+                        trace: "off",
+                        screenshot: "off",
+                        video: "off",
+                    },
                 },
             ]
-          : askDev
+          : webDecisions
             ? [
                   {
-                      name: "ask-dev-live",
-                      testMatch: /ask-dev\/.*\.spec\.ts/,
-                      timeout: 120_000,
-                      // No screenshot, trace or video: bearers are on these pages.
-                      use: {
-                          baseURL: askDevWeb,
-                          headless: true,
-                          ignoreHTTPSErrors: true,
-                          screenshot: "off",
-                          trace: "off",
-                          video: "off",
-                      },
+                      name: `web-decisions-${webDecisions}`,
+                      testMatch: decisionsSpec,
+                      timeout:
+                          webDecisions?.startsWith("classes-") ||
+                          webDecisions?.startsWith("admin-users-")
+                              ? 300_000
+                              : 120_000,
+                      use: { baseURL: "http://127.0.0.1:3002", headless: true },
                   },
               ]
-            : [
-                  {
-                      name: "onboarding-ui",
-                      testMatch: /onboarding-ui\.spec\.ts/,
-                      use: { baseURL: "http://127.0.0.1:3002", headless: true },
-                  },
-                  {
-                      name: "live-api",
-                      testIgnore: [
-                          /onboarding-ui\.spec\.ts/,
-                          /impersonation\.spec\.ts/,
-                          /ask-dev\/.*\.spec\.ts/,
-                          /web-decisions(-classes|-admin-users)?\.spec\.ts/,
-                          AUTH_JOURNEY_SPECS,
-                      ],
-                      dependencies: ["onboarding-ui"],
-                      use: { baseURL: "http://127.0.0.1:3002", headless: true },
-                  },
-                  // CHAOS-13327: an impersonation session scopes EVERY token of the shared superuser
-                  // to the target's org while it is live, so the spec that starts one runs alone,
-                  // after every other live spec.
-                  {
-                      name: "live-impersonation",
-                      testMatch: /impersonation\.spec\.ts/,
-                      dependencies: ["live-api"],
-                      use: { baseURL: "http://127.0.0.1:3002", headless: true },
-                  },
-              ],
+            : askDev
+              ? [
+                    {
+                        name: "ask-dev-live",
+                        testMatch: /ask-dev\/.*\.spec\.ts/,
+                        timeout: 120_000,
+                        // No screenshot, trace or video: bearers are on these pages.
+                        use: {
+                            baseURL: askDevWeb,
+                            headless: true,
+                            ignoreHTTPSErrors: true,
+                            screenshot: "off",
+                            trace: "off",
+                            video: "off",
+                        },
+                    },
+                ]
+              : [
+                    {
+                        name: "onboarding-ui",
+                        testMatch: /onboarding-ui\.spec\.ts/,
+                        use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                    },
+                    {
+                        name: "live-api",
+                        testIgnore: [
+                            /onboarding-ui\.spec\.ts/,
+                            /impersonation\.spec\.ts/,
+                            /ask-dev\/.*\.spec\.ts/,
+                            /web-decisions(-classes|-admin-users)?\.spec\.ts/,
+                            AUTH_JOURNEY_SPECS,
+                            AUTH_SOCIAL_SPECS,
+                        ],
+                        dependencies: ["onboarding-ui"],
+                        use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                    },
+                    // CHAOS-13327: an impersonation session scopes EVERY token of the shared superuser
+                    // to the target's org while it is live, so the spec that starts one runs alone,
+                    // after every other live spec.
+                    {
+                        name: "live-impersonation",
+                        testMatch: /impersonation\.spec\.ts/,
+                        dependencies: ["live-api"],
+                        use: { baseURL: "http://127.0.0.1:3002", headless: true },
+                    },
+                ],
     // One stack, shared state and a real ACR: one worker, in order.
-    ...(askDev || webDecisions || authJourneys ? { workers: 1 } : {}),
+    ...(askDev || webDecisions || authJourneys || authSocial ? { workers: 1 } : {}),
     webServer: askDev
         ? []
         : [
