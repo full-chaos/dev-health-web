@@ -108,3 +108,42 @@ describe("a refused social sign-in (CHAOS-13642)", () => {
         expect(text).not.toContain(PROVIDER_TOKEN);
     });
 });
+
+// Auth.js passes an account only together with a user, and the user clears the error; these
+// inputs pin, at unit level, that only a social account with a provider token drops the token.
+describe("a token with an error outside a social sign-in keeps its user (CHAOS-13642)", () => {
+    const withError = () => ({
+        id: "user-1",
+        sub: "user-1",
+        email: EMAIL,
+        access_token: "old-access",
+        refresh_token: "old-refresh",
+        error: "refresh_unavailable",
+        expires_at: Date.now() + 3600_000,
+        last_validated: Date.now(),
+    });
+
+    it.each([
+        ["no account (a session read)", undefined],
+        [
+            "a credentials account",
+            {
+                provider: "credentials",
+                type: "credentials",
+                providerAccountId: "user-1",
+                access_token: "x",
+            },
+        ],
+        ["an sso account", { provider: "sso", type: "credentials", providerAccountId: "user-1" }],
+    ])("%s", async (_name, account) => {
+        fetchSpy.mockClear();
+        const out = await jwt()({ token: withError(), user: null, account });
+        expect(out).toMatchObject({
+            id: "user-1",
+            email: EMAIL,
+            refresh_token: "old-refresh",
+            error: "refresh_unavailable",
+        });
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+});
