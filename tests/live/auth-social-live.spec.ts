@@ -60,6 +60,7 @@ test.describe("@auth-social GitHub sign-in", () => {
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
         firstUserId = (await sessionUser(page))?.id;
+        expect(typeof firstUserId === "string" && firstUserId !== "", "session.user.id").toBe(true);
     });
 
     test("signing in again as the same GitHub user is the same account", async ({ page }) => {
@@ -68,7 +69,11 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expect
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
-        expect((await sessionUser(page))?.id).toBe(firstUserId);
+        const secondUserId = (await sessionUser(page))?.id;
+        expect(typeof secondUserId === "string" && secondUserId !== "", "session.user.id").toBe(
+            true,
+        );
+        expect(secondUserId).toBe(firstUserId);
     });
 
     test("a provider answer with an error is refused and no session starts", async ({ page }) => {
