@@ -10,6 +10,8 @@ const WEB = "http://127.0.0.1:3002";
 const gitHubEmail = "live-social@example.test";
 const authorizeUrl = "https://github.com/login/oauth/authorize*";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
 type SessionUser = { email?: string; id?: string };
 
 async function sessionUser(page: Page): Promise<SessionUser | undefined> {
@@ -60,7 +62,7 @@ test.describe("@auth-social GitHub sign-in", () => {
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
         firstUserId = (await sessionUser(page))?.id;
-        expect(typeof firstUserId === "string" && firstUserId !== "", "session.user.id").toBe(true);
+        expect(firstUserId, "session.user.id").toMatch(UUID);
     });
 
     test("signing in again as the same GitHub user is the same account", async ({ page }) => {
@@ -70,9 +72,7 @@ test.describe("@auth-social GitHub sign-in", () => {
             .poll(async () => (await sessionUser(page))?.email, { timeout: 90_000 })
             .toBe(gitHubEmail);
         const secondUserId = (await sessionUser(page))?.id;
-        expect(typeof secondUserId === "string" && secondUserId !== "", "session.user.id").toBe(
-            true,
-        );
+        expect(secondUserId, "session.user.id").toMatch(UUID);
         expect(secondUserId).toBe(firstUserId);
     });
 
