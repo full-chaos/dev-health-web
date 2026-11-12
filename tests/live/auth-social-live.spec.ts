@@ -90,6 +90,30 @@ test.describe("@auth-social GitHub sign-in", () => {
         }
     });
 
+    // RECORD ONLY: the browser GraphQL client posts to the web origin's /graphql (urqlClient.ts:21,36); src/proxy.ts rewrites it to
+    // the backend with the session bearer. Without following redirects, what does the proxy answer after a refused login?
+    test("repro: the GraphQL client path through the web proxy after a refused login", async ({
+        page,
+    }) => {
+        await answerAuthorize(page, approve);
+        await clickGitHub(page);
+        await expect
+            .poll(async () => (await sessionBody(page)) !== undefined, { timeout: 60_000 })
+            .toBe(true);
+        await page.waitForTimeout(3_000);
+        const answer = await page.request.post("/graphql", {
+            data: { query: "{ __typename }" },
+            headers: { "content-type": "application/json" },
+            maxRedirects: 0,
+        });
+        const headers = answer.headers();
+        const text = await answer.text();
+        const location = headers.location ? new URL(headers.location, WEB).pathname : "none";
+        const line = `status=${String(answer.status())} location=${location} content-type=${headers["content-type"] ?? "none"} bytes=${String(text.length)} data=${String(text.includes('"data"'))} errors=${String(text.includes('"errors"'))}`;
+        console.log(`REPRO graphql-nofollow: ${line}`);
+        test.info().annotations.push({ type: "repro-graphql-nofollow", description: line });
+    });
+
     test("the GitHub user signs in and a session names the provider's e-mail", async ({ page }) => {
         await answerAuthorize(page, approve);
         await clickGitHub(page);
