@@ -41,12 +41,9 @@ const approve = (state: string) =>
     `${WEB}/api/auth/callback/github?code=live-code&state=${encodeURIComponent(state)}`;
 
 async function clickGitHub(page: Page) {
-    // The page fetches its CSRF token on load; a click before that cookie is set posts without it (MissingCSRF).
-    const csrf = page.waitForResponse(
-        (response) => new URL(response.url()).pathname === "/api/auth/csrf" && response.ok(),
-    );
     await page.goto("/auth/signin");
-    await csrf;
+    // Seed the CSRF cookie in this context first: a click that races its own CSRF fetch posts without it (MissingCSRF).
+    await page.request.get("/api/auth/csrf");
     await page.getByRole("button", { name: "Continue with GitHub", exact: true }).click();
 }
 
