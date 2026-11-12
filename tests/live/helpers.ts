@@ -260,6 +260,45 @@ export function verifyUserViaStack(email: string): boolean {
     return stackVerb("verify-user", email);
 }
 
+/** Read only the latest mail token; child-process diagnostics must never escape this boundary. */
+export function mailTokenViaStack(email: string, kind: "reset" | "verify"): string | null {
+    const script = process.env.LIVE_E2E_STACK_SCRIPT;
+    const state = process.env.LIVE_E2E_STACK_STATE;
+    if (!script || !state) {
+        envFault("mail token stack is not configured");
+        return null;
+    }
+    try {
+        return (
+            execFileSync("bash", [script, "mail-token", state, email, kind], {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+                timeout: 30_000,
+            }).trim() || null
+        );
+    } catch {
+        // execFileSync errors can contain argv and captured output, including credentials.
+        return null;
+    }
+}
+
+/** Poll the sink without printing mail content, optionally waiting for a replacement token. */
+export async function waitForMailToken(
+    email: string,
+    kind: "reset" | "verify",
+    { timeoutMs = 30_000, not }: { timeoutMs?: number; not?: string } = {},
+): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const token = mailTokenViaStack(email, kind);
+        if (token && token !== not) return token;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(250, remaining)));
+    }
+    throw new Error("mail token did not arrive");
+}
+
 /** Make a user a platform admin in auth (stack verb grant-platform-admin, new in ops PR-V). Test setup only. */
 export function grantPlatformAdminViaStack(email: string): boolean {
     return stackVerb("grant-platform-admin", email);

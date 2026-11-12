@@ -10,6 +10,7 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 - **Exports**: `auth`, `handlers`, `signIn`, `signOut`
 - **Provider**: Custom `CredentialsProvider` authenticating against the backend API.
 - **Summary reference** (Auth.js config, authorization, ACR assertion, rollback switches): [auth-web-reference.md](auth-web-reference.md).
+- **ACR device approval** (sequence and token diagrams, the approver decision, why web is in the path): [auth-acr-device-approval.md](auth-acr-device-approval.md).
 
 ## Authentication Flow
 
@@ -99,7 +100,6 @@ is watched.
 - `access_token`: Backend API bearer token — **server only** (see below)
 - `role`: User's primary role (e.g., "admin", "viewer")
 - `is_superuser`: Boolean flag for global access
-- `permissions`: Array of specific permission strings
 
 **The Ops token never reaches page JS (CHAOS-12088).** Server code (`auth()`, `src/proxy.ts`,
 route handlers, server actions) reads `session.access_token` from the in-process session. The

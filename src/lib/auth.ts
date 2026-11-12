@@ -171,7 +171,6 @@ const nextAuth = NextAuth({
                             org_id: login.user.orgId,
                             role: login.user.role,
                             is_superuser: login.user.isSuperuser,
-                            permissions: login.user.permissions as string[] | undefined,
                             needs_onboarding: login.needsOnboarding,
                             access_token: login.accessToken,
                             refresh_token: login.refreshToken,
@@ -311,7 +310,6 @@ const nextAuth = NextAuth({
                 token.org_id = user.org_id;
                 token.role = user.role;
                 token.is_superuser = user.is_superuser;
-                token.permissions = user.permissions;
                 token.needs_onboarding = user.needs_onboarding;
                 token.access_token = user.access_token;
                 token.refresh_token = user.refresh_token;
@@ -377,7 +375,6 @@ const nextAuth = NextAuth({
                         token.org_id = data.user.org_id || undefined;
                         token.role = data.user.role || undefined;
                         token.is_superuser = data.user.is_superuser || false;
-                        token.permissions = [];
                         token.needs_onboarding = data.needs_onboarding ?? false;
                         // Only the exchange response can say the account is new; a client update() never can.
                         token.is_new_user = data.is_new_user === true;
@@ -625,7 +622,6 @@ const nextAuth = NextAuth({
                 }) as string;
                 session.user.role = token.role as string;
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
-                session.user.permissions = token.permissions as string[];
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
                 session.user.is_new_user = token.is_new_user === true;
                 // While a delegated token is set it is the session token (an expired one is refused

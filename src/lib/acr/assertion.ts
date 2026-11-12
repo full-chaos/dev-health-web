@@ -4,6 +4,7 @@ import { createHash, randomUUID, sign, type KeyObject } from "node:crypto";
 
 import type { AcrRuntimeConfig } from "./config";
 
+// Flow and token diagrams for the device approval that uses this assertion: ./device-approval-architecture.md
 type AssertionPermission = "context:read" | "credential:issue" | "evidence:read";
 
 /**

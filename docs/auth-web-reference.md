@@ -25,7 +25,7 @@ Callbacks:
   60 s backend validation, the sealed session handoff (organization switch, password change,
   onboarding) and the impersonation start and stop. It keeps the Ops tokens in the sealed session
   cookie only.
-- `session`: builds `session.user` (`id`, `role`, `is_superuser`, `permissions`, `org_id`,
+- `session`: builds `session.user` (`id`, `role`, `is_superuser`, `org_id`,
   `needs_onboarding`, `is_impersonating`) and the in-process `access_token`. While impersonating,
   `org_id` is the target organization and `real_org_id` is the administrator's. An expired
   delegated token leaves no bearer at all (`session.error = impersonation_ending`).
@@ -110,6 +110,8 @@ Web signs an assertion for the Agent Context Runtime (ACR) service. It is sent a
 
 Key rotation order and the drill: [auth-endpoint-profiles.md](auth-endpoint-profiles.md), section
 "Rotating the web assertion key".
+
+The device approval flow and the approver decision: [auth-acr-device-approval.md](auth-acr-device-approval.md).
 
 ## 4. Rollback
 
