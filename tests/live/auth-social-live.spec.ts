@@ -46,6 +46,10 @@ async function answerAuthorize(page: Page, answer: (state: string) => string) {
 const approve = (state: string) =>
     `${WEB}/api/auth/callback/github?code=live-code&state=${encodeURIComponent(state)}`;
 
+// The stand-in's second user (ops ci/live_e2e_stub/github.json, selected by this code) has an e-mail the ops rule refuses.
+const refuse = (state: string) =>
+    `${WEB}/api/auth/callback/github?code=live-refused&state=${encodeURIComponent(state)}`;
+
 async function clickGitHub(page: Page) {
     await page.goto("/auth/signin");
     // Seed the CSRF cookie in this context first: a click that races its own CSRF fetch posts without it (MissingCSRF).
@@ -68,32 +72,23 @@ test.describe("@auth-social GitHub sign-in", () => {
         ).toBeVisible();
     });
 
-    // RECORD ONLY (no assertion on the answers): what a browser holding the session of a login the backend refused can reach.
-    test("repro: what a refused social login leaves reachable", async ({ page }) => {
-        await answerAuthorize(page, approve);
+    // PIN (CHAOS-13642): a login the backend refuses leaves no identity in the browser's session answer, and /dashboard bounces to
+    // sign-in. The GraphQL answer is only recorded (see the next cell).
+    test("a refused social login leaves a session with no user, e-mail or id", async ({ page }) => {
+        await answerAuthorize(page, refuse);
         await clickGitHub(page);
         await expect
             .poll(async () => (await sessionBody(page)) !== undefined, { timeout: 60_000 })
             .toBe(true);
         await page.waitForTimeout(3_000);
-        const record: Record<string, string> = {};
         const body = await sessionBody(page);
-        record.session = `user=${String(body?.user !== undefined)} email=${String(
-            body?.user?.email !== undefined,
-        )} id=${String(body?.user?.id !== undefined)} error=${String(body?.error ?? "none")} keys=${Object.keys(body ?? {}).join(",")}`;
+        expect(Object.keys(body ?? {}).sort(), "session keys").toEqual(["error", "expires"]);
+        expect(typeof body?.error, "session.error").toBe("string");
         const dashboard = await page.goto("/dashboard");
         const landed = new URL(page.url());
-        record.dashboard = `status=${String(dashboard?.status())} path=${landed.pathname} error=${landed.searchParams.get("error") ?? "none"}`;
-        const graphql = await page.request.post("/graphql", {
-            data: { query: "{ __typename }" },
-            headers: { "content-type": "application/json" },
-        });
-        const text = await graphql.text();
-        record.graphql = `status=${String(graphql.status())} bytes=${String(text.length)} errors=${String(text.includes('"errors"'))} data=${String(text.includes('"data"'))}`;
-        for (const [name, answer] of Object.entries(record)) {
-            console.log(`REPRO ${name}: ${answer}`);
-            test.info().annotations.push({ type: `repro-${name}`, description: answer });
-        }
+        const line = `status=${String(dashboard?.status())} path=${landed.pathname}`;
+        console.log(`REPRO dashboard: ${line}`);
+        expect(landed.pathname).toBe("/auth/signin");
     });
 
     // RECORD ONLY: the browser GraphQL client posts to the web origin's /graphql (urqlClient.ts:21,36); src/proxy.ts rewrites it to
@@ -101,7 +96,7 @@ test.describe("@auth-social GitHub sign-in", () => {
     test("repro: the GraphQL client path through the web proxy after a refused login", async ({
         page,
     }) => {
-        await answerAuthorize(page, approve);
+        await answerAuthorize(page, refuse);
         await clickGitHub(page);
         await expect
             .poll(async () => (await sessionBody(page)) !== undefined, { timeout: 60_000 })
