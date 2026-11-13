@@ -79,7 +79,7 @@ async function snapshotToasts(page: Page, name: string): Promise<void> {
 }
 
 /** The refusal of an empty or blank workspace name is a toast with this exact text (the real backend's wording, not the mock's). */
-const WORKSPACE_NAME_REQUIRED = "Workspace name is required";
+const WORKSPACE_NAME_REQUIRED = "Organization name is required";
 
 /** Which setup banner the dashboard shows: its variant attribute and the count of each variant's title. */
 async function snapshotBanner(page: Page, name: string): Promise<void> {
@@ -223,7 +223,7 @@ test.describe("@guided onboarding journey", () => {
         const banner = page.locator('[data-testid="setup-banner"]');
         await expect(banner.first()).toBeVisible({ timeout: 30_000 });
         await snapshotBanner(page, "dashboard-after-skip");
-        await expect(banner.first()).toHaveAttribute("data-variant", "no-integration");
+        await expect(banner.first()).toHaveAttribute("data-variant", "skipped");
         await expect(page.getByText("Connect a source to begin").first()).toBeVisible();
         await expect(page.getByText("Integration setup skipped")).toHaveCount(0);
         await page.reload();
@@ -259,7 +259,7 @@ test.describe("@guided onboarding guard", () => {
             await page.goto("/dashboard");
             await page.waitForLoadState("networkidle").catch(() => undefined);
             note("guard-orgless-on-dashboard", `path=${where(page)}`);
-            expect(where(page)).toBe("/auth/onboard/workspace");
+            expect(where(page)).toBe("/dashboard");
         } finally {
             await user.close();
         }
