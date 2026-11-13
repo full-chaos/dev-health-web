@@ -219,6 +219,88 @@ describe("gate_web_auth_profiles: baseline", () => {
     });
 });
 
+describe("gate_web_auth_profiles: reachable_validators flags", () => {
+    const withEntry = (entry: Record<string, unknown>) => {
+        const b = baseline();
+        (b.doc.rows[0] as EndpointProfileRow).reachable_validators = [
+            {
+                description: "proxy.ts's session gate also runs ahead.",
+                anchor: null,
+                is_intended_validator: false,
+                ...entry,
+            },
+        ];
+        return b;
+    };
+    const flagViolations = (entry: Record<string, unknown>) =>
+        runGate(makeInputs(withEntry(entry))).filter((v) => v.rule === "reachable_validator_flags");
+
+    it("accepts an earlier auth gate and a foreign-class validator", () => {
+        expect(flagViolations({ earlier_auth_gate: true, foreign_class_validator: false })).toEqual(
+            [],
+        );
+        expect(flagViolations({ earlier_auth_gate: false, foreign_class_validator: true })).toEqual(
+            [],
+        );
+    });
+
+    it("accepts both false on the intended validator", () => {
+        expect(
+            flagViolations({
+                is_intended_validator: true,
+                earlier_auth_gate: false,
+                foreign_class_validator: false,
+            }),
+        ).toEqual([]);
+    });
+
+    it("fails the retired reachable_but_not_owner key", () => {
+        const v = flagViolations({
+            earlier_auth_gate: true,
+            foreign_class_validator: false,
+            reachable_but_not_owner: true,
+        });
+        expect(v.some((x) => x.detail.includes("retired key"))).toBe(true);
+    });
+
+    it.each(["earlier_auth_gate", "foreign_class_validator"])("fails a missing %s", (missing) => {
+        const entry: Record<string, unknown> = {
+            earlier_auth_gate: true,
+            foreign_class_validator: false,
+        };
+        delete entry[missing];
+        expect(flagViolations(entry).some((x) => x.detail.includes(missing))).toBe(true);
+    });
+
+    it("fails a non-boolean flag", () => {
+        const v = flagViolations({ earlier_auth_gate: "true", foreign_class_validator: false });
+        expect(v.some((x) => x.detail.includes("must be a boolean"))).toBe(true);
+    });
+
+    it("fails both flags true", () => {
+        const v = flagViolations({ earlier_auth_gate: true, foreign_class_validator: true });
+        expect(v.some((x) => x.detail.includes("sets both"))).toBe(true);
+    });
+
+    it("fails both flags false on a non-intended validator", () => {
+        const v = flagViolations({ earlier_auth_gate: false, foreign_class_validator: false });
+        expect(v.some((x) => x.detail.includes("not the intended validator"))).toBe(true);
+    });
+
+    it("the real inventory holds the rule: 171 entries, each an earlier auth gate", () => {
+        const doc = JSON.parse(
+            readFileSync(resolve(WEB_ROOT, "contracts/auth/v1/endpoint-profiles.web.json"), "utf8"),
+        ) as { rows: { reachable_validators?: Record<string, unknown>[] }[] };
+        const entries = doc.rows.flatMap((r) => r.reachable_validators ?? []);
+        expect(entries.length).toBe(171);
+        for (const e of entries) {
+            expect(e.earlier_auth_gate).toBe(true);
+            expect(e.foreign_class_validator).toBe(false);
+            expect("reachable_but_not_owner" in e).toBe(false);
+        }
+    });
+});
+
 describe("gate_web_auth_profiles: each failure class fires on a seeded violation", () => {
     // --- merge-gate fixes: three classes this gate accepted before -------
     //
@@ -407,8 +489,9 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
                 {
                     description: "proxy.ts's session gate also runs ahead.",
                     anchor: { path: "src/proxy.ts", line, line_end: lineEnd },
+                    earlier_auth_gate: true,
+                    foreign_class_validator: false,
                     is_intended_validator: false,
-                    reachable_but_not_owner: true,
                 },
             ];
             return b;
