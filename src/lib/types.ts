@@ -251,7 +251,7 @@ export type HomeResponse = {
     limiting_factor?: LimitingFactor;
     data_confidence?: DataConfidence;
     scope_data_confidence?: ScopeDataConfidence;
-    /** Why the named repositories matched nothing (e.g. repository_not_in_team, repository_not_found); null: none. Absent: an older backend. Unknown values pass through. */
+    /** Why the named repositories matched nothing (e.g. repository_not_in_team, repository_not_found, service_not_found, developer_not_found); null: none. Absent: an older backend. Unknown values pass through and draw a neutral sentence. */
     filter_empty_reason?: string | null;
     /** Rework distribution by investment theme (CHAOS-2163). Optional for back-compat. */
     rework_theme_allocation?: ReworkThemeAllocation[];
@@ -632,7 +632,8 @@ export type HeatmapCell = {
 };
 
 /** Why a filtered answer is empty (CHAOS-9159); null = not empty because of the filter. */
-export type FilterEmptyReason = "repository_not_in_team" | "repository_not_found";
+export type FilterEmptyReason =
+    "repository_not_in_team" | "repository_not_found" | "service_not_found" | "developer_not_found";
 
 /**
  * What the quadrant and heatmap routes report about the repository filter. Both keys can be null

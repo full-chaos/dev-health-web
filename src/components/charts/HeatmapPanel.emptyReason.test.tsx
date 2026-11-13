@@ -42,22 +42,26 @@ const draw = (initialData: unknown) =>
     );
 
 describe("HeatmapPanel with a served filter-empty reason and axes", () => {
-    it.each(["repository_not_in_team", "repository_not_found"])(
-        "%s draws the reason text, not an empty grid",
-        (reason) => {
-            const { container } = draw(prodShape(reason));
-            expect(container).toHaveTextContent(filterEmptyReasonText(reason) as string);
-            expect(screen.queryByTestId("heatmap-chart")).toBeNull();
-        },
-    );
+    it.each([
+        "repository_not_in_team",
+        "repository_not_found",
+        "service_not_found",
+        "developer_not_found",
+        "something_new",
+    ])("%s draws the reason text, not an empty grid", (reason) => {
+        const { container } = draw(prodShape(reason));
+        expect(container).toHaveTextContent(filterEmptyReasonText(reason) as string);
+        expect(screen.queryByTestId("heatmap-chart")).toBeNull();
+    });
 
     it("a null reason with axes and 0 cells keeps the present behaviour", () => {
         draw(prodShape(null));
         expect(screen.getByTestId("heatmap-chart")).toBeInTheDocument();
     });
 
-    it("an unknown reason keeps the present behaviour", () => {
-        draw(prodShape("something_new"));
-        expect(screen.getByTestId("heatmap-chart")).toBeInTheDocument();
+    it("an unknown reason draws the neutral sentence, not the repository one", () => {
+        const { container } = draw(prodShape("something_new"));
+        expect(container).toHaveTextContent("The selected filter matched nothing.");
+        expect(container).not.toHaveTextContent("repository");
     });
 });

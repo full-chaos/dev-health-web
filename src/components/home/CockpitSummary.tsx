@@ -51,7 +51,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     }
 
     // The served reason a repository filter matched nothing: drawn once, here, in the empty
-    // state. An unknown value or null draws the plain no-data state (CHAOS-9193).
+    // state. Null or absent draws the plain no-data state; an unknown value draws a neutral sentence (CHAOS-9193).
     const reasonText = filterEmptyReasonText(home.filter_empty_reason);
     const reasonEmpty = reasonText ? (
         <section data-testid="cockpit-summary" aria-label="Primary signal">
