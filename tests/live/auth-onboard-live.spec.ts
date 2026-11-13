@@ -69,16 +69,24 @@ async function signIn(page: Page, email: string): Promise<void> {
 
 const where = (page: Page): string => new URL(page.url()).pathname;
 
-/** The visible words of a page area, cut short; labels and messages only (no value of a field). */
-async function snapshot(page: Page, name: string, selector: string): Promise<void> {
-    const text = await page
-        .locator(selector)
-        .first()
-        .innerText({ timeout: 5_000 })
-        .catch(() => "unreadable");
+/** The toasts on screen (the form reports its refusals as toasts, outside <main>). */
+async function snapshotToasts(page: Page, name: string): Promise<void> {
+    const toasts = await page.locator("[data-sonner-toast]").allInnerTexts();
     note(
         name,
-        `path=${where(page)} text=${JSON.stringify(text.replace(/\s+/gu, " ").slice(0, 240))}`,
+        `path=${where(page)} toasts=${JSON.stringify(toasts.map((t) => t.replace(/\s+/gu, " ").slice(0, 160)))}`,
+    );
+}
+
+/** Which setup banner the dashboard shows: its variant attribute and the count of each variant's title. */
+async function snapshotBanner(page: Page, name: string): Promise<void> {
+    const banner = page.locator('[data-testid="setup-banner"]');
+    const variant =
+        (await banner.count()) > 0 ? await banner.first().getAttribute("data-variant") : "none";
+    const count = (text: string) => page.getByText(text).count();
+    note(
+        name,
+        `path=${where(page)} variant=${String(variant)} connect-a-source=${String(await count("Connect a source to begin"))} skipped=${String(await count("Integration setup skipped"))} pending=${String(await count("GitHub connected"))}`,
     );
 }
 
@@ -112,7 +120,7 @@ test.describe("@guided onboarding validation", () => {
         const { page } = user!;
         await page.getByRole("button", { name: "Create Workspace" }).click();
         await page.waitForTimeout(3_000);
-        await snapshot(page, "blank-org-submit", "main");
+        await snapshotToasts(page, "blank-org-submit");
         await expect(page.getByText("Organization name is required")).toBeVisible({
             timeout: 15_000,
         });
@@ -124,7 +132,7 @@ test.describe("@guided onboarding validation", () => {
         await page.getByLabel("Organization Name").fill("   ");
         await page.getByRole("button", { name: "Create Workspace" }).click();
         await page.waitForTimeout(3_000);
-        await snapshot(page, "whitespace-org-submit", "main");
+        await snapshotToasts(page, "whitespace-org-submit");
         await expect(page.getByText("Organization name is required")).toBeVisible({
             timeout: 15_000,
         });
@@ -170,7 +178,7 @@ test.describe("@guided onboarding journey", () => {
         await expect(page.getByRole("button", { name: "Skip for now" })).toBeVisible();
     });
 
-    test("a fresh sign-in after the workspace exists lands on the dashboard (current answer: the integration step is not resumed)", async ({
+    test("a fresh sign-in after the workspace exists lands on the dashboard (by design: the setup banner carries the nudge, not a resumed step)", async ({
         browser,
     }) => {
         const { email } = user!;
@@ -201,7 +209,7 @@ test.describe("@guided onboarding journey", () => {
         await page.getByRole("link", { name: "Go to dashboard" }).click();
         await expect(page).toHaveURL(/\/dashboard/, { timeout: 60_000 });
         await page.waitForTimeout(3_000);
-        await snapshot(page, "dashboard-after-skip", "body");
+        await snapshotBanner(page, "dashboard-after-skip");
         await expect(page.getByText("Integration setup skipped").first()).toBeVisible({
             timeout: 30_000,
         });
