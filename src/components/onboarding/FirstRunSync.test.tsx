@@ -88,6 +88,9 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         expect(triggerSync).toHaveBeenCalledWith("sync-1");
         await screen.findByTestId("first-run-sync-submit-error");
         expect(screen.getByTestId("first-run-sync-submit-error")).toHaveTextContent(
+            "Unable to start sync. Try again.",
+        );
+        expect(screen.getByTestId("first-run-sync-submit-error")).not.toHaveTextContent(
             "Sync service unavailable",
         );
         expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
@@ -262,5 +265,19 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
     it("no integration → connect prompt", () => {
         render(<FirstRunSync status={status({ has_integration: false, sync_status: "none" })} />);
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "connect");
+    });
+
+    it("failed with only last_sync_error → shows the fixed text, never the worker error", () => {
+        render(
+            <FirstRunSync
+                status={status({
+                    sync_status: "failed",
+                    last_sync_error: "worker panic: dial tcp 10.0.0.5:5432 refused",
+                })}
+            />,
+        );
+        const node = screen.getByTestId("first-run-sync-error");
+        expect(node).toHaveTextContent("The first sync didn’t complete. Retry to continue");
+        expect(node).not.toHaveTextContent(/worker panic|10\.0\.0\.5/);
     });
 });

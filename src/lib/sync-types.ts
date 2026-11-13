@@ -83,6 +83,11 @@ export type SyncTriggerOutcome =
 
 const QUARANTINE_REASON_PREFIX = "scheduled sync occurrence quarantined: ";
 
+export const SYNC_START_FAILED_MESSAGE = "Unable to start sync. Try again.";
+
+export const SYNC_LAST_FAILURE_MESSAGE =
+    "The first sync didn’t complete. Retry to continue — your setup is preserved.";
+
 const GENERIC_SYNC_FAILURE = "Sync failed. Check the integration's status and try again.";
 
 const SYNC_FAILURE_TEXT: Record<string, string> = {

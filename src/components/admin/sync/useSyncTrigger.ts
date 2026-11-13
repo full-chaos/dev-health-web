@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerSync } from "@/lib/admin/server";
 import { logger } from "@/lib/logger";
-import { classifySyncTrigger, type SyncStatus } from "@/lib/sync-types";
+import { classifySyncTrigger, SYNC_START_FAILED_MESSAGE, type SyncStatus } from "@/lib/sync-types";
 
 const syncLogger = logger.child({ component: "useSyncTrigger" });
 
@@ -122,7 +122,7 @@ export function useSyncTrigger(
                     setBaselineRefreshToken(undefined);
                     setLiveStatus(null);
                     setIsSyncing(false);
-                    toast.error(`Unable to start sync: ${result.error || "empty response"}`);
+                    toast.error(SYNC_START_FAILED_MESSAGE);
                     return;
                 }
                 // Only a planned run changes freshnessSignal; any other
@@ -148,7 +148,7 @@ export function useSyncTrigger(
                 setLiveStatus(null);
                 setIsSyncing(false);
                 syncLogger.error({ err: error, configId }, "Sync trigger failed");
-                toast.error("Unable to start sync. Try again.");
+                toast.error(SYNC_START_FAILED_MESSAGE);
             }
         })();
     }, [configId, router, freshnessSignal, refreshToken]);

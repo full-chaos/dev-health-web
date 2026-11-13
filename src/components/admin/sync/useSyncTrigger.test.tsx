@@ -95,6 +95,7 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         await waitFor(() => expect(result.current.isSyncing).toBe(false));
         expect(result.current.liveStatus).toBeNull();
         expect(mockRefresh).not.toHaveBeenCalled();
+        expect(toast.error).toHaveBeenCalledWith("Unable to start sync. Try again.");
     });
 
     it("on a thrown trigger error, clears isSyncing/liveStatus immediately so the operator can retry", async () => {
