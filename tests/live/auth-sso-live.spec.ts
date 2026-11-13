@@ -252,6 +252,19 @@ async function sessionEmail(page: Page): Promise<string | undefined> {
     return body?.user?.email;
 }
 
+// DIAG F-5 (throwaway run, not for merge): the JIT organization and role of the session.
+async function diagF5(req: APIRequestContext, who: string): Promise<void> {
+    const response = await req.get("/api/auth/session");
+    const body = response.ok()
+        ? ((await response.json()) as {
+              user?: { org_id?: string; role?: string; id?: string };
+          } | null)
+        : null;
+    console.log(
+        `DIAG f5 ${who} ${JSON.stringify({ org_id: body?.user?.org_id ?? null, role: body?.user?.role ?? null, id: body?.user?.id ?? null })}`,
+    );
+}
+
 async function startSso(page: Page, protocol: "oidc" | "saml", providerId: string) {
     await page.goto("/auth/signin");
     await page.getByLabel("Protocol", { exact: true }).selectOption(protocol);
@@ -291,6 +304,18 @@ test.describe("@auth-sso single sign-on", () => {
         oidcId = seedProvider(ownerEmail, "oidc", `live-oidc-${suffix}`);
         restartIdp(idpEmail("alice"), oidcId);
         samlId = seedProvider(ownerEmail, "saml", `live-saml-${suffix}`);
+        const csrf = await request.get("/api/auth/csrf");
+        const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+        await request.post("/api/auth/callback/credentials", {
+            form: {
+                csrfToken,
+                email: ownerEmail,
+                password: ownerPassword,
+                callbackUrl: "/dashboard",
+            },
+            maxRedirects: 0,
+        });
+        await diagF5(request, "owner");
     });
 
     // NOT PROVEN END TO END: the auth-service OIDC client refuses a loopback IdP by design (ops internal/auth/identity/oidc/discovery.go:26
@@ -332,6 +357,7 @@ test.describe("@auth-sso single sign-on", () => {
         });
         await startSso(page, "saml", samlId);
         await expectSignedInAs(page, idpEmail("alice"));
+        await diagF5(page.request, "alice");
     });
 
     // The replay guard: auth-service SAML marks an assertion id and its flow as used (ops internal/auth/identity/saml/pgstore.go:83-97
@@ -448,5 +474,6 @@ test.describe("@auth-sso single sign-on", () => {
         const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`);
         await startSso(page, "saml", samlThree);
         await expectSignedInAs(page, idpEmail("bob"));
+        await diagF5(page.request, "bob");
     });
 });
