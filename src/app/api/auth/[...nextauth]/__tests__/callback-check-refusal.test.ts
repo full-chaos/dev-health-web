@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const SECRET = "chaos-13653-route-test-secret";
+const SECRET = "route-test-secret-route-test-secret";
 const ORIGIN = "http://localhost:3000";
 const SESSION_COOKIE = "authjs.session-token";
 

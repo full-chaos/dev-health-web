@@ -18,3 +18,5 @@ src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:65
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:66
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:76
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:77
+# the test-only AUTH_SECRET of the OAuth callback refusal cells (line 9 of the commit that added them); no deployed secret
+src/app/api/auth/[...nextauth]/__tests__/callback-check-refusal.test.ts:generic-api-key:9
