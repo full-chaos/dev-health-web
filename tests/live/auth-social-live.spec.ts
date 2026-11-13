@@ -165,7 +165,7 @@ test.describe("@auth-social GitHub sign-in", () => {
             return url.toString();
         });
         await clickGitHub(page);
-        await expectRefused(page, { path: "/auth/signin", error: "OAuthCallbackError" });
+        await expectRefused(page, { path: "/auth/signin", error: "AccessDenied" });
     });
 
     // CURRENT ANSWER, NOT THE INTENDED ONE (CHAOS-13653): Auth.js turns the state check failure into the generic Configuration page

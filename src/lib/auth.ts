@@ -366,7 +366,8 @@ const nextAuth = NextAuth({
                           )
                         : undefined;
                     if (read?.kind === "refused" || read?.kind === "unavailable") {
-                        // An answer that cannot be read is no sign-in.
+                        // An answer that cannot be read is no sign-in: the stored session is left
+                        // as it was.
                         token.error = "social_login_failed";
                     } else if (res.ok) {
                         const data = exchange;
@@ -419,16 +420,6 @@ const nextAuth = NextAuth({
                     authLogger.error({ err: error }, "social login backend call failed");
                     token.error = "social_login_failed";
                 }
-            }
-            // A refused social sign-in is no session (CHAOS-13642): the token keeps the reason only,
-            // nothing that names a user or carries a credential.
-            if (
-                account &&
-                account.provider !== "credentials" &&
-                account.access_token &&
-                token.error
-            ) {
-                return { error: token.error } as JWT;
             }
 
             if (handoff?.kind === "onboardComplete") {
@@ -605,8 +596,6 @@ const nextAuth = NextAuth({
             return token;
         },
         async session({ session, token }) {
-            // A token with no user is a refused sign-in: the session names no user (CHAOS-13642).
-            if (token && !token.id) return { expires: session.expires, error: token.error };
             if (token) {
                 // Computed here from the delegated token on every read; never stored (D6720).
                 const impersonating = isImpersonatingToken(token);
