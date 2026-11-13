@@ -236,9 +236,15 @@ async function expectSignedInAs(page: Page, email: string) {
     await expect.poll(() => sessionEmail(page), { timeout: 90_000 }).toBe(email);
 }
 
-/** A refusal lands on the sign-in page with an sso_* error code and no session. */
+/**
+ * A refusal lands on the sign-in page with the exact error code sso_failed (web src/lib/authSso.ts:79-90: every refusal that is
+ * not 402, 409, a 403 membership_required or a transient status is sso_failed) and no session.
+ */
 async function expectRefused(page: Page) {
-    await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=sso_[a-z_]+/u, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
+    const code = new URL(page.url()).searchParams.get("error");
+    console.log(`DIAG refusal-code: ${String(code)}`);
+    expect(code).toBe("sso_failed");
     expect(await sessionEmail(page)).toBeUndefined();
 }
 
@@ -300,6 +306,9 @@ test.describe("@auth-sso single sign-on", () => {
         await expectSignedInAs(page, idpEmail("alice"));
     });
 
+    // The replay guard: auth-service SAML marks an assertion id and its flow as used (ops internal/auth/identity/saml/pgstore.go:83-97
+    // answer ErrAssertionReplayed; service.go:475-476 maps ErrAssertionReplayed and ErrFlowConsumed to the reason "replayed";
+    // handlers.go:282 refuses it), which the web ACS route turns into error=sso_failed.
     test("SAML: a captured assertion posted again with its own login cookie is refused", async ({
         playwright,
     }) => {
@@ -315,9 +324,20 @@ test.describe("@auth-sso single sign-on", () => {
                 maxRedirects: 0,
             });
             expect(response.status()).toBe(303);
-            expect(response.headers().location ?? "").toMatch(
-                /\/auth\/signin\?(?:.*&)?error=sso_/u,
-            );
+            const location = new URL(response.headers().location ?? "", WEB);
+            console.log(`DIAG replay-code: ${String(location.searchParams.get("error"))}`);
+            expect(location.pathname).toBe("/auth/signin");
+            expect(location.searchParams.get("error")).toBe("sso_failed");
+            const setCookies = response
+                .headersArray()
+                .filter((header) => header.name.toLowerCase() === "set-cookie")
+                .map((header) => header.value);
+            expect(
+                setCookies.some((line) => line.includes("session-token")),
+                "the refused replay set a session cookie",
+            ).toBe(false);
+            const jar = (await replay.storageState()).cookies;
+            expect(jar.some((cookie) => cookie.name.includes("session-token"))).toBe(false);
         } finally {
             await replay.dispose();
         }
