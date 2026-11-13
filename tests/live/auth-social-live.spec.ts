@@ -61,9 +61,9 @@ async function clickGitHub(page: Page) {
 
 /**
  * A refused social sign-in lands on an Auth.js page with an exact code and no session. A provider answer with an error is an
- * OAuthCallbackError on the sign-in page (a client-safe error with kind signIn); a state that cannot be decoded is an InvalidCheck,
- * which Auth.js does not send to the client: it answers Configuration on the error page (@auth/core 0.41.3: errors.js:190-192 and
- * :412-431, index.js:130-143, oauth/checks.js:147).
+ * OAuthCallbackError on the sign-in page (a client-safe error with kind signIn). A failed state or PKCE check, which Auth.js
+ * itself answers as Configuration on the error page, is sent by web's route wrapper to the sign-in page as social_login_failed
+ * (src/lib/authCallbackRefusal.ts).
  */
 async function expectRefused(page: Page, landing: { path: string; error: string }) {
     try {
@@ -168,10 +168,9 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expectRefused(page, { path: "/auth/signin", error: "OAuthCallbackError" });
     });
 
-    // CURRENT ANSWER, NOT THE INTENDED ONE (CHAOS-13653): Auth.js turns the state check failure into the generic Configuration page
-    // instead of the sign-in page with a sign-in error. This cell pins what the product answers today; when the fix lands the
-    // landing changes and this pin changes with it.
-    test("a callback whose state is not the one the sign-in started with is refused (the current answer, not the intended one)", async ({
+    // CHAOS-13653: a callback whose state differs from the started one is a refused request, not a server fault: it lands on the
+    // sign-in page with social_login_failed, with no session.
+    test("a callback whose state is not the one the sign-in started with is refused", async ({
         page,
     }) => {
         await answerAuthorize(
@@ -179,6 +178,6 @@ test.describe("@auth-social GitHub sign-in", () => {
             () => `${WEB}/api/auth/callback/github?code=live-code&state=not-the-state`,
         );
         await clickGitHub(page);
-        await expectRefused(page, { path: "/auth/error", error: "Configuration" });
+        await expectRefused(page, { path: "/auth/signin", error: "social_login_failed" });
     });
 });
