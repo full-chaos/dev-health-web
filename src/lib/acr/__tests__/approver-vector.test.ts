@@ -4,7 +4,8 @@
 // signers emit now. ACR (pair check) and ops (policy decision point) verify the same file with their
 // real Go verifiers. Refresh: UPDATE_VECTORS=1 pnpm vitest run src/lib/acr/__tests__/approver-vector.test.ts
 import { createPrivateKey, createPublicKey } from "node:crypto";
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -161,34 +162,32 @@ describe("approver reference vector", () => {
     });
 
     it("names its seed and public key only in tests", () => {
+        // Only web's own tracked files: a foreign checkout in the workspace (CI puts acr in .acr-source/) holds
+        // its own copy of the vector and is not web's to scan.
+        const root = join(__dirname, "../../../..");
+        const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" })
+            .split("\0")
+            .filter((file) => file !== "");
+        expect(tracked.length).toBeGreaterThan(0);
         const needles = [SEED.toString("hex"), String(publicJwk.x)];
-        const skipDirs = new Set([
-            ".git",
-            ".next",
-            "__tests__",
-            "build",
-            "coverage",
-            "node_modules",
-            "out",
-        ]);
-        const isTest = (name: string) => /\.(test|spec)\.[cm]?[jt]sx?$/u.test(name);
+        const isTest = (file: string) =>
+            file.split("/").includes("__tests__") || /\.(test|spec)\.[cm]?[jt]sx?$/u.test(file);
         const hits: string[] = [];
         let scanned = 0;
-        const walk = (dir: string) => {
-            for (const entry of readdirSync(dir, { withFileTypes: true })) {
-                const file = join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    if (!skipDirs.has(entry.name)) walk(file);
-                    continue;
-                }
-                if (!entry.isFile() || isTest(entry.name) || statSync(file).size > 8 * 1024 * 1024)
-                    continue;
-                const text = readFileSync(file, "latin1");
-                scanned++;
-                if (needles.some((needle) => text.includes(needle))) hits.push(file);
+        for (const file of tracked) {
+            if (isTest(file)) continue;
+            const path = join(root, file);
+            let size: number;
+            try {
+                size = statSync(path).size;
+            } catch {
+                continue; // tracked but deleted in the work tree
             }
-        };
-        walk(join(__dirname, "../../../.."));
+            if (size > 8 * 1024 * 1024) continue;
+            scanned++;
+            if (needles.some((needle) => readFileSync(path, "latin1").includes(needle)))
+                hits.push(file);
+        }
         expect(scanned).toBeGreaterThan(0);
         expect(hits).toEqual([]);
     });
