@@ -94,6 +94,13 @@ async function authorizedRuntime(input: {
         signal: input.signal,
         subject: session.subject,
     });
+    if (authorization.repositoryScopes.length === 0) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.repositoryNotAvailable,
+            "The selected repository is not available.",
+            { status: 404 },
+        );
+    }
     return {
         authorization,
         client: new AcrRuntimeClient(loadAcrRuntimeConfig()),
