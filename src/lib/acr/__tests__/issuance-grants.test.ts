@@ -133,7 +133,9 @@ function pdp(policy: Policy): Transport {
             });
             if (r.action === "acr.credential.issue")
                 return decisionDoc(policy.issue, "allowed_by_role");
-            // The real PDP refuses the "*" repository key (ops evaluate.go: repo-wildcard-key-is-refused).
+            // The listing route answers the "*" question; the per-key route refuses it (ops evaluate.go: repo-wildcard-key-is-refused).
+            if (call.path === "/v1/authorize:repositories")
+                return decisionDoc(policy.read(r.action, "*"), "allowed_by_membership_default");
             if (key === "*") return decisionDoc("deny", "");
             const answer = policy.read(r.action, key);
             // An exact grant's per-key allow names only that key.
@@ -914,11 +916,12 @@ describe("ACR_SCOPES_FROM_GRANTS off", () => {
 });
 
 describe("ACR_SCOPES_FROM_GRANTS on: the context and evidence reads", () => {
-    it("Given an org-wide context.read decision, the context:read assertion carries the catalog list (legacy bytes)", async () => {
+    it('Given an org-wide context.read listing, the context:read assertion carries ["*"] and no catalog is read', async () => {
         await contextPacketRoute(
             post("/api/agent-context/context-packets", { goal: "g", repository: "acme/alpha" }),
         );
-        expect(observed.acrScopes.at(-1)).toEqual(CATALOG);
+        expect(observed.acrScopes.at(-1)).toEqual(["*"]);
+        expect(observed.catalogReads).toBe(0);
         expect(new Set(readAsks().map((a) => a.action))).toEqual(new Set(["acr.context.read"]));
     });
 
@@ -931,7 +934,8 @@ describe("ACR_SCOPES_FROM_GRANTS on: the context and evidence reads", () => {
         await evidenceRoute(new Request(url), {
             params: Promise.resolve({ evidenceRefId: "evref-0001" }),
         });
-        expect(observed.acrScopes.at(-1)).toEqual(CATALOG);
+        expect(observed.acrScopes.at(-1)).toEqual(["*"]);
+        expect(observed.catalogReads).toBe(0);
         expect(new Set(readAsks().map((a) => a.action))).toEqual(new Set(["acr.evidence.read"]));
     });
 });

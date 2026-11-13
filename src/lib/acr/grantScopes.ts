@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import {
     authorize,
     authorizeBatch,
+    authorizeRepositories,
     type AuthorizeDeps,
     type AuthzOutcome,
     type Transport,
@@ -145,6 +146,73 @@ export async function resolveRepositoryDecisions(
         });
     }
     return { orgWide, repositoryScopes: allowed, visibleRepositories: allowed };
+}
+
+/**
+ * What the repository listing says a principal may read under one read action. `refused` and `too_large`
+ * carry the wire reason (or the client failure) so the caller can log it and map it to an answer.
+ */
+export type RepositoryListing =
+    | { readonly kind: "org-wide" }
+    | { readonly kind: "named"; readonly repositories: readonly string[] }
+    | { readonly kind: "none"; readonly reason: string }
+    | { readonly kind: "too_large" }
+    | { readonly kind: "refused"; readonly reason: string; readonly source: "client" | "pdp" };
+
+/** Deny reasons that say "this principal reads nothing here": the per-key reads answer the same. */
+const NO_ACCESS_REASONS: ReadonlySet<string> = new Set([
+    "delegation_invalid",
+    "grant_absent",
+    "grant_expired",
+    "grant_revoked",
+    "impersonation_denied",
+    "no_membership",
+    "org_mismatch",
+    "organization_inactive",
+    "platform_role_absent",
+    "principal_inactive",
+    "repository_not_granted",
+    "role_lacks_action",
+    "role_scope_mismatch",
+    "role_unknown",
+    "service_account_inactive",
+]);
+
+/**
+ * One listing call (`POST /v1/authorize:repositories`): the repositories the principal may read, no catalog read.
+ * An allow with `repository_scope: organization` (or an allowlist holding `*`) is org-wide; an allow with an
+ * allowlist is the principal's own keys (at most 256); an allow with neither member grants nothing (fail
+ * closed). Never a partial list: a client failure or a deny outside the no-access set is `refused`.
+ */
+export async function readRepositoryListing(
+    input: {
+        readonly accessToken: string;
+        readonly action: RepositoryReadAction;
+        readonly orgId: string;
+    },
+    deps: GrantScopeDeps = defaultDeps(),
+): Promise<RepositoryListing> {
+    if (deps.transport === null) throw unavailable();
+    const outcome = await authorizeRepositories(requestFor({ ...input, candidates: [] }, "*"), {
+        timeoutMs: deps.timeoutMs,
+        transport: deps.transport,
+    });
+    if (!outcome.allowed) {
+        if (outcome.source === "client") {
+            return { kind: "refused", reason: outcome.reason, source: "client" };
+        }
+        const reason = outcome.decision.reasonCode;
+        if (reason === "repository_allowlist_too_large") return { kind: "too_large" };
+        return NO_ACCESS_REASONS.has(reason)
+            ? { kind: "none", reason }
+            : { kind: "refused", reason, source: "pdp" };
+    }
+    const obligations = outcome.decision.obligations;
+    if (obligations?.repositoryScope === "organization") return { kind: "org-wide" };
+    const allowlist = obligations?.repositoryAllowlist;
+    if (allowlist === undefined) return { kind: "none", reason: "no_scope_member" };
+    if (allowlist.includes("*")) return { kind: "org-wide" };
+    return { kind: "named", repositories: [...allowlist] };
 }
 
 export type CredentialIssueVerdict = Verdict & {
