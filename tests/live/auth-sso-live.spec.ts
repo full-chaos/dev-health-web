@@ -1,7 +1,8 @@
 /** UI single sign-on (OIDC and SAML) against auth-service and the ops IdP stand-in (idpstub). */
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import {
@@ -36,6 +37,11 @@ let ownerEmail = "";
 let oidcId = "";
 let samlId = "";
 let capturedAcs: { body: string; cookie: string } | undefined;
+let ownerOrgId = "";
+let aliceId = "";
+// One line per signed-in user of this run (org, role, id only): the last cell reads it back and checks it holds no secret.
+const jitLog = join(tmpdir(), `auth-sso-jit-${suffix}.log`);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 function stackState(): string {
     const state = process.env.LIVE_E2E_STACK_STATE;
@@ -252,6 +258,20 @@ async function sessionEmail(page: Page): Promise<string | undefined> {
     return body?.user?.email;
 }
 
+type SessionUser = { email?: string; org_id?: string; role?: string; id?: string };
+
+async function sessionUser(req: APIRequestContext): Promise<SessionUser | undefined> {
+    const response = await req.get("/api/auth/session");
+    if (!response.ok()) return undefined;
+    return ((await response.json()) as { user?: SessionUser } | null)?.user;
+}
+
+function recordJit(who: string, user: SessionUser | undefined): void {
+    const line = `JIT ${who} ${JSON.stringify({ org_id: user?.org_id ?? null, role: user?.role ?? null, id: user?.id ?? null })}`;
+    appendFileSync(jitLog, `${line}\n`);
+    console.log(line);
+}
+
 async function startSso(page: Page, protocol: "oidc" | "saml", providerId: string) {
     await page.goto("/auth/signin");
     await page.getByLabel("Protocol", { exact: true }).selectOption(protocol);
@@ -291,6 +311,24 @@ test.describe("@auth-sso single sign-on", () => {
         oidcId = seedProvider(ownerEmail, "oidc", `live-oidc-${suffix}`);
         restartIdp(idpEmail("alice"), oidcId);
         samlId = seedProvider(ownerEmail, "saml", `live-saml-${suffix}`);
+        // The providers' organization: the seed verb puts them in the owner's earliest membership (ops ssoseedverb.go:105).
+        const csrf = await request.get("/api/auth/csrf");
+        const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+        await request.post("/api/auth/callback/credentials", {
+            form: {
+                csrfToken,
+                email: ownerEmail,
+                password: ownerPassword,
+                callbackUrl: "/dashboard",
+            },
+            maxRedirects: 0,
+        });
+        const owner = await sessionUser(request);
+        recordJit("owner", owner);
+        expect(owner?.email, "the owner password sign-in made no session").toBe(ownerEmail);
+        expect(owner?.role).toBe("owner");
+        expect(owner?.org_id).toMatch(UUID);
+        ownerOrgId = owner?.org_id ?? "";
     });
 
     // NOT PROVEN END TO END: the auth-service OIDC client refuses a loopback IdP by design (ops internal/auth/identity/oidc/discovery.go:26
@@ -332,6 +370,14 @@ test.describe("@auth-sso single sign-on", () => {
         });
         await startSso(page, "saml", samlId);
         await expectSignedInAs(page, idpEmail("alice"));
+        // JIT: a new IdP account joins the PROVIDER's organization (ops internal/auth/identity/saml/pgjit.go:74) with the provider
+        // row's role through SignInRole (pgjit.go:26; the seed verb's default "member").
+        const alice = await sessionUser(page.request);
+        recordJit("alice", alice);
+        expect(alice?.org_id, "alice: the session organization").toBe(ownerOrgId);
+        expect(alice?.role, "alice: the session role").toBe("member");
+        expect(alice?.id).toMatch(UUID);
+        aliceId = alice?.id ?? "";
     });
 
     // The replay guard: auth-service SAML marks an assertion id and its flow as used (ops internal/auth/identity/saml/pgstore.go:83-97
@@ -448,5 +494,34 @@ test.describe("@auth-sso single sign-on", () => {
         const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`);
         await startSso(page, "saml", samlThree);
         await expectSignedInAs(page, idpEmail("bob"));
+        // The same JIT pins as alice (pgjit.go:74 organization, pgjit.go:26 role), as an account of its own.
+        const bob = await sessionUser(page.request);
+        recordJit("bob", bob);
+        expect(bob?.org_id, "bob: the session organization").toBe(ownerOrgId);
+        expect(bob?.role, "bob: the session role").toBe("member");
+        expect(bob?.id).toMatch(UUID);
+        expect(bob?.id, "bob signs in as an account of his own, not alice's").not.toBe(aliceId);
+    });
+
+    test("the JIT lines of this run hold the three users and no secret", async () => {
+        const lines = readFileSync(jitLog, "utf8")
+            .split("\n")
+            .filter((line) => line !== "");
+        expect(lines, "the JIT lines of the owner, alice and bob").toHaveLength(3);
+        const shape =
+            /^JIT (owner|alice|bob) \{"org_id":"[0-9a-f-]{36}","role":"(owner|member)","id":"[0-9a-f-]{36}"\}$/u;
+        for (const line of lines) expect(line).toMatch(shape);
+        const text = lines.join("\n");
+        for (const secret of [
+            ownerPassword,
+            clientSecret,
+            "eyJ",
+            "token",
+            "cookie",
+            "secret",
+            "password",
+        ]) {
+            expect(text.toLowerCase()).not.toContain(secret.toLowerCase());
+        }
     });
 });
