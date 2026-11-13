@@ -22,6 +22,7 @@ import {
     HEADINGS,
     PAGE_SIZE,
 } from "./SyncJobHistory.helpers";
+import { readSkippedDatasets, skippedReasonText } from "@/lib/admin/syncSkippedDatasets";
 import { appPath } from "@/lib/navigation/appPath";
 
 interface SyncJobHistoryProps {
@@ -173,6 +174,11 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {sr
                                         ? `${formatNumber(sr.completed_units)} done · ${formatNumber(sr.failed_units)} failed · ${formatNumber(sr.total_units)} total`
                                         : (job.items_synced ?? "—")}
+                                    {readSkippedDatasets(job.result).map((item) => (
+                                        <div key={item.dataset_key}>
+                                            {item.dataset_key}: {skippedReasonText(item.reason)}
+                                        </div>
+                                    ))}
                                 </td>
                                 <td className="px-3 py-3 whitespace-nowrap text-sm text-foreground">
                                     <ClientTimestamp value={job.started_at} fallback="—" />

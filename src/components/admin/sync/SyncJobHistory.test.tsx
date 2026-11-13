@@ -283,3 +283,46 @@ describe("SyncJobHistory", () => {
         });
     });
 });
+
+describe("SyncJobHistory skipped datasets", () => {
+    const job = (result?: Record<string, unknown>): SyncJob => ({
+        ...buildJobs(1)[0],
+        result,
+    });
+
+    it("shows web text per skipped dataset, never the served message", () => {
+        render(
+            <SyncJobHistory
+                jobs={[
+                    job({
+                        skipped_datasets: [
+                            {
+                                dataset_key: "incidents",
+                                reason: "feature_disabled",
+                                message: "SERVER TEXT",
+                            },
+                        ],
+                    }),
+                ]}
+                configId="cfg-1"
+                testMode
+            />,
+        );
+        expect(screen.getByText("incidents: skipped: feature off")).toBeInTheDocument();
+        expect(screen.queryByText(/SERVER TEXT/)).not.toBeInTheDocument();
+    });
+
+    it("shows nothing new without the key and a fallback for an unknown reason", () => {
+        const { unmount } = render(<SyncJobHistory jobs={[job({})]} configId="cfg-1" testMode />);
+        expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+        unmount();
+        render(
+            <SyncJobHistory
+                jobs={[job({ skipped_datasets: [{ dataset_key: "incidents", reason: "x_y" }] })]}
+                configId="cfg-1"
+                testMode
+            />,
+        );
+        expect(screen.getByText("incidents: skipped")).toBeInTheDocument();
+    });
+});
