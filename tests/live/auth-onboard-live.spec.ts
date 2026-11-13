@@ -202,7 +202,7 @@ test.describe("@guided onboarding journey", () => {
         }
     });
 
-    // CURRENT ANSWER, NOT THE INTENDED ONE: after a real Skip the dashboard shows the no-integration banner ("Connect a source to
+    // CURRENT ANSWER, NOT THE INTENDED ONE (CHAOS-13667): after a real Skip the dashboard shows the no-integration banner ("Connect a source to
     // begin"), never the skipped banner ("Integration setup skipped"). The web derives "skipped" only from `!has_integration &&
     // next_action === "complete"` (src/lib/onboarding/setupSurface.ts:53-56), but the ops setup status answers
     // next_action "connect_integration" whenever no integration is connected and never reads the stored skip
