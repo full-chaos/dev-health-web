@@ -323,7 +323,7 @@ async function readCatalogCandidates(input: {
         const message = (first as { message?: unknown } | undefined)?.message;
         logger.warn(
             {
-                graphqlErrors: Array.isArray(errors) ? errors.length : 0,
+                errorCount: Array.isArray(errors) ? errors.length : 0,
                 graphqlMessage: typeof message === "string" ? message.slice(0, 120) : null,
                 module: "acr-catalog",
                 orgId: input.orgId,

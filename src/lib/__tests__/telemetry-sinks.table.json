@@ -164,7 +164,7 @@
         "sentry": 0
     },
     "src/lib/acr/ops.ts": {
-        "log": 2,
+        "log": 5,
         "sentry": 0
     },
     "src/lib/acr/service.ts": {
