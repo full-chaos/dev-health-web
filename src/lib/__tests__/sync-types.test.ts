@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifySyncTrigger, describeSyncFailure } from "./sync-types";
+import { classifySyncTrigger, describeSyncFailure } from "../sync-types";
 
 const PREFIX = "scheduled sync occurrence quarantined: ";
 const GENERIC = "Sync failed. Check the integration's status and try again.";
