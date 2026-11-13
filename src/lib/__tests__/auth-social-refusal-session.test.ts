@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { encode } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
-const SECRET = "chaos-13642-refusal-test-secret";
+const SECRET = "chaos-13642-refusal-session-test-secret";
 const COOKIE = "authjs.session-token";
 const ORIGIN = "http://localhost:3000";
 const SOCIAL = "/api/v1/auth/social-login";
