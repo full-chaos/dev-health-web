@@ -168,7 +168,10 @@ test.describe("@auth-social GitHub sign-in", () => {
         await expectRefused(page, { path: "/auth/signin", error: "OAuthCallbackError" });
     });
 
-    test("a callback whose state is not the one the sign-in started with is refused", async ({
+    // CURRENT ANSWER, NOT THE INTENDED ONE (CHAOS-13653): Auth.js turns the state check failure into the generic Configuration page
+    // instead of the sign-in page with a sign-in error. This cell pins what the product answers today; when the fix lands the
+    // landing changes and this pin changes with it.
+    test("a callback whose state is not the one the sign-in started with is refused (the current answer, not the intended one)", async ({
         page,
     }) => {
         await answerAuthorize(
