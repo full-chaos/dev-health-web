@@ -76,12 +76,7 @@ function restartIdp(email: string, oidcProviderId: string): void {
  * stack verb into the organization the admin e-mail owns. The client secret goes by environment, never by argument.
  * Returns the provider id the verb printed.
  */
-function seedProvider(
-    adminEmail: string,
-    protocol: "oidc" | "saml",
-    name: string,
-    extra: string[] = [],
-): string {
+function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: string): string {
     const script = process.env.LIVE_E2E_STACK_SCRIPT;
     const state = stackState();
     if (!script) {
@@ -124,17 +119,7 @@ function seedProvider(
     try {
         out = execFileSync(
             "bash",
-            [
-                script,
-                "seed-sso-provider",
-                state,
-                adminEmail,
-                protocol,
-                "-name",
-                name,
-                ...args,
-                ...extra,
-            ],
+            [script, "seed-sso-provider", state, adminEmail, protocol, "-name", name, ...args],
             {
                 encoding: "utf8",
                 stdio: ["ignore", "pipe", "ignore"],
@@ -343,7 +328,8 @@ test.describe("@auth-sso single sign-on", () => {
         expect(owner?.email, "the owner password sign-in made no session").toBe(ownerEmail);
         expect(owner?.role).toBe("owner");
         expect(owner?.org_id).toMatch(UUID);
-        ownerOrgId = owner?.org_id ?? "";
+        // PLANT P2 (throwaway, not for merge): the expected organization is not the providers' organization.
+        ownerOrgId = "00000000-0000-4000-8000-000000000000";
     });
 
     // NOT PROVEN END TO END: the auth-service OIDC client refuses a loopback IdP by design (ops internal/auth/identity/oidc/discovery.go:26
@@ -506,11 +492,7 @@ test.describe("@auth-sso single sign-on", () => {
         page,
     }) => {
         restartIdp(idpEmail("bob"), oidcId);
-        // PLANT P1 (throwaway, not for merge): bob's provider makes admins.
-        const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`, [
-            "-default-role",
-            "admin",
-        ]);
+        const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`);
         await startSso(page, "saml", samlThree);
         await expectSignedInAs(page, idpEmail("bob"));
         // The same JIT pins as alice (pgjit.go:74 organization, pgjit.go:26 role), as an account of its own.
