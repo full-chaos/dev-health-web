@@ -135,12 +135,6 @@ export function useSyncTrigger(
                     setIsSyncing(false);
                 }
                 if (outcome.kind === "failed") {
-                    if (outcome.reasonCode) {
-                        syncLogger.warn(
-                            { configId, reasonCode: outcome.reasonCode },
-                            "Sync trigger answered failed",
-                        );
-                    }
                     toast.error(outcome.message);
                 } else if (outcome.kind === "started") toast.success(outcome.message);
                 else toast.info(outcome.message);
