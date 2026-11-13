@@ -188,7 +188,8 @@ const authServiceLog = () => join(stackState(), "logs", "auth-service.log");
 /** How many lines the auth-service log has now: a cell reads only the lines its own action adds. */
 function logMark(): number {
     try {
-        return readFileSync(authServiceLog(), "utf8").split("\n").length;
+        // The pieces of a log that ends in a newline include one empty trailing piece: it is not a line.
+        return readFileSync(authServiceLog(), "utf8").split("\n").length - 1;
     } catch {
         return 0;
     }
