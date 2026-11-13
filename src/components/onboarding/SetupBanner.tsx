@@ -38,7 +38,7 @@ const CTA_CLASS =
 /**
  * CHAOS-2678 dashboard setup-aware surface. Renders a precise, trust-preserving
  * prompt for each C2 state (no integration → setup empty state; connected but
- * unsynced → distinct sync-pending banner; failed → precise blocker; skipped →
+ * unsynced → distinct sync-pending banner; failed → fixed failure message; skipped →
  * non-blocking banner) and nothing once the org is fully set up. Emits the
  * dashboard-surface funnel event when there is no integration.
  */
