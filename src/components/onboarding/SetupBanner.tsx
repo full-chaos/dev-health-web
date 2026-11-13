@@ -29,6 +29,9 @@ const PENDING_DESCRIPTION: Record<SetupNextAction, string> = {
     complete: "Your first sync is finishing up.",
 };
 
+export const SETUP_BANNER_FAILURE_MESSAGE =
+    "The last sync did not complete. Retry to continue — your setup is preserved.";
+
 const CTA_CLASS =
     "inline-flex items-center justify-center rounded-full border border-(--accent-2)/40 bg-(--accent-2)/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--accent-2) transition hover:bg-(--accent-2)/20";
 
@@ -76,16 +79,12 @@ export function SetupBanner({ status, orgId }: SetupBannerProps) {
     }
 
     if (variant === "sync-failed") {
-        const message =
-            status.blocker ??
-            status.last_sync_error ??
-            "The last sync did not complete. Retry to continue — your setup is preserved.";
         return (
             <section aria-label="Setup status" data-testid="setup-banner" data-variant={variant}>
                 <DataState
                     variant="error"
                     title="Sync could not complete"
-                    message={message}
+                    message={SETUP_BANNER_FAILURE_MESSAGE}
                     action={ctaLink}
                     data-testid="setup-banner-error"
                 />

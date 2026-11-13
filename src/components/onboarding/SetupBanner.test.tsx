@@ -12,7 +12,7 @@ vi.mock("@/lib/onboarding/track", () => ({
     trackOnboardingEventOnce: (...args: unknown[]) => trackOnboardingEventOnce(...args),
 }));
 
-import { SetupBanner } from "./SetupBanner";
+import { SETUP_BANNER_FAILURE_MESSAGE, SetupBanner } from "./SetupBanner";
 
 const baseStatus: SetupStatus = {
     has_integration: false,
@@ -118,7 +118,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(trackOnboardingEventOnce).not.toHaveBeenCalled();
     });
 
-    it("failed → precise blocker from C2 with retry CTA to the sync surface", () => {
+    it("failed → fixed text, never blocker or last_sync_error, with retry CTA to the sync surface", () => {
         render(
             <SetupBanner
                 status={status({
@@ -132,15 +132,16 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
 
         const banner = screen.getByTestId("setup-banner");
         expect(banner).toHaveAttribute("data-variant", "sync-failed");
-        // Blocker is preferred over last_sync_error.
-        expect(screen.getByText("GitHub installation token expired.")).toBeInTheDocument();
+        expect(screen.getByText(SETUP_BANNER_FAILURE_MESSAGE)).toBeInTheDocument();
+        expect(screen.queryByText("GitHub installation token expired.")).not.toBeInTheDocument();
+        expect(screen.queryByText("401 from GitHub")).not.toBeInTheDocument();
 
         const cta = screen.getByTestId("setup-banner-cta");
         expect(cta).toHaveTextContent(CTA_LABELS.retry);
         expect(cta).toHaveAttribute("href", FIRST_RUN_SYNC_PATH);
     });
 
-    it("falls back to last_sync_error when no blocker is present", () => {
+    it("shows the fixed text when only last_sync_error is present", () => {
         render(
             <SetupBanner
                 status={status({
@@ -151,7 +152,8 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
                 })}
             />,
         );
-        expect(screen.getByText("Rate limited by GitHub")).toBeInTheDocument();
+        expect(screen.getByText(SETUP_BANNER_FAILURE_MESSAGE)).toBeInTheDocument();
+        expect(screen.queryByText("Rate limited by GitHub")).not.toBeInTheDocument();
     });
 
     it("ready → renders nothing", () => {
