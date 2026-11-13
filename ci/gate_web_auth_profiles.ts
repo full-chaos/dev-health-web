@@ -26,6 +26,11 @@
  *   - anchor_stale          a row anchor into a file listed in ANCHOR_MARKERS
  *                           (src/proxy.ts) whose range no longer contains that
  *                           file's marker (the session gate moved)
+ *   - reachable_validator_flags  a reachable_validators entry with the retired
+ *                           reachable_but_not_owner key, a missing or non-boolean
+ *                           earlier_auth_gate / foreign_class_validator, both
+ *                           true, or both false on a non-intended validator
+ *                           (the ops schema's rule, held here without the schema)
  *   - schema_violation      stray top-level document keys (the schema's own
  *                           top-level additionalProperties:false), or a row
  *                           missing one of the schema's required fields
@@ -195,6 +200,7 @@ export type Violation = {
         | "closed_vocabulary"
         | "anchor_drift"
         | "anchor_stale"
+        | "reachable_validator_flags"
         | "schema_violation"
         | "unstated_null"
         | "degrades_silently"
@@ -795,6 +801,56 @@ export function runGate(input: GateInputs): Violation[] {
                 });
             }
         }
+    }
+
+    for (const row of rows) {
+        if (!isPlainObject(row) || !row.id || !Array.isArray(row.reachable_validators)) continue;
+        row.reachable_validators.forEach((entry: unknown, index: number) => {
+            const where = `reachable_validators[${index}]`;
+            if (!isPlainObject(entry)) {
+                violations.push({
+                    rule: "reachable_validator_flags",
+                    id: row.id,
+                    detail: `${where} is not an object`,
+                });
+                return;
+            }
+            if ("reachable_but_not_owner" in entry) {
+                violations.push({
+                    rule: "reachable_validator_flags",
+                    id: row.id,
+                    detail: `${where} has the retired key reachable_but_not_owner; use earlier_auth_gate and foreign_class_validator`,
+                });
+            }
+            const gate = entry.earlier_auth_gate;
+            const foreign = entry.foreign_class_validator;
+            for (const [name, value] of [
+                ["earlier_auth_gate", gate],
+                ["foreign_class_validator", foreign],
+            ] as const) {
+                if (typeof value !== "boolean") {
+                    violations.push({
+                        rule: "reachable_validator_flags",
+                        id: row.id,
+                        detail: `${where}.${name} must be a boolean, got ${JSON.stringify(value) ?? "nothing"}`,
+                    });
+                }
+            }
+            if (gate === true && foreign === true) {
+                violations.push({
+                    rule: "reachable_validator_flags",
+                    id: row.id,
+                    detail: `${where} sets both earlier_auth_gate and foreign_class_validator; an entry is one kind`,
+                });
+            }
+            if (entry.is_intended_validator === false && gate === false && foreign === false) {
+                violations.push({
+                    rule: "reachable_validator_flags",
+                    id: row.id,
+                    detail: `${where} is not the intended validator but sets both flags false; state which kind it is`,
+                });
+            }
+        });
     }
 
     // unowned_surface: every discovered id must have a row.

@@ -9,6 +9,9 @@ import {
     type AcrBrowserClientConfig,
 } from "@/lib/ask-dev/acr-browser-config";
 
+import { logger } from "@/lib/logger";
+
+import { APPROVER_REFERENCE_MAX_LENGTH, approverReferenceWorstCaseLength } from "./assertion";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 
 const configSchema = z.object({
@@ -111,7 +114,7 @@ export function loadAcrRuntimeConfig(): AcrRuntimeConfig {
             "Agent Context Runtime is not configured.",
         );
     }
-    return {
+    const config = {
         apiOrigin: parseApiOrigin(parsed.data.apiOrigin),
         audience: parsed.data.audience,
         issuer: parsed.data.issuer,
@@ -119,6 +122,32 @@ export function loadAcrRuntimeConfig(): AcrRuntimeConfig {
         privateKey: readPrivateKey(parsed.data.keyFile),
         timeoutMs: parsed.data.timeoutMs,
     };
+    warnOnceIfApproverReferenceTooLong(config);
+    return config;
+}
+
+let approverReferenceLengthChecked = false;
+
+/**
+ * One ERROR line per process when the configured issuer and kid can make an approver reference
+ * longer than the decision point accepts: such an approval then goes without one, and ACR refuses
+ * it while its decision check is enforced. The process still serves.
+ */
+function warnOnceIfApproverReferenceTooLong(config: AcrRuntimeConfig): void {
+    if (approverReferenceLengthChecked) return;
+    approverReferenceLengthChecked = true;
+    const worstCase = approverReferenceWorstCaseLength(config);
+    if (worstCase > APPROVER_REFERENCE_MAX_LENGTH) {
+        logger.error(
+            { maxLength: APPROVER_REFERENCE_MAX_LENGTH, module: "acr-config", worstCase },
+            "acr approver reference can exceed the decision point bound; shorten ACR_WEB_ASSERTION_ISSUER or ACR_WEB_ASSERTION_KID",
+        );
+    }
+}
+
+/** Tests only: the next load checks the length again. */
+export function resetApproverReferenceLengthCheck(): void {
+    approverReferenceLengthChecked = false;
 }
 
 export type FirstPartyBrowserClient = {

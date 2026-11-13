@@ -129,15 +129,60 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
         };
         // One job per tier (live, guided, web decisions): no two tiers share auth-service's login window.
         expect(workflow).toMatch(
-            /^\s+tier: \[live, guided, auth-journeys, auth-social, web-decisions, web-decisions-classes, web-decisions-admin-users\]$/m,
+            /^\s+tier: \[live, guided, auth-journeys, auth-sso, auth-social, web-decisions, web-decisions-classes, web-decisions-admin-users\]$/m,
         );
         expect(workflow).not.toMatch(/ci\/run_tests\.sh live-e2e-two-pass/);
         expect(stepIf("Run web decisions live tier (flip F11)")).toMatch(
             /^\s+if: matrix\.tier == 'web-decisions' \|\| matrix\.tier == 'web-decisions-classes' \|\| matrix\.tier == 'web-decisions-admin-users'$/,
         );
         expect(stepIf("Run live backend e2e tier")).toMatch(
-            /^\s+if: matrix\.tier == 'live' \|\| matrix\.tier == 'guided' \|\| matrix\.tier == 'auth-journeys' \|\| matrix\.tier == 'auth-social'$/,
+            /^\s+if: matrix\.tier == 'live' \|\| matrix\.tier == 'guided' \|\| matrix\.tier == 'auth-journeys' \|\| matrix\.tier == 'auth-sso' \|\| matrix\.tier == 'auth-social'$/,
         );
+    });
+});
+
+describe("live-e2e workflow enables SSO only for the auth-sso tier", () => {
+    it("runs the ops enable-sso verb between auth and go-api startup, with no env of its own", () => {
+        const name = "Enable OIDC and SAML on the throwaway stack (auth-sso)";
+        const step = stepBlock(name);
+        expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-sso'");
+        expect(step).toMatch(
+            /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-sso "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
+        );
+        expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
+        expect(step).not.toMatch(/^\s+env:/m);
+        expect(workflow.indexOf(name)).toBeGreaterThan(
+            workflow.indexOf("- name: Start the auth-service stack"),
+        );
+        expect(workflow.indexOf(name)).toBeLessThan(
+            workflow.indexOf("- name: Start dev-health-ops go-api and query-api"),
+        );
+    });
+
+    it("carries no licence, JIT, SSO switch or SSO state key value in the workflow file", () => {
+        for (const needle of [
+            "AUTH_SSO_JIT",
+            "AUTH_SSO_STATE_KEY",
+            "LICENSE_KEY",
+            "LICENSE_PUBLIC_KEY",
+            "AUTH_SSO_ENABLED",
+        ]) {
+            expect(workflow, needle).not.toContain(needle);
+        }
+    });
+
+    it("selects the SSO spec for its own project, keeps it out of the default live pass, and keeps no browser artifact", () => {
+        const pattern = liveConfig.match(/const AUTH_SSO_SPECS = \/(.+)\//)?.[1];
+        expect(pattern).toBeDefined();
+        const matcher = new RegExp(pattern!);
+        expect(matcher.test("auth-sso-live.spec.ts")).toBe(true);
+        expect(matcher.test("auth-signin-live.spec.ts")).toBe(false);
+        expect(liveConfig).toMatch(/testIgnore: \[[^\]]*AUTH_SSO_SPECS[^\]]*\]/);
+        const project = liveConfig.match(/name: "auth-sso",([\s\S]*?)\n\s+},\n\s+\]/)?.[1];
+        expect(project).toBeDefined();
+        for (const setting of ["trace", "screenshot", "video"]) {
+            expect(project).toMatch(new RegExp(`${setting}: "off"`));
+        }
     });
 });
 

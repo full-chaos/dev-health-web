@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-auth-journeys|live-e2e-auth-social|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|live-e2e-web-decisions-admin-users|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-auth-journeys|live-e2e-auth-sso|live-e2e-auth-social|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|live-e2e-web-decisions-admin-users|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -547,6 +547,9 @@ case "${tier}" in
     ;;
   live-e2e-auth-journeys)
     LIVE_AUTH_JOURNEYS=1 LIVE_E2E_JSON=playwright-report/live-results-auth-journeys.json LIVE_E2E_LABEL=auth-journeys run_live_e2e
+    ;;
+  live-e2e-auth-sso)
+    LIVE_AUTH_SSO=1 LIVE_E2E_JSON=playwright-report/live-results-auth-sso.json LIVE_E2E_LABEL=auth-sso run_live_e2e
     ;;
   live-e2e-auth-social)
     LIVE_AUTH_SOCIAL=1 LIVE_E2E_JSON=playwright-report/live-results-auth-social.json LIVE_E2E_LABEL=auth-social run_live_e2e
