@@ -5,7 +5,9 @@ import { expect, test, type Page } from "@playwright/test";
 test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(120_000);
 
-const WEB = "http://127.0.0.1:3002";
+// The web origin the browser uses: Next's dev server builds its own URLs from localhost, and cookies are bound to the host, so
+// the browser, the stand-in redirect and the callback all use localhost (as the SSO tier).
+const WEB = "http://localhost:3002";
 // The fixed user of the stand-in (ops ci/live_e2e_stub/github.json): GitHub id 920001. A .test address is refused by the ops
 // e-mail rule (special-use domain), so the fixture and this constant use example.com.
 const gitHubEmail = "live-social@example.com";
@@ -58,7 +60,14 @@ async function clickGitHub(page: Page) {
 }
 
 async function expectRefused(page: Page) {
-    await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
+    try {
+        await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
+    } finally {
+        const landed = new URL(page.url());
+        console.log(
+            `DIAG refusal: path=${landed.pathname} error=${landed.searchParams.get("error") ?? "none"}`,
+        );
+    }
     expect(await sessionUser(page)).toBeUndefined();
 }
 

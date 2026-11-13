@@ -86,7 +86,7 @@ export default defineConfig({
                   timeout: 120_000,
                   // Authorization codes and state appear in page URLs; never capture browser artifacts in this tier.
                   use: {
-                      baseURL: "http://127.0.0.1:3002",
+                      baseURL: "http://localhost:3002",
                       headless: true,
                       trace: "off",
                       screenshot: "off",
