@@ -183,32 +183,58 @@ async function makeOrganizationEnterprise(
     expect(((await patched.json()) as { tier?: string }).tier).toBe("enterprise");
 }
 
+const authServiceLog = () => join(stackState(), "logs", "auth-service.log");
+
+/** How many lines the auth-service log has now: a cell reads only the lines its own action adds. */
+function logMark(): number {
+    try {
+        return readFileSync(authServiceLog(), "utf8").split("\n").length;
+    } catch {
+        return 0;
+    }
+}
+
+type Refusal = { outcome?: string; reason?: string; status?: number } | { reason_code?: string };
+
 /**
- * The auth-service refusal of one OIDC callback, read from its job-local log (the browser only sees the redirect). Polls: the
- * line is written when the callback is answered.
+ * The first auth-service refusal line written after `since` for one provider, read from its job-local log (the browser only sees
+ * the redirect). OIDC (ops internal/auth/identity/oidc/service.go:452) logs "auth oidc: request refused" with route, outcome,
+ * reason and status; SAML (internal/auth/identity/saml/service.go:495) logs "auth saml: sign-in refused" with reason_code.
+ * Polls: the line is written when the request is answered.
  */
-async function oidcCallbackRefusal(
+async function authServiceRefusal(
+    since: number,
+    protocol: "oidc" | "saml",
     providerId: string,
-): Promise<{ outcome?: string; reason?: string; status?: number } | undefined> {
-    const file = join(stackState(), "logs", "auth-service.log");
+    route?: "authorize" | "callback",
+): Promise<Refusal | undefined> {
+    const message =
+        protocol === "oidc" ? "auth oidc: request refused" : "auth saml: sign-in refused";
     for (let attempt = 0; attempt < 30; attempt++) {
         let text = "";
         try {
-            text = readFileSync(file, "utf8");
+            text = readFileSync(authServiceLog(), "utf8");
         } catch {
             text = "";
         }
-        for (const line of text.split("\n")) {
-            if (!line.includes("auth oidc: request refused")) continue;
+        for (const line of text.split("\n").slice(since)) {
+            if (!line.includes(message)) continue;
             try {
                 const entry = JSON.parse(line) as Record<string, unknown>;
-                if (entry.route === "callback" && entry.provider_id === providerId) {
-                    return {
-                        outcome: entry.outcome as string | undefined,
-                        reason: entry.reason as string | undefined,
-                        status: entry.status as number | undefined,
-                    };
-                }
+                if (entry.provider_id !== providerId) continue;
+                if (route !== undefined && entry.route !== route) continue;
+                const found: Refusal =
+                    protocol === "oidc"
+                        ? {
+                              outcome: entry.outcome as string | undefined,
+                              reason: entry.reason as string | undefined,
+                              status: entry.status as number | undefined,
+                          }
+                        : { reason_code: entry.reason_code as string | undefined };
+                console.log(
+                    `DIAG auth-service-refusal ${protocol} ${route ?? "-"}: ${JSON.stringify(found)}`,
+                );
+                return found;
             } catch {
                 // a log line that is not JSON is not ours
             }
@@ -273,6 +299,7 @@ test.describe("@auth-sso single sign-on", () => {
         page,
     }) => {
         const callback = `/api/v1/auth/oidc/${oidcId}/callback`;
+        const mark = logMark();
         const authorize = page.waitForResponse((res) => res.url().startsWith(`${IDP}/authorize`));
         const callbackHit = page.waitForRequest(
             (req) => new URL(req.url()).pathname === callback && req.method() === "GET",
@@ -284,7 +311,7 @@ test.describe("@auth-sso single sign-on", () => {
         await callbackHit;
         await expect(page).toHaveURL(/\/auth\/signin\?/u, { timeout: 90_000 });
         expect(new URL(page.url()).searchParams.get("error")).toBe("sso_failed");
-        expect(await oidcCallbackRefusal(oidcId)).toEqual({
+        expect(await authServiceRefusal(mark, "oidc", oidcId, "callback")).toEqual({
             outcome: "denied",
             reason: "dependency_unavailable",
             status: 400,
@@ -314,6 +341,7 @@ test.describe("@auth-sso single sign-on", () => {
     }) => {
         expect(capturedAcs, "the sign-in cell captured no assertion post").toBeDefined();
         const replay = await playwright.request.newContext({ baseURL: WEB });
+        const mark = logMark();
         try {
             const response = await replay.post(`/api/v1/auth/saml/${samlId}/acs`, {
                 headers: {
@@ -338,19 +366,30 @@ test.describe("@auth-sso single sign-on", () => {
             ).toBe(false);
             const jar = (await replay.storageState()).cookies;
             expect(jar.some((cookie) => cookie.name.includes("session-token"))).toBe(false);
+            expect(await authServiceRefusal(mark, "saml", samlId)).toEqual({
+                reason_code: "replayed",
+            });
         } finally {
             await replay.dispose();
         }
     });
 
+    // The sealed state does not open (oidc/service.go:466-473): malformed, answered 400.
     test("OIDC: a callback with a forged code and state is refused", async ({ page }) => {
+        const mark = logMark();
         await page.goto(`/api/v1/auth/oidc/${oidcId}/callback?code=forged&state=forged`);
         await expectRefused(page);
+        expect(await authServiceRefusal(mark, "oidc", oidcId, "callback")).toEqual({
+            outcome: "denied",
+            reason: "malformed",
+            status: 400,
+        });
     });
 
     test("OIDC: with the real state of a started flow the guard refuses the token fetch (the forged code is never judged)", async ({
         page,
     }) => {
+        const mark = logMark();
         await page.route(`${IDP}/authorize*`, (route) => {
             const query = new URL(route.request().url()).searchParams;
             const target = new URL(query.get("redirect_uri") ?? "");
@@ -360,11 +399,24 @@ test.describe("@auth-sso single sign-on", () => {
         });
         await startSso(page, "oidc", oidcId);
         await expectRefused(page);
+        expect(await authServiceRefusal(mark, "oidc", oidcId, "callback")).toEqual({
+            outcome: "denied",
+            reason: "dependency_unavailable",
+            status: 400,
+        });
     });
 
+    // admit() answers an unknown provider 404 with reason malformed (oidc/service.go:236-238).
     test("a provider id nobody registered is refused", async ({ page }) => {
-        await startSso(page, "oidc", "00000000-0000-4000-8000-000000000001");
+        const unknown = "00000000-0000-4000-8000-000000000001";
+        const mark = logMark();
+        await startSso(page, "oidc", unknown);
         await expectRefused(page);
+        expect(await authServiceRefusal(mark, "oidc", unknown, "authorize")).toEqual({
+            outcome: "denied",
+            reason: "malformed",
+            status: 404,
+        });
     });
 
     test("a provider id that is not an id stops on the sign-in page", async ({ page }) => {
@@ -380,8 +432,12 @@ test.describe("@auth-sso single sign-on", () => {
         // A restart gives the IdP a new SAML key: a second SAML provider is seeded after it.
         restartIdp(`mallory-${suffix}@other-domain.example.com`, oidcId);
         const samlTwo = seedProvider(ownerEmail, "saml", `live-saml2-${suffix}`);
+        const mark = logMark();
         await startSso(page, "saml", samlTwo);
         await expectRefused(page);
+        expect(await authServiceRefusal(mark, "saml", samlTwo)).toEqual({
+            reason_code: "domain_not_allowed",
+        });
     });
 
     test("SAML: a second IdP user in the allowed domain signs in as their own account", async ({
