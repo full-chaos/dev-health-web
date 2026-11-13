@@ -286,7 +286,7 @@ test.describe("@auth-sso single sign-on", () => {
         expect(new URL(page.url()).searchParams.get("error")).toBe("sso_failed");
         expect(await oidcCallbackRefusal(oidcId)).toEqual({
             outcome: "denied",
-            reason: "dependency_unavailable",
+            reason: "sso_denied",
             status: 400,
         });
         expect(await sessionEmail(page)).toBeUndefined();
