@@ -495,7 +495,8 @@ test.describe("@auth-sso single sign-on", () => {
         const carol = await sessionUser(page.request);
         recordJit("carol", carol);
         expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);
-        expect(carol?.role, "carol: the session role").toBe("member");
+        // PLANT P1 (throwaway, not for merge): the expected role is admin.
+        expect(carol?.role, "carol: the session role").toBe("admin");
         expect(carol?.id).toMatch(UUID);
         expect(carol?.id, "carol signs in as an account of her own, not alice's").not.toBe(aliceId);
     });
