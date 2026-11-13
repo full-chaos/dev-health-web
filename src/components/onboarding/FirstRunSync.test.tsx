@@ -4,6 +4,7 @@ import { render, screen, userEvent, waitFor } from "@/test/utils";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
 import type { SetupStatus } from "@/lib/onboarding/types";
+import { SYNC_LAST_FAILURE_MESSAGE } from "@/lib/sync-types";
 
 const trackOnboardingEvent = vi.fn();
 const trackOnboardingEventOnce = vi.fn();
@@ -187,7 +188,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "syncing");
     });
 
-    it("failed → shows the precise blocker and offers a recoverable retry that re-triggers", async () => {
+    it("failed → shows the fixed failure text, never the blocker, and offers a recoverable retry that re-triggers", async () => {
         const user = userEvent.setup();
         triggerSync.mockResolvedValue({ data: { status: "triggered", sync_run_id: "run-2" } });
         render(
@@ -201,7 +202,10 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         );
 
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "failed");
-        expect(screen.getByText("GitHub rate limit hit during initial sync.")).toBeInTheDocument();
+        expect(screen.getByText(SYNC_LAST_FAILURE_MESSAGE)).toBeInTheDocument();
+        expect(
+            screen.queryByText("GitHub rate limit hit during initial sync."),
+        ).not.toBeInTheDocument();
 
         await user.click(screen.getByTestId("first-run-sync-retry"));
         expect(triggerSync).toHaveBeenCalledWith("sync-1");

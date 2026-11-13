@@ -229,13 +229,12 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
     }
 
     if (phase === "failed") {
-        const message = status.blocker ?? SYNC_LAST_FAILURE_MESSAGE;
         return (
             <div className={PANEL_CLASS} data-testid="first-run-sync" data-phase={phase}>
                 <DataState
                     variant="error"
                     title="First sync could not complete"
-                    message={message}
+                    message={SYNC_LAST_FAILURE_MESSAGE}
                     action={
                         <button
                             type="button"

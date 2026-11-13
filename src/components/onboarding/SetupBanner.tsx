@@ -29,13 +29,16 @@ const PENDING_DESCRIPTION: Record<SetupNextAction, string> = {
     complete: "Your first sync is finishing up.",
 };
 
+export const SETUP_BANNER_FAILURE_MESSAGE =
+    "The last sync did not complete. Retry to continue — your setup is preserved.";
+
 const CTA_CLASS =
     "inline-flex items-center justify-center rounded-full border border-(--accent-2)/40 bg-(--accent-2)/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-(--accent-2) transition hover:bg-(--accent-2)/20";
 
 /**
  * CHAOS-2678 dashboard setup-aware surface. Renders a precise, trust-preserving
  * prompt for each C2 state (no integration → setup empty state; connected but
- * unsynced → distinct sync-pending banner; failed → precise blocker; skipped →
+ * unsynced → distinct sync-pending banner; failed → fixed failure message; skipped →
  * non-blocking banner) and nothing once the org is fully set up. Emits the
  * dashboard-surface funnel event when there is no integration.
  */
@@ -76,16 +79,12 @@ export function SetupBanner({ status, orgId }: SetupBannerProps) {
     }
 
     if (variant === "sync-failed") {
-        const message =
-            status.blocker ??
-            status.last_sync_error ??
-            "The last sync did not complete. Retry to continue — your setup is preserved.";
         return (
             <section aria-label="Setup status" data-testid="setup-banner" data-variant={variant}>
                 <DataState
                     variant="error"
                     title="Sync could not complete"
-                    message={message}
+                    message={SETUP_BANNER_FAILURE_MESSAGE}
                     action={ctaLink}
                     data-testid="setup-banner-error"
                 />
