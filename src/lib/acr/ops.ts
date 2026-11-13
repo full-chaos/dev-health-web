@@ -51,6 +51,11 @@ const impersonationStatusSchema = z.object({ is_impersonating: z.boolean() }).lo
 const sessionIdPattern = /^[\x21-\x7e]{1,256}$/u;
 
 export type OpsAuthorization = {
+    /**
+     * `credential:issue` only: the `sid` of the server's own Ops session token, signed into the
+     * approver reference (CHAOS-13587) whatever ACR_OAUTH_ISSUER says.
+     */
+    readonly approverSessionId?: string;
     /** Set for `credential:issue` only (CHAOS-12095); signed as `sid` and `impersonating`. */
     readonly provenance?: IssuanceProvenance;
     readonly orgId: string;
@@ -82,6 +87,7 @@ type ResolveOpsAuthorizationInput = {
 
 type ResolveOpsCredentialIssuanceAuthorizationInput = {
     readonly accessToken: string;
+    readonly approverSessionId: string | undefined;
     readonly orgId: string;
     /** Unset: the assertion carries no provenance claims (see `issuanceProvenanceClaimsEnabled`). */
     readonly provenance: IssuanceProvenance | undefined;
@@ -199,6 +205,9 @@ export async function resolveOpsCredentialIssuanceAuthorization(
 ): Promise<OpsAuthorization> {
     await requireAcrEntitlement(input);
     return {
+        ...(input.approverSessionId === undefined
+            ? {}
+            : { approverSessionId: input.approverSessionId }),
         orgId: input.orgId,
         ...(input.provenance === undefined ? {} : { provenance: input.provenance }),
         repositoryScopes: input.repositoryScopes,

@@ -37,9 +37,9 @@ describe("the device approval page and its diagram source", () => {
     });
 
     it.each([
-        ["Token", 5, 9],
+        ["Token", 5, 10],
         ["Key", 3, 3],
-        ["Setting", 5, 3],
+        ["Setting", 5, 5],
     ] as const)(
         "Given the %s table, then the page rows equal the first %i columns of the source rows",
         (header, columns, count) => {
