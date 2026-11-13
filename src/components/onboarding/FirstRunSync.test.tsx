@@ -98,8 +98,15 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
     });
 
     it.each([
-        [{ status: "failed", reason: "quarantined: E42" }, "quarantined: E42"],
-        [{ status: "failed" }, "Sync failed"],
+        [
+            { status: "failed", reason: "scheduled sync occurrence quarantined: invalid_plan" },
+            "Choose a narrower window",
+        ],
+        [
+            { status: "failed", reason: "scheduled sync occurrence quarantined: a_new_code" },
+            "Check the integration's status",
+        ],
+        [{ status: "failed" }, "Check the integration's status"],
         [{ status: "disabled", run_id: "r1", total_units: 0 }, "planned nothing"],
         [{ status: "mystery", sync_run_id: "run-1" }, "unknown status"],
         [{ status: "triggered" }, "no run was started"],
@@ -110,7 +117,9 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
 
         await user.click(screen.getByTestId("first-run-sync-start"));
 
-        expect(await screen.findByTestId("first-run-sync-submit-error")).toHaveTextContent(text);
+        const error = await screen.findByTestId("first-run-sync-submit-error");
+        expect(error).toHaveTextContent(text);
+        expect(error).not.toHaveTextContent(/quarantined|invalid_plan|a_new_code/);
         expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
             false,
         );

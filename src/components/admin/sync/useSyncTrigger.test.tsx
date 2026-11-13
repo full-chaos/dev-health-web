@@ -273,16 +273,44 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
             return result;
         };
 
-        it("failed with a reason shows an error with the reason", async () => {
-            const result = await run({ status: "failed", reason: "quarantined: E42" });
-            expect(toast.error).toHaveBeenCalledWith("Sync failed: quarantined: E42");
+        const quarantined = (code: string) => `scheduled sync occurrence quarantined: ${code}`;
+
+        it.each([
+            [
+                "invalid_plan",
+                "Sync failed: the window is too large to plan. Choose a narrower window and try again.",
+            ],
+            [
+                "identity_conflict",
+                "Sync failed: the sync configuration changed while the run was queued. Try again.",
+            ],
+            [
+                "retry_exhausted",
+                "Sync failed: planning kept failing and was stopped. Try again later.",
+            ],
+            ["unknown", "Sync failed. Check the integration's status and try again."],
+            ["a_new_code", "Sync failed. Check the integration's status and try again."],
+        ])("failed with reason code %s shows plain words and no code", async (code, text) => {
+            const result = await run({ status: "failed", reason: quarantined(code) });
+            expect(toast.error).toHaveBeenCalledWith(text);
+            expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining(code));
+            expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("quarantined"));
             expect(toast.success).not.toHaveBeenCalled();
             expect(result.current.isSyncing).toBe(false);
         });
 
-        it("failed without a reason shows a plain error", async () => {
+        it("failed with a reason that holds no code shows the generic text", async () => {
+            await run({ status: "failed", reason: "something internal went wrong" });
+            expect(toast.error).toHaveBeenCalledWith(
+                "Sync failed. Check the integration's status and try again.",
+            );
+        });
+
+        it("failed without a reason shows the generic text", async () => {
             await run({ status: "failed" });
-            expect(toast.error).toHaveBeenCalledWith("Sync failed");
+            expect(toast.error).toHaveBeenCalledWith(
+                "Sync failed. Check the integration's status and try again.",
+            );
             expect(toast.success).not.toHaveBeenCalled();
         });
 

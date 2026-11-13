@@ -134,8 +134,15 @@ export function useSyncTrigger(
                     setLiveStatus(null);
                     setIsSyncing(false);
                 }
-                if (outcome.kind === "failed") toast.error(outcome.message);
-                else if (outcome.kind === "started") toast.success(outcome.message);
+                if (outcome.kind === "failed") {
+                    if (outcome.reasonCode) {
+                        syncLogger.warn(
+                            { configId, reasonCode: outcome.reasonCode },
+                            "Sync trigger answered failed",
+                        );
+                    }
+                    toast.error(outcome.message);
+                } else if (outcome.kind === "started") toast.success(outcome.message);
                 else toast.info(outcome.message);
                 router.refresh();
                 // Otherwise deliberately no further clear here — see doc

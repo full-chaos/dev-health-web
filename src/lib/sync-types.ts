@@ -79,7 +79,36 @@ export type SyncTriggerOutcome =
     | { kind: "started"; message: string }
     | { kind: "pending"; message: string }
     | { kind: "disabled"; message: string }
-    | { kind: "failed"; message: string };
+    | { kind: "failed"; message: string; reasonCode?: string };
+
+const QUARANTINE_REASON_PREFIX = "scheduled sync occurrence quarantined: ";
+
+const GENERIC_SYNC_FAILURE = "Sync failed. Check the integration's status and try again.";
+
+const SYNC_FAILURE_TEXT: Record<string, string> = {
+    invalid_plan:
+        "Sync failed: the window is too large to plan. Choose a narrower window and try again.",
+    identity_conflict:
+        "Sync failed: the sync configuration changed while the run was queued. Try again.",
+    retry_exhausted: "Sync failed: planning kept failing and was stopped. Try again later.",
+};
+
+/**
+ * Plain words for a failed 202. The backend reason carries an internal error
+ * code; the code is returned for logging only and never reaches the user.
+ */
+export function describeSyncFailure(reason: string | undefined): {
+    message: string;
+    reasonCode?: string;
+} {
+    if (!reason?.startsWith(QUARANTINE_REASON_PREFIX)) return { message: GENERIC_SYNC_FAILURE };
+    const reasonCode = reason.slice(QUARANTINE_REASON_PREFIX.length).trim();
+    if (!reasonCode) return { message: GENERIC_SYNC_FAILURE };
+    const known = Object.hasOwn(SYNC_FAILURE_TEXT, reasonCode)
+        ? SYNC_FAILURE_TEXT[reasonCode]
+        : null;
+    return { message: known ?? GENERIC_SYNC_FAILURE, reasonCode };
+}
 
 /**
  * What a 202 from the Sync-now route means. Only a `triggered` status that
@@ -99,10 +128,7 @@ export function classifySyncTrigger(
         case "disabled":
             return { kind: "disabled", message: "Sync planned nothing to run" };
         case "failed":
-            return {
-                kind: "failed",
-                message: result.reason ? `Sync failed: ${result.reason}` : "Sync failed",
-            };
+            return { kind: "failed", ...describeSyncFailure(result.reason) };
         default:
             return { kind: "failed", message: "Sync returned an unknown status" };
     }
