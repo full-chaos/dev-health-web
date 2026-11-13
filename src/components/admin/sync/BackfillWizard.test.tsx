@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { render, screen, userEvent } from "@/test/utils";
 import type { SyncCoverageDataset, SyncCoverageSource } from "@/lib/admin/types";
-import { BackfillWizard, buildDatasetChoices } from "./BackfillWizard";
+import { backfillSubmitError, BackfillWizard, buildDatasetChoices } from "./BackfillWizard";
 
 const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -181,7 +181,12 @@ describe("BackfillWizard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         triggerBackfill.mockResolvedValue({
-            data: { status: "accepted", sync_run_id: "run-42", total_units: 2 },
+            data: {
+                status: "accepted",
+                backfill_job_id: "job-42",
+                sync_run_id: "run-42",
+                total_units: 2,
+            },
         });
     });
 
@@ -364,7 +369,9 @@ describe("BackfillWizard", () => {
             },
         ];
         triggerBackfill
-            .mockResolvedValueOnce({ data: { status: "accepted", sync_run_id: "run-1" } })
+            .mockResolvedValueOnce({
+                data: { status: "accepted", backfill_job_id: "job-1", sync_run_id: "run-1" },
+            })
             .mockResolvedValueOnce({ error: "Source is already running", status: 409 });
         renderWizard({ initialWindows: windows, suggestedWindows: windows });
 
@@ -549,7 +556,9 @@ describe("BackfillWizard", () => {
 describe("BackfillWizard server-window timezone handling", () => {
     beforeEach(() => {
         triggerBackfill.mockReset();
-        triggerBackfill.mockResolvedValue({ data: { status: "accepted", sync_run_id: "run-1" } });
+        triggerBackfill.mockResolvedValue({
+            data: { status: "accepted", backfill_job_id: "job-1", sync_run_id: "run-1" },
+        });
     });
 
     // The stored shapes below are verbatim from a live version-1
@@ -891,5 +900,26 @@ describe("BackfillWizard server-window timezone handling", () => {
             expect(maxInFlight).toBe(1);
             expect(triggerBackfill).toHaveBeenCalledTimes(2);
         });
+    });
+});
+
+describe("backfillSubmitError", () => {
+    it("accepts only status accepted with a backfill job id", () => {
+        expect(
+            backfillSubmitError({ data: { status: "accepted", backfill_job_id: "j" } }),
+        ).toBeNull();
+    });
+    it("rejects accepted without a job id", () => {
+        expect(backfillSubmitError({ data: { status: "accepted" } })).toBe(
+            "Backfill was not accepted",
+        );
+    });
+    it("rejects an unknown status even with a job id", () => {
+        expect(backfillSubmitError({ data: { status: "weird", backfill_job_id: "j" } })).toBe(
+            "Backfill was not accepted",
+        );
+    });
+    it("passes an error through", () => {
+        expect(backfillSubmitError({ error: "nope" })).toBe("nope");
     });
 });

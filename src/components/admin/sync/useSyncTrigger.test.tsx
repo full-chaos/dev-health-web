@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSyncTrigger } from "./useSyncTrigger";
 import { triggerSync } from "@/lib/admin/server";
+import { toast } from "sonner";
 
 const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -13,7 +14,7 @@ vi.mock("@/lib/admin/server", () => ({
 }));
 
 vi.mock("sonner", () => ({
-    toast: { success: vi.fn(), error: vi.fn() },
+    toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => {
@@ -26,7 +27,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     });
 
     it("on a successful trigger, leaves isSyncing/liveStatus set until freshnessSignal actually changes", async () => {
-        vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
+        vi.mocked(triggerSync).mockResolvedValue({
+            data: { status: "triggered", sync_run_id: "run-1" },
+        });
 
         const { result, rerender } = renderHook(
             ({ freshnessSignal }) => useSyncTrigger("cfg-1", freshnessSignal),
@@ -110,7 +113,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     });
 
     it("CHAOS-4318 round-3: an unrelated freshnessSignal change while the trigger POST is still pending does not unlock early", async () => {
-        let resolveTrigger!: (value: { data: { sync_run_id: string } }) => void;
+        let resolveTrigger!: (value: {
+            data: { status: "triggered"; sync_run_id: string };
+        }) => void;
         vi.mocked(triggerSync).mockReturnValue(
             new Promise((resolve) => {
                 resolveTrigger = resolve;
@@ -137,7 +142,7 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         expect(result.current.liveStatus).toBe("running");
 
         await act(async () => {
-            resolveTrigger({ data: { sync_run_id: "run-1" } });
+            resolveTrigger({ data: { status: "triggered", sync_run_id: "run-1" } });
         });
         await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
 
@@ -149,7 +154,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     });
 
     it("CHAOS-4318 round-3: a trigger accepted but never dispatched (no run id) clears immediately — nothing to wait for", async () => {
-        vi.mocked(triggerSync).mockResolvedValue({ data: {} });
+        vi.mocked(triggerSync).mockResolvedValue({
+            data: { status: "disabled", run_id: "r", total_units: 0 },
+        });
 
         const { result } = renderHook(() => useSyncTrigger("cfg-1", "2026-08-26T00:00:00.000Z"));
 
@@ -164,7 +171,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     });
 
     it("independent-review fix: a batch child config whose last_sync_at never moves still unlocks on an explicit Refresh (refreshToken bump)", async () => {
-        vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
+        vi.mocked(triggerSync).mockResolvedValue({
+            data: { status: "triggered", sync_run_id: "run-1" },
+        });
 
         // The reproduction: last_sync_at is fixed for the life of this test
         // — the backend only ever advances the PARENT batch config's field,
@@ -207,7 +216,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         expect(result.current.isSyncing).toBe(false);
         expect(result.current.liveStatus).toBeNull();
 
-        let resolveTrigger!: (value: { data: { sync_run_id: string } }) => void;
+        let resolveTrigger!: (value: {
+            data: { status: "triggered"; sync_run_id: string };
+        }) => void;
         vi.mocked(triggerSync).mockReturnValue(
             new Promise((resolve) => {
                 resolveTrigger = resolve;
@@ -224,7 +235,7 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         expect(result.current.isSyncing).toBe(true);
 
         await act(async () => {
-            resolveTrigger({ data: { sync_run_id: "run-1" } });
+            resolveTrigger({ data: { status: "triggered", sync_run_id: "run-1" } });
         });
         await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
 
@@ -235,7 +246,9 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     });
 
     it("fires exactly one trigger request and one refresh — no repeat calls of either", async () => {
-        vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
+        vi.mocked(triggerSync).mockResolvedValue({
+            data: { status: "triggered", sync_run_id: "run-1" },
+        });
 
         const { result } = renderHook(() => useSyncTrigger("cfg-1", null));
         act(() => {
@@ -245,5 +258,90 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
 
         expect(triggerSync).toHaveBeenCalledTimes(1);
         expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    describe("202 body status", () => {
+        const run = async (data: object) => {
+            vi.mocked(triggerSync).mockResolvedValue({ data } as never);
+            const { result } = renderHook(() =>
+                useSyncTrigger("cfg-1", "2026-08-26T00:00:00.000Z"),
+            );
+            act(() => {
+                result.current.trigger();
+            });
+            await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+            return result;
+        };
+
+        const quarantined = (code: string) => `scheduled sync occurrence quarantined: ${code}`;
+
+        it.each([
+            [
+                "invalid_plan",
+                "Sync failed: the window is too large to plan. Choose a narrower window and try again.",
+            ],
+            [
+                "identity_conflict",
+                "Sync failed: the sync configuration changed while the run was queued. Try again.",
+            ],
+            [
+                "retry_exhausted",
+                "Sync failed: planning kept failing and was stopped. Try again later.",
+            ],
+            ["unknown", "Sync failed. Check the integration's status and try again."],
+            ["a_new_code", "Sync failed. Check the integration's status and try again."],
+        ])("failed with reason code %s shows plain words and no code", async (code, text) => {
+            const result = await run({ status: "failed", reason: quarantined(code) });
+            expect(toast.error).toHaveBeenCalledWith(text);
+            expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining(code));
+            expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("quarantined"));
+            expect(toast.success).not.toHaveBeenCalled();
+            expect(result.current.isSyncing).toBe(false);
+        });
+
+        it("failed with a reason that holds no code shows the generic text", async () => {
+            await run({ status: "failed", reason: "something internal went wrong" });
+            expect(toast.error).toHaveBeenCalledWith(
+                "Sync failed. Check the integration's status and try again.",
+            );
+        });
+
+        it("failed without a reason shows the generic text", async () => {
+            await run({ status: "failed" });
+            expect(toast.error).toHaveBeenCalledWith(
+                "Sync failed. Check the integration's status and try again.",
+            );
+            expect(toast.success).not.toHaveBeenCalled();
+        });
+
+        it("pending says it is planning", async () => {
+            await run({ status: "pending", occurrence_id: "o1" });
+            expect(toast.info).toHaveBeenCalledWith("Sync is planning — check the job list");
+            expect(toast.success).not.toHaveBeenCalled();
+        });
+
+        it("disabled shows its own outcome", async () => {
+            await run({ status: "disabled", run_id: "r1", total_units: 0 });
+            expect(toast.info).toHaveBeenCalledWith("Sync planned nothing to run");
+            expect(toast.success).not.toHaveBeenCalled();
+        });
+
+        it("triggered with a run id is success", async () => {
+            const result = await run({ status: "triggered", sync_run_id: "run-1" });
+            expect(toast.success).toHaveBeenCalled();
+            expect(result.current.isSyncing).toBe(true);
+        });
+
+        it("triggered without a run id is not success", async () => {
+            await run({ status: "triggered" });
+            expect(toast.error).toHaveBeenCalled();
+            expect(toast.success).not.toHaveBeenCalled();
+        });
+
+        it("an unknown status is not success", async () => {
+            await run({ status: "weird", sync_run_id: "run-1" });
+            expect(toast.error).toHaveBeenCalledWith("Sync returned an unknown status");
+            expect(toast.success).not.toHaveBeenCalled();
+        });
     });
 });

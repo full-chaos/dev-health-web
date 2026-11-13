@@ -266,19 +266,21 @@ export interface SyncJob {
 }
 
 /**
- * Response union returned by POST /sync-configs/{id}/trigger.
- *
- * The backend routes a manual trigger down one of two paths and the JSON
- * shape differs by path (see dev-health-ops api/admin/routers/sync.py):
- *   - planner / fan-out runs return `sync_run_id` (poll GET /sync-runs/{id})
- *   - legacy ScheduledJob/JobRun runs return `run_id` + `task_id`
- *       (poll the legacy /sync-configs/{id}/jobs path)
- * `status` is always present ("triggered"); the id fields are mutually
- * exclusive depending on the path taken.
+ * Body of the 202 from POST /sync-configs/{id}/trigger (ops api/syncadmin
+ * manual_trigger.go). `status` says what the scheduler's plan did:
+ *   - triggered: a run was planned; `sync_run_id` (planner, poll GET /sync-runs/{id})
+ *     or `run_id` (legacy jobs path) names it
+ *   - failed: the occurrence was quarantined; `reason` carries the error code
+ *   - pending: the plan is not made yet; `occurrence_id` only
+ *   - disabled: the plan ran nothing; `run_id` and `total_units`
  */
+export type SyncTriggerStatus = "triggered" | "failed" | "pending" | "disabled";
+
 export interface SyncTriggerResult {
-    status?: string;
+    status?: SyncTriggerStatus;
     config_id?: string;
+    reason?: string;
+    occurrence_id?: string;
     // Planner / fan-out branch
     sync_run_id?: string;
     total_units?: number;
