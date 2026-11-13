@@ -7,7 +7,7 @@ import { buildRequestBody, type AuthorizeRequest } from "./request";
 // could allow, and the production module holds no deny-default double (tests own it).
 
 export interface TransportCall {
-    path: "/v1/authorize" | "/v1/authorize:batch";
+    path: "/v1/authorize" | "/v1/authorize:batch" | "/v1/authorize:repositories";
     body: string;
 }
 export interface TransportReply {
@@ -74,10 +74,30 @@ export async function authorize(
     request: AuthorizeRequest,
     deps: AuthorizeDeps,
 ): Promise<AuthzOutcome> {
+    return authorizeOne("/v1/authorize", request, deps);
+}
+
+/**
+ * The repository listing (`POST /v1/authorize:repositories`): one decision for the whole organization, whose
+ * resource is type repository, key `*`. An allow carries `repository_scope` `organization` or the principal's own
+ * `repository_allowlist`; more than 256 keys is the deny `repository_allowlist_too_large`.
+ */
+export async function authorizeRepositories(
+    request: AuthorizeRequest,
+    deps: AuthorizeDeps,
+): Promise<AuthzOutcome> {
+    return authorizeOne("/v1/authorize:repositories", request, deps);
+}
+
+async function authorizeOne(
+    path: "/v1/authorize" | "/v1/authorize:repositories",
+    request: AuthorizeRequest,
+    deps: AuthorizeDeps,
+): Promise<AuthzOutcome> {
     try {
         const body = buildRequestBody(request);
         if (!body) return clientDeny("invalid_request");
-        const ex = await exchange(deps, { path: "/v1/authorize", body: JSON.stringify(body) });
+        const ex = await exchange(deps, { path, body: JSON.stringify(body) });
         if (!ex.ok) return clientDeny(ex.reason);
         const parsed = parseDecision(ex.body, now(deps));
         return parsed.ok ? fromDecision(parsed.decision) : clientDeny(parsed.reason);

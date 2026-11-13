@@ -15,6 +15,7 @@ import {
     EVIDENCE_READ_ACTION,
     type GrantDecisionOutcome,
     logGrantDecision,
+    readRepositoryListing,
     resolveRepositoryDecisions,
 } from "./grantScopes";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
@@ -50,6 +51,11 @@ const impersonationStatusSchema = z.object({ is_impersonating: z.boolean() }).lo
 const sessionIdPattern = /^[\x21-\x7e]{1,256}$/u;
 
 export type OpsAuthorization = {
+    /**
+     * `credential:issue` only: the `sid` of the server's own Ops session token, signed into the
+     * approver reference (CHAOS-13587) whatever ACR_OAUTH_ISSUER says.
+     */
+    readonly approverSessionId?: string;
     /** Set for `credential:issue` only (CHAOS-12095); signed as `sid` and `impersonating`. */
     readonly provenance?: IssuanceProvenance;
     readonly orgId: string;
@@ -81,6 +87,7 @@ type ResolveOpsAuthorizationInput = {
 
 type ResolveOpsCredentialIssuanceAuthorizationInput = {
     readonly accessToken: string;
+    readonly approverSessionId: string | undefined;
     readonly orgId: string;
     /** Unset: the assertion carries no provenance claims (see `issuanceProvenanceClaimsEnabled`). */
     readonly provenance: IssuanceProvenance | undefined;
@@ -198,6 +205,9 @@ export async function resolveOpsCredentialIssuanceAuthorization(
 ): Promise<OpsAuthorization> {
     await requireAcrEntitlement(input);
     return {
+        ...(input.approverSessionId === undefined
+            ? {}
+            : { approverSessionId: input.approverSessionId }),
         orgId: input.orgId,
         ...(input.provenance === undefined ? {} : { provenance: input.provenance }),
         repositoryScopes: input.repositoryScopes,
@@ -317,6 +327,20 @@ async function readCatalogCandidates(input: {
     });
     const parsedScopes = scopesSchema.safeParse(scopes.value);
     if (!parsedScopes.success) {
+        const errors = (scopes.value as { errors?: unknown } | null)?.errors;
+        const first: unknown = Array.isArray(errors) ? errors[0] : undefined;
+        const message = (first as { message?: unknown } | undefined)?.message;
+        logger.warn(
+            {
+                errorCount: Array.isArray(errors) ? errors.length : 0,
+                graphqlMessage: typeof message === "string" ? message.slice(0, 120) : null,
+                module: "acr-catalog",
+                orgId: input.orgId,
+                reason: "catalog_unreadable",
+                status: scopes.status,
+            },
+            "acr read refused: repository catalog unreadable",
+        );
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.unavailable,
             "Agent Context Runtime is temporarily unavailable.",
@@ -462,9 +486,125 @@ async function decidedReadScopes(
     return result;
 }
 
+/**
+ * ACR_SCOPES_FROM_GRANTS on, a context or evidence read: the scopes from the ops read listing, not the
+ * catalog (the catalog refuses above 100 repositories). Org-wide is `["*"]`: no name is listed, so the
+ * selected repository is not checked here (ACR checks it). Named is the principal's own keys (at most
+ * 256). Each refusal has its own answer and one warn line with the reason: the cap is 403
+ * grant_limit_exceeded; a deny that says "reads nothing" is an empty scope list (a selected repository is
+ * then 404); anything else (client failure, a deny that is not an access answer) is 503 unavailable.
+ */
+async function readListedScopes(
+    input: ResolveOpsAuthorizationInput & { readonly read: "context" | "evidence" },
+): Promise<OpsAuthorization> {
+    const action = input.read === "evidence" ? EVIDENCE_READ_ACTION : CONTEXT_READ_ACTION;
+    const refuse = (reason: string, source: string): never => {
+        logger.warn(
+            { module: "acr-read-listing", orgId: input.orgId, reason, route: input.read, source },
+            "acr read refused: repository listing unavailable",
+        );
+        logGrantDecision({
+            markerFrom: null,
+            orgId: input.orgId,
+            outcome: "unavailable",
+            route: input.read,
+            scopes: [],
+            source: null,
+        });
+        throw opsUnavailable();
+    };
+    let listing;
+    try {
+        listing = await readRepositoryListing({
+            accessToken: input.accessToken,
+            action,
+            orgId: input.orgId,
+        });
+    } catch {
+        return refuse("no_transport", "client");
+    }
+    const done = (
+        repositoryScopes: readonly string[],
+        outcome: GrantDecisionOutcome,
+        source: "named" | "org-wide",
+        visibleRepositories?: readonly string[],
+    ): OpsAuthorization => {
+        logGrantDecision({
+            markerFrom: source === "org-wide" ? action : null,
+            orgId: input.orgId,
+            outcome,
+            route: input.read,
+            scopes: repositoryScopes,
+            source,
+        });
+        return {
+            orgId: input.orgId,
+            repositoryScopes,
+            subject: input.subject,
+            ...(visibleRepositories === undefined ? {} : { visibleRepositories }),
+        };
+    };
+    switch (listing.kind) {
+        case "org-wide":
+            return done(["*"], "allowed", "org-wide");
+        case "named": {
+            const names = canonicalRepositoryScopes(listing.repositories);
+            if (
+                input.selectedRepository !== undefined &&
+                !names.includes(input.selectedRepository)
+            ) {
+                done(names, names.length > 0 ? "allowed" : "no_scopes", "named", names);
+                throw selectedNotAvailable();
+            }
+            return done(names, names.length > 0 ? "allowed" : "no_scopes", "named", names);
+        }
+        case "none":
+            done([], "no_scopes", "named", []);
+            if (input.selectedRepository !== undefined) throw selectedNotAvailable();
+            return {
+                orgId: input.orgId,
+                repositoryScopes: [],
+                subject: input.subject,
+                visibleRepositories: [],
+            };
+        case "too_large":
+            logger.warn(
+                {
+                    module: "acr-read-listing",
+                    orgId: input.orgId,
+                    reason: "repository_allowlist_too_large",
+                    route: input.read,
+                },
+                "acr read refused: more readable repositories than one listing may hold",
+            );
+            logGrantDecision({
+                markerFrom: null,
+                orgId: input.orgId,
+                outcome: "denied",
+                route: input.read,
+                scopes: [],
+                source: null,
+            });
+            throw grantLimitRefused();
+        case "refused":
+            return refuse(listing.reason, listing.source);
+    }
+}
+
+function selectedNotAvailable(): AcrRuntimeError {
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.repositoryNotAvailable,
+        "The selected repository is not available.",
+        { status: 404 },
+    );
+}
+
 async function readRepositoryScopes(
     input: ResolveOpsAuthorizationInput,
 ): Promise<OpsAuthorization> {
+    if (input.read !== undefined && acrScopesFromGrantsEnabled()) {
+        return readListedScopes({ ...input, read: input.read });
+    }
     const candidates = await readCatalogCandidates(input);
     const { repositoryScopes, visibleRepositories } = acrScopesFromGrantsEnabled()
         ? await decidedReadScopes(input, candidates)
@@ -473,11 +613,7 @@ async function readRepositoryScopes(
         input.selectedRepository !== undefined &&
         !visibleRepositories.includes(input.selectedRepository)
     ) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.repositoryNotAvailable,
-            "The selected repository is not available.",
-            { status: 404 },
-        );
+        throw selectedNotAvailable();
     }
     return { orgId: input.orgId, repositoryScopes, subject: input.subject, visibleRepositories };
 }

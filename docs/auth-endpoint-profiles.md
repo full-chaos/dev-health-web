@@ -133,9 +133,12 @@ performs _no_ credential check ahead of `auth/organizations`,
 `auth/switch-org`, or the NextAuth catch-all; those three own their
 authentication entirely. Every other row in the inventory has proxy.ts's
 session+org gate as a `reachable_validators` entry: `is_intended_validator:
-false, reachable_but_not_owner: true` — the CHAOS-3271 pattern L1 found in
-ops's `OrgIdMiddleware`/`ImpersonationMiddleware`, here in web's own
-middleware layer.
+false, earlier_auth_gate: true, foreign_class_validator: false`. The gate
+authenticates the same class (the Auth.js session) before the route's own
+check, so it is defence in depth by design, not a foreign-class validator.
+Every entry carries both booleans, never both true; the retired name
+`reachable_but_not_owner` is refused by the ops schema and by the gate's
+`reachable_validator_flags` rule.
 
 ## Route-group layout guards (not schema rows — see below)
 

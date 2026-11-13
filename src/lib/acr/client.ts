@@ -3,12 +3,13 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
-import { signWebAssertion } from "./assertion";
+import { APPROVER_REFERENCE_HEADER, signApproverReference, signWebAssertion } from "./assertion";
 import type { AcrRuntimeConfig } from "./config";
 import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { fetchBoundedJson, retryAfterSeconds } from "./http";
+import { logger } from "@/lib/logger";
 import type { OpsAuthorization } from "./ops";
 
 // The tool list is the vendored capabilities schema's own enum (CHAOS-7141), so
@@ -53,6 +54,8 @@ type UpstreamErrorMapper = (
 ) => AcrRuntimeError;
 
 type AcrRequest = {
+    /** The two approval calls only: they also send the approver reference (CHAOS-13587). */
+    readonly approval?: true;
     readonly authorization: OpsAuthorization;
     readonly body?: string;
     readonly errorMapper?: UpstreamErrorMapper;
@@ -347,6 +350,7 @@ export class AcrRuntimeClient {
     async deviceApproval(input: DeviceApprovalRequest): Promise<{ readonly status: "approved" }> {
         const value = await this.request({
             ...input,
+            approval: true,
             method: "POST",
             path: "/api/v1/oauth/device_approval",
             permissions: ["credential:issue"],
@@ -421,6 +425,7 @@ export class AcrRuntimeClient {
     ): Promise<{ readonly redirectUrl: string }> {
         const value = await this.request({
             ...input,
+            approval: true,
             errorMapper: oauthConsentFailure,
             method: "POST",
             path: "/authorize/consent",
@@ -508,27 +513,33 @@ export class AcrRuntimeClient {
 
     private async request(input: AcrRequest): Promise<unknown> {
         const body = input.body ?? "";
+        const assertion = signWebAssertion({
+            body,
+            config: this.config,
+            method: input.method,
+            orgId: input.authorization.orgId,
+            path: input.path,
+            permissions: input.permissions,
+            privateKey: this.config.privateKey,
+            ...(input.permissions.includes("credential:issue") &&
+            input.authorization.provenance !== undefined
+                ? { provenance: input.authorization.provenance }
+                : {}),
+            repositoryScopes: input.authorization.repositoryScopes,
+            subject: input.authorization.subject,
+        });
+        const approverReference =
+            input.approval === true ? this.approverReference(input, assertion) : undefined;
         const response = await fetchBoundedJson({
             body: input.body,
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
                 "X-ACR-Client-Version": "0.1.0",
-                "X-ACR-Web-Assertion": signWebAssertion({
-                    body,
-                    config: this.config,
-                    method: input.method,
-                    orgId: input.authorization.orgId,
-                    path: input.path,
-                    permissions: input.permissions,
-                    privateKey: this.config.privateKey,
-                    ...(input.permissions.includes("credential:issue") &&
-                    input.authorization.provenance !== undefined
-                        ? { provenance: input.authorization.provenance }
-                        : {}),
-                    repositoryScopes: input.authorization.repositoryScopes,
-                    subject: input.authorization.subject,
-                }),
+                "X-ACR-Web-Assertion": assertion,
+                ...(approverReference === undefined
+                    ? {}
+                    : { [APPROVER_REFERENCE_HEADER]: approverReference }),
                 "X-Request-ID": randomUUID(),
             },
             method: input.method,
@@ -550,5 +561,38 @@ export class AcrRuntimeClient {
             wireError.success ? wireError.data.error.code : undefined,
             response.retryAfterSeconds,
         );
+    }
+
+    /**
+     * The approver reference over exactly the assertion this call sends. None when the session
+     * has no usable sid or the token would be too long: ACR then refuses the approval while its
+     * decision check is enforced, and this line names why.
+     */
+    private approverReference(input: AcrRequest, assertion: string): string | undefined {
+        const sessionId = input.authorization.approverSessionId;
+        const reference =
+            sessionId === undefined
+                ? undefined
+                : signApproverReference({
+                      config: this.config,
+                      impersonating: input.authorization.provenance?.impersonating ?? false,
+                      orgId: input.authorization.orgId,
+                      privateKey: this.config.privateKey,
+                      requestAssertion: assertion,
+                      sessionId,
+                      subject: input.authorization.subject,
+                  });
+        if (reference === undefined) {
+            logger.warn(
+                {
+                    module: "acr-approval",
+                    orgId: input.authorization.orgId,
+                    reason: sessionId === undefined ? "no_sid" : "approver_reference_unsigned",
+                    userId: input.authorization.subject,
+                },
+                "acr approval sent without an approver reference",
+            );
+        }
+        return reference;
     }
 }

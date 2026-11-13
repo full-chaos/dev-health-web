@@ -28,6 +28,7 @@ export const ORG_IMPERSONATION_DENIED_ACTIONS = [
     "org.delete",
     "billing.manage",
     "acr.credential.issue",
+    "acr.credential.revoke",
 ] as const;
 export type OrgDeniedAction = (typeof ORG_IMPERSONATION_DENIED_ACTIONS)[number];
 
