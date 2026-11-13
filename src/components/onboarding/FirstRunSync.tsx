@@ -6,7 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { triggerSync } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { classifySyncTrigger } from "@/lib/sync-types";
+import {
+    classifySyncTrigger,
+    SYNC_LAST_FAILURE_MESSAGE,
+    SYNC_START_FAILED_MESSAGE,
+} from "@/lib/sync-types";
 import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
 import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 import type { SetupStatus } from "@/lib/onboarding/types";
@@ -87,7 +91,7 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
         const result = await triggerSync(status.sync_config_id);
         setSubmitting(false);
         if (result.error) {
-            setSubmitError(result.error);
+            setSubmitError(SYNC_START_FAILED_MESSAGE);
             return;
         }
         const outcome = result.data
@@ -225,10 +229,7 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
     }
 
     if (phase === "failed") {
-        const message =
-            status.blocker ??
-            status.last_sync_error ??
-            "The first sync didn’t complete. Retry to continue — your setup is preserved.";
+        const message = status.blocker ?? SYNC_LAST_FAILURE_MESSAGE;
         return (
             <div className={PANEL_CLASS} data-testid="first-run-sync" data-phase={phase}>
                 <DataState
