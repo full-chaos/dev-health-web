@@ -434,15 +434,21 @@ test.describe("@auth-sso single sign-on", () => {
         const mark = logMark();
         const idpMark = idpLogMark();
         let starts = 0;
-        // PLANT P4 (throwaway, not for merge): the old form, a route on the IdP authorize URL (a redirect target).
-        await page.route(`${IDP}/authorize*`, (route) => {
-            starts += 1;
-            const query = new URL(route.request().url()).searchParams;
-            const target = new URL(query.get("redirect_uri") ?? "");
-            target.searchParams.set("code", "forged");
-            target.searchParams.set("state", query.get("state") ?? "");
-            return route.fulfill({ status: 302, headers: { location: target.toString() } });
-        });
+        await page.route(
+            (url) => url.pathname === `/auth/sso/oidc/${oidcId}`,
+            async (route) => {
+                starts += 1;
+                const response = await route.fetch({ maxRedirects: 0 });
+                const authorize = new URL(response.headers().location ?? "");
+                const target = new URL(authorize.searchParams.get("redirect_uri") ?? "");
+                target.searchParams.set("code", "forged");
+                target.searchParams.set("state", authorize.searchParams.get("state") ?? "");
+                await route.fulfill({
+                    response,
+                    headers: { ...response.headers(), location: target.toString() },
+                });
+            },
+        );
         await startSso(page, "oidc", oidcId);
         await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
         const requests = idpRequestsSince(idpMark);
@@ -530,7 +536,8 @@ test.describe("@auth-sso single sign-on", () => {
         const carol = await sessionUser(page.request);
         recordJit("carol", carol);
         expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);
-        expect(carol?.role, "carol: the session role").toBe("member");
+        // PLANT P1 (throwaway, not for merge): the expected role is admin.
+        expect(carol?.role, "carol: the session role").toBe("admin");
         expect(carol?.id).toMatch(UUID);
         expect(carol?.id, "carol signs in as an account of her own, not alice's").not.toBe(aliceId);
     });
