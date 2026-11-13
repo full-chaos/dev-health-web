@@ -97,6 +97,37 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "ready-to-sync");
     });
 
+    it.each([
+        [{ status: "failed", reason: "quarantined: E42" }, "quarantined: E42"],
+        [{ status: "failed" }, "Sync failed"],
+        [{ status: "disabled", run_id: "r1", total_units: 0 }, "planned nothing"],
+        [{ status: "mystery", sync_run_id: "run-1" }, "unknown status"],
+        [{ status: "triggered" }, "no run was started"],
+    ])("a 202 body %j is shown as an error, not a start", async (data, text) => {
+        const user = userEvent.setup();
+        triggerSync.mockResolvedValue({ data });
+        render(<FirstRunSync status={status({})} orgId="org-1" />);
+
+        await user.click(screen.getByTestId("first-run-sync-start"));
+
+        expect(await screen.findByTestId("first-run-sync-submit-error")).toHaveTextContent(text);
+        expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
+            false,
+        );
+    });
+
+    it("a pending 202 counts as submitted (the plan is still being made)", async () => {
+        const user = userEvent.setup();
+        triggerSync.mockResolvedValue({ data: { status: "pending", occurrence_id: "o1" } });
+        render(<FirstRunSync status={status({})} orgId="org-1" />);
+
+        await user.click(screen.getByTestId("first-run-sync-start"));
+
+        await waitFor(() =>
+            expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "syncing"),
+        );
+    });
+
     it("guards Start sync when the backend says it is not startable yet", async () => {
         const user = userEvent.setup();
         render(<FirstRunSync status={status({ can_start_sync: false, sync_config_id: null })} />);

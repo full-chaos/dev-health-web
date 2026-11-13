@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerBackfill } from "@/lib/admin/server";
 import type {
+    BackfillResponse,
     BackfillSelector,
     SyncCoverageBackfillWindow,
     SyncCoverageDataset,
@@ -73,6 +74,18 @@ export function isTransientFailure(result: {
 }
 
 /** One key per user action; each window adds its index, so a retry of a window reuses its key. */
+export function backfillSubmitError(result: {
+    data?: BackfillResponse;
+    error?: string;
+}): string | null {
+    if (result.error) return result.error;
+    if (!result.data) return "Failed to start backfill";
+    if (result.data.status !== "accepted" || !result.data.backfill_job_id) {
+        return "Backfill was not accepted";
+    }
+    return null;
+}
+
 function newSubmissionActionId(): string {
     return (
         globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -513,10 +526,7 @@ export function BackfillWizard({
                             label: labels[index],
                             syncRunId: result.data?.sync_run_id ?? null,
                             backfillJobId: result.data?.backfill_job_id ?? null,
-                            error:
-                                result.error || !result.data
-                                    ? (result.error ?? "Failed to start backfill")
-                                    : null,
+                            error: backfillSubmitError(result),
                         });
                     } catch {
                         outcomes.push({

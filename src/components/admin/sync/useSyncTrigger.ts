@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerSync } from "@/lib/admin/server";
 import { logger } from "@/lib/logger";
-import { resolveSyncPollTarget, type SyncStatus } from "@/lib/sync-types";
+import { classifySyncTrigger, type SyncStatus } from "@/lib/sync-types";
 
 const syncLogger = logger.child({ component: "useSyncTrigger" });
 
@@ -125,19 +125,18 @@ export function useSyncTrigger(
                     toast.error(`Unable to start sync: ${result.error || "empty response"}`);
                     return;
                 }
-                // Some accepted triggers never actually dispatch a run (a
-                // disabled/no-op planning outcome) — mirrors the pollable-id
-                // check the pre-CHAOS-4318 poll-to-terminal code used to
-                // decide whether there was anything to track. With nothing
-                // dispatched, freshnessSignal will never change on its own,
-                // so clear immediately instead of leaving the button stuck.
-                if (!resolveSyncPollTarget(result.data, configId)) {
+                // Only a planned run changes freshnessSignal; any other
+                // outcome has nothing to wait for, so clear at once.
+                const outcome = classifySyncTrigger(result.data, configId);
+                if (outcome.kind !== "started") {
                     setBaselineLastSyncAt(undefined);
                     setBaselineRefreshToken(undefined);
                     setLiveStatus(null);
                     setIsSyncing(false);
                 }
-                toast.success("Sync triggered — use Refresh to check status");
+                if (outcome.kind === "failed") toast.error(outcome.message);
+                else if (outcome.kind === "started") toast.success(outcome.message);
+                else toast.info(outcome.message);
                 router.refresh();
                 // Otherwise deliberately no further clear here — see doc
                 // comment above.

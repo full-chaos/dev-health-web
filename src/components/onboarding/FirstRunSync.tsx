@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { triggerSync } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { classifySyncTrigger } from "@/lib/sync-types";
 import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
 import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 import type { SetupStatus } from "@/lib/onboarding/types";
@@ -87,6 +88,13 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
         setSubmitting(false);
         if (result.error) {
             setSubmitError(result.error);
+            return;
+        }
+        const outcome = result.data
+            ? classifySyncTrigger(result.data, status.sync_config_id)
+            : null;
+        if (!outcome || outcome.kind === "failed" || outcome.kind === "disabled") {
+            setSubmitError(outcome?.message ?? "Sync returned no result");
             return;
         }
         // Explicit confirmation that successfully submitted the backend trigger

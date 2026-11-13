@@ -75,6 +75,39 @@ export function resolveSyncPollTarget(
     return null;
 }
 
+export type SyncTriggerOutcome =
+    | { kind: "started"; message: string }
+    | { kind: "pending"; message: string }
+    | { kind: "disabled"; message: string }
+    | { kind: "failed"; message: string };
+
+/**
+ * What a 202 from the Sync-now route means. Only a `triggered` status that
+ * names a pollable run is a start; an absent or unknown status is a failure.
+ */
+export function classifySyncTrigger(
+    result: SyncTriggerResult,
+    configId: string,
+): SyncTriggerOutcome {
+    switch (result.status) {
+        case "triggered":
+            return resolveSyncPollTarget(result, configId)
+                ? { kind: "started", message: "Sync triggered — use Refresh to check status" }
+                : { kind: "failed", message: "Sync was accepted but no run was started" };
+        case "pending":
+            return { kind: "pending", message: "Sync is planning — check the job list" };
+        case "disabled":
+            return { kind: "disabled", message: "Sync planned nothing to run" };
+        case "failed":
+            return {
+                kind: "failed",
+                message: result.reason ? `Sync failed: ${result.reason}` : "Sync failed",
+            };
+        default:
+            return { kind: "failed", message: "Sync returned an unknown status" };
+    }
+}
+
 /**
  * Map a planner SyncRun.status (planned|dispatching|running|success|failed,
  * plus the unit-level partial_failed) onto the shared UI status union.
