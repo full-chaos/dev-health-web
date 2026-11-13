@@ -190,6 +190,21 @@ async function makeOrganizationEnterprise(
 }
 
 const authServiceLog = () => join(stackState(), "logs", "auth-service.log");
+const idpLog = () => join(stackState(), "logs", "idpstub.log");
+
+/** How many lines the IdP stub log has now (each served request is one "idpstub: <METHOD> <path>" line). */
+function idpLogMark(): number {
+    return readFileSync(idpLog(), "utf8").split("\n").length - 1;
+}
+
+/** The requests the IdP stub served after `since`, as "<METHOD> <path>". */
+function idpRequestsSince(since: number): string[] {
+    return readFileSync(idpLog(), "utf8")
+        .split("\n")
+        .slice(since)
+        .filter((line) => line.startsWith("idpstub: "))
+        .map((line) => line.slice("idpstub: ".length));
+}
 
 /** How many lines the auth-service log has now: a cell reads only the lines its own action adds. */
 function logMark(): number {
@@ -406,14 +421,22 @@ test.describe("@auth-sso single sign-on", () => {
         });
     });
 
-    // With SSO_EGRESS_ALLOW_CIDRS set in the job (ops ci/live_e2e_auth_stack.sh enable_sso), the forged code reaches the IdP token
-    // endpoint, which answers invalid_grant (ops internal/testsupport/idpstub/oidc.go:393). auth-service maps every exchange error to
-    // dependency_unavailable (internal/auth/identity/oidc/service.go:546-548). The IdP stub logs no request, so only that reason is pinned.
+    // The forged code must reach the IdP token endpoint without the browser ever visiting the IdP. The IdP authorize URL is the 303
+    // target of web's start route (src/lib/authSsoRoutes.ts:77), and Playwright routes only the first URL of a redirect chain, so the
+    // start route itself is routed: its 303 keeps its cookies (the flow binding) and goes straight to the callback with the real state
+    // and a forged code. With SSO_EGRESS_ALLOW_CIDRS set in the job (ops ci/live_e2e_auth_stack.sh enable_sso), auth-service sends that
+    // code to the IdP token endpoint, which answers invalid_grant (ops internal/testsupport/idpstub/oidc.go:393); auth-service maps
+    // every exchange error to dependency_unavailable (internal/auth/identity/oidc/service.go:546-548). The IdP stub log pins the
+    // mechanism: one token request and no authorize request.
     test("OIDC: with the real state of a started flow a forged code is refused at the IdP token endpoint", async ({
         page,
     }) => {
         const mark = logMark();
+        const idpMark = idpLogMark();
+        let starts = 0;
+        // PLANT P4 (throwaway, not for merge): the old form, a route on the IdP authorize URL (a redirect target).
         await page.route(`${IDP}/authorize*`, (route) => {
+            starts += 1;
             const query = new URL(route.request().url()).searchParams;
             const target = new URL(query.get("redirect_uri") ?? "");
             target.searchParams.set("code", "forged");
@@ -421,6 +444,18 @@ test.describe("@auth-sso single sign-on", () => {
             return route.fulfill({ status: 302, headers: { location: target.toString() } });
         });
         await startSso(page, "oidc", oidcId);
+        await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
+        const requests = idpRequestsSince(idpMark);
+        console.log(`DIAG idp-requests: ${JSON.stringify(requests)}`);
+        expect(
+            requests.filter((request) => request === "GET /authorize"),
+            "the browser visited the IdP authorize page: the forged code was never sent",
+        ).toEqual([]);
+        expect(
+            requests.filter((request) => request === "POST /token"),
+            "the IdP token endpoint judged the forged code once",
+        ).toEqual(["POST /token"]);
+        expect(starts, "the start route was routed once").toBe(1);
         await expectRefused(page);
         expect(await authServiceRefusal(mark, "oidc", oidcId, "callback")).toEqual({
             outcome: "denied",
@@ -495,8 +530,7 @@ test.describe("@auth-sso single sign-on", () => {
         const carol = await sessionUser(page.request);
         recordJit("carol", carol);
         expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);
-        // PLANT P1 (throwaway, not for merge): the expected role is admin.
-        expect(carol?.role, "carol: the session role").toBe("admin");
+        expect(carol?.role, "carol: the session role").toBe("member");
         expect(carol?.id).toMatch(UUID);
         expect(carol?.id, "carol signs in as an account of her own, not alice's").not.toBe(aliceId);
     });
