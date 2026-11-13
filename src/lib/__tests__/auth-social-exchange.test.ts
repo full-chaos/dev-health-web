@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // CHAOS-10877: the social exchange for each provider. W-1 the request and the stored pair for
-// github, google and gitlab under the EdDSA access-token contract; W-2 every failure leaves the stored session
-// alone and a provider token never reaches a log line; W-5 a new social user has no org at login
+// github, google and gitlab under the EdDSA access-token contract; W-2 every failure keeps only the reason
+// (no user, no credential: CHAOS-13642) and a provider token never reaches a log line; W-5 a new social user has no org at login
 // (D6145 correction: the org and the owner membership come at onboarding).
 
 const { nextAuthConfig } = vi.hoisted(() => ({ nextAuthConfig: { value: null as unknown } }));
@@ -166,12 +166,8 @@ describe("W-1 the exchange for each provider", () => {
 });
 
 describe("W-2 a failed exchange", () => {
-    const untouched = (out: Token) => {
-        expect(out.access_token).toBe("old-access");
-        expect(out.refresh_token).toBe("old-refresh");
-        expect(out.session_access_token).toBe("old-service-token");
-        expect(out.sid).toBe("ses_OldSessionAAAAAAAAAAAA");
-    };
+    const reasonOnly = (out: Token) =>
+        expect(Object.keys(out).filter((key) => out[key] !== undefined)).toEqual(["error"]);
 
     it.each(PROVIDERS)("%s: a refused answer under eddsa is no sign-in", async (provider) => {
         eddsaEnv();
@@ -187,7 +183,7 @@ describe("W-2 a failed exchange", () => {
         );
         const out = await jwt()({ token: stored(), user: null, account: accountOf(provider) });
         expect(out.error).toBe("social_login_failed");
-        untouched(out);
+        reasonOnly(out);
     });
 
     it.each([
@@ -200,21 +196,21 @@ describe("W-2 a failed exchange", () => {
         fetchMock.mockResolvedValue(json(body, status));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("github") });
         expect(out.error).toBe(message);
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it("a 5xx answer that is not JSON sets social_login_failed", async () => {
         fetchMock.mockResolvedValue(new Response("bad gateway", { status: 502 }));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("google") });
         expect(out.error).toBe("social_login_failed");
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it("a network error sets social_login_failed", async () => {
         fetchMock.mockRejectedValue(new TypeError("fetch failed"));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("gitlab") });
         expect(out.error).toBe("social_login_failed");
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it.each([

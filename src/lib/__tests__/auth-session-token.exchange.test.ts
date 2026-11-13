@@ -123,7 +123,7 @@ describe("the social exchange answer", () => {
         expect(out.error).toBeUndefined();
     });
 
-    it("(g2) a refused service token sets social_login_failed and leaves the stored tokens alone", async () => {
+    it("(g2) a refused service token sets social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(
@@ -134,16 +134,13 @@ describe("the social exchange answer", () => {
             }),
         );
         const out = await jwt()({ token: stored(), user: null, account });
-        expect(out.error).toBe("social_login_failed");
-        expect(out.access_token).toBe("old-access");
-        expect(out.refresh_token).toBe("old-refresh");
-        expect(out.session_access_token).toBe("old-service-token");
+        expect(out).toEqual({ error: "social_login_failed" });
         expect(logged()).toEqual([
             { operation: "social_login", branch: "session_token_exp_mismatch" },
         ]);
     });
 
-    it("(g2b) the key set unavailable sets social_login_failed and leaves the stored tokens alone", async () => {
+    it("(g2b) the key set unavailable sets social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -151,11 +148,10 @@ describe("the social exchange answer", () => {
             return eddsaFetch({ [SOCIAL]: answerOf(mint({ exp })) })(input, init);
         });
         const out = await jwt()({ token: stored(), user: null, account });
-        expect(out.error).toBe("social_login_failed");
-        expect(out.access_token).toBe("old-access");
+        expect(out).toEqual({ error: "social_login_failed" });
     });
 
-    it("(g3) an HS256 access token sets social_login_failed and leaves the stored tokens alone", async () => {
+    it("(g3) an HS256 access token sets social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const part = (value: string) => Buffer.from(value).toString("base64url");
         const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: SID, exp: inSeconds(1800) }))}.${part("sig")}`;
@@ -163,9 +159,7 @@ describe("the social exchange answer", () => {
             eddsaFetch({ [SOCIAL]: answerOf(hs256, { session_access_token: "svc-value" }) }),
         );
         const out = await jwt()({ token: stored(), user: null, account });
-        expect(out.error).toBe("social_login_failed");
-        expect(out.access_token).toBe("old-access");
-        expect(out.session_access_token).toBe("old-service-token");
+        expect(out).toEqual({ error: "social_login_failed" });
     });
 
     it("(g4) an answer without the field clears the stored service token and is counted", async () => {
