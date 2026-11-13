@@ -202,12 +202,11 @@ test.describe("@guided onboarding journey", () => {
         }
     });
 
-    // CURRENT ANSWER, NOT THE INTENDED ONE (CHAOS-13667): after a real Skip the dashboard shows the no-integration banner ("Connect a source to
-    // begin"), never the skipped banner ("Integration setup skipped"). The web derives "skipped" only from `!has_integration &&
-    // next_action === "complete"` (src/lib/onboarding/setupSurface.ts:53-56), but the ops setup status answers
-    // next_action "connect_integration" whenever no integration is connected and never reads the stored skip
-    // (internal/apiservice/admin/setupstatus.go:202-203). This pins what the product answers today.
-    test("skipping the integration reaches completion, then the dashboard shows the no-integration banner, not the skipped one (the current answer, not the intended one)", async () => {
+    // After a real Skip the dashboard shows the skipped banner ("Integration setup skipped"), never the no-integration prompt. The web
+    // derives "skipped" from `!has_integration && next_action === "complete"` (src/lib/onboarding/setupSurface.ts:53-56) and the ops
+    // setup status answers next_action "complete" for an org that stored the skip and has no integration
+    // (internal/apiservice/admin/setupstatus.go:253-254, the fix that replaced the earlier connect_integration answer).
+    test("skipping the integration reaches completion, then the dashboard shows the skipped banner that survives a reload", async () => {
         const { page } = user!;
         await page.goto("/auth/onboard/integration");
         await clickHydratedOnboardingControl(
@@ -223,14 +222,15 @@ test.describe("@guided onboarding journey", () => {
         const banner = page.locator('[data-testid="setup-banner"]');
         await expect(banner.first()).toBeVisible({ timeout: 30_000 });
         await snapshotBanner(page, "dashboard-after-skip");
-        await expect(banner.first()).toHaveAttribute("data-variant", "no-integration");
-        await expect(page.getByText("Connect a source to begin").first()).toBeVisible();
-        await expect(page.getByText("Integration setup skipped")).toHaveCount(0);
+        await expect(banner.first()).toHaveAttribute("data-variant", "skipped");
+        await expect(page.getByText("Integration setup skipped").first()).toBeVisible();
+        await expect(page.getByText("Connect a source to begin")).toHaveCount(0);
         await page.reload();
-        await expect(banner.first()).toHaveAttribute("data-variant", "no-integration", {
+        await expect(banner.first()).toHaveAttribute("data-variant", "skipped", {
             timeout: 30_000,
         });
-        await expect(page.getByText("Integration setup skipped")).toHaveCount(0);
+        await expect(page.getByText("Integration setup skipped").first()).toBeVisible();
+        await expect(page.getByText("Connect a source to begin")).toHaveCount(0);
     });
 
     test("an onboarded user who skipped the integration opening the workspace step is routed to the completion step", async () => {
