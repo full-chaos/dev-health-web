@@ -731,8 +731,8 @@ export function SyncRunDetailLive({
                         Skipped datasets
                     </h3>
                     <ul className="space-y-1 text-sm text-foreground">
-                        {skippedDatasets.map((item) => (
-                            <li key={item.dataset_key}>
+                        {skippedDatasets.map((item, index) => (
+                            <li key={`${item.dataset_key}#${index}`}>
                                 <span className="font-medium">{item.dataset_key}</span>
                                 {" — "}
                                 <span className="text-(--ink-muted)">

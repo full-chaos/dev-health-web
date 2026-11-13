@@ -174,8 +174,8 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {sr
                                         ? `${formatNumber(sr.completed_units)} done · ${formatNumber(sr.failed_units)} failed · ${formatNumber(sr.total_units)} total`
                                         : (job.items_synced ?? "—")}
-                                    {readSkippedDatasets(job.result).map((item) => (
-                                        <div key={item.dataset_key}>
+                                    {readSkippedDatasets(job.result).map((item, index) => (
+                                        <div key={`${item.dataset_key}#${index}`}>
                                             {item.dataset_key}: {skippedReasonText(item.reason)}
                                         </div>
                                     ))}

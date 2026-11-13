@@ -1036,3 +1036,32 @@ describe("SyncRunDetailLive skipped datasets", () => {
         expect(screen.queryByText(/brand_new/)).not.toBeInTheDocument();
     });
 });
+
+describe("SyncRunDetailLive skipped datasets edge cases", () => {
+    const withResult = (result: Record<string, unknown>) =>
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, result }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+    it("uses the fallback for a reason that names an Object.prototype member", () => {
+        withResult({ skipped_datasets: [{ dataset_key: "incidents", reason: "constructor" }] });
+        expect(screen.getByText("skipped")).toBeInTheDocument();
+    });
+
+    it("does not warn about duplicate keys when a dataset repeats", () => {
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        withResult({
+            skipped_datasets: [
+                { dataset_key: "incidents", reason: "feature_disabled" },
+                { dataset_key: "incidents", reason: "feature_disabled" },
+            ],
+        });
+        expect(screen.getAllByText("skipped: feature off")).toHaveLength(2);
+        expect(spy.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+        spy.mockRestore();
+    });
+});

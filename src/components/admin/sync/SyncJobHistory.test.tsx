@@ -326,3 +326,41 @@ describe("SyncJobHistory skipped datasets", () => {
         expect(screen.getByText("incidents: skipped")).toBeInTheDocument();
     });
 });
+
+describe("SyncJobHistory skipped datasets edge cases", () => {
+    const job = (result: Record<string, unknown>): SyncJob => ({ ...buildJobs(1)[0], result });
+
+    it("uses the fallback for a reason that names an Object.prototype member", () => {
+        render(
+            <SyncJobHistory
+                jobs={[
+                    job({ skipped_datasets: [{ dataset_key: "incidents", reason: "__proto__" }] }),
+                ]}
+                configId="cfg-1"
+                testMode
+            />,
+        );
+        expect(screen.getByText("incidents: skipped")).toBeInTheDocument();
+    });
+
+    it("does not warn about duplicate keys when a dataset repeats", () => {
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        render(
+            <SyncJobHistory
+                jobs={[
+                    job({
+                        skipped_datasets: [
+                            { dataset_key: "incidents", reason: "feature_disabled" },
+                            { dataset_key: "incidents", reason: "feature_disabled" },
+                        ],
+                    }),
+                ]}
+                configId="cfg-1"
+                testMode
+            />,
+        );
+        expect(screen.getAllByText("incidents: skipped: feature off")).toHaveLength(2);
+        expect(spy.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+        spy.mockRestore();
+    });
+});

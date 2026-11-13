@@ -10,7 +10,9 @@ const SKIPPED_REASON_TEXT: Record<string, string> = {
 export const SKIPPED_REASON_FALLBACK = "skipped";
 
 export function skippedReasonText(reason: string): string {
-    return SKIPPED_REASON_TEXT[reason] ?? SKIPPED_REASON_FALLBACK;
+    return Object.hasOwn(SKIPPED_REASON_TEXT, reason)
+        ? SKIPPED_REASON_TEXT[reason]
+        : SKIPPED_REASON_FALLBACK;
 }
 
 export function readSkippedDatasets(
