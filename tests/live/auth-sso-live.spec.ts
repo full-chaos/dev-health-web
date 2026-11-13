@@ -2,8 +2,19 @@
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
-import { envFault, registerUser, stackVerb, testEmail, verifyUserViaStack } from "./helpers";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import {
+    authHeaders,
+    envFault,
+    grantPlatformAdminViaStack,
+    liveBackendUrl,
+    loginUser,
+    registerUser,
+    stackVerb,
+    testEmail,
+    userIdByEmail,
+    verifyUserViaStack,
+} from "./helpers";
 
 // One owner, seeded providers, one stack: the cells run in order and spend no retries (the budget is small).
 test.describe.configure({ mode: "serial", retries: 0 });
@@ -116,6 +127,59 @@ function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: strin
     return id;
 }
 
+/**
+ * auth-service admits SSO only when the process licence or the organization's own tier grants sso_saml (ops
+ * internal/auth/identity/oidc/entitlement.go:25-29), and only go-api holds a process licence. So the owner's organization is
+ * made enterprise through the served admin route (PATCH /api/v1/admin/orgs/{id}, platform admin) with the session of a dedicated
+ * platform admin: a user made admin by the stack verb grant-platform-admin and signed in by the API login helper.
+ */
+async function makeOrganizationEnterprise(
+    request: APIRequestContext,
+    owner: string,
+): Promise<void> {
+    const adminEmail = testEmail("sso-platform-admin");
+    await registerUser(request, adminEmail, ownerPassword);
+    let ready = false;
+    try {
+        ready = verifyUserViaStack(adminEmail) && grantPlatformAdminViaStack(adminEmail);
+    } catch {
+        envFault("Platform admin setup failed");
+    }
+    if (!ready) envFault("Platform admin could not be set up");
+    const login = await loginUser(request, adminEmail, ownerPassword);
+    const adminToken = typeof login.access_token === "string" ? login.access_token : "";
+    expect(adminToken, "the platform admin login gave no access token").not.toBe("");
+    const userId = await userIdByEmail(request, owner, adminToken);
+    expect(userId, "the owner is not in the admin user list").not.toBe("");
+    const orgs = await request.get(`${liveBackendUrl}/api/v1/admin/orgs?limit=100`, {
+        headers: authHeaders(adminToken),
+    });
+    expect(orgs.status(), `listing organizations answered ${String(orgs.status())}`).toBe(200);
+    let orgId = "";
+    for (const org of (await orgs.json()) as Array<{ id?: string }>) {
+        if (!org.id) continue;
+        const members = await request.get(`${liveBackendUrl}/api/v1/admin/orgs/${org.id}/members`, {
+            headers: authHeaders(adminToken),
+        });
+        expect(members.status(), `listing members answered ${String(members.status())}`).toBe(200);
+        const rows = (await members.json()) as Array<{ user_id?: string }>;
+        if (rows.some((row) => row.user_id === userId)) {
+            orgId = org.id;
+            break;
+        }
+    }
+    expect(orgId, "the owner's organization was not among the newest organizations").not.toBe("");
+    const patched = await request.patch(`${liveBackendUrl}/api/v1/admin/orgs/${orgId}`, {
+        headers: authHeaders(adminToken),
+        data: { tier: "enterprise" },
+    });
+    expect(
+        patched.status(),
+        `making the organization enterprise answered ${String(patched.status())}`,
+    ).toBe(200);
+    expect(((await patched.json()) as { tier?: string }).tier).toBe("enterprise");
+}
+
 async function sessionEmail(page: Page): Promise<string | undefined> {
     const response = await page.request.get("/api/auth/session");
     if (!response.ok()) return undefined;
@@ -151,6 +215,7 @@ test.describe("@auth-sso single sign-on", () => {
             envFault("Owner verification failed");
         }
         if (!verified) envFault("Owner could not be verified");
+        await makeOrganizationEnterprise(request, ownerEmail);
         // The owner's own organization is the one register created: the verb seeds into the earliest membership of the e-mail.
         oidcId = seedProvider(ownerEmail, "oidc", `live-oidc-${suffix}`);
         restartIdp(idpEmail("alice"), oidcId);
