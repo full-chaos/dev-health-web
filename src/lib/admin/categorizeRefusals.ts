@@ -1,3 +1,7 @@
+/** A provider or base URL change must carry the API key again: a stored key never moves to a new target. */
+export const TARGET_CHANGE_NEEDS_KEY_MESSAGE =
+    "A new provider or base URL needs its API key entered again.";
+
 const MESSAGES: Record<string, string> = {
     purpose_not_configurable:
         "Categorization is not set up for this organization. Opt in first, then set its model.",
@@ -8,6 +12,7 @@ const MESSAGES: Record<string, string> = {
     categorize_byo_optin_unreadable: "The opt-in could not be read. Try again.",
     categorize_byo_model_unreported: "The provider did not report which model answered.",
     categorize_byo_not_configured: "Save your own model configuration first.",
+    provider_or_base_url_change_requires_api_key: TARGET_CHANGE_NEEDS_KEY_MESSAGE,
 };
 
 const TYPESAFE_MESSAGES: Record<string, string> = {

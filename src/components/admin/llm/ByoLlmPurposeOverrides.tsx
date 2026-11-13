@@ -7,8 +7,11 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { Section } from "@/components/ui/Section";
 import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { categorizeRefusalMessage } from "@/lib/admin/categorizeRefusals";
-import { keyAfterConnectionChange } from "@/lib/admin/apiKeyReset";
+import {
+    TARGET_CHANGE_NEEDS_KEY_MESSAGE,
+    categorizeRefusalMessage,
+} from "@/lib/admin/categorizeRefusals";
+import { connectionChanged, keyAfterConnectionChange } from "@/lib/admin/apiKeyReset";
 import {
     CATEGORIZE_PROVIDERS,
     categorizeProviderFor,
@@ -51,6 +54,7 @@ function providerLabel(provider: string): string {
 
 type Loaded = {
     defaultProvider: string | null;
+    defaultBaseUrl: string;
     hasDefaultKey: boolean;
     optedIn: boolean;
     overrides: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
@@ -87,6 +91,7 @@ export function ByoLlmPurposeOverrides({
         setLoadError(null);
         setLoaded({
             defaultProvider: result.data.provider ?? null,
+            defaultBaseUrl: result.data.base_url ?? "",
             hasDefaultKey: Boolean(result.data.api_key),
             optedIn: result.data.categorize_byo === true,
             overrides: result.data.purposes ?? {},
@@ -165,10 +170,22 @@ function PurposeForm({
     const idPrefix = `byo-${purpose}`;
     const isCategorize = purpose === "categorize";
 
-    const sameProvider = !isCategorize && provider === loaded.defaultProvider;
-    const keyInherited = sameProvider && loaded.hasDefaultKey;
+    // The default key serves an override only on the default's provider and base URL.
+    const keyInherited =
+        !isCategorize &&
+        loaded.hasDefaultKey &&
+        !connectionChanged(
+            { provider: loaded.defaultProvider ?? "", baseUrl: loaded.defaultBaseUrl },
+            { provider, baseUrl },
+        );
     const categorizeProvider = isCategorize ? categorizeProviderFor(provider) : undefined;
-    const categorizeKeyKept = isCategorize && Boolean(stored) && stored?.provider === provider;
+    // A stored key is bound to the provider and base URL it was saved with.
+    const storedKeyKept =
+        stored !== undefined &&
+        !connectionChanged(
+            { provider: stored.provider, baseUrl: stored.base_url ?? "" },
+            { provider, baseUrl },
+        );
 
     function changeProvider(next: string) {
         setProvider(next);
@@ -203,9 +220,12 @@ function PurposeForm({
             setError("Enter a model for this purpose.");
             return;
         }
-        const keyOnHand = isCategorize ? categorizeKeyKept : keyInherited || Boolean(stored);
-        if (!keyOnHand && !apiKey.trim()) {
-            setError("A different provider needs its own API key.");
+        if (!keyInherited && !storedKeyKept && !apiKey.trim()) {
+            setError(
+                stored
+                    ? TARGET_CHANGE_NEEDS_KEY_MESSAGE
+                    : "A different provider needs its own API key.",
+            );
             return;
         }
         setBusy(true);

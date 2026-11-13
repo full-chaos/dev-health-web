@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keyAfterConnectionChange } from "../apiKeyReset";
+import { connectionChanged, keyAfterConnectionChange } from "../apiKeyReset";
 
 describe("keyAfterConnectionChange", () => {
     it("drops the key when the provider changes", () => {
@@ -50,5 +50,40 @@ describe("keyAfterConnectionChange", () => {
                 "",
             ),
         ).toBe("");
+    });
+});
+
+describe("connectionChanged", () => {
+    it("is true when the provider changes", () => {
+        expect(
+            connectionChanged(
+                { provider: "openai", baseUrl: "" },
+                { provider: "anthropic", baseUrl: "" },
+            ),
+        ).toBe(true);
+    });
+
+    it("is true when the base URL changes, is set or is cleared", () => {
+        expect(
+            connectionChanged(
+                { provider: "openai", baseUrl: "" },
+                { provider: "openai", baseUrl: "https://8.8.8.8/v1" },
+            ),
+        ).toBe(true);
+        expect(
+            connectionChanged(
+                { provider: "openai", baseUrl: "https://8.8.8.8/v1" },
+                { provider: "openai", baseUrl: "" },
+            ),
+        ).toBe(true);
+    });
+
+    it("is false when only base URL whitespace differs", () => {
+        expect(
+            connectionChanged(
+                { provider: "openai", baseUrl: "https://api.example " },
+                { provider: "openai", baseUrl: " https://api.example" },
+            ),
+        ).toBe(false);
     });
 });
