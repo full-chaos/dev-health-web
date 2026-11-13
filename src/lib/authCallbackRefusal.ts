@@ -22,6 +22,7 @@ export const STATE_CHECK_MESSAGES: readonly string[] = [
 ];
 
 const CALLBACK_PATH = /^\/api\/auth\/callback\/[^/]+$/u;
+const SESSION_COOKIE = /^(?:__Secure-)?authjs\.session-token(?:\.\d+)?=/u;
 
 const log = logger.child({ module: "auth" });
 const requests = new AsyncLocalStorage<{ refusal: CallbackCheckRefusal | null }>();
@@ -69,7 +70,7 @@ function authOrigin(request: NextRequest): string {
  * A callback whose state or PKCE check failed lands on the sign-in page with a sign-in error, not on the
  * Configuration page: the request was refused, the server is not misconfigured. Only when all hold: the request is
  * an OAuth callback, the Auth.js logger saw a failed check for this request, and Auth.js answered exactly the
- * Configuration redirect. Every other answer passes through unchanged, cookies included.
+ * Configuration redirect with no session cookie. Every other answer passes through unchanged, cookies included.
  */
 export function authCallbackRefusal(handler: AuthRouteHandler): AuthRouteHandler {
     return async (request) => {
@@ -79,6 +80,8 @@ export function authCallbackRefusal(handler: AuthRouteHandler): AuthRouteHandler
             return response;
         const origin = authOrigin(request);
         if (response.headers.get("location") !== `${origin}/auth/error?error=Configuration`)
+            return response;
+        if (response.headers.getSetCookie().some((line) => SESSION_COOKIE.test(line)))
             return response;
         const headers = new Headers(response.headers);
         headers.set("location", `${origin}/auth/signin?error=${CALLBACK_REFUSAL_SIGNIN_ERROR}`);

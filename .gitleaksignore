@@ -18,5 +18,5 @@ src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:65
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:66
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:76
 src/lib/acr/__tests__/vectors/web-approver.v1.json:jwt:77
-# the test-only AUTH_SECRET of the OAuth callback refusal cells (line 9 of the commit that added them); no deployed secret
-src/app/api/auth/[...nextauth]/__tests__/callback-check-refusal.test.ts:generic-api-key:9
+# commit-scoped: the test-only AUTH_SECRET literal of one branch commit (no deployed secret); the squash on main never holds it
+5e121b5a30e9e9d1787e05b16a0fce2de943c97a:src/app/api/auth/[...nextauth]/__tests__/callback-check-refusal.test.ts:generic-api-key:9

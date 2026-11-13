@@ -223,6 +223,21 @@ describe("authCallbackRefusal: the route wrapper", () => {
         expect(response.headers.get("location")).toBe(CONFIGURATION);
     });
 
+    it.each([
+        ["authjs.session-token=v; Path=/; HttpOnly"],
+        ["__Secure-authjs.session-token=v; Path=/; HttpOnly; Secure"],
+        ["__Secure-authjs.session-token.0=v; Path=/; HttpOnly; Secure"],
+    ])(
+        "F-1 a Configuration redirect that also sets a session cookie (%s) is unchanged",
+        async (cookie) => {
+            const response = await authCallbackRefusal(
+                authJs(stateMismatch(), () => redirect(CONFIGURATION, [cookie])),
+            )(new NextRequest(CALLBACK));
+            expect(response.headers.get("location")).toBe(CONFIGURATION);
+            expect(response.headers.getSetCookie()).toEqual([cookie]);
+        },
+    );
+
     it("K-5 outside a wrapped route request the logger hook does nothing", () => {
         expect(() => noteCallbackRefusal(authError("InvalidCheck"))).not.toThrow();
     });

@@ -691,7 +691,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/[...nextauth]/route.ts",
-                "line": 6
+                "line": 8
             },
             "classification": "public",
             "public_rationale": "NextAuth.js library router multiplexing signin/callback/session/csrf/providers/signout under this catch-all segment; this IS the surface that issues auth_js_browser_session, so it cannot itself require that class as a precondition.",
