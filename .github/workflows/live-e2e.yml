@@ -52,13 +52,13 @@ jobs:
         # Three jobs, each with its own stack boot: the live tier, the guided-onboarding tier and the web decisions tier (flip
         # F11) share no login rate-limit window, process or state (auth-service allows 10 logins per address and account in
         # 15 min). The "live" job keeps the check name live-e2e.
-        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'web-decisions-classes' && 'live-e2e-web-decisions-classes' || matrix.tier == 'web-decisions-admin-users' && 'live-e2e-web-decisions-admin-users' || matrix.tier == 'guided' && 'live-e2e-guided' || matrix.tier == 'auth-journeys' && 'live-e2e-auth-journeys' || matrix.tier == 'auth-sso' && 'live-e2e-auth-sso' || 'live-e2e' }}
+        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'web-decisions-classes' && 'live-e2e-web-decisions-classes' || matrix.tier == 'web-decisions-admin-users' && 'live-e2e-web-decisions-admin-users' || matrix.tier == 'guided' && 'live-e2e-guided' || matrix.tier == 'auth-journeys' && 'live-e2e-auth-journeys' || matrix.tier == 'auth-sso' && 'live-e2e-auth-sso' || matrix.tier == 'auth-social' && 'live-e2e-auth-social' || 'live-e2e' }}
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         strategy:
             fail-fast: false
             matrix:
-                tier: [live, guided, auth-journeys, auth-sso, web-decisions, web-decisions-classes, web-decisions-admin-users]
+                tier: [live, guided, auth-journeys, auth-sso, auth-social, web-decisions, web-decisions-classes, web-decisions-admin-users]
         runs-on: ubuntu-latest
         timeout-minutes: 25
         # Service images and the traefik image come from the ghcr.io mirror.
@@ -372,6 +372,13 @@ jobs:
               # the ops verb; none of them is a workflow value.
               if: matrix.tier == 'auth-sso'
               run: bash ci/live_e2e_auth_stack.sh enable-sso "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
+            - name: Enable the throwaway GitHub provider stand-in (auth-social)
+              # Before go-api starts: the ops verb adds the github.com hosts entry, starts the stand-in on :443 as root (runner only)
+              # and writes the provider ids and secrets to the job-local stack env files; none of them is a workflow value.
+              if: matrix.tier == 'auth-social'
+              run: bash ci/live_e2e_auth_stack.sh enable-social "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 
             - name: Start dev-health-ops go-api and query-api
@@ -778,7 +785,7 @@ jobs:
                       web-decisions-logs/live-results-web-decisions-admin-users-enforce.json
 
             - name: Run live backend e2e tier
-              if: matrix.tier == 'live' || matrix.tier == 'guided' || matrix.tier == 'auth-journeys' || matrix.tier == 'auth-sso'
+              if: matrix.tier == 'live' || matrix.tier == 'guided' || matrix.tier == 'auth-journeys' || matrix.tier == 'auth-sso' || matrix.tier == 'auth-social'
               env:
                   TIER: ${{ matrix.tier }}
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
@@ -813,6 +820,8 @@ jobs:
                     LIVE_WEB_LOG=web-live-logs/web-server-auth-journeys.log bash ci/run_tests.sh live-e2e-auth-journeys
                   elif [ "${TIER}" = auth-sso ]; then
                     LIVE_WEB_LOG=web-live-logs/web-server-auth-sso.log bash ci/run_tests.sh live-e2e-auth-sso
+                  elif [ "${TIER}" = auth-social ]; then
+                    LIVE_WEB_LOG=web-live-logs/web-server-auth-social.log bash ci/run_tests.sh live-e2e-auth-social
                   else
                     LIVE_WEB_LOG=web-live-logs/web-server-live.log bash ci/run_tests.sh live-e2e
                   fi
@@ -843,6 +852,7 @@ jobs:
                       ${{ runner.temp }}/live-e2e-auth/logs/auth-service.log
                       ${{ runner.temp }}/live-e2e-auth/logs/smtpsink.log
                       ${{ runner.temp }}/live-e2e-auth/logs/idpstub.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/providerstub.log
 
             - name: Stop dev-health-ops API
               if: always()
