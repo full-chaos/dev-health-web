@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
 import { getBackendUrl } from "@/lib/origin";
+import { noteCallbackRefusal } from "@/lib/authCallbackRefusal";
 import { logger } from "@/lib/logger";
 import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
@@ -117,6 +118,7 @@ const nextAuth = NextAuth({
     trustHost: true,
     logger: {
         error: (error: Error) => {
+            noteCallbackRefusal(error);
             authLogger.error({ err: error }, "next-auth error");
         },
         warn: (code: string) => {
