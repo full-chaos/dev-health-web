@@ -222,7 +222,7 @@ test.describe("@guided onboarding journey", () => {
         const banner = page.locator('[data-testid="setup-banner"]');
         await expect(banner.first()).toBeVisible({ timeout: 30_000 });
         await snapshotBanner(page, "dashboard-after-skip");
-        await expect(banner.first()).toHaveAttribute("data-variant", "skipped");
+        await expect(banner.first()).toHaveAttribute("data-variant", "no-integration");
         await expect(page.getByText("Integration setup skipped").first()).toBeVisible();
         await expect(page.getByText("Connect a source to begin")).toHaveCount(0);
         await page.reload();
