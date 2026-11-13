@@ -86,7 +86,7 @@ export default defineConfig({
                   // The IdP stand-in serves a job-local CA certificate; assertions and codes appear in page URLs, so no
                   // browser artifact is kept.
                   use: {
-                      baseURL: "http://127.0.0.1:3002",
+                      baseURL: "http://localhost:3002",
                       headless: true,
                       ignoreHTTPSErrors: true,
                       trace: "off",

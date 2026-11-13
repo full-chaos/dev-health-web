@@ -20,7 +20,9 @@ import {
 test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(180_000);
 
-const WEB = "http://127.0.0.1:3002";
+// The web origin the browser uses: Next's dev server builds the callback URLs from its own request URL, which names localhost, so
+// the browser, the IdP allow-list and the SAML ACS base must all use localhost (cookies are bound to the host).
+const WEB = "http://localhost:3002";
 const IDP = "https://localhost:9443";
 const ownerPassword = "TestPass123!TestPass123!";
 const suffix = `${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
