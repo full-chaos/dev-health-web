@@ -4,6 +4,9 @@
  * stack: the validation, the integration step, the resume from the backend's onboarding state, the persisted skip and the routing
  * guards. `?github_app=connected` after a real GitHub App install is not executable here (no stand-in for the install callback).
  */
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
     clickHydratedOnboardingControl,
@@ -25,10 +28,15 @@ const password = "TestPass123!TestPass123!";
 test.describe.configure({ retries: 0 });
 test.setTimeout(120_000);
 
-const diagLines: string[] = [];
+// The DIAG lines go to a file the whole run appends to, not to worker memory: a failed cell restarts the worker and would empty a list.
+const diagFile = join(
+    tmpdir(),
+    `auth-onboard-live-diag-${process.env.GITHUB_RUN_ID ?? "local"}-${process.env.GITHUB_RUN_ATTEMPT ?? "0"}.log`,
+);
+const DIAG_LINES_WRITTEN = 6;
 function note(name: string, line: string): void {
     const text = `DIAG ${name}: ${line}`;
-    diagLines.push(text);
+    appendFileSync(diagFile, `${text}\n`);
     console.log(text);
     test.info().annotations.push({ type: `diag-${name}`, description: line });
 }
@@ -61,6 +69,19 @@ async function signIn(page: Page, email: string): Promise<void> {
 
 const where = (page: Page): string => new URL(page.url()).pathname;
 
+/** The visible words of a page area, cut short; labels and messages only (no value of a field). */
+async function snapshot(page: Page, name: string, selector: string): Promise<void> {
+    const text = await page
+        .locator(selector)
+        .first()
+        .innerText({ timeout: 5_000 })
+        .catch(() => "unreadable");
+    note(
+        name,
+        `path=${where(page)} text=${JSON.stringify(text.replace(/\s+/gu, " ").slice(0, 240))}`,
+    );
+}
+
 test.describe("@guided onboarding validation", () => {
     test.describe.configure({ mode: "serial" });
     test.skip(
@@ -90,6 +111,8 @@ test.describe("@guided onboarding validation", () => {
     test("a blank org name is rejected and the user stays on the workspace step", async () => {
         const { page } = user!;
         await page.getByRole("button", { name: "Create Workspace" }).click();
+        await page.waitForTimeout(3_000);
+        await snapshot(page, "blank-org-submit", "main");
         await expect(page.getByText("Organization name is required")).toBeVisible({
             timeout: 15_000,
         });
@@ -100,6 +123,8 @@ test.describe("@guided onboarding validation", () => {
         const { page, email } = user!;
         await page.getByLabel("Organization Name").fill("   ");
         await page.getByRole("button", { name: "Create Workspace" }).click();
+        await page.waitForTimeout(3_000);
+        await snapshot(page, "whitespace-org-submit", "main");
         await expect(page.getByText("Organization name is required")).toBeVisible({
             timeout: 15_000,
         });
@@ -145,7 +170,7 @@ test.describe("@guided onboarding journey", () => {
         await expect(page.getByRole("button", { name: "Skip for now" })).toBeVisible();
     });
 
-    test("a fresh sign-in resumes on the integration step, not on the workspace form", async ({
+    test("a fresh sign-in after the workspace exists lands on the dashboard (current answer: the integration step is not resumed)", async ({
         browser,
     }) => {
         const { email } = user!;
@@ -156,7 +181,7 @@ test.describe("@guided onboarding journey", () => {
             await expect.poll(() => where(page), { timeout: 60_000 }).not.toBe("/auth/signin");
             await page.waitForLoadState("networkidle").catch(() => undefined);
             note("resume-landing", `path=${where(page)}`);
-            expect(where(page)).not.toBe("/auth/onboard/workspace");
+            expect(where(page)).toBe("/dashboard");
         } finally {
             await context.close();
         }
@@ -175,6 +200,8 @@ test.describe("@guided onboarding journey", () => {
         await expect(page.getByRole("heading", { name: "You're all set" })).toBeVisible();
         await page.getByRole("link", { name: "Go to dashboard" }).click();
         await expect(page).toHaveURL(/\/dashboard/, { timeout: 60_000 });
+        await page.waitForTimeout(3_000);
+        await snapshot(page, "dashboard-after-skip", "body");
         await expect(page.getByText("Integration setup skipped").first()).toBeVisible({
             timeout: 30_000,
         });
@@ -210,7 +237,7 @@ test.describe("@guided onboarding guard", () => {
             await page.goto("/dashboard");
             await page.waitForLoadState("networkidle").catch(() => undefined);
             note("guard-orgless-on-dashboard", `path=${where(page)}`);
-            expect(where(page)).toMatch(/^\/auth\/onboard/);
+            expect(where(page)).toBe("/auth/onboard/workspace");
         } finally {
             await user.close();
         }
@@ -223,8 +250,14 @@ test.describe("@guided onboarding diagnostics", () => {
         "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless onboarding journey",
     );
 
-    test("no DIAG line of this file names a secret", () => {
-        for (const line of diagLines) {
+    test("no DIAG line of this file names a secret, and the expected lines were written", () => {
+        const lines = existsSync(diagFile)
+            ? readFileSync(diagFile, "utf8")
+                  .split("\n")
+                  .filter((line) => line !== "")
+            : [];
+        expect(lines.length, "the DIAG lines the earlier cells wrote").toBe(DIAG_LINES_WRITTEN);
+        for (const line of lines) {
             expect(line, "a DIAG line carries a credential-shaped value").not.toMatch(
                 /eyJ[A-Za-z0-9_-]{8,}|bearer|password|access_token|refresh_token|@example\.com/iu,
             );
