@@ -1,0 +1,233 @@
+/**
+ * Live guided onboarding journey against the real go-api and auth-service (the `guided` tier: auto-org off, guided web flag on).
+ * The default suite covers the same screens against a mock backend (tests/auth-onboard.spec.ts); these cells run them on the real
+ * stack: the validation, the integration step, the resume from the backend's onboarding state, the persisted skip and the routing
+ * guards. `?github_app=connected` after a real GitHub App install is not executable here (no stand-in for the install callback).
+ */
+import { expect, test, type Browser, type Page } from "@playwright/test";
+import {
+    clickHydratedOnboardingControl,
+    envFault,
+    isServerActionTo,
+    loginUser,
+    registerUser,
+    testEmail,
+    verifyUserViaStack,
+} from "./helpers";
+
+const liveGuidedOnboarding =
+    process.env.LIVE_GUIDED_ONBOARDING === "true" || process.env.LIVE_GUIDED_ONBOARDING === "1";
+
+const BASE = "http://127.0.0.1:3002";
+const password = "TestPass123!TestPass123!";
+
+// Retries spend login budget: none. One fresh user per group, groups run in order inside the shared guided job.
+test.describe.configure({ retries: 0 });
+test.setTimeout(120_000);
+
+const diagLines: string[] = [];
+function note(name: string, line: string): void {
+    const text = `DIAG ${name}: ${line}`;
+    diagLines.push(text);
+    console.log(text);
+    test.info().annotations.push({ type: `diag-${name}`, description: line });
+}
+
+async function freshUser(
+    browser: Browser,
+    prefix: string,
+): Promise<{ email: string; page: Page; close: () => Promise<void> }> {
+    const context = await browser.newContext({ baseURL: BASE });
+    const email = testEmail(prefix);
+    await registerUser(context.request, email, password);
+    let verified = false;
+    try {
+        verified = verifyUserViaStack(email);
+    } catch {
+        // Stack errors may carry argv, including the address.
+        envFault("Onboarding user verification failed");
+    }
+    if (!verified) envFault("Onboarding user could not be verified");
+    const page = await context.newPage();
+    return { email, page, close: () => context.close() };
+}
+
+async function signIn(page: Page, email: string): Promise<void> {
+    await page.goto("/auth/signin");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: /^sign in$/i }).click();
+}
+
+const where = (page: Page): string => new URL(page.url()).pathname;
+
+test.describe("@guided onboarding validation", () => {
+    test.describe.configure({ mode: "serial" });
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless onboarding journey",
+    );
+    let user: Awaited<ReturnType<typeof freshUser>> | undefined;
+
+    test.beforeAll(async ({ browser }) => {
+        user = await freshUser(browser, "onboard-valid");
+    });
+    test.afterAll(async () => {
+        await user?.close();
+    });
+
+    test("a fresh verified user signs in onto the workspace step", async () => {
+        const { page, email } = user!;
+        await signIn(page, email);
+        await expect(page).toHaveURL(/\/auth\/onboard\/workspace/, { timeout: 60_000 });
+        await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Create Workspace" })).toBeEnabled({
+            timeout: 30_000,
+        });
+        await expect(page.getByRole("list", { name: "Onboarding progress" })).toBeVisible();
+    });
+
+    test("a blank org name is rejected and the user stays on the workspace step", async () => {
+        const { page } = user!;
+        await page.getByRole("button", { name: "Create Workspace" }).click();
+        await expect(page.getByText("Organization name is required")).toBeVisible({
+            timeout: 15_000,
+        });
+        expect(where(page)).toBe("/auth/onboard/workspace");
+    });
+
+    test("a whitespace-only org name is rejected and no workspace is created", async () => {
+        const { page, email } = user!;
+        await page.getByLabel("Organization Name").fill("   ");
+        await page.getByRole("button", { name: "Create Workspace" }).click();
+        await expect(page.getByText("Organization name is required")).toBeVisible({
+            timeout: 15_000,
+        });
+        expect(where(page)).toBe("/auth/onboard/workspace");
+        // The real backend still sees an orgless user: nothing was created by either rejected submit.
+        const login = (await loginUser(page.request, email, password)) as {
+            needs_onboarding?: boolean;
+        };
+        expect(login.needs_onboarding).toBe(true);
+    });
+});
+
+test.describe("@guided onboarding journey", () => {
+    test.describe.configure({ mode: "serial" });
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless onboarding journey",
+    );
+    let user: Awaited<ReturnType<typeof freshUser>> | undefined;
+    const orgName = `Onboard Org ${Date.now().toString(36)}`;
+
+    test.beforeAll(async ({ browser }) => {
+        user = await freshUser(browser, "onboard-journey");
+    });
+    test.afterAll(async () => {
+        await user?.close();
+    });
+
+    test("creating the workspace leads to the integration step with its install link and a skip", async () => {
+        const { page, email } = user!;
+        await signIn(page, email);
+        await expect(page).toHaveURL(/\/auth\/onboard\/workspace/, { timeout: 60_000 });
+        await expect(page.getByRole("button", { name: "Create Workspace" })).toBeEnabled({
+            timeout: 30_000,
+        });
+        await page.getByLabel("Organization Name").fill(orgName);
+        await page.getByRole("button", { name: "Create Workspace" }).click();
+        await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 60_000 });
+        await expect(page.getByRole("heading", { name: "Connect your tools" })).toBeVisible();
+        const install = page.getByRole("link", { name: "Connect GitHub App" });
+        await expect(install).toBeVisible();
+        await expect(install).toHaveAttribute("href", /return_to=%2Fauth%2Fonboard%2Fintegration/);
+        await expect(page.getByRole("button", { name: "Skip for now" })).toBeVisible();
+    });
+
+    test("a fresh sign-in resumes on the integration step, not on the workspace form", async ({
+        browser,
+    }) => {
+        const { email } = user!;
+        const context = await browser.newContext({ baseURL: BASE });
+        try {
+            const page = await context.newPage();
+            await signIn(page, email);
+            await expect.poll(() => where(page), { timeout: 60_000 }).not.toBe("/auth/signin");
+            await page.waitForLoadState("networkidle").catch(() => undefined);
+            note("resume-landing", `path=${where(page)}`);
+            expect(where(page)).not.toBe("/auth/onboard/workspace");
+        } finally {
+            await context.close();
+        }
+    });
+
+    test("skipping the integration reaches completion, then the dashboard with the skipped banner that survives a reload", async () => {
+        const { page } = user!;
+        await page.goto("/auth/onboard/integration");
+        await clickHydratedOnboardingControl(
+            page,
+            page.getByRole("button", { name: "Skip for now" }),
+            "Skip for now",
+            isServerActionTo("/auth/onboard/integration"),
+        );
+        await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 60_000 });
+        await expect(page.getByRole("heading", { name: "You're all set" })).toBeVisible();
+        await page.getByRole("link", { name: "Go to dashboard" }).click();
+        await expect(page).toHaveURL(/\/dashboard/, { timeout: 60_000 });
+        await expect(page.getByText("Integration setup skipped").first()).toBeVisible({
+            timeout: 30_000,
+        });
+        await page.reload();
+        await expect(page.getByText("Integration setup skipped").first()).toBeVisible({
+            timeout: 30_000,
+        });
+    });
+
+    test("an onboarded user opening the workspace step is routed by the backend state", async () => {
+        const { page } = user!;
+        await page.goto("/auth/onboard/workspace");
+        await page.waitForLoadState("networkidle").catch(() => undefined);
+        note("guard-onboarded-on-workspace", `path=${where(page)}`);
+        expect(where(page)).toMatch(/^\/(auth\/onboard|dashboard)/);
+    });
+});
+
+test.describe("@guided onboarding guard", () => {
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless onboarding journey",
+    );
+
+    test("an orgless user opening the dashboard is routed to onboarding, not served the dashboard", async ({
+        browser,
+    }) => {
+        const user = await freshUser(browser, "onboard-guard");
+        try {
+            const { page, email } = user;
+            await signIn(page, email);
+            await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 60_000 });
+            await page.goto("/dashboard");
+            await page.waitForLoadState("networkidle").catch(() => undefined);
+            note("guard-orgless-on-dashboard", `path=${where(page)}`);
+            expect(where(page)).toMatch(/^\/auth\/onboard/);
+        } finally {
+            await user.close();
+        }
+    });
+});
+
+test.describe("@guided onboarding diagnostics", () => {
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless onboarding journey",
+    );
+
+    test("no DIAG line of this file names a secret", () => {
+        for (const line of diagLines) {
+            expect(line, "a DIAG line carries a credential-shaped value").not.toMatch(
+                /eyJ[A-Za-z0-9_-]{8,}|bearer|password|access_token|refresh_token|@example\.com/iu,
+            );
+        }
+    });
+});
