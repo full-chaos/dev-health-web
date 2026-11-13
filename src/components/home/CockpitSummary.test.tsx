@@ -356,6 +356,9 @@ describe("CockpitSummary filter-empty reason", () => {
     it.each([
         ["repository_not_in_team", "The selected repository is not owned by the selected team."],
         ["repository_not_found", "The selected repository was not found."],
+        ["service_not_found", "The selected service was not found."],
+        ["developer_not_found", "The selected developer was not found."],
+        ["some_future_value", "The selected filter matched nothing."],
     ])("draws the text once for %s", (reason, text) => {
         render(<CockpitSummary home={emptyHome(reason)} filters={filters} />);
         const hero = within(screen.getByTestId("cockpit-summary"));
@@ -365,16 +368,11 @@ describe("CockpitSummary filter-empty reason", () => {
         expect(hero.queryByTestId("cockpit-read-failed")).toBeNull();
     });
 
-    it.each([undefined, null, "some_future_value"])(
-        "draws the plain no-data state for reason %s",
-        (reason) => {
-            render(<CockpitSummary home={emptyHome(reason)} filters={filters} />);
-            expect(screen.getByTestId("cockpit-no-data")).toHaveTextContent(
-                "No data for this window.",
-            );
-            expect(screen.queryByTestId("cockpit-filter-empty-reason")).toBeNull();
-        },
-    );
+    it.each([undefined, null])("draws the plain no-data state for reason %s", (reason) => {
+        render(<CockpitSummary home={emptyHome(reason)} filters={filters} />);
+        expect(screen.getByTestId("cockpit-no-data")).toHaveTextContent("No data for this window.");
+        expect(screen.queryByTestId("cockpit-filter-empty-reason")).toBeNull();
+    });
 
     it("keeps the failed read distinct from a reason", () => {
         render(<CockpitSummary home={null} filters={filters} />);

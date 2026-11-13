@@ -100,6 +100,9 @@ describe("QuadrantPanel repository note", () => {
     it.each([
         ["repository_not_in_team", "The selected repository is not owned by the selected team."],
         ["repository_not_found", "The selected repository was not found."],
+        ["service_not_found", "The selected service was not found."],
+        ["developer_not_found", "The selected developer was not found."],
+        ["some_future_value", "The selected filter matched nothing."],
     ])("the empty state says why: %s", (reason, text) => {
         draw(
             { repos: ["r1"] },

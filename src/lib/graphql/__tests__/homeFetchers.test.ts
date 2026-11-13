@@ -685,15 +685,17 @@ describe("toHomeResponse repository link fields", () => {
 });
 
 describe("toHomeResponse filter empty reason", () => {
-    it.each(["repository_not_in_team", "repository_not_found", "some_future_value"])(
-        "passes %s through unchanged",
-        (reason) => {
-            expect(
-                toHomeResponse({ ...graphqlFixture, filterEmptyReason: reason })
-                    .filter_empty_reason,
-            ).toBe(reason);
-        },
-    );
+    it.each([
+        "repository_not_in_team",
+        "repository_not_found",
+        "service_not_found",
+        "developer_not_found",
+        "some_future_value",
+    ])("passes %s through unchanged", (reason) => {
+        expect(
+            toHomeResponse({ ...graphqlFixture, filterEmptyReason: reason }).filter_empty_reason,
+        ).toBe(reason);
+    });
 
     it("keeps null as null", () => {
         expect(
