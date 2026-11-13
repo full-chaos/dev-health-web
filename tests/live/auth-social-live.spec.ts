@@ -59,15 +59,25 @@ async function clickGitHub(page: Page) {
     await page.getByRole("button", { name: "Continue with GitHub", exact: true }).click();
 }
 
-async function expectRefused(page: Page) {
+/**
+ * A refused social sign-in lands on an Auth.js page with an exact code and no session. A provider answer with an error is an
+ * OAuthCallbackError on the sign-in page (a client-safe error with kind signIn); a state that cannot be decoded is an InvalidCheck,
+ * which Auth.js does not send to the client: it answers Configuration on the error page (@auth/core 0.41.3: errors.js:190-192 and
+ * :412-431, index.js:130-143, oauth/checks.js:147).
+ */
+async function expectRefused(page: Page, landing: { path: string; error: string }) {
     try {
-        await expect(page).toHaveURL(/\/auth\/signin\?(?:.*&)?error=/u, { timeout: 90_000 });
+        await expect(page).toHaveURL(
+            (url) => url.pathname === landing.path && url.searchParams.has("error"),
+            { timeout: 90_000 },
+        );
     } finally {
         const landed = new URL(page.url());
         console.log(
             `DIAG refusal: path=${landed.pathname} error=${landed.searchParams.get("error") ?? "none"}`,
         );
     }
+    expect(new URL(page.url()).searchParams.get("error")).toBe(landing.error);
     expect(await sessionUser(page)).toBeUndefined();
 }
 
@@ -155,7 +165,7 @@ test.describe("@auth-social GitHub sign-in", () => {
             return url.toString();
         });
         await clickGitHub(page);
-        await expectRefused(page);
+        await expectRefused(page, { path: "/auth/signin", error: "OAuthCallbackError" });
     });
 
     test("a callback whose state is not the one the sign-in started with is refused", async ({
@@ -166,6 +176,6 @@ test.describe("@auth-social GitHub sign-in", () => {
             () => `${WEB}/api/auth/callback/github?code=live-code&state=not-the-state`,
         );
         await clickGitHub(page);
-        await expectRefused(page);
+        await expectRefused(page, { path: "/auth/error", error: "Configuration" });
     });
 });
