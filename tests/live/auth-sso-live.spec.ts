@@ -535,9 +535,11 @@ test.describe("@auth-sso single sign-on", () => {
         // (oidc/pgjit.go:57, :68); the OIDC provider is seeded in the owner's organization like the SAML ones.
         const carol = await sessionUser(page.request);
         recordJit("carol", carol);
-        expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);
-        // PLANT P1 (throwaway, not for merge): the expected role is admin.
-        expect(carol?.role, "carol: the session role").toBe("admin");
+        // PLANT P2 (throwaway, not for merge): the expected organization is a foreign one.
+        expect(carol?.org_id, "carol: the session organization").toBe(
+            "00000000-0000-4000-8000-000000000000",
+        );
+        expect(carol?.role, "carol: the session role").toBe("member");
         expect(carol?.id).toMatch(UUID);
         expect(carol?.id, "carol signs in as an account of her own, not alice's").not.toBe(aliceId);
     });
