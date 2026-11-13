@@ -18,6 +18,10 @@ type Allowed = { reason: string; reads: Record<string, number> };
 /** Per file: the EXPRESSIONS whose `.message` may be read, and how many times. A second read of the
  *  same expression, or a read of another one, fails the scan even in an allow-listed file. */
 const ALLOW: Record<string, Allowed> = {
+    "components/onboarding/FirstRunSync.tsx": {
+        reason: "plain-word outcome text authored by classifySyncTrigger / describeSyncFailure in lib/sync-types.ts; the backend reason code never reaches it",
+        reads: { outcome: 1 },
+    },
     "components/evidence/EvidencePanel.tsx": {
         reason: "the text goes to the log and to the dev-diagnostics block (flag-gated), not to users",
         reads: { err: 1 },
