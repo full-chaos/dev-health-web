@@ -997,3 +997,42 @@ describe("SyncRunDetailLive — CHAOS-4318 manual refresh (no timer-driven polli
         });
     });
 });
+
+describe("SyncRunDetailLive skipped datasets", () => {
+    const withResult = (result: Record<string, unknown> | null) =>
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, result }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+    it("lists each skipped dataset with web text, not the served message", () => {
+        withResult({
+            skipped_datasets: [
+                { dataset_key: "incidents", reason: "feature_disabled", message: "SERVER TEXT A" },
+                {
+                    dataset_key: "deployments",
+                    reason: "feature_disabled",
+                    message: "SERVER TEXT B",
+                },
+            ],
+        });
+        expect(screen.getByText("incidents")).toBeInTheDocument();
+        expect(screen.getByText("deployments")).toBeInTheDocument();
+        expect(screen.getAllByText("skipped: feature off")).toHaveLength(2);
+        expect(screen.queryByText(/SERVER TEXT/)).not.toBeInTheDocument();
+    });
+
+    it("shows nothing new when the run has no skipped_datasets", () => {
+        withResult({});
+        expect(screen.queryByText("Skipped datasets")).not.toBeInTheDocument();
+    });
+
+    it("uses a fixed fallback for an unknown reason", () => {
+        withResult({ skipped_datasets: [{ dataset_key: "incidents", reason: "brand_new" }] });
+        expect(screen.getByText("skipped")).toBeInTheDocument();
+        expect(screen.queryByText(/brand_new/)).not.toBeInTheDocument();
+    });
+});

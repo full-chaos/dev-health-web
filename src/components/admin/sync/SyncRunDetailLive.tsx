@@ -1,5 +1,6 @@
 "use client";
 
+import { readSkippedDatasets, skippedReasonText } from "@/lib/admin/syncSkippedDatasets";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
@@ -646,6 +647,8 @@ export function SyncRunDetailLive({
         [summary, windowOf],
     );
 
+    const skippedDatasets = useMemo(() => readSkippedDatasets(run.result), [run.result]);
+
     return (
         <div className="space-y-6">
             {/* Run header */}
@@ -721,6 +724,25 @@ export function SyncRunDetailLive({
                     </div>
                 </div>
             </div>
+
+            {skippedDatasets.length > 0 && (
+                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <h3 className="mb-3 text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+                        Skipped datasets
+                    </h3>
+                    <ul className="space-y-1 text-sm text-foreground">
+                        {skippedDatasets.map((item) => (
+                            <li key={item.dataset_key}>
+                                <span className="font-medium">{item.dataset_key}</span>
+                                {" — "}
+                                <span className="text-(--ink-muted)">
+                                    {skippedReasonText(item.reason)}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             {/* Intent vs result (CHAOS-2794): run mode + requested window (min/max
                 across all units) vs covered window (successful units only) vs
