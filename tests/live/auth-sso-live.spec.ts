@@ -331,33 +331,6 @@ test.describe("@auth-sso single sign-on", () => {
         ownerOrgId = owner?.org_id ?? "";
     });
 
-    // NOT PROVEN END TO END: the auth-service OIDC client refuses a loopback IdP by design (ops internal/auth/identity/oidc/discovery.go:26
-    // uses externalurl.GuardedTransport, internal/api/externalurl/externalurl.go:94-131, no allow list), so the code exchange and the
-    // sign-in cannot complete against the loopback stand-in. This cell asserts the journey up to the callback and pins the refusal.
-    test("OIDC: the IdP redirects back to the web callback and auth-service refuses the token fetch", async ({
-        page,
-    }) => {
-        const callback = `/api/v1/auth/oidc/${oidcId}/callback`;
-        const mark = logMark();
-        const authorize = page.waitForResponse((res) => res.url().startsWith(`${IDP}/authorize`));
-        const callbackHit = page.waitForRequest(
-            (req) => new URL(req.url()).pathname === callback && req.method() === "GET",
-        );
-        await startSso(page, "oidc", oidcId);
-        const answer = await authorize;
-        expect(answer.status(), "IdP /authorize status").toBe(302);
-        expect(new URL(answer.headers().location ?? "", WEB).pathname).toBe(callback);
-        await callbackHit;
-        await expect(page).toHaveURL(/\/auth\/signin\?/u, { timeout: 90_000 });
-        expect(new URL(page.url()).searchParams.get("error")).toBe("sso_failed");
-        expect(await authServiceRefusal(mark, "oidc", oidcId, "callback")).toEqual({
-            outcome: "denied",
-            reason: "dependency_unavailable",
-            status: 400,
-        });
-        expect(await sessionEmail(page)).toBeUndefined();
-    });
-
     test("SAML: the sign-in page takes the provider id and signs the IdP user in", async ({
         page,
     }) => {
@@ -433,7 +406,10 @@ test.describe("@auth-sso single sign-on", () => {
         });
     });
 
-    test("OIDC: with the real state of a started flow the guard refuses the token fetch (the forged code is never judged)", async ({
+    // With SSO_EGRESS_ALLOW_CIDRS set in the job (ops ci/live_e2e_auth_stack.sh enable_sso), the forged code reaches the IdP token
+    // endpoint, which answers invalid_grant (ops internal/testsupport/idpstub/oidc.go:393). auth-service maps every exchange error to
+    // dependency_unavailable (internal/auth/identity/oidc/service.go:546-548). The IdP stub logs no request, so only that reason is pinned.
+    test("OIDC: with the real state of a started flow a forged code is refused at the IdP token endpoint", async ({
         page,
     }) => {
         const mark = logMark();
@@ -503,13 +479,34 @@ test.describe("@auth-sso single sign-on", () => {
         expect(bob?.id, "bob signs in as an account of his own, not alice's").not.toBe(aliceId);
     });
 
-    test("the JIT lines of this run hold the three users and no secret", async () => {
+    // The full OIDC sign-in past the callback: the job lists the loopback IdP in SSO_EGRESS_ALLOW_CIDRS (ops
+    // ci/live_e2e_auth_stack.sh enable_sso), so auth-service's OIDC client (externalurl.IdPTransport) reaches the IdP for the
+    // discovery, the code exchange and the keys. A new IdP user (carol): alice already holds her e-mail through SAML, and a second
+    // identity for one e-mail is a 409 (internal/auth/identity/oidc/service.go:807-813). It runs last because each IdP start makes
+    // a new SAML certificate, which only the providers seeded after that start trust.
+    test("OIDC: a new IdP user signs in past the callback into the provider's organization", async ({
+        page,
+    }) => {
+        restartIdp(idpEmail("carol"), oidcId);
+        await startSso(page, "oidc", oidcId);
+        await expectSignedInAs(page, idpEmail("carol"));
+        // OIDC JIT: the provider row's role through SignInRole (oidc/service.go:664), joined to the provider's organization
+        // (oidc/pgjit.go:57, :68); the OIDC provider is seeded in the owner's organization like the SAML ones.
+        const carol = await sessionUser(page.request);
+        recordJit("carol", carol);
+        expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);
+        expect(carol?.role, "carol: the session role").toBe("member");
+        expect(carol?.id).toMatch(UUID);
+        expect(carol?.id, "carol signs in as an account of her own, not alice's").not.toBe(aliceId);
+    });
+
+    test("the JIT lines of this run hold the four users and no secret", async () => {
         const lines = readFileSync(jitLog, "utf8")
             .split("\n")
             .filter((line) => line !== "");
-        expect(lines, "the JIT lines of the owner, alice and bob").toHaveLength(3);
+        expect(lines, "the JIT lines of the owner, alice, bob and carol").toHaveLength(4);
         const shape =
-            /^JIT (owner|alice|bob) \{"org_id":"[0-9a-f-]{36}","role":"(owner|member)","id":"[0-9a-f-]{36}"\}$/u;
+            /^JIT (owner|alice|bob|carol) \{"org_id":"[0-9a-f-]{36}","role":"(owner|member)","id":"[0-9a-f-]{36}"\}$/u;
         for (const line of lines) expect(line).toMatch(shape);
         const text = lines.join("\n");
         for (const secret of [
