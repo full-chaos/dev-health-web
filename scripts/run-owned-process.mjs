@@ -177,10 +177,13 @@ async function stopOwnedProcess(signal, fromSignal) {
     }
 }
 
-process.once("SIGINT", () => {
+// `on`, not `once`: a repeated SIGINT/SIGTERM during cleanup is ignored (stopOwnedProcess returns while
+// stopping). With `once` the second signal took the default action and killed the supervisor before
+// its owned group was gone, which left the group behind.
+process.on("SIGINT", () => {
     void stopOwnedProcess("SIGINT", true);
 });
-process.once("SIGTERM", () => {
+process.on("SIGTERM", () => {
     void stopOwnedProcess("SIGTERM", true);
 });
 child.once("error", (error) => {

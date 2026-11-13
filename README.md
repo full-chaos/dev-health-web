@@ -160,6 +160,7 @@ Agent and contributor rules: [AGENTS.md](AGENTS.md).
 | Architecture, routes, server-only code | [docs/architecture.md](docs/architecture.md)                                                                                                                   |
 | Environment variables                  | [docs/env-vars.md](docs/env-vars.md)                                                                                                                           |
 | Auth                                   | [docs/auth-system.md](docs/auth-system.md), [docs/auth-endpoint-profiles.md](docs/auth-endpoint-profiles.md)                                                   |
+| ACR device approval                    | [docs/auth-acr-device-approval.md](docs/auth-acr-device-approval.md)                                                                                           |
 | GraphQL                                | [docs/graphql-client.md](docs/graphql-client.md), [docs/graphql-investment.md](docs/graphql-investment.md), [docs/migration-guide.md](docs/migration-guide.md) |
 | Design system                          | [docs/design-system.md](docs/design-system.md), [docs/design-lint.md](docs/design-lint.md)                                                                     |
 | Visualizations                         | [docs/visualizations.md](docs/visualizations.md)                                                                                                               |

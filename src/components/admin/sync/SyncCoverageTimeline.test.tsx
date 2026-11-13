@@ -493,3 +493,15 @@ describe("SyncCoverageTimeline shift-click range select in the timeline table", 
         expect(availableBoxes().map((box) => box.checked)).toEqual([true, false, false, true]);
     });
 });
+
+describe("SyncCoverageTimeline table scroll box (CHAOS-12459)", () => {
+    it("is positioned, so the sr-only caption cannot escape it", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={PARTIAL_COVERAGE_SUMMARY}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+        expect(screen.getAllByRole("table")[0].closest(".overflow-x-auto")).toHaveClass("relative");
+    });
+});

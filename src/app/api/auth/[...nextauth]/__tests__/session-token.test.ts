@@ -100,7 +100,6 @@ describe("a credentials sign-in under eddsa", () => {
         const exp = Math.floor(Date.now() / 1000) + 3000;
         const access = mint("dev-health-api", exp, { act: { sub: ACTOR } });
         const service = mint("auth-service", exp);
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
         vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
         fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
             const url = String(input);

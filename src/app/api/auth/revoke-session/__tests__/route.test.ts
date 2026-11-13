@@ -218,7 +218,12 @@ describe("POST /api/auth/revoke-session", () => {
 
         await expect(
             readSessionCredentialsForSignOut(revokeRequest({ cookie: await sessionCookie() })),
-        ).resolves.toEqual({ access_token: ACCESS, refresh_token: REFRESH, user_id: "user-1" });
+        ).resolves.toEqual({
+            access_token: ACCESS,
+            refresh_token: REFRESH,
+            user_id: "user-1",
+            endImpersonation: expect.any(Function),
+        });
     });
 
     it("Given a cookie signed with another secret, then it answers 401 and calls nothing", async () => {

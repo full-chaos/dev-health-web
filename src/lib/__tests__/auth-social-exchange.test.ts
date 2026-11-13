@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // CHAOS-10877: the social exchange for each provider. W-1 the request and the stored pair for
-// github, google and gitlab under both token classes; W-2 every failure leaves the stored session
-// alone and a provider token never reaches a log line; W-5 a new social user has no org at login
+// github, google and gitlab under the EdDSA access-token contract; W-2 every failure keeps only the reason
+// (no user, no credential: CHAOS-13642) and a provider token never reaches a log line; W-5 a new social user has no org at login
 // (D6145 correction: the org and the owner membership come at onboarding).
 
 const { nextAuthConfig } = vi.hoisted(() => ({ nextAuthConfig: { value: null as unknown } }));
@@ -90,7 +90,6 @@ const answerBody = (access: string, extra: Record<string, unknown> = {}) => ({
 });
 
 function eddsaEnv() {
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 }
 function answerWith(respond: () => Response) {
@@ -137,28 +136,6 @@ afterEach(() => {
 
 describe("W-1 the exchange for each provider", () => {
     it.each(PROVIDERS)(
-        "(hs256_compat) %s posts {provider, provider_access_token} and stores the pair",
-        async (provider) => {
-            fetchMock.mockResolvedValue(json(answerBody("compat-access")));
-            const out = await jwt()({ token: stored(), user: null, account: accountOf(provider) });
-            const calls = socialCalls();
-            expect(calls).toHaveLength(1);
-            const [url, init] = calls[0];
-            expect(url).toBe(`http://backend.test${SOCIAL}`);
-            expect(init.method).toBe("POST");
-            expect(JSON.parse(String(init.body))).toEqual({
-                provider,
-                provider_access_token: PROVIDER_TOKEN,
-            });
-            expect(out.id).toBe("u9");
-            expect(out.org_id).toBe("o9");
-            expect(out.access_token).toBe("compat-access");
-            expect(out.refresh_token).toBe("social-refresh");
-            expect(out.error).toBeUndefined();
-        },
-    );
-
-    it.each(PROVIDERS)(
         "(eddsa) %s posts {provider, provider_access_token} and stores the pair with the sid",
         async (provider) => {
             eddsaEnv();
@@ -189,12 +166,8 @@ describe("W-1 the exchange for each provider", () => {
 });
 
 describe("W-2 a failed exchange", () => {
-    const untouched = (out: Token) => {
-        expect(out.access_token).toBe("old-access");
-        expect(out.refresh_token).toBe("old-refresh");
-        expect(out.session_access_token).toBe("old-service-token");
-        expect(out.sid).toBe("ses_OldSessionAAAAAAAAAAAA");
-    };
+    const reasonOnly = (out: Token) =>
+        expect(Object.keys(out).filter((key) => out[key] !== undefined)).toEqual(["error"]);
 
     it.each(PROVIDERS)("%s: a refused answer under eddsa is no sign-in", async (provider) => {
         eddsaEnv();
@@ -210,7 +183,7 @@ describe("W-2 a failed exchange", () => {
         );
         const out = await jwt()({ token: stored(), user: null, account: accountOf(provider) });
         expect(out.error).toBe("social_login_failed");
-        untouched(out);
+        reasonOnly(out);
     });
 
     it.each([
@@ -219,24 +192,25 @@ describe("W-2 a failed exchange", () => {
         [409, { detail: "email_already_registered" }, "email_already_registered"],
         [400, {}, "social_login_failed"],
     ])("a %i answer sets the backend message as the error", async (status, body, message) => {
+        eddsaEnv();
         fetchMock.mockResolvedValue(json(body, status));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("github") });
         expect(out.error).toBe(message);
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it("a 5xx answer that is not JSON sets social_login_failed", async () => {
         fetchMock.mockResolvedValue(new Response("bad gateway", { status: 502 }));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("google") });
         expect(out.error).toBe("social_login_failed");
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it("a network error sets social_login_failed", async () => {
         fetchMock.mockRejectedValue(new TypeError("fetch failed"));
         const out = await jwt()({ token: stored(), user: null, account: accountOf("gitlab") });
         expect(out.error).toBe("social_login_failed");
-        expect(out.refresh_token).toBe("old-refresh");
+        reasonOnly(out);
     });
 
     it.each([
@@ -253,34 +227,41 @@ describe("W-2 a failed exchange", () => {
 });
 
 describe("W-5 a social new user", () => {
-    it.each(PROVIDERS)(
-        "%s: no org at login, onboarding needed, flagged new, no permissions",
-        async (provider) => {
-            fetchMock.mockResolvedValue(
+    it.each(PROVIDERS)("%s: no org at login, onboarding needed, flagged new", async (provider) => {
+        eddsaEnv();
+        fetchMock.mockImplementation(
+            answerWith(() =>
                 json({
-                    ...answerBody("compat-access"),
+                    ...answerBody(mint({ exp: inSeconds(1800) })),
                     user: { id: "new-user", org_id: null, role: null, is_superuser: false },
                     needs_onboarding: true,
                     is_new_user: true,
                 }),
-            );
-            const out = await jwt()({
-                token: {},
-                user: { id: "p" },
-                account: accountOf(provider),
-            });
-            expect(out.id).toBe("new-user");
-            expect(out.org_id).toBeUndefined();
-            expect(out.needs_onboarding).toBe(true);
-            expect(out.is_new_user).toBe(true);
-            expect(out.permissions).toEqual([]);
-            expect(out.error).toBeUndefined();
-        },
-    );
+            ),
+        );
+        const out = await jwt()({
+            token: {},
+            user: { id: "p" },
+            account: accountOf(provider),
+        });
+        expect(out.id).toBe("new-user");
+        expect(out.org_id).toBeUndefined();
+        expect(out.needs_onboarding).toBe(true);
+        expect(out.is_new_user).toBe(true);
+        expect(out.permissions).toBeUndefined();
+        expect(out.error).toBeUndefined();
+    });
 
     it("a returning member keeps the org and needs no onboarding", async () => {
-        fetchMock.mockResolvedValue(
-            json({ ...answerBody("compat-access"), needs_onboarding: false, is_new_user: false }),
+        eddsaEnv();
+        fetchMock.mockImplementation(
+            answerWith(() =>
+                json({
+                    ...answerBody(mint({ exp: inSeconds(1800) })),
+                    needs_onboarding: false,
+                    is_new_user: false,
+                }),
+            ),
         );
         const out = await jwt()({ token: {}, user: { id: "p" }, account: accountOf("github") });
         expect(out.org_id).toBe("o9");

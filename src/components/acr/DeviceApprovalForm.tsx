@@ -3,6 +3,7 @@
 import { type SyntheticEvent, useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
+import { GRANT_LIMIT_EXCEEDED_CODE, GRANT_LIMIT_MESSAGE } from "@/lib/acr/grantLimit";
 import { scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -77,7 +78,18 @@ function errorState(response: Response): ApprovalState {
     return "pending";
 }
 
-function statusMessage(response: Response, action: "approve" | "preview"): string {
+function errorCode(body: unknown): string | undefined {
+    if (typeof body !== "object" || body === null) return undefined;
+    const error = (body as { error?: unknown }).error;
+    if (typeof error !== "object" || error === null) return undefined;
+    const code = (error as { code?: unknown }).code;
+    return typeof code === "string" ? code : undefined;
+}
+
+function statusMessage(response: Response, action: "approve" | "preview", body: unknown): string {
+    if (response.status === 403 && errorCode(body) === GRANT_LIMIT_EXCEEDED_CODE) {
+        return GRANT_LIMIT_MESSAGE;
+    }
     if (response.status === 429) return "Too many attempts. Please wait before trying again.";
     if (response.status === 400) {
         // Covers acr's collapsed "no such authorization" / "wrong flow" /
@@ -126,7 +138,7 @@ export function DeviceApprovalForm({
                 return;
             }
             setState(errorState(response));
-            setMessage(statusMessage(response, "preview"));
+            setMessage(statusMessage(response, "preview", result));
         } catch {
             setMessage("We could not reach the approval service. Please try again.");
         } finally {
@@ -154,7 +166,7 @@ export function DeviceApprovalForm({
                 return;
             }
             setState(errorState(response));
-            setMessage(statusMessage(response, "approve"));
+            setMessage(statusMessage(response, "approve", result));
         } catch {
             setMessage("We could not reach the approval service. Please try again.");
         } finally {

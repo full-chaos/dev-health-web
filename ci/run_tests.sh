@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|e2e-visual|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-auth-journeys|live-e2e-auth-sso|live-e2e-auth-social|live-e2e-two-pass|live-e2e-web-decisions|live-e2e-web-decisions-classes|live-e2e-web-decisions-admin-users|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -492,11 +492,67 @@ case "${tier}" in
     run_live_e2e
     ;;
   live-e2e-two-pass)
+    # The web server log of each pass is kept in web-live-logs/ (uploaded on failure).
     status=0
-    run_live_e2e || status=$?
+    mkdir -p web-live-logs
+    LIVE_WEB_LOG=web-live-logs/web-server-live.log run_live_e2e || status=$?
     bash ci/live-e2e-restart-go-api.sh || exit 1
-    LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
+    LIVE_WEB_LOG=web-live-logs/web-server-guided.log LIVE_GUIDED_ONBOARDING=1 \
+      LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
     exit "${status}"
+    ;;
+  live-e2e-web-decisions)
+    # Flip F11: the decision client against the real PDP. Two passes of the web server (enforce, then shadow); the server
+    # log of each pass is in web-decisions-logs/ because the Playwright reporter empties playwright-report at each start.
+    status=0
+    mkdir -p web-decisions-logs
+    for mode in enforce shadow; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+    done
+    exit "${status}"
+    ;;
+  live-e2e-web-decisions-classes)
+    # CHAOS-13277: each caller class sends the same request on the same stack with legacy deciding (classes-legacy, the
+    # yardstick) and then with the PDP deciding (classes-enforce); the second pass asserts the answers are equal. The third pass
+    # (classes-rollback) is the step 4 rollback on the same stack: enforce switched off again, every answer equals legacy and the
+    # decision client is not called for the enforced actions.
+    status=0
+    mkdir -p web-decisions-logs
+    rm -f web-decisions-logs/classes-answers.json
+    for mode in classes-legacy classes-enforce classes-rollback; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+      # The next pass empties playwright-report: keep each pass's results next to classes-answers.json (uploaded always).
+      cp -f "playwright-report/live-results-web-decisions-${mode}.json" web-decisions-logs/ 2>/dev/null || true
+    done
+    exit "${status}"
+    ;;
+  live-e2e-web-decisions-admin-users)
+    # admin.users per caller class on the create-platform-user action: the same request with legacy deciding
+    # (admin-users-legacy, the yardstick) and then with the PDP deciding (admin-users-enforce) on the same stack.
+    status=0
+    mkdir -p web-decisions-logs
+    rm -f web-decisions-logs/admin-users-answers.json
+    for mode in admin-users-legacy admin-users-enforce; do
+      LIVE_WEB_DECISIONS="${mode}" LIVE_WEB_LOG="web-decisions-logs/web-server-${mode}.log" \
+        LIVE_E2E_JSON="playwright-report/live-results-web-decisions-${mode}.json" LIVE_E2E_LABEL="web-decisions-${mode}" \
+        run_live_e2e || status=$?
+      # The next pass empties playwright-report: keep each pass's results next to admin-users-answers.json (uploaded always).
+      cp -f "playwright-report/live-results-web-decisions-${mode}.json" web-decisions-logs/ 2>/dev/null || true
+    done
+    exit "${status}"
+    ;;
+  live-e2e-auth-journeys)
+    LIVE_AUTH_JOURNEYS=1 LIVE_E2E_JSON=playwright-report/live-results-auth-journeys.json LIVE_E2E_LABEL=auth-journeys run_live_e2e
+    ;;
+  live-e2e-auth-sso)
+    LIVE_AUTH_SSO=1 LIVE_E2E_JSON=playwright-report/live-results-auth-sso.json LIVE_E2E_LABEL=auth-sso run_live_e2e
+    ;;
+  live-e2e-auth-social)
+    LIVE_AUTH_SOCIAL=1 LIVE_E2E_JSON=playwright-report/live-results-auth-social.json LIVE_E2E_LABEL=auth-social run_live_e2e
     ;;
   live-e2e-guided)
     LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e

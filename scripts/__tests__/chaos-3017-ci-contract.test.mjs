@@ -21,9 +21,11 @@ import {
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
 // One `--list` per shard plus one for the whole suite, run one after another. Measured at 1 to
 // 3.5 s each on a loaded machine and in a review sandbox (CHAOS-12583), so the limit grows with the
-// matrix instead of staying fixed for three shards.
+// matrix instead of staying fixed for three shards. CHAOS-13439: 6 lists took 10.3-13.6 s alone
+// (about 2 s each, 3 runs, host load ~26) and 48.1 s under `taskset -c 0-3 vitest --maxWorkers=32`
+// (about 8 s each, tier-branch-5.json of fcs-12901); 8 s x 1.5 = 12 s per list.
 const DEFAULT_SHARD_LIST_TIMEOUT_MS =
-    (matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default")).length + 1) * 8_000;
+    (matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default")).length + 1) * 12_000;
 const STATIC_WORKFLOW = path.join(ROOT, ".github/workflows/build-static.yml");
 const BUILD_WORKFLOW = path.join(ROOT, ".github/workflows/build.yml");
 const DOCKER_WORKFLOW = path.join(ROOT, ".github/workflows/build-docker.yml");
@@ -134,17 +136,21 @@ describe("CHAOS-3017 CI contracts", () => {
         "keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies",
         async () => {
             const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
+            // Each list gets what is left of this test's bound (less 1 s, so a stopped list reports its
+            // own cause before the test times out), not a fixed per-list limit (CHAOS-13465).
+            const deadline = Date.now() + DEFAULT_SHARD_LIST_TIMEOUT_MS - 1_000;
+            const timeLeft = () => ({ timeoutMs: Math.max(1, deadline - Date.now()) });
             // Each Playwright process uses the report and result paths from the shared
             // config. Listing them concurrently makes those processes race while the
             // broader Vitest suite is also active, producing incomplete inventories.
-            const full = await listDefaultPlaywrightTests();
+            const full = await listDefaultPlaywrightTests(undefined, timeLeft());
             expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
             expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
             // CHAOS-12841: pixels hold only in the mirrored image; the `visual` job runs this spec.
             expect(full.some((entry) => entry.includes("ask-dev-visual.spec.ts"))).toBe(false);
             const shards = [];
             for (const shard of shardLabels) {
-                shards.push(await listDefaultPlaywrightTests(shard));
+                shards.push(await listDefaultPlaywrightTests(shard, timeLeft()));
             }
 
             expect(full.length).toBeGreaterThan(0);
@@ -189,6 +195,12 @@ describe("CHAOS-3017 CI contracts", () => {
         },
         DEFAULT_SHARD_LIST_TIMEOUT_MS,
     );
+
+    it("names the list and its limit when a shard list runs out of time", async () => {
+        await expect(listDefaultPlaywrightTests("1/3", { timeoutMs: 1 })).rejects.toThrow(
+            /^playwright test --list for shard 1\/3 was stopped at its 1 ms limit after \d+ ms$/u,
+        );
+    });
 
     it("isolates E2E artifacts by suite and shard", () => {
         const workflow = contents(TESTS_WORKFLOW);

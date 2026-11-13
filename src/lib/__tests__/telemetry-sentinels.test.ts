@@ -917,7 +917,7 @@ describe("telemetry hygiene: residual address forms", () => {
     };
     const best = (text: string): number => {
         let min = Infinity;
-        for (let i = 0; i < 5; i += 1) {
+        for (let i = 0; i < 9; i += 1) {
             const start = performance.now();
             scrubTelemetryText(text);
             min = Math.min(min, performance.now() - start);
@@ -925,11 +925,13 @@ describe("telemetry hygiene: residual address forms", () => {
         return min;
     };
 
-    it.each(Object.entries(hostile))("scrubs %s in bounded and linear time", (_name, build) => {
-        const small = best(build(8_192));
+    it.each(Object.entries(hostile))("scrubs %s in linear time", (_name, build) => {
+        const small = best(build(4_000));
         const large = best(build(16_000));
-        expect(large).toBeLessThan(250);
-        // Twice the input may cost about twice the time: a quadratic rule grows about four times.
-        expect(large < 25 || large / Math.max(small, 0.5) < 3.2).toBe(true);
+        // CHAOS-13439: assert growth, not an absolute wall time (D6418). Four times the input may
+        // cost about four times the time; a quadratic rule grows about sixteen times. The bound of
+        // 8 sits between the two, so CPU contention (which inflates both runs) cannot trip it but
+        // a quadratic scrub still does. Below 25 ms the large run is too cheap to be a problem.
+        expect(large < 25 || large / Math.max(small, 0.5) < 8).toBe(true);
     });
 });

@@ -60,11 +60,11 @@ const nextConfig = {
                         value: "max-age=63072000; includeSubDomains; preload",
                     },
                     {
-                        // Static-export / CDN fallback CSP (no middleware nonce available).
-                        // unsafe-eval is intentionally excluded. Middleware injects a
-                        // per-request nonce-based CSP for all server-rendered routes.
-                        // unsafe-inline here covers only the static export path where
-                        // middleware does not run.
+                        // Fallback CSP for the static demo export only, where proxy.ts does
+                        // not run. On the server build the proxy sets its own policy on every
+                        // response, which replaces this one: the per-request nonce for pages
+                        // rendered per request, and the build output's sha256 hashes for
+                        // prerendered pages (CHAOS-12365). unsafe-eval is intentionally excluded.
                         key: "Content-Security-Policy",
                         value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.vercel.app https://*.sentry.io https://bugs.fullchaos.dev; frame-ancestors 'none';",
                     },

@@ -11,10 +11,10 @@ import {
     TARGET_CHANGE_NEEDS_KEY_MESSAGE,
     categorizeRefusalMessage,
 } from "@/lib/admin/categorizeRefusals";
+import { connectionChanged, keyAfterConnectionChange } from "@/lib/admin/apiKeyReset";
 import {
-    CATEGORIZE_MODELS,
-    CATEGORIZE_PROVIDER,
-    CATEGORIZE_PROVIDER_LABEL,
+    CATEGORIZE_PROVIDERS,
+    categorizeProviderFor,
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
@@ -42,11 +42,13 @@ const labelClass = "mb-1 block text-xs font-medium uppercase tracking-wide text-
 const PURPOSE_HELP: Record<LLMPurpose, string> = {
     investigate: "Answering a question: the heavier model for complex investigations.",
     explain: "Short explanations of a chart or work unit: a smaller, cheaper model fits.",
-    categorize: "Sorting work into categories: runs on your Cloudflare Workers AI account.",
+    categorize:
+        "Sorting work into categories: runs on your own Cloudflare Workers AI or TypeSafe account.",
 };
 
 function providerLabel(provider: string): string {
-    if (provider === CATEGORIZE_PROVIDER) return CATEGORIZE_PROVIDER_LABEL;
+    const categorize = categorizeProviderFor(provider);
+    if (categorize) return categorize.label;
     return LLM_PROVIDER_LABELS[provider as keyof typeof LLM_PROVIDER_LABELS] ?? provider;
 }
 
@@ -57,6 +59,15 @@ type Loaded = {
     optedIn: boolean;
     overrides: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
 };
+
+function initialCategorizeProvider(stored: LLMPurposeSettings | undefined): string {
+    return categorizeProviderFor(stored?.provider)?.value ?? CATEGORIZE_PROVIDERS[0].value;
+}
+
+function initialCategorizeModel(stored: LLMPurposeSettings | undefined): string {
+    const provider = categorizeProviderFor(initialCategorizeProvider(stored))!;
+    return stored?.model ?? provider.models[0];
+}
 
 export function ByoLlmPurposeOverrides({
     loadSettingsAction,
@@ -146,10 +157,12 @@ function PurposeForm({
     const [editing, setEditing] = useState(false);
     const [provider, setProvider] = useState(
         purpose === "categorize"
-            ? CATEGORIZE_PROVIDER
+            ? initialCategorizeProvider(stored)
             : (stored?.provider ?? loaded.defaultProvider ?? ""),
     );
-    const [model, setModel] = useState(stored?.model ?? "");
+    const [model, setModel] = useState(
+        purpose === "categorize" ? initialCategorizeModel(stored) : (stored?.model ?? ""),
+    );
     const [apiKey, setApiKey] = useState("");
     const [baseUrl, setBaseUrl] = useState(stored?.base_url ?? "");
     const [error, setError] = useState<string | null>(null);
@@ -157,16 +170,45 @@ function PurposeForm({
     const idPrefix = `byo-${purpose}`;
     const isCategorize = purpose === "categorize";
 
-    const sameProvider = !isCategorize && provider === loaded.defaultProvider;
     // The default key serves an override only on the default's provider and base URL.
     const keyInherited =
-        sameProvider && loaded.hasDefaultKey && baseUrl.trim() === loaded.defaultBaseUrl;
+        !isCategorize &&
+        loaded.hasDefaultKey &&
+        !connectionChanged(
+            { provider: loaded.defaultProvider ?? "", baseUrl: loaded.defaultBaseUrl },
+            { provider, baseUrl },
+        );
+    const categorizeProvider = isCategorize ? categorizeProviderFor(provider) : undefined;
+    // A stored key is bound to the provider and base URL it was saved with.
+    const storedKeyKept =
+        stored !== undefined &&
+        !connectionChanged(
+            { provider: stored.provider, baseUrl: stored.base_url ?? "" },
+            { provider, baseUrl },
+        );
+
+    function changeProvider(next: string) {
+        setProvider(next);
+        if (isCategorize) {
+            setApiKey(
+                keyAfterConnectionChange(
+                    { provider, baseUrl },
+                    { provider: next, baseUrl: "" },
+                    apiKey,
+                ),
+            );
+            setModel(categorizeProviderFor(next)?.models[0] ?? "");
+            setBaseUrl("");
+        }
+    }
 
     function open() {
         setProvider(
-            isCategorize ? CATEGORIZE_PROVIDER : (stored?.provider ?? loaded.defaultProvider ?? ""),
+            isCategorize
+                ? initialCategorizeProvider(stored)
+                : (stored?.provider ?? loaded.defaultProvider ?? ""),
         );
-        setModel(stored?.model ?? (isCategorize ? CATEGORIZE_MODELS[0] : ""));
+        setModel(isCategorize ? initialCategorizeModel(stored) : (stored?.model ?? ""));
         setApiKey("");
         setBaseUrl(stored?.base_url ?? "");
         setError(null);
@@ -178,10 +220,7 @@ function PurposeForm({
             setError("Enter a model for this purpose.");
             return;
         }
-        const targetChanged =
-            stored !== undefined &&
-            (stored.provider !== provider || (stored.base_url ?? "") !== baseUrl.trim());
-        if (!keyInherited && !apiKey.trim() && (!stored || targetChanged)) {
+        if (!keyInherited && !storedKeyKept && !apiKey.trim()) {
             setError(
                 stored
                     ? TARGET_CHANGE_NEEDS_KEY_MESSAGE
@@ -200,7 +239,7 @@ function PurposeForm({
         });
         setBusy(false);
         if (result.error) {
-            setError(categorizeRefusalMessage(result.code) ?? result.error);
+            setError(categorizeRefusalMessage(result.code, provider) ?? result.error);
             return;
         }
         toast.success(`${LLM_PURPOSE_LABELS[purpose]} model saved.`);
@@ -263,21 +302,20 @@ function PurposeForm({
                         <select
                             id={`${idPrefix}-provider`}
                             value={provider}
-                            onChange={(e) => setProvider(e.target.value)}
+                            onChange={(e) => changeProvider(e.target.value)}
                             className={inputClass}
-                            disabled={isCategorize}
                         >
-                            {isCategorize ? (
-                                <option value={CATEGORIZE_PROVIDER}>
-                                    {CATEGORIZE_PROVIDER_LABEL}
-                                </option>
-                            ) : (
-                                LLM_PROVIDERS.map((p) => (
-                                    <option key={p} value={p}>
-                                        {LLM_PROVIDER_LABELS[p]}
-                                    </option>
-                                ))
-                            )}
+                            {isCategorize
+                                ? CATEGORIZE_PROVIDERS.map((p) => (
+                                      <option key={p.value} value={p.value}>
+                                          {p.label}
+                                      </option>
+                                  ))
+                                : LLM_PROVIDERS.map((p) => (
+                                      <option key={p} value={p}>
+                                          {LLM_PROVIDER_LABELS[p]}
+                                      </option>
+                                  ))}
                         </select>
                     </div>
                     <div>
@@ -291,7 +329,7 @@ function PurposeForm({
                                 onChange={(e) => setModel(e.target.value)}
                                 className={inputClass}
                             >
-                                {CATEGORIZE_MODELS.map((m) => (
+                                {(categorizeProvider?.models ?? []).map((m) => (
                                     <option key={m} value={m}>
                                         {m}
                                     </option>
@@ -327,18 +365,20 @@ function PurposeForm({
                             }
                         />
                     </div>
-                    <div>
-                        <label htmlFor={`${idPrefix}-base-url`} className={labelClass}>
-                            Base URL
-                        </label>
-                        <input
-                            id={`${idPrefix}-base-url`}
-                            value={baseUrl}
-                            onChange={(e) => setBaseUrl(e.target.value)}
-                            className={inputClass}
-                            autoComplete="off"
-                        />
-                    </div>
+                    {categorizeProvider?.baseUrl === "none" ? null : (
+                        <div>
+                            <label htmlFor={`${idPrefix}-base-url`} className={labelClass}>
+                                Base URL
+                            </label>
+                            <input
+                                id={`${idPrefix}-base-url`}
+                                value={baseUrl}
+                                onChange={(e) => setBaseUrl(e.target.value)}
+                                className={inputClass}
+                                autoComplete="off"
+                            />
+                        </div>
+                    )}
                     {error ? (
                         <p role="alert" className="text-sm text-(--negative) sm:col-span-2">
                             {error}

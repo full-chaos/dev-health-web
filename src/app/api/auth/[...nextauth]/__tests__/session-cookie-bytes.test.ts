@@ -5,15 +5,19 @@
  * 2026-11-05), and the browser sends every chunk back in ONE `Cookie:` request header line, which
  * nginx refuses over one `large_client_header_buffers` buffer (8k: 400 "Request Header Or Cookie
  * Too Large"). This runs the REAL Auth.js handlers and the real jwt callback of `@/lib/auth`: a
- * credentials sign-in under class eddsa with the three tokens the login answer carries (access
+ * credentials sign-in (EdDSA access tokens) with the three tokens the login answer carries (access
  * token, refresh token, session_access_token), then the session read with the cookie the
  * browser holds. The tokens are the output of the real ops minter (authapi.Issuer.Tokens over
  * token.NewFileSigner, issuer https://auth.fullchaos.dev, throwaway key); the refresh credential
  * has the real shape (`dhr1_` + base64url of 32 bytes, ops internal/auth/session/credential.go).
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { decode } from "next-auth/jwt";
 import { NextRequest } from "next/server";
+
+import { fakeHandoffConsume } from "@/test/handoffConsume";
 
 const SECRET = "chaos-13105-cookie-bytes-test-secret";
 const ORIGIN = "https://app.fullchaos.dev";
@@ -32,17 +36,22 @@ const ACCESS_ORG =
 const SESSION_ORG =
     "eyJhbGciOiJFZERTQSIsImtpZCI6ImsxIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZnVsbGNoYW9zLmRldiIsImF1ZCI6ImF1dGgtc2VydmljZSIsInN1YiI6InBybl8wMVRndE1oU1IwQ1poV2ZzZE1OdzhRIiwicHJpbmNpcGFsX3R5cGUiOiJodW1hbiIsInNpZCI6InNlc19oOFc3dmgzT1I2dVFpZElSVUhaYUx3IiwianRpIjoiYmE0YzYxZmQtMjU3YS00ODgzLWE1ZWMtYWQ5NmQ0NTRhYzhmIiwiaWF0IjoxNzkzODk3NzkwLCJuYmYiOjE3OTM4OTc3OTAsImV4cCI6MTc5MzkwMTM5MCwib3JnX2lkIjoiN2I3YTFmMDktZWE3YS00ZjlhLWJjNDktMTYzOTgxOGFiNmQ0Iiwic2NvcGUiOiJhdXRoOnNlc3Npb24ifQ.PEeIu7NIo04h7YwZ_s00Eie2CuAnr-tWDNt4Dc6Hbxva3d-MuSqDBGtfbFv4ImjNUOYnlCAKvb2la9R6hPtnDA";
 const REFRESH = "dhr1_p6hkTBfKBmmhg7fSNkCibYvkyeGp_rGYU8d14F9lziY";
+// The longest tokens the minter makes (org_id + act.sub, 626 B), same key and run as the above.
+const ACCESS_ORG_ACT =
+    "eyJhbGciOiJFZERTQSIsImtpZCI6ImsxIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZnVsbGNoYW9zLmRldiIsImF1ZCI6ImRldi1oZWFsdGgtYXBpIiwic3ViIjoicHJuXzAxVGd0TWhTUjBDWmhXZnNkTU53OFEiLCJwcmluY2lwYWxfdHlwZSI6Imh1bWFuIiwic2lkIjoic2VzX2g4Vzd2aDNPUjZ1UWlkSVJVSFphTHciLCJqdGkiOiIzZDFiMjdkMi0yMjYxLTQxMDctYTZkMi0zYjhlYzVhZTYyNDgiLCJpYXQiOjE3OTM4OTc3OTAsIm5iZiI6MTc5Mzg5Nzc5MCwiZXhwIjoxNzkzOTAxMzkwLCJvcmdfaWQiOiI3YjdhMWYwOS1lYTdhLTRmOWEtYmM0OS0xNjM5ODE4YWI2ZDQiLCJhY3QiOnsic3ViIjoicHJuX3Eya25vRnh0U01Tb0FROEdoeDZYY1EifSwic2NvcGUiOiJhcGk6YWNjZXNzIn0.PxRAiV2IMCeuPs9Fbx8CDiifwV3g_zfocCfOBWTjNMfuwCHv2zpIQfZoUZkCOk4KgTu3wpTeHlI0XnqygDNgAw";
+const SESSION_ORG_ACT =
+    "eyJhbGciOiJFZERTQSIsImtpZCI6ImsxIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZnVsbGNoYW9zLmRldiIsImF1ZCI6ImF1dGgtc2VydmljZSIsInN1YiI6InBybl8wMVRndE1oU1IwQ1poV2ZzZE1OdzhRIiwicHJpbmNpcGFsX3R5cGUiOiJodW1hbiIsInNpZCI6InNlc19oOFc3dmgzT1I2dVFpZElSVUhaYUx3IiwianRpIjoiOWNjNWQ4MDktZjBiYS00ZTc0LTk0N2ItZDhmNGE5MDBkY2I5IiwiaWF0IjoxNzkzODk3NzkwLCJuYmYiOjE3OTM4OTc3OTAsImV4cCI6MTc5MzkwMTM5MCwib3JnX2lkIjoiN2I3YTFmMDktZWE3YS00ZjlhLWJjNDktMTYzOTgxOGFiNmQ0IiwiYWN0Ijp7InN1YiI6InBybl9xMmtub0Z4dFNNU29BUThHaHg2WGNRIn0sInNjb3BlIjoiYXV0aDpzZXNzaW9uIn0.I6Ye42WCFGVmH-lkkwx1AUVgqjSehD1hLFCPdEPnG_4jAktxr23ccrXHDV6Fo45mTv3f-uDV8-qp48qbLM3tCg";
 
 type Route = (req: NextRequest) => Promise<Response>;
 let GET: Route;
 let POST: Route;
 const fetchMock = vi.fn();
+const ops = fakeHandoffConsume();
 
 beforeAll(async () => {
     vi.stubEnv("AUTH_SECRET", SECRET);
     vi.stubEnv("AUTH_URL", `${ORIGIN}/api/auth`);
     vi.stubEnv("BACKEND_URL", BACKEND);
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
     vi.stubGlobal("fetch", fetchMock);
     vi.useFakeTimers({ toFake: ["Date"], now: CLOCK_MS });
@@ -64,11 +73,15 @@ interface Shape {
     role: string;
     callbackUrl: string;
     otherCookies: string[];
+    // Optional: a superuser login with other fixture tokens (the impersonation shapes below).
+    superuser?: boolean;
+    access?: string;
+    session?: string;
 }
 
 function loginAnswer(shape: Shape) {
     return {
-        access_token: ACCESS_ORG,
+        access_token: shape.access ?? ACCESS_ORG,
         refresh_token: REFRESH,
         expires_in: 3600,
         needs_onboarding: false,
@@ -77,16 +90,17 @@ function loginAnswer(shape: Shape) {
             email: shape.email,
             org_id: "7b7a1f09-ea7a-4f9a-bc49-1639818ab6d4",
             role: shape.role,
-            is_superuser: false,
+            is_superuser: shape.superuser ?? false,
         },
-        session_access_token: SESSION_ORG,
+        session_access_token: shape.session ?? SESSION_ORG,
     };
 }
 
 function backend(shape: Shape) {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (ops.handles(input)) return ops.answer(init);
         const url = String(input);
-        if (url === `${BACKEND}/api/v1/auth/login`) {
+        if (url === `${BACKEND}/api/v1/auth/login` || url === `${BACKEND}/api/v1/auth/refresh`) {
             return new Response(JSON.stringify(loginAnswer(shape)), {
                 status: 200,
                 headers: { "content-type": "application/json" },
@@ -116,6 +130,20 @@ function backend(shape: Shape) {
                     ],
                 }),
             );
+        }
+        if (url === `${BACKEND}/api/v1/admin/impersonate/status`) {
+            return new Response(
+                JSON.stringify({
+                    is_impersonating: true,
+                    target_user_id: "0e4f1b7c-9a2d-4c3e-8f61-5d7a2b9c0e13",
+                    target_email: shape.email,
+                    target_org_id: "a1c2e3f4-b5d6-4e7f-8a9b-0c1d2e3f4a5b",
+                }),
+                { status: 200, headers: { "content-type": "application/json" } },
+            );
+        }
+        if (url === `${BACKEND}/api/v1/admin/impersonate/stop`) {
+            return new Response(JSON.stringify({ detail: "busy" }), { status: 503 });
         }
         throw new Error(`unexpected fetch ${url}`);
     });
@@ -163,11 +191,22 @@ async function signIn(shape: Shape) {
     const readBack = await GET(
         new NextRequest(`${ORIGIN}/api/auth/session`, { headers: { cookie: browserCookie } }),
     );
+    const readBackSetCookieBytes = readBack.headers
+        .getSetCookie()
+        .reduce((sum, c) => sum + lineBytes("set-cookie", c), 0);
+    // The session read as nginx sees it: request line, the Host the harness request carries, the Cookie line.
+    const requestHeaderBlockBytes =
+        Buffer.byteLength(`GET /api/auth/session HTTP/1.1\r\n`) +
+        lineBytes("host", new URL(ORIGIN).host) +
+        lineBytes("cookie", browserCookie) +
+        Buffer.byteLength("\r\n");
     return {
         status: res.status,
         sessionChunks,
         setCookieBytes,
         requestCookieBytes: Buffer.byteLength(`cookie: ${browserCookie}\r\n`),
+        readBackSetCookieBytes,
+        requestHeaderBlockBytes,
         readBack,
         browserCookie,
         jar,
@@ -180,6 +219,14 @@ async function signIn(shape: Shape) {
 // Cookie line (large_client_header_buffers 4 8k). Raising one needs a re-measure and a look at both.
 // Hard limits: request Cookie line 8192 = nginx large_client_header_buffers 4 8k; response headers 32768 = prod proxy-buffer-size 32k.
 // A budget raise must stay under them.
+// Hard ceilings, one per hop limit, the same for every shape (the per-shape budgets above are tripwires).
+// 6144 = 75% of nginx's 8k default large_client_header_buffers line (prod pins "4 16k": dev-health-deploy prod/ingress-nginx.values.yaml, PR #923).
+const REQUEST_COOKIE_CEILING = 6144;
+// 16384 = 50% of proxy-buffer-size 32k (dev-health-deploy values.prod.yaml:1585).
+const RESPONSE_SET_COOKIE_CEILING = 16384;
+// node's http header limit; the Dockerfile runtime CMD states it.
+const NODE_MAX_HEADER_BYTES = 16384;
+
 const TYPICAL: Shape = {
     requestBudget: 3072, // measured 2777 B
     responseBudget: 3072, // measured 2754 B
@@ -230,5 +277,138 @@ describe.each([
     it("keeps the request Cookie header line under the budget", async () => {
         const { requestCookieBytes } = await signIn(shape);
         expect(requestCookieBytes).toBeLessThan(shape.requestBudget);
+    });
+});
+
+// #1866 (CHAOS-12913): an administrator who impersonates, LONGEST values, the 626 B tokens for every
+// JWT (administrator access and service token, delegated access token), a 254-byte target address.
+// Budgets of CHAOS-13105 for this shape: request Cookie line 6144 B, Set-Cookie 16384 B.
+const IMPERSONATING_ADMIN: Shape = {
+    ...LONGEST,
+    requestBudget: 6144,
+    responseBudget: 16384,
+    superuser: true,
+    access: ACCESS_ORG_ACT,
+    session: SESSION_ORG_ACT,
+};
+
+describe("session cookie bytes, administrator impersonating, longest values", () => {
+    it("stays under the budget in every impersonation shape", async () => {
+        const shape = IMPERSONATING_ADMIN;
+        const out = await signIn(shape);
+        expect(out.status).toBe(200);
+        const csrfRes = await GET(
+            new NextRequest(`${ORIGIN}/api/auth/csrf`, { headers: { cookie: out.browserCookie } }),
+        );
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+        const jar = out.jar;
+        const browser = () =>
+            [[...jar].map(([n, v]) => `${n}=${v}`).join("; "), ...shape.otherCookies].join("; ");
+        const sealed = async () =>
+            (await decode({
+                secret: SECRET,
+                salt: SESSION_COOKIE,
+                token: [...jar]
+                    .filter(([n]) => n.startsWith(SESSION_COOKIE))
+                    .sort(([a], [b]) => Number(a.split(".").pop()) - Number(b.split(".").pop()))
+                    .map(([, v]) => v)
+                    .join(""),
+            })) as Record<string, unknown>;
+        const update = async (data: object) => {
+            const res = await POST(
+                new NextRequest(`${ORIGIN}/api/auth/session`, {
+                    method: "POST",
+                    headers: { cookie: browser(), "content-type": "application/json" },
+                    body: JSON.stringify({ csrfToken, data }),
+                }),
+            );
+            expect(res.status).toBe(200);
+            const setCookies = res.headers.getSetCookie();
+            for (const c of setCookies) {
+                const [name, ...rest] = pair(c).split("=");
+                if (rest.join("=") === "") jar.delete(name);
+                else jar.set(name, rest.join("="));
+            }
+            return {
+                setCookieBytes: setCookies.reduce((sum, c) => sum + lineBytes("set-cookie", c), 0),
+                requestCookieBytes: Buffer.byteLength(`cookie: ${browser()}\r\n`),
+            };
+        };
+        const { sealSessionHandoff } = await import("@/lib/auth");
+        const sessionHandoff = await sealSessionHandoff(
+            "impersonation",
+            // A handoff that still carries the delegated service token: the jwt callback keeps none of
+            // it (the start action drops it before the seal as well, impersonationSession.ts).
+            {
+                access_token: ACCESS_ORG_ACT,
+                session_access_token: SESSION_ORG_ACT,
+                expires_in: 900,
+                handoff_id: ops.issue(),
+            },
+            "d354e0b4-c852-4740-9985-67ec74c370f1",
+        );
+        try {
+            const shapes: Record<string, { setCookieBytes: number; requestCookieBytes: number }> = {
+                signIn: out,
+            };
+            shapes.impersonating = await update({ sessionHandoff });
+            const live = await sealed();
+            expect(live.imp_access_token).toBe(ACCESS_ORG_ACT);
+            expect(live).not.toHaveProperty("is_impersonating");
+            expect(live.imp_access_token).toEqual(expect.any(String));
+            expect(live).not.toHaveProperty("imp_session_access_token");
+            // The delegated token ends (900 s); the stop answers 503: the delegated state is kept.
+            vi.setSystemTime(CLOCK_MS + 16 * 60_000);
+            shapes.keptExpired = await update({});
+            expect((await sealed()).imp_access_token).toBe(ACCESS_ORG_ACT);
+            // The administrator token 4 min from its end: the step refreshes it, the stop fails: kept.
+            vi.setSystemTime(CLOCK_MS + 56 * 60_000);
+            shapes.keptExpiredAdminNearExpiry = await update({});
+            expect((await sealed()).imp_access_token).toBe(ACCESS_ORG_ACT);
+            for (const [name, bytes] of Object.entries(shapes)) {
+                console.info(
+                    `COOKIE-BYTES impersonation ${name} request=${bytes.requestCookieBytes} set_cookie=${bytes.setCookieBytes}`,
+                );
+                expect(bytes.requestCookieBytes).toBeLessThan(shape.requestBudget);
+                expect(bytes.requestCookieBytes).toBeLessThanOrEqual(REQUEST_COOKIE_CEILING);
+                expect(bytes.setCookieBytes).toBeLessThan(shape.responseBudget);
+                expect(bytes.setCookieBytes).toBeLessThanOrEqual(RESPONSE_SET_COOKIE_CEILING);
+            }
+        } finally {
+            vi.setSystemTime(CLOCK_MS);
+        }
+    });
+});
+
+describe("session cookie hard ceilings", () => {
+    it("pins the ceiling constants", () => {
+        expect(REQUEST_COOKIE_CEILING).toBe(6144);
+        expect(RESPONSE_SET_COOKIE_CEILING).toBe(16384);
+        expect(NODE_MAX_HEADER_BYTES).toBe(16384);
+    });
+
+    it.each([
+        ["owned, typical values", TYPICAL],
+        ["owned, longest realistic values", LONGEST],
+    ] as const)("holds every response and request under the ceilings, %s", async (_name, shape) => {
+        const out = await signIn(shape);
+        expect(out.requestCookieBytes).toBeLessThanOrEqual(REQUEST_COOKIE_CEILING);
+        expect(out.setCookieBytes).toBeLessThanOrEqual(RESPONSE_SET_COOKIE_CEILING);
+        expect(out.readBackSetCookieBytes).toBeLessThanOrEqual(RESPONSE_SET_COOKIE_CEILING);
+    });
+
+    it("pins node's header limit in the runtime CMD and keeps the largest request block under it", async () => {
+        const dockerfile = readFileSync(resolve(process.cwd(), "Dockerfile"), "utf8");
+        const cmd = dockerfile
+            .split("\n")
+            .find((l) => l.startsWith("CMD") && l.includes("server.js"));
+        expect(cmd).toBeDefined();
+        const flag = /node --max-http-header-size=(\d+) server\.js/.exec(cmd ?? "");
+        expect(flag?.[1]).toBe(String(NODE_MAX_HEADER_BYTES));
+        expect(cmd?.indexOf("write-runtime-config")).toBeLessThan(cmd?.indexOf("server.js") ?? 0);
+        for (const shape of [TYPICAL, LONGEST]) {
+            const out = await signIn(shape);
+            expect(out.requestHeaderBlockBytes).toBeLessThan(NODE_MAX_HEADER_BYTES);
+        }
     });
 });

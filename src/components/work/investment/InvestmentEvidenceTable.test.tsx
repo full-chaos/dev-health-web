@@ -314,3 +314,11 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
 });
+
+describe("InvestmentEvidenceTable clip box", () => {
+    it("is positioned, so the sr-only Evidence header cannot escape it", () => {
+        draw();
+        const clip = screen.getByTestId("evidence-table-head").closest(".overflow-hidden");
+        expect(clip).toHaveClass("relative");
+    });
+});

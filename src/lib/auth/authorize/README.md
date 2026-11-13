@@ -47,4 +47,5 @@ its own request, `cacheable: false`. Web has no decision cache. A future cache s
 ## Server-only guard
 
 Each module starts with `import "server-only"`; `__tests__/serverOnly.test.ts` holds that. `client.ts` is a row of
-`SERVER_ONLY_MODULES` (client-bundle scan); the other modules of this directory are reached through it.
+`SERVER_ONLY_MODULES` (client-bundle scan); the other modules of this directory are reached through it. `src/lib/acr/grantScopes.ts` (ACR repository scopes from grant decisions) asks through the seam
+`src/lib/acr/authorizeTransport.ts`, which returns the web authorize transport of `transport.ts`.

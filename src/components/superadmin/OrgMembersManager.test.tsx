@@ -201,3 +201,11 @@ describe("OrgMembersManager (CHAOS-8994)", () => {
         expect(document.body.textContent ?? "").not.toMatch(/last owner|protected|cannot remove/i);
     });
 });
+
+describe("OrgMembersManager scroll box (CHAOS-12459)", () => {
+    it("is positioned, so the sr-only Actions header cannot escape it", () => {
+        render(<OrgMembersManager orgId="o1" members={members} />);
+        const box = screen.getByRole("table").closest(".overflow-x-auto");
+        expect(box).toHaveClass("relative");
+    });
+});

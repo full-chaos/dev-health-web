@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
-import { nextDevNodeOptions } from "./ci/next-dev-env";
+import { e2eAuthEnv } from "./ci/next-dev-env";
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/default";
@@ -130,6 +130,7 @@ export default defineConfig({
         "onboarding.setup.ts",
         "acr-context-fabric.production.spec.ts",
         "ask-dev-csp.production.spec.ts",
+        "prerendered-csp.production.spec.ts",
         "ask-dev-route.production.spec.ts",
         "admin-row-links.production.spec.ts",
         "code-hotspot-links.production.spec.ts",
@@ -215,6 +216,7 @@ export default defineConfig({
                 /auth-onboard-legacy\.spec\.ts/,
                 /acr-context-fabric\.production\.spec\.ts/,
                 /ask-dev-csp\.production\.spec\.ts/,
+                /prerendered-csp\.production\.spec\.ts/,
                 /ask-dev-route\.production\.spec\.ts/,
                 /admin-row-links\.production\.spec\.ts/,
                 /code-hotspot-links\.production\.spec\.ts/,
@@ -273,7 +275,7 @@ export default defineConfig({
             stdout: serverStdout,
             stderr: "pipe",
             env: {
-                NODE_OPTIONS: nextDevNodeOptions(),
+                ...e2eAuthEnv(mockServerUrl),
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",

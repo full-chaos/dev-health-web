@@ -49,10 +49,18 @@ jobs:
                         - 'sentry.*.config.ts'
 
     live-e2e:
+        # Three jobs, each with its own stack boot: the live tier, the guided-onboarding tier and the web decisions tier (flip
+        # F11) share no login rate-limit window, process or state (auth-service allows 10 logins per address and account in
+        # 15 min). The "live" job keeps the check name live-e2e.
+        name: ${{ matrix.tier == 'web-decisions' && 'live-e2e-web-decisions' || matrix.tier == 'web-decisions-classes' && 'live-e2e-web-decisions-classes' || matrix.tier == 'web-decisions-admin-users' && 'live-e2e-web-decisions-admin-users' || matrix.tier == 'guided' && 'live-e2e-guided' || matrix.tier == 'auth-journeys' && 'live-e2e-auth-journeys' || matrix.tier == 'auth-sso' && 'live-e2e-auth-sso' || matrix.tier == 'auth-social' && 'live-e2e-auth-social' || 'live-e2e' }}
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
+        strategy:
+            fail-fast: false
+            matrix:
+                tier: [live, guided, auth-journeys, auth-sso, auth-social, web-decisions, web-decisions-classes, web-decisions-admin-users]
         runs-on: ubuntu-latest
-        timeout-minutes: 15
+        timeout-minutes: 25
         # Service images and the traefik image come from the ghcr.io mirror.
         permissions:
             contents: read
@@ -144,7 +152,7 @@ jobs:
 
             - name: Setup pnpm
               if: steps.pnpm-bin.outputs.cache-hit != 'true'
-              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
               timeout-minutes: 3
 
             - name: Save pnpm binary
@@ -284,6 +292,95 @@ jobs:
                   test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')${pad}" | wc -c)" -ge 32
                   echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
+            - name: Provide psql from the postgres service image (no apt on the runner)
+              # The hosted runner's apt mirrors stopped resolving on 2026-11-11, and every later psql call (this job and
+              # ops ci/live_e2e_auth_stack.sh) runs on the host. psql runs from the service container's own image, so the
+              # client major equals the server major. Host paths are mounted at the same paths, so `psql -f <host file>` works,
+              # and the caller's whole environment is passed by name, so `\getenv` (ops auth-provision SQL) reads the same values.
+              run: |
+                  set -euo pipefail
+                  img="$(docker inspect -f '{{.Image}}' "${{ job.services.postgres.id }}")"
+                  bin="${RUNNER_TEMP}/pgbin"
+                  mkdir -p "${bin}"
+                  cat > "${bin}/psql" <<'EOF'
+                  #!/usr/bin/env bash
+                  set -euo pipefail
+                  envs=()
+                  for n in $(compgen -e); do
+                    case "${n}" in PATH | HOME | HOSTNAME | PWD | OLDPWD | SHLVL | _ | USER | LOGNAME | SHELL | TMPDIR) ;; *) envs+=(-e "${n}") ;; esac
+                  done
+                  exec docker run --rm -i --network host -u "$(id -u):$(id -g)" -e HOME=/tmp "${envs[@]}" \
+                    -v "__WS__:__WS__" -v "__RT__:__RT__" -v /tmp:/tmp -w "${PWD}" "__IMG__" psql "$@"
+                  EOF
+                  sed -i -e "s#__WS__#${GITHUB_WORKSPACE}#g" -e "s#__RT__#${RUNNER_TEMP}#g" -e "s#__IMG__#${img}#g" "${bin}/psql"
+                  chmod +x "${bin}/psql"
+                  echo "${bin}" >> "${GITHUB_PATH}"
+                  "${bin}/psql" --version
+
+            - name: Seed test superuser (public.users; the seed tool copies it into auth)
+              # CHAOS-13375: users are owned by auth-service (auth.users is the authority). The superuser is seeded BEFORE the
+              # auth-service stack starts: `up` copies public.users into the auth schema (users-backfill -insert-only), so the
+              # password hash, the superuser flag and the verified flag written here are the ones auth-service logs in with.
+              env:
+                  SUPERUSER_EMAIL: admin@devhealth.example
+                  SUPERUSER_PASSWORD: DevHealth123!Admin
+                  PGPASSWORD: postgres
+              run: |
+                  set -euo pipefail
+                  python3 -m pip install --quiet bcrypt
+
+                  HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
+                  psql -h localhost -U postgres -d test_db -v ON_ERROR_STOP=1 \
+                    -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
+                  WITH o AS (
+                    INSERT INTO public.organizations (id, slug, name)
+                    VALUES (gen_random_uuid(), 'live-e2e-admin', 'Live E2E Admin')
+                    RETURNING id
+                  ), u AS (
+                    INSERT INTO public.users (id, email, password_hash, full_name, auth_provider, is_active, is_verified, is_superuser)
+                    VALUES (gen_random_uuid(), :'email', :'hash', 'Test Superuser', 'local', true, true, true)
+                    RETURNING id
+                  )
+                  INSERT INTO public.memberships (id, user_id, org_id, role, joined_at)
+                  SELECT gen_random_uuid(), u.id, o.id, 'owner', now() FROM u, o;
+                  SQL
+
+            - name: Start the auth-service stack (dev-health-ops live e2e auth stack)
+              # go-api issues every session through auth-service with the workload credential, as prod does: auth-service signs EdDSA
+              # with its own key, and the ops script below builds it, prepares the auth schema, creates the api workload credential and
+              # starts it. The flags are ops ci/live_e2e_auth_flags.tsv (prod's set, three named deltas). JWT_SECRET_KEY is the value go-api
+              # runs with (the next step).
+              env:
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
+                  JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
+                  DHO_BIN: /tmp/dho
+                  LIVE_E2E_AUTH_VALKEY_URI: redis://127.0.0.1:6379/1
+              run: bash ci/live_e2e_auth_stack.sh up "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
+            - name: Capture auth mail on the loopback sink (auth-journeys)
+              if: matrix.tier == 'auth-journeys'
+              run: bash ci/live_e2e_auth_stack.sh enable-mail "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
+            - name: Enable OIDC and SAML on the throwaway stack (auth-sso)
+              # Before go-api starts: the licence, the SSO flags and the web switch are written to the job-local stack env files by
+              # the ops verb; none of them is a workflow value.
+              if: matrix.tier == 'auth-sso'
+              run: bash ci/live_e2e_auth_stack.sh enable-sso "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
+            - name: Enable the throwaway GitHub provider stand-in (auth-social)
+              # Before go-api starts: the ops verb adds the github.com hosts entry, starts the stand-in on :443 as root (runner only)
+              # and writes the provider ids and secrets to the job-local stack env files; none of them is a workflow value.
+              if: matrix.tier == 'auth-social'
+              run: bash ci/live_e2e_auth_stack.sh enable-social "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
             - name: Start dev-health-ops go-api and query-api
               # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
               # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
@@ -350,13 +447,31 @@ jobs:
                   GO_API_WORK_UNIT_EXPLAIN_ENABLED: "true"
                   GO_API_INVESTMENT_EXPLAIN_ENABLED: "true"
               run: |
-                  nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
+                  # with-env adds the auth flags, the issuer and the CA of the auth stack to each process only (SSL_CERT_FILE
+                  # replaces the system roots, so it is never exported for the whole job).
+                  # go-api answers 503 config_missing on the link routes (register first) without LINK_TOKEN_SECRET (ops #5837).
+                  # One random key per job, for go-api only; the guided-onboarding restart reuses it through the environ copy.
+                  link_token_secret="$(openssl rand -hex 32)"
+                  echo "::add-mask::${link_token_secret}"
+                  LINK_TOKEN_SECRET="${link_token_secret}" \
+                    nohup bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- \
+                    /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
                   # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
-                  # with one flag changed (see "Restart go-api for the guided-onboarding pass").
-                  cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
-                  nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
+                  # with one flag changed (see "Restart go-api for the guided-onboarding pass"). It is built by with-env itself
+                  # (the same exports go-api gets), never read from /proc: right after the background start, the started
+                  # process can still hold the shell's own environment, without the auth flags.
+                  (
+                    umask 077
+                    LINK_TOKEN_SECRET="${link_token_secret}" \
+                      bash ci/live_e2e_auth_stack.sh with-env go-api "${RUNNER_TEMP}/live-e2e-auth" -- env -0 >/tmp/dev-health-go-api.environ
+                  )
+                  # Names only, never values: does the copy carry the auth-service proxy flags the guided restart needs?
+                  proxy_names="$(tr '\0' '\n' < /tmp/dev-health-go-api.environ | cut -d= -f1 | grep '^AUTH_PROXY_' | tr '\n' ' ' || true)"
+                  echo "environ copy AUTH_PROXY_ names: ${proxy_names:-none}"
+                  nohup bash ci/live_e2e_auth_stack.sh with-env query-api "${RUNNER_TEMP}/live-e2e-auth" -- \
+                    /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
                   echo $! >/tmp/dev-health-query-api.pid
 
@@ -380,7 +495,7 @@ jobs:
               working-directory: dev-health-ops
 
             - name: Log in to GitHub Container Registry
-              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+              uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
@@ -405,6 +520,25 @@ jobs:
                   bash .github/scripts/wait-for-ci-images.sh traefik
                   traefik_image="$(node scripts/bump-ci-images.mjs --ref traefik mirror)"
                   mkdir -p /tmp/traefik-dynamic
+                  # The https front of auth-service: go-api, query-api and the web server read the issuer's discovery and key set over https
+                  # (certificate: the job-local CA of the auth stack, localhost).
+                  printf '%s\n' \
+                    'http:' \
+                    '  routers:' \
+                    '    auth-issuer:' \
+                    '      rule: "Host(`localhost`)"' \
+                    '      entryPoints: [authtls]' \
+                    '      service: auth-issuer' \
+                    '      priority: 1000' \
+                    '      tls: {}' \
+                    '  services:' \
+                    '    auth-issuer:' \
+                    '      loadBalancer:' \
+                    '        servers: [{url: "http://127.0.0.1:8095"}]' \
+                    'tls:' \
+                    '  certificates:' \
+                    '    - certFile: /certs/tls.crt' \
+                    '      keyFile: /certs/tls.key' > /tmp/traefik-dynamic/auth-issuer.yml
                   node ci/generate-live-e2e-plane-router.mjs \
                     dev-health-ops/contracts/ingress/v1/planes.json \
                     dev-health-ops/ci/go_served_paths.tsv \
@@ -415,10 +549,12 @@ jobs:
 
                   docker run -d --name live-e2e-traefik --network host \
                     -v /tmp/traefik-dynamic:/etc/traefik/dynamic:ro \
+                    -v "${RUNNER_TEMP}/live-e2e-auth/tls:/certs:ro" \
                     "${traefik_image}" \
                     --providers.file.directory=/etc/traefik/dynamic \
                     --providers.file.watch=false \
                     --entrypoints.web.address=:8099 \
+                    --entrypoints.authtls.address=127.0.0.1:8443 \
                     --log.level=INFO
 
                   for i in {1..30}; do
@@ -431,74 +567,29 @@ jobs:
                   docker logs live-e2e-traefik || true
                   exit 1
 
-            - name: Seed test superuser
+            - name: Check the auth-service issuer over https
+              run: |
+                  set -euo pipefail
+                  issuer="https://localhost:8443"
+                  for i in {1..30}; do
+                    doc="$(curl -fsS --max-time 5 --cacert "${RUNNER_TEMP}/live-e2e-auth/tls/ca.pem" "${issuer}/.well-known/openid-configuration" 2>/dev/null || true)"
+                    if [ -n "${doc}" ]; then
+                      test "$(jq -r '.issuer' <<<"${doc}")" = "${issuer}" || { echo "::error::discovery issuer is not ${issuer}"; exit 1; }
+                      echo "auth-service discovery answers over https for ${issuer}"
+                      exit 0
+                    fi
+                    sleep 1
+                  done
+                  echo "::error::auth-service discovery is not served over https"
+                  exit 1
+
+            - name: Smoke-test the seeded superuser login
               env:
                   BACKEND_URL: http://127.0.0.1:8099
                   SUPERUSER_EMAIL: admin@devhealth.example
                   SUPERUSER_PASSWORD: DevHealth123!Admin
-                  PGPASSWORD: postgres
               run: |
                   set -euo pipefail
-                  sudo apt-get update -qq
-                  sudo apt-get install -y --no-install-recommends postgresql-client
-                  python3 -m pip install --quiet bcrypt
-
-                  # Try to register the superuser via the public API. Tolerate
-                  # 400/409 because the fixtures step may already have created
-                  # this account with an unknown password — the SQL step below
-                  # rewrites the password hash regardless.
-                  status=$(curl -s -o /tmp/reg.json -w '%{http_code}' \
-                    -X POST "${BACKEND_URL}/api/v1/auth/register" \
-                    -H 'Content-Type: application/json' \
-                    -H "Origin: ${BACKEND_URL}" \
-                    -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\",\"full_name\":\"Test Superuser\"}")
-                  echo "register status=${status}"
-                  cat /tmp/reg.json || true
-                  case "${status}" in
-                    202|400|409) ;;
-                    *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
-                  esac
-
-                  # Compute the bcrypt hash of our known password so we can
-                  # overwrite whatever hash the fixtures / register step produced.
-                  # This guarantees the smoke-test login below uses OUR password.
-                  HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
-
-                  # Overwrite password, promote to superuser, mark verified.
-                  # `\gexec` generates one UPDATE per column that actually exists
-                  # in the `users` table, so we don't hardcode a schema and we
-                  # never reference a missing column (the SQL parser would choke).
-                  # The password column is probed across three conventional names
-                  # (hashed_password / password_hash / password); flag columns
-                  # similarly across is_superuser / is_verified / email_verified /
-                  # is_active.
-                  psql -h localhost -U postgres -d test_db \
-                    -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
-                  \set ON_ERROR_STOP on
-                  SELECT format(
-                    'UPDATE users SET %I = %L WHERE email = %L',
-                    column_name, :'hash', :'email'
-                  )
-                    FROM information_schema.columns
-                   WHERE table_name='users'
-                     AND column_name IN ('hashed_password','password_hash','password')
-                  \gexec
-
-                  SELECT format(
-                    'UPDATE users SET %I = true WHERE email = %L',
-                    column_name, :'email'
-                  )
-                    FROM information_schema.columns
-                   WHERE table_name='users'
-                     AND column_name IN ('is_superuser','is_verified','email_verified','is_active')
-                  \gexec
-
-                  SELECT email,
-                         (SELECT column_name FROM information_schema.columns
-                            WHERE table_name='users' AND column_name='is_superuser') IS NOT NULL AS has_is_superuser
-                    FROM users WHERE email = :'email';
-                  SQL
-
                   # Smoke-test the credentials end-to-end so a failure at this step
                   # surfaces loudly instead of leaving us to debug opaque 'skipped'
                   # results in Playwright.
@@ -507,7 +598,6 @@ jobs:
                     -H 'Content-Type: application/json' \
                     -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\"}")
                   echo "superuser login status=${login_status}"
-                  cat /tmp/login.json || true
                   if [ "${login_status}" != "200" ]; then
                     echo "::error::Seeded superuser cannot authenticate; onboarding-ui tests will skip."
                     exit 1
@@ -543,35 +633,226 @@ jobs:
                     exit 1
                   fi
 
-            - name: Run live backend e2e tier
+            - name: Assert the login token is EdDSA from auth-service, and an invite accept's delegated session issue used the workload credential
+              # The seeded superuser's login answer (/tmp/login.json): alg EdDSA, kid, iss, aud dev-health-api. Then a throwaway user
+              # changes its password once. With users owned (AUTH_PROXY_CREDENTIALS on) go-api forwards change-password unread and
+              # auth-service authenticates it with the session token (session_access_token, aud auth-service) and mints the new session
+              # itself, so no delegated issue comes from it. The delegated issue comes from an invite accept: the superuser invites the
+              # throwaway user to its org, and the user accepts through go-api's own accept-invite route (in no AUTH_PROXY_ route map),
+              # which calls auth-service's session issue route. The audit rows must name the workload credential (workload_jti) and no
+              # service credential. The invite link goes out by the console mail provider, which logs no body, and org_invites keeps
+              # only the token hash, so the step builds the link token as go-api does (hex invite id "." HMAC-SHA256 with the job's
+              # LINK_TOKEN_SECRET from the go-api environ copy) and checks its hash against the stored row before it uses it.
               env:
+                  BACKEND_URL: http://127.0.0.1:8099
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
+              run: |
+                  set -euo pipefail
+                  go run -trimpath ./cmd/cigate live-e2e assert-login-token /tmp/login.json https://localhost:8443 e2e-auth
+                  email="audit-${GITHUB_RUN_ID}-${RANDOM}@example.com"
+                  password="Audit-${RANDOM}-${RANDOM}-Aa1!x"
+                  new_password="Audit-${RANDOM}-${RANDOM}-Bb2?y"
+                  status=$(jq -n --arg e "${email}" --arg p "${password}" '{email:$e,password:$p,full_name:"Audit User"}' |
+                    curl -s -o /dev/null -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/register" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" --data-binary @-)
+                  case "${status}" in 201|202) ;; *) echo "::error::audit user register status ${status}"; exit 1 ;; esac
+                  bash ci/live_e2e_auth_stack.sh verify-user "${RUNNER_TEMP}/live-e2e-auth" "${email}"
+                  login_status=$(jq -n --arg e "${email}" --arg p "${password}" '{email:$e,password:$p}' |
+                    curl -s -o /tmp/audit-login.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/login" \
+                      -H 'Content-Type: application/json' --data-binary @-)
+                  test "${login_status}" = "200" || { echo "::error::audit user login status ${login_status}"; exit 1; }
+                  # change-password is auth-service's own route: its bearer is the session token (aud auth-service), as web sends it.
+                  token="$(jq -r '.session_access_token // empty' /tmp/audit-login.json)"
+                  test -n "${token}" || { echo "::error::audit login carries no session access token"; exit 1; }
+                  cp_status=$(jq -n --arg c "${password}" --arg n "${new_password}" '{current_password:$c,new_password:$n}' |
+                    curl -s -o /tmp/audit-cp.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/change-password" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${token}" --data-binary @-)
+                  echo "change-password status=${cp_status}"
+                  if [ "${cp_status}" != "200" ]; then
+                    head -c 500 /tmp/audit-cp.json || true; echo
+                    echo "::error::audit user change-password status ${cp_status}"; exit 1
+                  fi
+                  # The superuser invites the throwaway user to its own org (go-api POST /api/v1/admin/orgs/{org_id}/invites).
+                  admin_token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
+                  org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
+                  test -n "${admin_token}" && test -n "${org_id}" || { echo "::error::superuser login carries no access token or org id"; exit 1; }
+                  invite_status=$(jq -n --arg e "${email}" '{email:$e,role:"member"}' |
+                    curl -s -o /tmp/audit-invite.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/admin/orgs/${org_id}/invites" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${admin_token}" --data-binary @-)
+                  echo "create-invite status=${invite_status}"
+                  if [ "${invite_status}" != "201" ]; then
+                    head -c 500 /tmp/audit-invite.json || true; echo
+                    echo "::error::create-invite status ${invite_status}"; exit 1
+                  fi
+                  invite_id="$(jq -r '.id // empty' /tmp/audit-invite.json)"
+                  [[ "${invite_id}" =~ ^[0-9a-f-]{36}$ ]] || { echo "::error::create-invite answer carries no invite id"; exit 1; }
+                  # The go-api environ copy holds the job's link secret: it must be the job's own 0600 file (written under umask 077 above).
+                  environ_mode="$(stat -c '%a %U' /tmp/dev-health-go-api.environ)"
+                  echo "go-api environ copy mode=${environ_mode}"
+                  test "${environ_mode}" = "600 $(id -un)" || { echo "::error::the go-api environ copy is not 0600 and the job's own"; exit 1; }
+                  # The mailed link token, built as go-api builds it (signedtoken.Build); the secret is read inside python, never printed.
+                  invite_token="$(python3 -I - "${invite_id}" /tmp/dev-health-go-api.environ <<'PY'
+                  import hashlib, hmac, sys, uuid
+                  idhex = uuid.UUID(sys.argv[1]).hex
+                  entries = open(sys.argv[2], "rb").read().decode().split("\0")
+                  secret = next(e.split("=", 1)[1] for e in entries if e.startswith("LINK_TOKEN_SECRET="))
+                  print(idhex + "." + hmac.new(secret.encode(), idhex.encode(), hashlib.sha256).hexdigest())
+                  PY
+                  )"
+                  invite_hash="$(printf '%s' "${invite_token}" | sha256sum | cut -d' ' -f1)"
+                  stored="$(psql -v ON_ERROR_STOP=1 -At -v id="${invite_id}" -v h="${invite_hash}" <<'SQL'
+                  SELECT count(*) FROM org_invites WHERE id = :'id'::uuid AND token_hash = :'h' AND status = 'pending';
+                  SQL
+                  )"
+                  test "${stored}" = "1" || { echo "::error::the built invite token does not match the stored pending invite (rows ${stored:-none})"; exit 1; }
+                  # The invitee accepts through go-api's own route, with the access token of its new session (aud dev-health-api).
+                  user_token="$(jq -r '.access_token // empty' /tmp/audit-cp.json)"
+                  test -n "${user_token}" || { echo "::error::change-password answer carries no access token"; exit 1; }
+                  accept_status=$(jq -n --arg t "${invite_token}" '{token:$t}' |
+                    curl -s -o /tmp/audit-accept.json -w '%{http_code}' -X POST "${BACKEND_URL}/api/v1/auth/accept-invite" \
+                      -H 'Content-Type: application/json' -H "Origin: ${BACKEND_URL}" -H "Authorization: Bearer ${user_token}" --data-binary @-)
+                  echo "accept-invite status=${accept_status}"
+                  if [ "${accept_status}" != "200" ]; then
+                    head -c 500 /tmp/audit-accept.json || true; echo
+                    echo "::error::accept-invite status ${accept_status}"; exit 1
+                  fi
+                  bash ci/live_e2e_auth_stack.sh assert-audit "${RUNNER_TEMP}/live-e2e-auth"
+              working-directory: dev-health-ops
+
+            - name: Run web decisions live tier (flip F11)
+              # The Next server decides the enforced actions (admin.orgs, admin.users, integrations.write) with the real PDP: allow,
+              # deny and fail-closed with auth-service stopped (enforce pass), then the shadow pass, each with the switch set prod runs
+              # (playwright.live.config.ts sets them per pass). Its own job (matrix tier web-decisions).
+              # The classes tier (CHAOS-13277) compares integrations.write per caller class, legacy vs PDP, in its own job (the
+              # per-address login limit). The admin-users tier compares admin.users on the create-platform-user action, legacy vs
+              # PDP, in its own job too. The web workload gets its token through the stack's job-local TokenReview (test code;
+              # the product path is unchanged).
+              if: matrix.tier == 'web-decisions' || matrix.tier == 'web-decisions-classes' || matrix.tier == 'web-decisions-admin-users'
+              env:
+                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
+                  TEST_SUPERUSER_EMAIL: admin@devhealth.example
+                  TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+                  LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
+                  LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
+                  LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+                  # The stack verbs (verify-user, grant-platform-admin) reach the job's throwaway Postgres service with the PG* env.
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
+                  LIVE_E2E_GO_API_LOG: /tmp/dev-health-go-api.log
+                  TIER: ${{ matrix.tier }}
+              run: |
+                  if [ "${TIER}" = web-decisions-classes ]; then
+                    bash ci/run_tests.sh live-e2e-web-decisions-classes
+                  elif [ "${TIER}" = web-decisions-admin-users ]; then
+                    bash ci/run_tests.sh live-e2e-web-decisions-admin-users
+                  else
+                    bash ci/run_tests.sh live-e2e-web-decisions
+                  fi
+
+            - name: Upload the web decisions server logs on failure
+              if: failure() && (matrix.tier == 'web-decisions' || matrix.tier == 'web-decisions-classes' || matrix.tier == 'web-decisions-admin-users')
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: ${{ matrix.tier }}-server-logs
+                  path: web-decisions-logs
+
+            - name: Upload the classes answers and the per-pass results
+              if: always() && matrix.tier == 'web-decisions-classes'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-decisions-classes-answers
+                  path: |
+                      web-decisions-logs/classes-answers.json
+                      web-decisions-logs/live-results-web-decisions-classes-legacy.json
+                      web-decisions-logs/live-results-web-decisions-classes-enforce.json
+                      web-decisions-logs/live-results-web-decisions-classes-rollback.json
+
+            - name: Upload the admin-users answers and the per-pass results
+              if: always() && matrix.tier == 'web-decisions-admin-users'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-decisions-admin-users-answers
+                  path: |
+                      web-decisions-logs/admin-users-answers.json
+                      web-decisions-logs/live-results-web-decisions-admin-users-legacy.json
+                      web-decisions-logs/live-results-web-decisions-admin-users-enforce.json
+
+            - name: Run live backend e2e tier
+              if: matrix.tier == 'live' || matrix.tier == 'guided' || matrix.tier == 'auth-journeys' || matrix.tier == 'auth-sso' || matrix.tier == 'auth-social'
+              env:
+                  TIER: ${{ matrix.tier }}
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
                   # go-api/query-api-owned paths must reach those planes the way prod's Ingress
                   # (and bigboy's traefik) route them, or they 500 on their Python stub.
                   PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+                  # The Next web server alone pins the issuer and trusts the job-local CA (SSL_CERT_FILE replaces the
+                  # system roots): playwright.live.config.ts puts this wrapper in front of its dev-server command only.
+                  LIVE_E2E_WEB_WRAPPER: bash ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh with-env web ${{ runner.temp }}/live-e2e-auth --
+                  # CHAOS-13375: the specs verify and promote their users through the stack verbs (users are owned by auth-service).
+                  LIVE_E2E_STACK_SCRIPT: ${{ github.workspace }}/dev-health-ops/ci/live_e2e_auth_stack.sh
+                  LIVE_E2E_STACK_STATE: ${{ runner.temp }}/live-e2e-auth
+                  # The stack verbs (verify-user, grant-platform-admin) reach the job's throwaway Postgres service with the PG* env.
+                  PGHOST: localhost
+                  PGPORT: "5432"
+                  PGUSER: postgres
+                  PGPASSWORD: postgres
+                  PGDATABASE: test_db
                   # Impersonation targets are provisioned by the specs through the API
                   # (tests/live/helpers.ts provisionUser); no secret is involved.
-              # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
-              # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
-              run: bash ci/run_tests.sh live-e2e-two-pass
+              # CHAOS-12138: the default backend (live job), or go-api restarted with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for
+              # the @guided specs (guided job), or the auth journeys (UI sign-in; its own job: auth-service budgets logins per
+              # address and account). Any skip fails the tier.
+              run: |
+                  mkdir -p web-live-logs
+                  if [ "${TIER}" = guided ]; then
+                    bash ci/live-e2e-restart-go-api.sh
+                    LIVE_WEB_LOG=web-live-logs/web-server-guided.log bash ci/run_tests.sh live-e2e-guided
+                  elif [ "${TIER}" = auth-journeys ]; then
+                    LIVE_WEB_LOG=web-live-logs/web-server-auth-journeys.log bash ci/run_tests.sh live-e2e-auth-journeys
+                  elif [ "${TIER}" = auth-sso ]; then
+                    LIVE_WEB_LOG=web-live-logs/web-server-auth-sso.log bash ci/run_tests.sh live-e2e-auth-sso
+                  elif [ "${TIER}" = auth-social ]; then
+                    LIVE_WEB_LOG=web-live-logs/web-server-auth-social.log bash ci/run_tests.sh live-e2e-auth-social
+                  else
+                    LIVE_WEB_LOG=web-live-logs/web-server-live.log bash ci/run_tests.sh live-e2e
+                  fi
+
+            - name: Upload the live web server logs on failure
+              if: failure() && matrix.tier != 'web-decisions'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: web-${{ matrix.tier }}-server-logs
+                  path: web-live-logs
 
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: playwright-report-live
+                  name: playwright-report-live${{ matrix.tier != 'live' && format('-{0}', matrix.tier) || '' }}
                   path: playwright-report
 
             - name: Upload API logs on failure
               if: failure()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: dev-health-ops-go-logs
+                  name: dev-health-ops-go-logs${{ matrix.tier != 'live' && format('-{0}', matrix.tier) || '' }}
                   path: |
                       /tmp/dev-health-go-api.log
+                      /tmp/dev-health-go-api-guided.log
                       /tmp/dev-health-query-api.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/auth-service.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/smtpsink.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/idpstub.log
+                      ${{ runner.temp }}/live-e2e-auth/logs/providerstub.log
 
             - name: Stop dev-health-ops API
               if: always()
@@ -582,4 +863,5 @@ jobs:
                   if [ -f /tmp/dev-health-query-api.pid ]; then
                     kill "$(cat /tmp/dev-health-query-api.pid)" || true
                   fi
+                  bash dev-health-ops/ci/live_e2e_auth_stack.sh down "${RUNNER_TEMP}/live-e2e-auth" || true
                   docker rm -f live-e2e-traefik >/dev/null 2>&1 || true

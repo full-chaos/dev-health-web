@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth, sealSessionHandoff } from "@/lib/auth";
 import { servicePairFields } from "@/lib/authServicePair";
+import { serviceBearer } from "@/lib/authServiceOutcome";
 import { logger } from "@/lib/logger";
 import { readExchangeAnswer, wireConfigFromEnv, wireConfigUsable } from "@/lib/authServiceWire";
 import { getBackendUrl } from "@/lib/origin";
@@ -12,6 +13,12 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.access_token) {
         return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    // While impersonating, the token pair is the administrator's and the session holds no service
+    // token: a pair change is refused here, before any backend call (the jwt callback would refuse
+    // its handoff anyway).
+    if (session.user?.is_impersonating) {
+        return NextResponse.json({ error: "Not available while impersonating" }, { status: 403 });
     }
 
     let payload: { org_id?: unknown } | null = null;
@@ -35,7 +42,7 @@ export async function POST(request: Request) {
         response = await fetch(`${getBackendUrl()}/api/v1/auth/switch-org`, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${session.access_token}`,
+                Authorization: `Bearer ${serviceBearer(session)}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ org_id: payload.org_id }),
@@ -80,8 +87,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
     const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
-    // Under eddsa the access token and the service token are read; under hs256_compat the pair is
-    // exactly what it was. A refused or unreadable answer leaves the session as it is.
+    // The access token and the service token are read. A refused or unreadable answer leaves the
+    // session as it is.
     const read = await readExchangeAnswer(
         {
             accessToken: pair.access_token,
@@ -106,7 +113,7 @@ export async function POST(request: Request) {
                 refresh_token: pair.refresh_token,
                 expires_in: pair.expires_in,
                 user: { org_id: orgId, role: pair.user.role, is_superuser: pair.user.is_superuser },
-                ...(read.kind === "read" ? servicePairFields(read) : {}),
+                ...servicePairFields(read),
             },
             session.user?.id ?? "",
         );

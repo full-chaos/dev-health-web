@@ -13,8 +13,6 @@ export interface SessionUser {
     orgId?: string;
     role?: string;
     isSuperuser: boolean;
-    /** The answer's value, as it came: the session carries it unchanged. */
-    permissions?: unknown;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -35,7 +33,6 @@ function readUser(v: unknown): SessionUser | undefined {
         ...(orgId === undefined ? {} : { orgId }),
         ...(role === undefined ? {} : { role }),
         isSuperuser: v.is_superuser === true,
-        ...(v.permissions === undefined ? {} : { permissions: v.permissions }),
     };
 }
 
@@ -164,8 +161,7 @@ export function inFlightRefreshKeys(): string[] {
 }
 
 // The Bearer for the auth-service routes that refuse aud dev-health-api: the session access token
-// when the session holds one, else the access token. The session token is stored only under
-// class eddsa, so under hs256_compat this is the access token.
+// when the session holds one, else the access token (an answer without a session token).
 export function serviceBearer(tokens: {
     access_token?: unknown;
     session_access_token?: unknown;

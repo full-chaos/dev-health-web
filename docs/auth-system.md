@@ -9,13 +9,15 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 - **Central Config**: `src/lib/auth.ts`
 - **Exports**: `auth`, `handlers`, `signIn`, `signOut`
 - **Provider**: Custom `CredentialsProvider` authenticating against the backend API.
+- **Summary reference** (Auth.js config, authorization, ACR assertion, rollback switches): [auth-web-reference.md](auth-web-reference.md).
+- **ACR device approval** (sequence and token diagrams, the approver decision, why web is in the path): [auth-acr-device-approval.md](auth-acr-device-approval.md).
 
 ## Authentication Flow
 
 1. User submits credentials via `/auth/signin`.
 2. `CredentialsProvider` calls backend `/api/v1/auth/login` through `src/lib/authServiceWire.ts`.
-3. Backend returns JWT and user metadata. The server reads `exp` and `sid` from the access token
-   by the class `AUTH_ACCESS_TOKEN_CLASS` names (below); an answer it refuses is a refused sign-in.
+3. Backend returns JWT and user metadata. The server verifies the access token and reads `exp` and
+   `sid` from its claims (below); an answer it refuses is a refused sign-in.
 4. NextAuth stores the backend token and user info in its own session/JWT.
 
 **Sign-in answers** (a status table, `src/lib/authServiceOutcome.ts`): 401 and every other
@@ -23,15 +25,14 @@ request refusal is "Invalid email or password"; 429 with `retry_after_seconds` i
 other 429 is a rate limit; the verification answer asks for the e-mail check; 408, 425, 5xx and a
 call that fails are `auth_unavailable` (a retry message, not a credential refusal).
 
-**Access-token class** (`AUTH_ACCESS_TOKEN_CLASS`, server only; closed set `eddsa`,
-`hs256_compat`; unset means `hs256_compat`; any other value refuses sign-in): the class comes from
-this setting, never from a token header. Under `hs256_compat` the server holds no HS256 secret: it
-decodes `exp` and `sid` (not verified), and refuses a token whose alg is not `HS256`. Under `eddsa`
-the token is verified against the key set the pinned issuer publishes: the server reads
+**Access token** (EdDSA is the only access-token class; web reads no HS256 token and the former
+`AUTH_ACCESS_TOKEN_CLASS` setting is gone: a value still set in the environment is ignored). The
+token is verified against the key set the pinned issuer publishes: the server reads
 `{issuer}/.well-known/openid-configuration`, requires its `issuer` to be the pinned one and its
 `jwks_uri` to be exactly `{issuer}/.well-known/jwks.json`, then reads that key set; a redirect at
 either step is a failure. `AUTH_ACCESS_TOKEN_ISSUER` (the pinned issuer, an https origin with an
-optional path prefix) must be set. The keys are fresh for 300 s; a refresh is tried at most once
+optional path prefix) must be set; without it sign-in, refresh and the exchanges are refused as
+`auth_config_invalid`. The keys are fresh for 300 s; a refresh is tried at most once
 per 30 s; when a refresh fails the last good keys are used until 10 minutes past the 300 s, and
 then sign-in is `auth_unavailable`; a key id that is not in the keys gets one refresh, and a key id
 still unknown is refused. A key set with a repeated `kid` or an invalid key is refused whole.
@@ -42,58 +43,63 @@ token is within 5 minutes of its `exp`): one backend call per refresh credential
 failed call are transient (the access token is dropped, the refresh token is kept, jittered
 backoff); every other non-2xx status is terminal (both tokens are cleared, `refresh_failed`); a 200
 without both a non-empty access token and a non-empty rotated refresh token is terminal. The new
-access token is read by the token class (above); a token the class refuses is terminal. The
+access token is verified (above); a token that does not verify is terminal. The
 credential is single use, so the rotated one is always stored, also when the key set cannot be read
 (then the access token is dropped and the refresh is retried). `expires_at` comes from the token
 `exp` and `sid` is stored. A refreshed token whose `exp` is absent, not a number or not positive is
-terminal (fail closed); the body `expires_in` never sets a lifetime on refresh. An unknown class setting or a missing issuer never
-ends a session at refresh: it is transient.
+terminal (fail closed); the body `expires_in` never sets a lifetime on refresh. A missing issuer never ends a session at refresh: it
+is transient.
 
-**Service session token** (`session_access_token`, aud `auth-service`; PR C1): under class `eddsa` the
+**Forced sign-out bound** (`applyBackendValidationMemo` in `src/lib/authValidationMemo.ts`): the jwt callback
+asks the backend `POST /api/v1/auth/validate` when 60 s (`VALIDATION_INTERVAL_MS`) or more have passed since the
+token's last backend check. A refused answer (200 `valid: false`, 401, 403) ends the session. A forced sign-out
+(the user deactivated, its token version moved, the session revoked) thus ends every web session of the user on its
+first request 60 s or more after the backend refuses it. The per-process memo shares one answer between
+parallel callbacks of the same access token; a memo hit keeps the memo's check time, so a hit never moves the next
+check past that bound. Transient answers keep the session and retry after backoff. The drill
+`scripts/drills/session-forced-signout/drill.sh` measures the bound and the recovery after an auth-service restart.
+
+See [session recovery](runbooks/session-recovery.md), [forced sign-out](runbooks/forced-sign-out.md), and [release notes](release-notes.md).
+
+**Service session token** (`session_access_token`, aud `auth-service`; PR C1): the
 login and refresh answers carry a second token for the auth-service routes that refuse the access
 token's audience. `readAnswerTokens` (`src/lib/authServiceWire.ts`) reads it against the access token
 with the same keys and clock: it must verify for aud `auth-service`, carry the same `sid` and `sub`,
 and have exactly the access token's `exp`; any other answer refuses the sign-in (same answer as any
 refused sign-in) or ends the session at refresh, with one closed log branch per reason
-(`session_token_malformed`, `_unverified`, `_sid_mismatch`, `_sub_mismatch`, `_exp_mismatch`). Under
-`eddsa` an answer without one is accepted and counted (`session_token_missing`); a non-zero count
-after the flip is a report, since change-password then fails for that session. Under `hs256_compat`
-the field is ignored and counted (`session_token_ignored`), never stored. It lives only in the sealed
+(`session_token_malformed`, `_unverified`, `_sid_mismatch`, `_sub_mismatch`, `_exp_mismatch`). An
+answer without one is accepted and counted (`session_token_missing`); a non-zero count is a report,
+since change-password then fails for that session. It lives only in the sealed
 session beside the verified actor (`act_sub`, read only from the verified access token claims; no ops
 mint sets an actor yet, so there is no producer today). It follows the access token: replaced on a
 refresh (cleared when the answer has none), dropped with it on a transient failure, cleared on a
 terminal one, and cleared by a handoff or a social exchange that sets a new access token. The session
 callback puts it on the in-process session only; `authBrowserSession` removes it from every HTTP
-answer. C1 alone is not ready for the `eddsa` flip: the switch-org and change-password answers (C2)
-and a proof on an `eddsa` leg come first.
+answer.
 
 **Service session token, other answers** (PR C2): the switch-org and change-password answers and the
 social exchange are read through `readExchangeAnswer` (`src/lib/authServiceWire.ts`). Under
-`hs256_compat` nothing changes: the access token of the answer is not read and a present
-`session_access_token` is ignored and counted (operation `switch_org`, `change_password` or
-`social_login`). Under `eddsa` the answer is read like a login answer; the sealed handoff pair then
+the answer is read like a login answer (operation `switch_org`, `change_password` or
+`social_login`); the sealed handoff pair then
 carries `access_exp`, `sid`, `act_sub`, `session_access_token` and `session_exp`, and the jwt callback
 adopts them (a pair without them clears the old service token; `sid` is set only when the pair has
 one). A refused or unreadable answer leaves the session as it is (switch-org: the fixed 502;
-change-password: the sign-in-again 502; social: `social_login_failed`); an unknown class setting or
-`eddsa` without an issuer refuses before the backend is called. `openSessionHandoff` refuses a pair
-whose service fields have the wrong type (`bad_service_fields`). The change-password Bearer follows
-the CLASS, not the session: under `eddsa` it is the service token when the session holds one, else the
-access token; under `hs256_compat` it is the access token even when a cookie kept across a rollback
-still holds a service token. switch-org and logout keep the access token as Bearer. Size: the pair
+change-password: the sign-in-again 502; social: `social_login_failed`); a missing issuer refuses
+before the backend is called. `openSessionHandoff` refuses a pair
+whose service fields have the wrong type (`bad_service_fields`). The change-password Bearer is
+the service token when the session holds one, else the access token. switch-org and logout keep the access token as Bearer. Size: the pair
 travels sealed (an encrypted JWT, 120 s) in the JSON body of `update()`; the session cookie that
 results is split into chunks by Auth.js and, with two tokens of the largest size the verifier accepts
 (4096 bytes each), is about 11.8 KB in 3 chunks (Node's default request header limit is 16 KiB for all
-cookies together); with real-size tokens it is about 2.5 KB in 1 chunk. Before the `eddsa` flip:
-C1 and C2 rolled, `AUTH_PROXY_CREDENTIALS` on (CHAOS-12339) for the change-password Bearer, a proof on
-an `eddsa` leg, and the count of `session_token_missing` watched.
+cookies together); with real-size tokens it is about 2.5 KB in 1 chunk. `AUTH_PROXY_CREDENTIALS`
+must be on (CHAOS-12339) for the change-password Bearer, and the count of `session_token_missing`
+is watched.
 
 **Session Data**:
 
 - `access_token`: Backend API bearer token — **server only** (see below)
 - `role`: User's primary role (e.g., "admin", "viewer")
 - `is_superuser`: Boolean flag for global access
-- `permissions`: Array of specific permission strings
 
 **The Ops token never reaches page JS (CHAOS-12088).** Server code (`auth()`, `src/proxy.ts`,
 route handlers, server actions) reads `session.access_token` from the in-process session. The
@@ -448,7 +454,7 @@ sequenceDiagram
 
 ### SSO (SAML / OIDC)
 
-Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`, and it works only with `AUTH_ACCESS_TOKEN_CLASS=eddsa`. The backend aggregates `oidc` and `saml` must be on too.
+Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`. The backend aggregates `oidc` and `saml` must be on too.
 
 There is no provider lookup for a signed-out visitor. An administrator shares the provider id, and the user opens a deep link or pastes the id into the "Continue with single sign-on" form on `/auth/signin` (shown only while the switch is on):
 
@@ -749,12 +755,12 @@ Support for "Login as User" functionality:
 
 Auth-related environment variables (see `.env.example` for full list):
 
-| Variable           | Required      | Description                                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_SECRET`      | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                                                                                                                                           |
-| `AUTH_URL`         | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`.                                                                                                                   |
-| `BACKEND_URL`      | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                                                                                                                                   |
-| `AUTH_SSO_ENABLED` | No            | `true` or `1` turns on enterprise SSO sign-in (OIDC, SAML) through auth-service. Unset = off: no SSO call is made and the `sso` provider refuses every ticket. SSO requires `AUTH_ACCESS_TOKEN_CLASS=eddsa`: with any other value (unset, `hs256_compat`, unknown) every SSO completion is refused before any auth-service call and logs one error line (branch `sso_token_class_refused`). |
+| Variable           | Required      | Description                                                                                                                                                                                                                                                               |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`      | Production    | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev.                                                                                                                                                                         |
+| `AUTH_URL`         | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`. |
+| `BACKEND_URL`      | Always        | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`).                                                                                                                                                                                                 |
+| `AUTH_SSO_ENABLED` | No            | `true` or `1` turns on enterprise SSO sign-in (OIDC, SAML) through auth-service. Unset = off: no SSO call is made and the `sso` provider refuses every ticket.                                                                                                            |
 
 ### Troubleshooting: "request origin validation" error
 

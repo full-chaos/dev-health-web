@@ -155,8 +155,24 @@
         "log": 1,
         "sentry": 0
     },
+    "src/lib/acr/client.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/acr/config.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/acr/grantScopes.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/acr/http.ts": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/lib/acr/ops.ts": {
-        "log": 2,
+        "log": 5,
         "sentry": 0
     },
     "src/lib/acr/service.ts": {
@@ -219,11 +235,19 @@
         "log": 3,
         "sentry": 0
     },
+    "src/lib/authCallbackRefusal.ts": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/lib/authSessionLog.ts": {
-        "log": 2,
+        "log": 1,
         "sentry": 0
     },
     "src/lib/billing/actions/subscription.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/csp/prerenderedScriptHashes.ts": {
         "log": 1,
         "sentry": 0
     },
@@ -247,12 +271,20 @@
         "log": 4,
         "sentry": 0
     },
+    "src/lib/impersonationSession.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/impersonationToken.ts": {
+        "log": 4,
+        "sentry": 0
+    },
     "src/lib/investmentMix.ts": {
         "log": 1,
         "sentry": 0
     },
     "src/lib/onboarding/actions.ts": {
-        "log": 7,
+        "log": 8,
         "sentry": 0
     },
     "src/lib/onboarding/track.ts": {

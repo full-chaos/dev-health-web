@@ -110,13 +110,13 @@ describe.each(routes)("github-app $name route, impersonation limits", ({ call, b
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("C10 enforce: the server status decides when the session flag says not impersonating", async () => {
+    // D6720 (acp Q2 (i)): the status answer never decides a guard; the session field does.
+    it("C10 enforce: a status of true does not limit a session that is not impersonating", async () => {
         process.env.AUTHZ_PLATFORM_UI = "enforce";
         setSession({ role: "member", is_superuser: true, is_impersonating: false });
-        const response = await call();
-        expect(response.status).toBe(403);
-        expect(response.headers.get("location")).toBeNull();
-        expect(fetch).not.toHaveBeenCalled();
+        await call();
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(mocks.status).not.toHaveBeenCalled();
     });
 
     it("C9 enforce: a superuser that is not impersonating keeps the bypass", async () => {

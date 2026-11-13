@@ -13,6 +13,13 @@ export default defineConfig({
         },
     },
     test: {
+        // CHAOS-12901: one bounded limit for every unit and component test instead of vitest's
+        // 5 s test / 10 s hook defaults, which fail heavy-setup files when the host is loaded.
+        // Measured on 4 pinned CPUs with 32 workers: main failed 33 files on the defaults; with a
+        // 30 s bound the slowest passing test took 26.9 s, so 40 s keeps a margin of about 1.5x.
+        // The bound stays finite so a real hang still fails.
+        testTimeout: 40_000,
+        hookTimeout: 40_000,
         // Component tests use jsdom; lib/util tests keep node environment.
         // Projects allow different environments per directory.
         projects: [

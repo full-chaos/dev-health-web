@@ -186,7 +186,7 @@ export function OrgMembersManager({ orgId, members }: OrgMembersManagerProps) {
                 </button>
             </form>
 
-            <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
+            <div className="relative overflow-x-auto rounded-lg border border-(--card-stroke)">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-(--card-70) text-(--ink-muted)">
                         <tr>

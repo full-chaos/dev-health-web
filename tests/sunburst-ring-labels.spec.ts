@@ -172,6 +172,12 @@ async function seed(page: Page, served: unknown = answer) {
     );
 }
 
+// The mock's entitlement scenario is process-global: a cell that leaves "provisioned-investment" set
+// makes every later spec in the run see Investment enabled (work-navigation.spec.ts:52 expects it off).
+test.afterEach(async ({ request }) => {
+    await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "unprovisioned" } });
+});
+
 test.describe("the sunburst's labels never overlap, and its table names every node (CHAOS-12912)", () => {
     test.beforeEach(async ({ request }) => {
         await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "provisioned" } });

@@ -1,7 +1,7 @@
 {
     "schema_version": "endpoint-profile.v1",
-    "generated_at": "2026-09-01T18:33:06Z",
-    "source_commit": "fcc3c1dbf7e421966d7895ed56ffee5a7690a069",
+    "generated_at": "2026-11-10T02:16:17Z",
+    "source_commit": "50667d4d85f75edae0b4803b2ccb7ab5514f38a1",
     "credential_class_source": "contracts/auth/v1/credential-classes.json",
     "rows": [
         {
@@ -40,8 +40,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "agent_context.evidence.read",
@@ -110,8 +111,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "agent_context.repositories.list",
@@ -326,8 +328,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "acr.device.preview | acr.device.approve",
@@ -396,8 +399,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "acr.oauth_consent.preview | acr.oauth_consent.approve | acr.oauth_consent.deny",
@@ -467,8 +471,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "agent_context.context_packet.create",
@@ -511,17 +516,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/switch-org/route.ts",
-                "line": 11
+                "line": 12
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "Inline `session.access_token` presence check; forwards Bearer + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership. The new token pair is returned only as a sealed session handoff (sealSessionHandoff).",
+                "description": "Inline `session.access_token` presence check; forwards the session service Bearer (serviceBearer: session_access_token, else access_token) + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership. The new token pair is returned only as a sealed session handoff (sealSessionHandoff).",
                 "anchor": {
                     "path": "src/app/api/auth/switch-org/route.ts",
-                    "line": 12,
-                    "line_end": 15
+                    "line": 13,
+                    "line_end": 16
                 }
             },
             "token_shape": {
@@ -534,13 +539,13 @@
             "action": "auth.switch_org",
             "resource_resolver": "org_id from request body, verified ops-side against caller's memberships (not verified web-side).",
             "tenant_requirement": "cross_org_superuser_only",
-            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:122); the other responses were not inspected.",
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:129); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "A refusal gets ops's status with a fixed {error} body; a failed call, a 2xx without a pair or a failed seal answers a fixed 502. On success answers {org_id, sessionHandoff}: the new token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088).",
             "gaps": [
                 "FINDING: this is a mutating POST with NO explicit Origin/CSRF check -- unlike acr/device/route.ts (origin check) and _proxy.ts's hasValidMutationOrigin(). '/api/auth' also bypasses proxy.ts's own auth/org gate (PREFIX_PUBLIC_PATH). The only CSRF defense is the Auth.js session cookie's SameSite attribute (not independently verified in this pass -- next-auth default, not a repo-level override).",
-                "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:11 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:12 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
         {
@@ -552,7 +557,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/change-password/route.ts",
-                "line": 27
+                "line": 26
             },
             "classification": "protected",
             "public_rationale": null,
@@ -561,8 +566,8 @@
                 "description": "Inline `session.access_token` presence check; forwards Bearer + body {current_password, new_password} to ops POST /api/v1/auth/change-password, which re-checks the user per request, verifies the current password, enforces the password policy and revokes every other session.",
                 "anchor": {
                     "path": "src/app/api/auth/change-password/route.ts",
-                    "line": 28,
-                    "line_end": 31
+                    "line": 27,
+                    "line_end": 30
                 }
             },
             "token_shape": {
@@ -581,7 +586,7 @@
             "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status. On success answers {ok, sessionHandoff}: the fresh token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088); a missing pair or a failed seal answers a fixed 502.",
             "gaps": [
                 "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply.",
-                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:27 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:26 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
         {
@@ -599,7 +604,7 @@
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "Origin must equal the AUTH_URL/NEXTAUTH_URL origin (403), then readSessionCredentialsForSignOut reads the Ops access and refresh tokens from the sealed Auth.js session cookie only (an Authorization header is never read, no refresh runs); `if (!session?.access_token) return 401` when the cookie is missing, foreign or lacks either token. Forwards {refresh_token} + Bearer to ops POST /api/v1/auth/logout, which revokes the session that credential belongs to (CHAOS-12096, sign-out step 1).",
+                "description": "Origin must equal the AUTH_URL/NEXTAUTH_URL origin (403), then readSessionCredentialsForSignOut reads the Ops access and refresh tokens from the sealed Auth.js session cookie only (an Authorization header is never read, no refresh runs); `if (!session?.access_token) return 401` when the cookie is missing, foreign or lacks either token. A held impersonation is first stopped with the administrator Bearer (ops POST /api/v1/admin/impersonate/stop; a failed stop is logged as impersonation_stop_not_recorded and the sign-out goes on). Forwards {refresh_token} + Bearer to ops POST /api/v1/auth/logout, which revokes the session that credential belongs to (CHAOS-12096, sign-out step 1).",
                 "anchor": {
                     "path": "src/app/api/auth/revoke-session/route.ts",
                     "line": 55,
@@ -616,7 +621,7 @@
             "action": "auth.logout",
             "resource_resolver": "none: the session to revoke is the caller's own, named by the refresh token in the caller's sealed session cookie; no id comes from the request.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :86).",
+            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :89).",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "204 with no body on success; refusals and Ops failures answer a fixed {error} code (forbidden, no_session, revoke_failed) with no Ops body and no token.",
@@ -660,8 +665,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "feedback.submit",
@@ -685,7 +691,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/[...nextauth]/route.ts",
-                "line": 6
+                "line": 8
             },
             "classification": "public",
             "public_rationale": "NextAuth.js library router multiplexing signin/callback/session/csrf/providers/signout under this catch-all segment; this IS the surface that issues auth_js_browser_session, so it cannot itself require that class as a precondition.",
@@ -753,8 +759,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -810,8 +817,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -868,8 +876,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -926,8 +935,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -984,8 +994,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1042,8 +1053,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1100,8 +1112,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1158,8 +1171,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1216,8 +1230,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1274,8 +1289,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1332,8 +1348,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1390,8 +1407,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1448,8 +1466,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1506,8 +1525,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "Gate: block creating a PagerDuty-provider sync config unless the org's canonical-incident-ingestion entitlement is enabled.",
@@ -1561,8 +1581,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1618,8 +1639,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1676,8 +1698,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1734,8 +1757,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1792,8 +1816,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1850,8 +1875,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1908,8 +1934,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -1966,8 +1993,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2024,8 +2052,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2082,8 +2111,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2140,8 +2170,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2198,8 +2229,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2256,8 +2288,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2314,8 +2347,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2372,8 +2406,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2430,8 +2465,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2488,8 +2524,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2546,8 +2583,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2604,8 +2642,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2662,8 +2701,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2720,8 +2760,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2778,8 +2819,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2836,8 +2878,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2867,7 +2910,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 183
+                "line": 185
             },
             "classification": "protected",
             "public_rationale": null,
@@ -2894,8 +2937,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2925,7 +2969,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 97
+                "line": 98
             },
             "classification": "protected",
             "public_rationale": null,
@@ -2952,8 +2996,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -2983,7 +3028,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 206
+                "line": 208
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3010,8 +3055,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3041,7 +3087,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 109
+                "line": 110
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3068,8 +3114,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3099,7 +3146,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 215
+                "line": 217
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3126,8 +3173,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3157,7 +3205,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 305
+                "line": 307
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3184,8 +3232,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3215,7 +3264,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 23
+                "line": 24
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3242,8 +3291,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3273,7 +3323,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 148
+                "line": 150
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3300,8 +3350,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3331,7 +3382,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 176
+                "line": 178
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3358,8 +3409,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3389,7 +3441,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 274
+                "line": 276
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3416,8 +3468,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3447,7 +3500,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 294
+                "line": 296
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3474,8 +3527,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3505,7 +3559,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 222
+                "line": 224
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3532,8 +3586,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3563,7 +3618,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 237
+                "line": 239
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3590,8 +3645,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3621,7 +3677,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 260
+                "line": 262
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3648,8 +3704,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3679,7 +3736,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 317
+                "line": 319
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3706,8 +3763,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3737,7 +3795,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 329
+                "line": 331
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3764,8 +3822,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3795,7 +3854,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 358
+                "line": 360
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3822,8 +3881,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3853,7 +3913,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 376
+                "line": 378
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3880,8 +3940,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3911,7 +3972,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 169
+                "line": 171
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3938,8 +3999,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -3969,7 +4031,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 283
+                "line": 285
             },
             "classification": "protected",
             "public_rationale": null,
@@ -3996,8 +4058,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4027,7 +4090,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 121
+                "line": 122
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4054,8 +4117,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4085,7 +4149,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 137
+                "line": 139
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4112,8 +4176,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4143,7 +4208,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 64
+                "line": 65
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4170,8 +4235,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4201,7 +4267,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 82
+                "line": 83
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4228,8 +4294,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4259,7 +4326,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/orgs.ts",
-                "line": 194
+                "line": 196
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4286,8 +4353,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4344,8 +4412,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4402,8 +4471,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4459,8 +4529,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4516,8 +4587,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4574,8 +4646,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4632,8 +4705,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4690,8 +4764,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4748,8 +4823,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4805,8 +4881,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4863,8 +4940,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4921,8 +4999,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -4979,8 +5058,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5037,8 +5117,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5095,8 +5176,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5153,8 +5235,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5211,8 +5294,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5269,8 +5353,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5327,8 +5412,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5385,8 +5471,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5443,8 +5530,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5501,8 +5589,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5559,8 +5648,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5617,8 +5707,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5675,8 +5766,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5733,8 +5825,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5791,8 +5884,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5849,8 +5943,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5907,8 +6002,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -5965,8 +6061,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6023,8 +6120,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6081,8 +6179,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6139,8 +6238,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6197,8 +6297,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6255,8 +6356,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6313,8 +6415,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6371,8 +6474,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6429,8 +6533,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6487,8 +6592,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6545,8 +6651,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6603,8 +6710,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6661,8 +6769,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6719,8 +6828,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6777,8 +6887,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6835,8 +6946,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6892,8 +7004,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -6949,8 +7062,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7007,8 +7121,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7065,8 +7180,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7123,8 +7239,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7181,8 +7298,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7239,8 +7357,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7297,8 +7416,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7355,8 +7475,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7413,8 +7534,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7471,8 +7593,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7529,8 +7652,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7587,8 +7711,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7645,8 +7770,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7703,8 +7829,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7760,8 +7887,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7818,8 +7946,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7876,8 +8005,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7934,8 +8064,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -7992,8 +8123,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8050,8 +8182,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8108,8 +8241,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8166,8 +8300,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8224,8 +8359,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8282,8 +8418,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8340,8 +8477,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8398,8 +8536,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8456,8 +8595,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8514,8 +8654,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8572,8 +8713,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8630,8 +8772,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8688,8 +8831,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8746,8 +8890,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8804,8 +8949,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8862,8 +9008,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8920,8 +9067,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -8978,8 +9126,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9036,8 +9185,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9094,8 +9244,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9152,8 +9303,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9209,8 +9361,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9267,8 +9420,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9325,8 +9479,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9383,8 +9538,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9440,8 +9596,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9497,8 +9654,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9554,8 +9712,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9611,8 +9770,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9668,8 +9828,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9726,8 +9887,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9784,8 +9946,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9841,8 +10004,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9898,8 +10062,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -9955,8 +10120,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -10012,8 +10178,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -10070,8 +10237,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": null,
@@ -10128,8 +10296,9 @@
                         "line": 354,
                         "line_end": 388
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "ask_dev.authorize",
@@ -10175,17 +10344,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/onboarding/actions.ts",
-                "line": 39
+                "line": 40
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "sessionToken() (src/lib/onboarding/actions.ts:28-36) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboard, which re-validates it.",
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:29-37) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboard, which re-validates it.",
                 "anchor": {
                     "path": "src/lib/onboarding/actions.ts",
-                    "line": 28,
-                    "line_end": 36
+                    "line": 29,
+                    "line_end": 37
                 }
             },
             "token_shape": {
@@ -10202,8 +10371,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "auth.onboard",
@@ -10214,9 +10384,9 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "Returns {ok, orgId, sessionHandoff} or {ok:false, status} plus ops's `detail` only for a validation answer (4xx except 401/403/429). The new workspace's token pair reaches the page only sealed (sealSessionHandoff: JWE under the auth secret, own salt, 120 s, bound to the user id); the page passes it to update() and cannot read it.",
             "gaps": [
-                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:40.",
-                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:39 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:39 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:41.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:40 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:40 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10232,17 +10402,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/onboarding/actions.ts",
-                "line": 120
+                "line": 136
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "sessionToken() (src/lib/onboarding/actions.ts:28-36) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboarding/skip-integration, which re-validates it.",
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:29-37) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboarding/skip-integration, which re-validates it.",
                 "anchor": {
                     "path": "src/lib/onboarding/actions.ts",
-                    "line": 28,
-                    "line_end": 36
+                    "line": 29,
+                    "line_end": 37
                 }
             },
             "token_shape": {
@@ -10259,8 +10429,9 @@
                         "line": 354,
                         "line_end": 372
                     },
-                    "is_intended_validator": false,
-                    "reachable_but_not_owner": true
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
                 }
             ],
             "action": "auth.onboarding_skip_integration",
@@ -10271,9 +10442,9 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "Returns {ok} or {ok:false, status}; no backend text.",
             "gaps": [
-                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:121.",
-                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:120 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:120 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:137.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:136 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:136 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",

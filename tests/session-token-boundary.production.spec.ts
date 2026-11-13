@@ -1,5 +1,4 @@
 import { expect, test, type Response } from "@playwright/test";
-import { MOCK_ACCESS_TOKEN, MOCK_REFRESHED_ACCESS_TOKEN } from "./mocks/mockTokens";
 
 /**
  * CHAOS-12088: page JS never receives the Ops token. Measured against the PRODUCTION build
@@ -9,13 +8,27 @@ import { MOCK_ACCESS_TOKEN, MOCK_REFRESHED_ACCESS_TOKEN } from "./mocks/mockToke
  * and the final DOM must hold none of them. The server render must still read data with the token.
  */
 
-/** Every token value the ops mock answers to a sign-in or a refresh (`tests/mocks/handlers.ts`). */
-const OPS_TOKENS = [
-    MOCK_ACCESS_TOKEN,
+/** The refresh values the ops mock answers to a sign-in or a refresh (`tests/mocks/handlers.ts`). */
+const OPS_REFRESH_TOKENS = [
     "mock-refresh-token-e2e",
-    MOCK_REFRESHED_ACCESS_TOKEN,
     "mock-refreshed-refresh-token-e2e",
+    // The other sign-ins' refresh tokens and their rotated forms (a prefix for the per-signup one).
+    "mock-legacy-refresh-token-e2e",
+    "mock-refreshed-legacy-refresh-token-e2e",
+    "mock-newuser-refresh-token-e2e",
+    "mock-refreshed-newuser-refresh-token-e2e",
+    "mock-expiring-admin-refresh-token-e2e",
+    "mock-refreshed-expiring-admin-refresh-token-e2e",
+    "mock-registered-refresh-token-e2e.",
+    "mock-refreshed-registered-refresh-token-e2e.",
+    "mock-unissued-refreshed-refresh-token-e2e",
 ];
+/**
+ * An access or session token the mock signs is minted per answer, so its value is not known here:
+ * any compact token whose header is `{"alg":"EdDSA",...` counts (the header always starts with
+ * `eyJhbGciOiJFZERTQSI`).
+ */
+const EDDSA_TOKEN = /eyJhbGciOiJFZERTQSI[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/u;
 
 type Scan = { url: string; hits: string[] };
 
@@ -23,7 +36,10 @@ type Scan = { url: string; hits: string[] };
 const BODY_READ_MS = 5_000;
 
 function hitsIn(text: string): string[] {
-    return OPS_TOKENS.filter((token) => text.includes(token));
+    return [
+        ...OPS_REFRESH_TOKENS.filter((token) => text.includes(token)),
+        ...(EDDSA_TOKEN.test(text) ? ["an EdDSA access or session token"] : []),
+    ];
 }
 
 test("no Ops token reaches page JS while /dashboard loads with data", async ({ page, baseURL }) => {

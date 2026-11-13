@@ -9,6 +9,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
+import { connectionChanged } from "@/lib/admin/apiKeyReset";
 import { TARGET_CHANGE_NEEDS_KEY_MESSAGE } from "@/lib/admin/categorizeRefusals";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { fetchLLMModels } from "@/lib/admin/llmModelsClient";
@@ -535,8 +536,10 @@ export function ByoLlmSettings({
         // A stored key is bound to the provider and base URL it was saved with: a change of either needs it again.
         const targetChanged =
             savedSettings !== null &&
-            (provider.trim().toLowerCase() !== (savedSettings.provider ?? "") ||
-                baseUrl.trim() !== (savedSettings.base_url ?? ""));
+            connectionChanged(
+                { provider: savedSettings.provider ?? "", baseUrl: savedSettings.base_url ?? "" },
+                { provider: provider.trim().toLowerCase(), baseUrl },
+            );
         if (hasStoredKey && targetChanged && !apiKey.trim()) {
             setApiKeyError(TARGET_CHANGE_NEEDS_KEY_MESSAGE);
             return;

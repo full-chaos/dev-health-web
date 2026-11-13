@@ -12,13 +12,11 @@ vi.mock("@/lib/authSessionLog", () => ({
 
 const PROVIDER = "6f1d0f6e-62a1-4b3a-9f0e-1f2b3c4d5e6f";
 const cfg: WireConfig = {
-    tokenClassRaw: undefined,
     issuer: undefined,
     backendUrl: "http://auth.test",
 };
 const eddsaCfg: WireConfig = {
     ...cfg,
-    tokenClassRaw: "eddsa",
     issuer: "https://auth.example.test",
 };
 const fetchMock = vi.fn();

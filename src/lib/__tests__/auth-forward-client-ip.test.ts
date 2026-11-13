@@ -43,12 +43,9 @@ vi.mock("@/lib/logger", () => {
 
 import "@/lib/auth";
 import Credentials from "next-auth/providers/credentials";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+import { ISSUER, eddsaFetch, inSeconds, mint } from "@/test/eddsaAnswer";
 
-const b64u = (s: string) => Buffer.from(s).toString("base64url");
-const token = (exp: number) =>
-    `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(
-        JSON.stringify({ sid: "ses_AAAAAAAAAAAAAAAAAAAAAQ", exp }),
-    )}.${b64u("sig")}`;
 const user = {
     id: "u1",
     email: "a@example.test",
@@ -59,7 +56,7 @@ const user = {
 const answer = () =>
     new Response(
         JSON.stringify({
-            access_token: token(Math.floor(Date.now() / 1000) + 3600),
+            access_token: mint({ exp: inSeconds(3600) }),
             refresh_token: "ref-2",
             expires_in: 3600,
             needs_onboarding: false,
@@ -89,9 +86,9 @@ const withXff = (value: string) =>
         headers: { "x-forwarded-for": value },
     });
 const sentXff = (): string[] =>
-    fetchMock.mock.calls.map(
-        ([, init]) => new Headers((init as RequestInit).headers).get("x-forwarded-for") ?? "",
-    );
+    fetchMock.mock.calls
+        .filter(([url]) => !String(url).startsWith(ISSUER))
+        .map(([, init]) => new Headers((init as RequestInit).headers).get("x-forwarded-for") ?? "");
 const expiredToken = () => ({
     access_token: "old",
     refresh_token: "ref-1",
@@ -101,7 +98,11 @@ const expiredToken = () => ({
 
 beforeEach(() => {
     fetchMock.mockReset();
-    fetchMock.mockImplementation(async () => answer());
+    resetKeySetCacheForTests();
+    vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
+    fetchMock.mockImplementation(
+        eddsaFetch({ "/api/v1/auth/login": answer, "/api/v1/auth/refresh": answer }),
+    );
     headersMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
 });

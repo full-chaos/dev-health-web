@@ -1,6 +1,5 @@
 import "server-only";
 import { readAnswerTokens, wireConfigUsable, type WireConfig } from "@/lib/authServiceWire";
-import { resolveTokenClass } from "@/lib/authServiceClient";
 import type { CallResult } from "@/lib/authServiceOutcome";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getServerEnv } from "@/lib/config";
@@ -207,8 +206,8 @@ async function readSession(body: unknown, cfg: WireConfig): Promise<SsoSession |
         }
         return "sso_failed";
     }
-    // Under eddsa the verified token names the org: an answer that says another one is refused.
-    if (resolveTokenClass(cfg.tokenClassRaw) === "eddsa" && tokens.orgId !== orgId) {
+    // The verified token names the org: an answer that says another one is refused.
+    if (tokens.orgId !== orgId) {
         logSessionBranch({ operation: "sso_login", branch: "sso_org_mismatch" });
         return "sso_failed";
     }
@@ -247,11 +246,6 @@ async function complete(
     if (!ssoEnabled()) return { kind: "disabled" };
     if (!PROVIDER_ID.test(providerId))
         return { kind: "refused", code: "sso_failed", clearCookies: [] };
-    // hs256_compat reads the access token without a signature check: SSO trusts only eddsa.
-    if (resolveTokenClass(cfg.tokenClassRaw) !== "eddsa") {
-        logSessionBranch({ operation: "sso_login", branch: "sso_token_class_refused" });
-        return { kind: "refused", code: "sso_unavailable", clearCookies: [] };
-    }
     if (!wireConfigUsable(cfg, "sso_login")) {
         return { kind: "refused", code: "sso_unavailable", clearCookies: [] };
     }

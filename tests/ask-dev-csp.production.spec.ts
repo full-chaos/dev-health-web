@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 import { OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
+import { readPrerenderedHashes, scriptHashSources } from "../src/lib/csp/prerenderedCsp.mjs";
 import { ACR_CORS, ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
 import { INVESTIGATIONS_PATH, investigationStreamFor } from "./mocks/acr-investigation-stream";
 
@@ -21,6 +22,8 @@ import { INVESTIGATIONS_PATH, investigationStreamFor } from "./mocks/acr-investi
  */
 const POLICY_FILE = join(process.cwd(), "tests/fixtures/ask-dev/production-csp.txt");
 const NONCE = /'nonce-[A-Za-z0-9_-]+'/u;
+// CHAOS-12365: every response also allows the prerendered not-found and global-error pages' scripts.
+const HASH = / ('sha256-[A-Za-z0-9+/]+={0,2}')/gu;
 const QUESTION = "Which projects are at risk this quarter?";
 
 const HOSTILE =
@@ -217,7 +220,12 @@ for (const path of ["/dashboard", "/dev"]) {
     }) => {
         const response = await page.goto(path);
         const policy = response?.headers()["content-security-policy"] ?? "";
-        expect(policy.replace(NONCE, "'nonce-N'")).toBe(readFileSync(POLICY_FILE, "utf8").trim());
+        expect([...policy.matchAll(HASH)].map((match) => match[1])).toEqual(
+            scriptHashSources(readPrerenderedHashes(join(process.cwd(), ".next")), path),
+        );
+        expect(policy.replace(NONCE, "'nonce-N'").replace(HASH, "")).toBe(
+            readFileSync(POLICY_FILE, "utf8").trim(),
+        );
 
         const script = policy.split("; ").find((part) => part.startsWith("script-src "));
         expect(script).not.toContain("'unsafe-eval'");

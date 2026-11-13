@@ -1,0 +1,231 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const workflow = readFileSync(join(__dirname, "../../.github/workflows/live-e2e.yml"), "utf8");
+const lines = workflow.split("\n");
+const liveConfig = readFileSync(join(__dirname, "../../playwright.live.config.ts"), "utf8");
+
+function stepBlock(name: string): string {
+    const start = lines.findIndex((line) => line.includes(`- name: ${name}`));
+    expect(start, `no step ${name}`).toBeGreaterThan(0);
+    const next = lines.slice(start + 1).findIndex((line) => /^\s+- name: /.test(line));
+    return lines.slice(start, next < 0 ? undefined : start + 1 + next).join("\n");
+}
+
+describe("live-e2e workflow keeps bearers and CA trust out of the wrong places", () => {
+    it("enables loopback mail only for auth journeys, between auth and go-api startup", () => {
+        const name = "Capture auth mail on the loopback sink (auth-journeys)";
+        const step = stepBlock(name);
+        expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-journeys'");
+        expect(step).toMatch(
+            /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-mail "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
+        );
+        expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
+        expect(step).not.toMatch(/SECRET|TOKEN|PASSWORD|^\s+env:/m);
+        expect(workflow.indexOf(name)).toBeGreaterThan(
+            workflow.indexOf("- name: Start the auth-service stack"),
+        );
+        expect(workflow.indexOf(name)).toBeLessThan(
+            workflow.indexOf("- name: Start dev-health-ops go-api and query-api"),
+        );
+    });
+
+    it("uploads the sink log on failure and never reads mail tokens in a workflow step", () => {
+        const upload = stepBlock("Upload API logs on failure");
+        expect(upload).toMatch(/^\s+if: failure\(\)$/m);
+        expect(upload).toContain("${{ runner.temp }}/live-e2e-auth/logs/smtpsink.log");
+        expect(workflow).not.toContain("mail-token");
+    });
+
+    it("disables trace, screenshots and video for auth journeys with tokens in page URLs", () => {
+        const project = liveConfig.match(/name: "auth-journeys",([\s\S]*?)\n\s+},\n\s+\]/)?.[1];
+        expect(project).toBeDefined();
+        const use = project?.match(/use: \{([^}]+)\}/)?.[1];
+        for (const setting of ["trace", "screenshot", "video"]) {
+            expect(use).toMatch(new RegExp(`${setting}: "off"`));
+        }
+    });
+
+    it("selects both auth specs and excludes web decisions from auth journeys", () => {
+        const pattern = liveConfig.match(/const AUTH_JOURNEY_SPECS = \/(.+)\//)?.[1];
+        expect(pattern).toBeDefined();
+        const matcher = new RegExp(pattern!);
+        for (const file of ["auth-signin-live.spec.ts", "auth-recovery-live.spec.ts"]) {
+            expect(matcher.test(file)).toBe(true);
+        }
+        for (const file of [
+            "web-decisions.spec.ts",
+            "web-decisions-classes.spec.ts",
+            "web-decisions-admin-users.spec.ts",
+        ]) {
+            expect(matcher.test(file)).toBe(false);
+        }
+    });
+
+    it("never prints a response file that can hold a token", () => {
+        const printed = lines.filter((line) =>
+            /^\s*(cat|tee)\b.*\/tmp\/(login|reg|audit-login)\.json/.test(line),
+        );
+        expect(printed).toEqual([]);
+    });
+
+    it("never prints a token variable or an Authorization header", () => {
+        const leaks = lines.filter(
+            (line) =>
+                /^\s*(echo|printf)\b.*(\$\{?token\}?|Authorization)/.test(line) ||
+                /^\s*set\s+-[a-z]*x/.test(line),
+        );
+        expect(leaks).toEqual([]);
+    });
+
+    it("does not export the web environment into the step shell that starts the runner", () => {
+        expect(workflow).not.toMatch(/export\s+"\$\{line%%=\*\}=/);
+        expect(workflow).not.toMatch(/print-env\s+web/);
+    });
+
+    it("starts go-api with a link token secret made in the job, never a literal one", () => {
+        const start = lines.findIndex((line) => /with-env go-api /.test(line));
+        expect(start, "no go-api start line").toBeGreaterThan(0);
+        expect(lines[start - 1]).toMatch(/^\s*LINK_TOKEN_SECRET="\$\{link_token_secret\}" \\$/);
+        expect(workflow).toMatch(/link_token_secret="\$\(openssl rand -hex 32\)"/);
+        expect(workflow).toMatch(/::add-mask::\$\{link_token_secret\}/);
+        expect(workflow).not.toMatch(/^\s*LINK_TOKEN_SECRET:/m);
+    });
+
+    it("hands the web-server wrapper to the runner, not the CA variables", () => {
+        expect(workflow).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
+    });
+
+    it("gives the web decisions step the wrapper and the stack control, and no CA or token variable", () => {
+        const start = workflow.indexOf("Run web decisions live tier");
+        const end = workflow.indexOf("Upload the web decisions server logs");
+        const step = workflow.slice(start, end);
+        expect(step).toMatch(/LIVE_E2E_WEB_WRAPPER:.*with-env web/);
+        expect(step).toMatch(/LIVE_E2E_STACK_SCRIPT:.*live_e2e_auth_stack\.sh/);
+        expect(step).toMatch(/LIVE_E2E_STACK_STATE:/);
+        expect(step).not.toMatch(/SSL_CERT_FILE|NODE_EXTRA_CA_CERTS|AUTH_WORKLOAD|AUTHZ_/);
+    });
+
+    it("builds the go-api environment copy from with-env, not from /proc of a process that may not have exec'd yet", () => {
+        // /proc/<pid>/environ read right after the background start can be the shell's own environment, without the auth
+        // flags: the guided restart then ran go-api with no auth-service proxy (upstream_host "").
+        expect(workflow).not.toMatch(/\/proc\/[^\n]*\/environ/);
+        expect(workflow).toMatch(
+            /with-env go-api "\$\{RUNNER_TEMP\}\/live-e2e-auth" -- env -0 >\/tmp\/dev-health-go-api\.environ/,
+        );
+    });
+
+    it("runs the web decisions tier and the live tiers in separate jobs, so they share no login limit window", () => {
+        const stepIf = (name: string) => {
+            const at = lines.findIndex((line) => line.includes(`- name: ${name}`));
+            expect(at, `no step ${name}`).toBeGreaterThan(0);
+            const rest = lines.slice(at + 1);
+            const next = rest.findIndex((line) => /^\s+- name: /.test(line));
+            return (
+                rest.slice(0, next < 0 ? undefined : next).find((line) => /^\s+if: /.test(line)) ??
+                ""
+            );
+        };
+        // One job per tier (live, guided, web decisions): no two tiers share auth-service's login window.
+        expect(workflow).toMatch(
+            /^\s+tier: \[live, guided, auth-journeys, auth-sso, auth-social, web-decisions, web-decisions-classes, web-decisions-admin-users\]$/m,
+        );
+        expect(workflow).not.toMatch(/ci\/run_tests\.sh live-e2e-two-pass/);
+        expect(stepIf("Run web decisions live tier (flip F11)")).toMatch(
+            /^\s+if: matrix\.tier == 'web-decisions' \|\| matrix\.tier == 'web-decisions-classes' \|\| matrix\.tier == 'web-decisions-admin-users'$/,
+        );
+        expect(stepIf("Run live backend e2e tier")).toMatch(
+            /^\s+if: matrix\.tier == 'live' \|\| matrix\.tier == 'guided' \|\| matrix\.tier == 'auth-journeys' \|\| matrix\.tier == 'auth-sso' \|\| matrix\.tier == 'auth-social'$/,
+        );
+    });
+});
+
+describe("live-e2e workflow enables SSO only for the auth-sso tier", () => {
+    it("runs the ops enable-sso verb between auth and go-api startup, with no env of its own", () => {
+        const name = "Enable OIDC and SAML on the throwaway stack (auth-sso)";
+        const step = stepBlock(name);
+        expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-sso'");
+        expect(step).toMatch(
+            /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-sso "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
+        );
+        expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
+        expect(step).not.toMatch(/^\s+env:/m);
+        expect(workflow.indexOf(name)).toBeGreaterThan(
+            workflow.indexOf("- name: Start the auth-service stack"),
+        );
+        expect(workflow.indexOf(name)).toBeLessThan(
+            workflow.indexOf("- name: Start dev-health-ops go-api and query-api"),
+        );
+    });
+
+    it("carries no licence, JIT, SSO switch or SSO state key value in the workflow file", () => {
+        for (const needle of [
+            "AUTH_SSO_JIT",
+            "AUTH_SSO_STATE_KEY",
+            "LICENSE_KEY",
+            "LICENSE_PUBLIC_KEY",
+            "AUTH_SSO_ENABLED",
+        ]) {
+            expect(workflow, needle).not.toContain(needle);
+        }
+    });
+
+    it("selects the SSO spec for its own project, keeps it out of the default live pass, and keeps no browser artifact", () => {
+        const pattern = liveConfig.match(/const AUTH_SSO_SPECS = \/(.+)\//)?.[1];
+        expect(pattern).toBeDefined();
+        const matcher = new RegExp(pattern!);
+        expect(matcher.test("auth-sso-live.spec.ts")).toBe(true);
+        expect(matcher.test("auth-signin-live.spec.ts")).toBe(false);
+        expect(liveConfig).toMatch(/testIgnore: \[[^\]]*AUTH_SSO_SPECS[^\]]*\]/);
+        const project = liveConfig.match(/name: "auth-sso",([\s\S]*?)\n\s+},\n\s+\]/)?.[1];
+        expect(project).toBeDefined();
+        for (const setting of ["trace", "screenshot", "video"]) {
+            expect(project).toMatch(new RegExp(`${setting}: "off"`));
+        }
+    });
+});
+
+describe("live-e2e workflow enables the GitHub stand-in only for the auth-social tier", () => {
+    it("runs the ops enable-social verb between auth and go-api startup, with no env of its own", () => {
+        const name = "Enable the throwaway GitHub provider stand-in (auth-social)";
+        const step = stepBlock(name);
+        expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-social'");
+        expect(step).toMatch(
+            /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-social "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
+        );
+        expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
+        expect(step).not.toMatch(/^\s+env:/m);
+        expect(workflow.indexOf(name)).toBeGreaterThan(
+            workflow.indexOf("- name: Start the auth-service stack"),
+        );
+        expect(workflow.indexOf(name)).toBeLessThan(
+            workflow.indexOf("- name: Start dev-health-ops go-api and query-api"),
+        );
+    });
+
+    it("carries no provider id or secret in a workflow value", () => {
+        for (const needle of [
+            "AUTH_GITHUB_ID",
+            "AUTH_GITHUB_SECRET",
+            "SOCIAL_GITHUB_CLIENT_ID",
+            "SOCIAL_GITHUB_CLIENT_SECRET",
+        ]) {
+            expect(workflow, needle).not.toContain(needle);
+        }
+    });
+
+    it("selects the social spec for its own project, keeps it out of the default live pass, and keeps no browser artifact", () => {
+        const pattern = liveConfig.match(/const AUTH_SOCIAL_SPECS = \/(.+)\//)?.[1];
+        expect(pattern).toBeDefined();
+        const matcher = new RegExp(pattern!);
+        expect(matcher.test("auth-social-live.spec.ts")).toBe(true);
+        expect(matcher.test("auth-signin-live.spec.ts")).toBe(false);
+        expect(liveConfig).toMatch(/testIgnore: \[[^\]]*AUTH_SOCIAL_SPECS[^\]]*\]/);
+        const project = liveConfig.match(/name: "auth-social",([\s\S]*?)\n\s+},\n\s+\]/)?.[1];
+        expect(project).toBeDefined();
+        for (const setting of ["trace", "screenshot", "video"]) {
+            expect(project).toMatch(new RegExp(`${setting}: "off"`));
+        }
+    });
+});

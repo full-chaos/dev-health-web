@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// CHAOS-10876 C2: the change-password Bearer and answer under the class setting. The CLASS decides
-// the Bearer, not the session: after a rollback to hs256_compat a live cookie still holds a service
-// token.
+// CHAOS-10876 C2: the change-password Bearer and answer. The Bearer is the service token when the
+// session holds one, else the access token.
 
 const { logs } = vi.hoisted(() => ({ logs: [] as unknown[][] }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn(), sealSessionHandoff: vi.fn() }));
@@ -68,7 +67,6 @@ const bearerSent = () => {
 };
 const pairGiven = () => vi.mocked(sealSessionHandoff).mock.calls[0]?.[1] as Record<string, unknown>;
 const eddsaEnv = () => {
-    vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
     vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", ISSUER);
 };
 const session = (withService: boolean) =>
@@ -94,7 +92,7 @@ afterEach(() => {
 });
 
 describe("the change-password Bearer", () => {
-    it("under eddsa the Bearer is the service token when the session holds one", async () => {
+    it("the Bearer is the service token when the session holds one", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(
@@ -106,7 +104,7 @@ describe("the change-password Bearer", () => {
         expect(bearerSent()).toBe("Bearer session-service");
     });
 
-    it("under eddsa the Bearer is the access token when the session holds no service token", async () => {
+    it("the Bearer is the access token when the session holds no service token", async () => {
         eddsaEnv();
         vi.mocked(auth).mockResolvedValue(session(false));
         const exp = inSeconds(1800);
@@ -115,17 +113,7 @@ describe("the change-password Bearer", () => {
         expect(bearerSent()).toBe("Bearer session-access");
     });
 
-    it("the class decides, not the session: under hs256_compat a cookie that still holds a service token sends the access token", async () => {
-        fetchMock.mockResolvedValue(answer(0, {}, "any-access")());
-        await call();
-        expect(bearerSent()).toBe("Bearer session-access");
-    });
-
-    it("an unknown class or eddsa without an issuer is a generic 502 and calls no backend", async () => {
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
-        const unknown = await call();
-        expect(unknown.status).toBe(502);
-        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
+    it("no pinned issuer is a generic 502 and calls no backend", async () => {
         vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         const noIssuer = await call();
         expect(noIssuer.status).toBe(502);
@@ -133,7 +121,7 @@ describe("the change-password Bearer", () => {
     });
 });
 
-describe("the change-password answer under eddsa", () => {
+describe("the change-password answer", () => {
     it("the new pair's service token is sealed with access_exp, sid and act_sub", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
@@ -217,21 +205,14 @@ describe("the change-password answer under eddsa", () => {
     });
 });
 
-describe("the change-password answer under hs256_compat", () => {
-    it("the handoff is unchanged: no new field, the access token is not read, a present field is counted", async () => {
-        fetchMock.mockResolvedValue(
-            answer(0, { session_access_token: "svc-value" }, "not-a-decodable-token")(),
-        );
+describe("the change-password answer with an HS256 access token", () => {
+    it("is refused: nothing is sealed", async () => {
+        eddsaEnv();
+        const part = (value: string) => Buffer.from(value).toString("base64url");
+        const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part("{}")}.${part("sig")}`;
+        fetchMock.mockImplementation(eddsaFetch({ [CHANGE]: answer(0, {}, hs256) }));
         const response = await call();
-        expect(response.status).toBe(200);
-        expect(Object.keys(pairGiven()).sort()).toEqual([
-            "access_token",
-            "expires_in",
-            "refresh_token",
-            "user",
-        ]);
-        expect(logs).toContainEqual([
-            { operation: "change_password", branch: "session_token_ignored" },
-        ]);
+        expect(response.status).toBe(502);
+        expect(vi.mocked(sealSessionHandoff)).not.toHaveBeenCalled();
     });
 });

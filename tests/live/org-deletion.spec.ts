@@ -9,7 +9,7 @@ import {
     registerUser,
     testEmail,
     userIdByEmail,
-    verifyUser,
+    verifyUserViaStack,
 } from "./helpers";
 
 /**
@@ -40,7 +40,7 @@ test.describe("organization deletion / offboarding @guided", () => {
 
         superToken = (await getSuperuserToken(request)) ?? "";
         const userId = superToken ? await userIdByEmail(request, email, superToken) : "";
-        if (superToken && userId) await verifyUser(request, userId, superToken);
+        if (superToken && userId) verifyUserViaStack(email);
 
         const login = (await loginUser(request, email, password)) as {
             access_token?: string;

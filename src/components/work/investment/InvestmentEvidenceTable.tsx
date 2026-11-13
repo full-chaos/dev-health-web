@@ -444,7 +444,7 @@ export function InvestmentEvidenceTable({
                 <span className="text-xs text-(--ink-muted)">Group the same work units</span>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
+            <div className="relative mt-4 overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
                 <div
                     data-testid="evidence-table-head"
                     className={`grid ${EVIDENCE_COLUMNS} items-center gap-3 border-b border-(--card-stroke) bg-(--card-70) px-4 py-2 text-label-caps uppercase text-(--ink-muted)`}

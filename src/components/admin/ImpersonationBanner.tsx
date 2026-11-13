@@ -64,8 +64,11 @@ export function ImpersonationBanner() {
         }
         // Force an immediate server-verified impersonation status re-poll so
         // org scoping reverts to the admin's own org right away (CHAOS-2309),
-        // then tell every other tab to do the same.
-        await update({ impersonationChanged: true });
+        // then tell every other tab to do the same. The sealed end handoff drops the
+        // delegated token even when that status read fails.
+        const sessionHandoff = (result?.data as { sessionHandoff?: string } | undefined)
+            ?.sessionHandoff;
+        await update({ impersonationChanged: true, sessionHandoff });
         broadcastImpersonationEvent({ type: "stopped" });
         router.refresh();
         if (isImpersonationWindow()) {
@@ -82,9 +85,19 @@ export function ImpersonationBanner() {
             emphasis="strong"
             className="relative z-[100] w-full rounded-none border-x-0 border-t-0"
             title={
-                session.user.impersonated_email
-                    ? `Viewing as ${session.user.impersonated_email}`
-                    : "Viewing as another user"
+                session.user.impersonated_email ? (
+                    <>
+                        Viewing as{" "}
+                        <span
+                            data-testid="impersonation-email"
+                            className="inline-block max-w-full [overflow-wrap:anywhere]"
+                        >
+                            {session.user.impersonated_email}
+                        </span>
+                    </>
+                ) : (
+                    "Viewing as another user"
+                )
             }
             action={
                 <button

@@ -10,24 +10,45 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
 import { getBackendUrl } from "@/lib/origin";
+import { noteCallbackRefusal } from "@/lib/authCallbackRefusal";
 import { logger } from "@/lib/logger";
 import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
+import {
+    admitPairWrite,
+    clearHandoffUnconfirmed,
+    confirmStartHandoff,
+    clearImpersonationToken,
+    delegatedExpired,
+    delegatedToken,
+    endImpersonationByHandoff,
+    endImpersonationForSignOut,
+    isImpersonatingToken,
+    resolveImpersonationStep,
+    setImpersonationToken,
+    type ImpersonationPair,
+} from "@/lib/impersonationToken";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import {
     passwordLogin,
     readExchangeAnswer,
     refreshSession,
+    type RefreshResult,
     wireConfigFromEnv,
     wireConfigUsable,
 } from "@/lib/authServiceWire";
 import { ssoEnabled, type SsoSession } from "@/lib/authSso";
 
 const authLogger = logger.child({ module: "auth" });
+
+// The target's e-mail, from the status answer of the JWT callback run that returned the token, for
+// the session of that same read only: it is not kept in the session cookie (CHAOS-13105 byte
+// budget). No status answer in a run: the banner shows no address.
+const targetEmailOfRun = new WeakMap<object, string>();
 
 // No request reaches the jwt callback: read the incoming headers; outside a request scope send none.
 async function refreshClientIp(): Promise<string | undefined> {
@@ -97,6 +118,7 @@ const nextAuth = NextAuth({
     trustHost: true,
     logger: {
         error: (error: Error) => {
+            noteCallbackRefusal(error);
             authLogger.error({ err: error }, "next-auth error");
         },
         warn: (code: string) => {
@@ -128,7 +150,6 @@ const nextAuth = NextAuth({
                             typeof credentials.org_id === "string" ? credentials.org_id : undefined,
                     },
                     {
-                        tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
                         issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                         backendUrl: getBackendUrl(),
                         clientIp: request ? getClientIpFromEnv(request) : undefined,
@@ -152,7 +173,6 @@ const nextAuth = NextAuth({
                             org_id: login.user.orgId,
                             role: login.user.role,
                             is_superuser: login.user.isSuperuser,
-                            permissions: login.user.permissions as string[] | undefined,
                             needs_onboarding: login.needsOnboarding,
                             access_token: login.accessToken,
                             refresh_token: login.refreshToken,
@@ -223,12 +243,75 @@ const nextAuth = NextAuth({
     ],
     callbacks: {
         async jwt({ token, user, account, trigger, session }) {
+            const now = Date.now();
+            clearHandoffUnconfirmed(token);
+            const refreshAdmin = async () => {
+                const env = getServerEnv();
+                return refreshSession(token.refresh_token as string, {
+                    issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
+                    backendUrl: getBackendUrl(),
+                    clientIp: await refreshClientIp(),
+                });
+            };
+            const applyRotated = (refreshed: Extract<RefreshResult, { kind: "rotated" }>) => {
+                // Single-use rotation: only the credential this answer carries is kept.
+                token.access_token = refreshed.accessToken;
+                token.refresh_token = refreshed.refreshToken;
+                token.expires_at = refreshed.accessExp * 1000;
+                token.sid = refreshed.sid;
+                setServiceToken(token, {
+                    token: refreshed.sessionAccessToken,
+                    exp: refreshed.sessionExp,
+                    actor: refreshed.actorSub,
+                });
+                token.last_validated = now;
+                token.refresh_failures = 0;
+                // A new access token starts with a clean validation count:
+                // the count belongs to the token it replaces, and a stale
+                // one keeps the next validation backoff at its cap.
+                token.validation_failures = 0;
+                token.error = undefined;
+                if (refreshed.user) {
+                    token.id = refreshed.user.id;
+                    token.email = refreshed.user.email;
+                    token.org_id = refreshed.user.orgId;
+                    token.role = refreshed.user.role;
+                    token.is_superuser = refreshed.user.isSuperuser;
+                }
+            };
+            // The impersonation state step runs first and resolves before any branch below can
+            // return: an expired delegated token is stopped with a live administrator bearer
+            // (refreshed here when needed); a refresh outcome it got is reused, not fetched again.
+            const step = await resolveImpersonationStep(token, now, {
+                refresh: refreshAdmin,
+                applyRotated,
+            });
+            if (step.kind === "ended") return token;
+            if (step.kind === "stopped") forgetImpersonationStatus(token.id);
+
+            // A new Ops token pair (workspace creation, org switch, password change) enters the
+            // session only as a sealed handoff the server made (CHAOS-12088): the browser passes
+            // it to update() and cannot read it. A plain `activeOrg` / `onboardComplete` payload is
+            // refused by the HTTP route and ignored here. Before any pair is written, the
+            // impersonation guard admits it.
+            const handoff = admitPairWrite(
+                token,
+                trigger === "update"
+                    ? await confirmStartHandoff(
+                          token,
+                          await openSessionHandoff(
+                              (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
+                              token.id as string | undefined,
+                          ),
+                      )
+                    : null,
+                Boolean(user || account),
+            );
             if (user) {
                 token.id = user.id;
                 token.org_id = user.org_id;
                 token.role = user.role;
                 token.is_superuser = user.is_superuser;
-                token.permissions = user.permissions;
                 token.needs_onboarding = user.needs_onboarding;
                 token.access_token = user.access_token;
                 token.refresh_token = user.refresh_token;
@@ -253,7 +336,7 @@ const nextAuth = NextAuth({
                 account.access_token &&
                 !wireConfigUsable(socialWire, "social_login")
             ) {
-                // A wrong class setting is a configuration fault: no exchange is started.
+                // A missing issuer is a configuration fault: no exchange is started.
                 token.error = "social_login_failed";
             } else if (account && account.provider !== "credentials" && account.access_token) {
                 try {
@@ -285,8 +368,7 @@ const nextAuth = NextAuth({
                           )
                         : undefined;
                     if (read?.kind === "refused" || read?.kind === "unavailable") {
-                        // Under eddsa an answer that cannot be read is no sign-in: the stored
-                        // session is left as it was.
+                        // An answer that cannot be read is no sign-in.
                         token.error = "social_login_failed";
                     } else if (res.ok) {
                         const data = exchange;
@@ -294,7 +376,6 @@ const nextAuth = NextAuth({
                         token.org_id = data.user.org_id || undefined;
                         token.role = data.user.role || undefined;
                         token.is_superuser = data.user.is_superuser || false;
-                        token.permissions = [];
                         token.needs_onboarding = data.needs_onboarding ?? false;
                         // Only the exchange response can say the account is new; a client update() never can.
                         token.is_new_user = data.is_new_user === true;
@@ -341,18 +422,17 @@ const nextAuth = NextAuth({
                     token.error = "social_login_failed";
                 }
             }
+            // A refused social sign-in is no session (CHAOS-13642): the token keeps the reason only,
+            // nothing that names a user or carries a credential.
+            if (
+                account &&
+                account.provider !== "credentials" &&
+                account.access_token &&
+                token.error
+            ) {
+                return { error: token.error } as JWT;
+            }
 
-            // A new Ops token pair (workspace creation, org switch, password change) enters the
-            // session only as a sealed handoff the server made (CHAOS-12088): the browser passes
-            // it to update() and cannot read it. A plain `activeOrg` / `onboardComplete` payload is
-            // refused by the HTTP route and ignored here.
-            const handoff =
-                trigger === "update"
-                    ? await openSessionHandoff(
-                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
-                          token.id as string | undefined,
-                      )
-                    : null;
             if (handoff?.kind === "onboardComplete") {
                 const pair = handoff.pair as OnboardPair;
                 token.access_token = pair.access_token;
@@ -388,7 +468,18 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
-            const now = Date.now();
+            if (handoff?.kind === "impersonation") {
+                setImpersonationToken(token, handoff.pair as ImpersonationPair, Date.now());
+            }
+            // A stop the server recorded ends the impersonation it names, whatever the status read
+            // then answers.
+            if (handoff?.kind === "impersonationEnd") {
+                endImpersonationByHandoff(
+                    token,
+                    (handoff.pair as { access_token: string }).access_token,
+                );
+            }
+
             const expiresAt = token.expires_at as number | undefined;
             const lastValidated = token.last_validated as number | undefined;
             const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000;
@@ -400,39 +491,15 @@ const nextAuth = NextAuth({
             const REFRESH_BACKOFF_BASE = 60 * 1000; // 60 s
             const REFRESH_BACKOFF_CAP = 15 * 60 * 1000; // 15 min
             const REFRESH_BACKOFF_FLOOR = 5 * 1000; // 5 s minimum so next attempt isn't immediate
-            if (tokenExpired && token.refresh_token) {
-                const env = getServerEnv();
-                const refreshed = await refreshSession(token.refresh_token as string, {
-                    tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
-                    issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
-                    backendUrl: getBackendUrl(),
-                    clientIp: await refreshClientIp(),
-                });
+            const refreshed =
+                step.kind !== "none" && step.refreshed
+                    ? step.refreshed
+                    : tokenExpired && token.refresh_token
+                      ? await refreshAdmin()
+                      : undefined;
+            if (refreshed) {
                 if (refreshed.kind === "rotated") {
-                    // Single-use rotation: only the credential this answer carries is kept.
-                    token.access_token = refreshed.accessToken;
-                    token.refresh_token = refreshed.refreshToken;
-                    token.expires_at = refreshed.accessExp * 1000;
-                    token.sid = refreshed.sid;
-                    setServiceToken(token, {
-                        token: refreshed.sessionAccessToken,
-                        exp: refreshed.sessionExp,
-                        actor: refreshed.actorSub,
-                    });
-                    token.last_validated = now;
-                    token.refresh_failures = 0;
-                    // A new access token starts with a clean validation count:
-                    // the count belongs to the token it replaces, and a stale
-                    // one keeps the next validation backoff at its cap.
-                    token.validation_failures = 0;
-                    token.error = undefined;
-                    if (refreshed.user) {
-                        token.id = refreshed.user.id;
-                        token.email = refreshed.user.email;
-                        token.org_id = refreshed.user.orgId;
-                        token.role = refreshed.user.role;
-                        token.is_superuser = refreshed.user.isSuperuser;
-                    }
+                    applyRotated(refreshed);
                 } else if (refreshed.kind === "terminal") {
                     // The authority refused the credential, or answered with something web
                     // refuses: both tokens go. The wire module logged the refused answers.
@@ -443,6 +510,8 @@ const nextAuth = NextAuth({
                             status: refreshed.status,
                         });
                     }
+                    // A delegated token still held is stopped with the old bearer while it lives.
+                    await endImpersonationForSignOut(token, now);
                     token.access_token = undefined;
                     token.refresh_token = undefined;
                     setServiceToken(token, {});
@@ -504,11 +573,21 @@ const nextAuth = NextAuth({
                     force: trigger === "update",
                     now,
                 });
-                // `undefined`: the read failed, or failed a moment ago. Keep the existing state.
-                if (status !== undefined) {
-                    token.is_impersonating = status.is_impersonating;
+                // The state is the delegated token (isImpersonatingToken); this read never starts
+                // it. `undefined` (the read failed, or failed a moment ago) or an answer without a
+                // boolean `is_impersonating` changes nothing. A read with the administrator bearer
+                // that says false ends it; true refreshes the display data of a held token only.
+                if (status?.is_impersonating === false) {
+                    clearImpersonationToken(token);
+                    token.impersonated_user_id = undefined;
+                    token.impersonated_email = undefined;
+                    token.impersonated_org_id = undefined;
+                } else if (status?.is_impersonating === true && isImpersonatingToken(token)) {
                     token.impersonated_user_id = status.impersonated_user_id;
-                    token.impersonated_email = status.impersonated_email;
+                    token.impersonated_email = undefined;
+                    if (status.impersonated_email) {
+                        targetEmailOfRun.set(token, status.impersonated_email);
+                    }
                     token.impersonated_org_id = status.impersonated_org_id;
                 }
             }
@@ -528,13 +607,22 @@ const nextAuth = NextAuth({
             return token;
         },
         async session({ session, token }) {
+            // A token with no user is a refused sign-in: the session names no user (CHAOS-13642).
+            if (token && !token.id) return { expires: session.expires, error: token.error };
             if (token) {
+                // Computed here from the delegated token on every read; never stored (D6720).
+                const impersonating = isImpersonatingToken(token);
                 session.user.id = token.id as string;
-                session.user.is_impersonating = !!token.is_impersonating;
-                session.user.impersonated_user_id = token.impersonated_user_id as
-                    string | undefined;
-                session.user.impersonated_email = token.impersonated_email as string | undefined;
-                session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
+                session.user.is_impersonating = impersonating;
+                session.user.impersonated_user_id = impersonating
+                    ? (token.impersonated_user_id as string | undefined)
+                    : undefined;
+                session.user.impersonated_email = impersonating
+                    ? targetEmailOfRun.get(token)
+                    : undefined;
+                session.user.impersonated_org_id = impersonating
+                    ? (token.impersonated_org_id as string | undefined)
+                    : undefined;
                 // org_id is the EFFECTIVE org: while impersonating it is the
                 // impersonation target's org, so every consumer (proxy, GraphQL
                 // providers, RSC fetchers) is impersonation-aware by construction.
@@ -542,20 +630,38 @@ const nextAuth = NextAuth({
                 session.user.real_org_id = token.org_id as string | undefined;
                 session.user.org_id = resolveActiveOrgId({
                     org_id: token.org_id as string | undefined,
-                    is_impersonating: !!token.is_impersonating,
-                    impersonated_org_id: token.impersonated_org_id as string | undefined,
+                    is_impersonating: impersonating,
+                    impersonated_org_id: session.user.impersonated_org_id,
                 }) as string;
                 session.user.role = token.role as string;
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
-                session.user.permissions = token.permissions as string[];
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
                 session.user.is_new_user = token.is_new_user === true;
-                session.access_token = token.access_token as string;
-                // In-process only: the HTTP session answer drops it (authBrowserSession). The
-                // actor is never put on the session.
-                session.session_access_token = token.session_access_token as string | undefined;
-                if (token.error) {
-                    session.error = token.error as string;
+                // While a delegated token is set it is the session token (an expired one is refused
+                // by the backend: never a fall back to the administrator's). The administrator's
+                // own token goes aside for stop and status.
+                const delegated = delegatedToken(token);
+                if (impersonating && delegatedExpired(token, Date.now())) {
+                    // The stop has not succeeded yet: no bearer at all (neither the expired
+                    // delegated token nor the administrator's under the impersonated view). Data
+                    // calls fail closed; the next JWT callback retries the stop.
+                    session.access_token = undefined;
+                    session.session_access_token = undefined;
+                    session.error = (token.error as string | undefined) ?? "impersonation_ending";
+                } else {
+                    session.access_token = (delegated ?? token.access_token) as string;
+                    // In-process only: the HTTP session answer drops them (authBrowserSession).
+                    // The actor is never put on the session. While impersonating there is no
+                    // service token: the delegated one is not kept (cookie byte budget,
+                    // CHAOS-13105), and the auth-service routes refuse a pair change then anyway.
+                    session.session_access_token = delegated
+                        ? undefined
+                        : (token.session_access_token as string | undefined);
+                    if (delegated)
+                        session.admin_access_token = token.access_token as string | undefined;
+                    if (token.error) {
+                        session.error = token.error as string;
+                    }
                 }
             }
             return session;
@@ -575,7 +681,8 @@ export const SESSION_HANDOFF_SALT = "dev-health.session-handoff.v1";
 /** A handoff is used at once by the page that received it; a short life bounds a copied one. */
 const SESSION_HANDOFF_MAX_AGE_SECONDS = 120;
 
-export type SessionHandoffKind = "activeOrg" | "onboardComplete";
+export type SessionHandoffKind =
+    "activeOrg" | "onboardComplete" | "impersonation" | "impersonationEnd";
 
 type OnboardPair = {
     access_token: string;
@@ -589,8 +696,8 @@ type ActiveOrgPair = {
     access_token: string;
     refresh_token?: string;
     expires_in?: number;
-    // Under eddsa the route read the answer: the verified access expiry and session id, the verified
-    // actor, and the service token with its expiry (CHAOS-10876). Absent under hs256_compat.
+    // The route read the answer: the verified access expiry and session id, the verified actor, and
+    // the service token with its expiry (CHAOS-10876).
     access_exp?: number;
     sid?: string;
     act_sub?: string;
@@ -608,7 +715,7 @@ type ActiveOrgPair = {
  */
 export async function sealSessionHandoff(
     kind: SessionHandoffKind,
-    pair: OnboardPair | ActiveOrgPair,
+    pair: OnboardPair | ActiveOrgPair | ImpersonationPair,
     userId: string,
 ): Promise<string> {
     if (!authSecret) throw new Error("no auth secret to seal a session handoff");
@@ -617,7 +724,8 @@ export async function sealSessionHandoff(
         secret: authSecret,
         salt: SESSION_HANDOFF_SALT,
         maxAge: SESSION_HANDOFF_MAX_AGE_SECONDS,
-        token: { sub: userId, kind, pair },
+        // The seal time in ms makes a start handoff one-use (admitPairWrite).
+        token: { sub: userId, kind, pair, issued_ms: Date.now() },
     });
 }
 
@@ -705,7 +813,7 @@ function validServiceFields(pair: Record<string, unknown>): boolean {
 async function openSessionHandoff(
     value: unknown,
     userId: string | undefined,
-): Promise<{ kind: SessionHandoffKind; pair: unknown } | null> {
+): Promise<{ kind: SessionHandoffKind; pair: unknown; issued_ms: unknown } | null> {
     if (value === undefined) return null;
     const refuse = (reason: string) => {
         authLogger.warn({ reason, userId }, "session handoff refused");
@@ -730,7 +838,14 @@ async function openSessionHandoff(
     if (!payload) return refuse("empty");
     if (payload.sub !== userId) return refuse("other_user");
     const kind = payload.kind;
-    if (kind !== "activeOrg" && kind !== "onboardComplete") return refuse("unknown_kind");
+    if (
+        kind !== "activeOrg" &&
+        kind !== "onboardComplete" &&
+        kind !== "impersonation" &&
+        kind !== "impersonationEnd"
+    ) {
+        return refuse("unknown_kind");
+    }
     const pair = payload.pair as { access_token?: unknown; user?: unknown } | undefined;
     if (!pair || typeof pair.access_token !== "string" || !pair.access_token) {
         return refuse("no_access_token");
@@ -739,7 +854,15 @@ async function openSessionHandoff(
         return refuse("no_user");
     }
     if (!validServiceFields(pair as Record<string, unknown>)) return refuse("bad_service_fields");
-    return { kind, pair };
+    if (kind === "impersonation") {
+        const expiresIn = (pair as { expires_in?: unknown }).expires_in;
+        if (expiresIn !== undefined && (typeof expiresIn !== "number" || !(expiresIn > 0))) {
+            return refuse("bad_expires_in");
+        }
+        const handoffId = (pair as { handoff_id?: unknown }).handoff_id;
+        if (typeof handoffId !== "string" || !handoffId) return refuse("no_handoff_id");
+    }
+    return { kind, pair, issued_ms: payload.issued_ms };
 }
 
 import type { Session } from "next-auth";
@@ -789,6 +912,8 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
     readonly access_token: string;
     readonly refresh_token: string;
     readonly user_id?: string;
+    /** Stops a held impersonation with the administrator bearer; a failed stop is logged. */
+    readonly endImpersonation: () => Promise<void>;
 } | null> {
     const cookie = request.headers.get("cookie");
     if (!authSecret || !cookie) return null;
@@ -814,6 +939,7 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
             access_token: accessToken,
             refresh_token: refreshToken,
             ...(typeof token.id === "string" ? { user_id: token.id } : {}),
+            endImpersonation: () => endImpersonationForSignOut(token, Date.now()),
         };
     }
     return null;
@@ -825,6 +951,10 @@ export async function requireSession(callbackUrl?: string): Promise<Session> {
     // Redirect to /auth/error (not /auth/signin) — user is not hard-logged-out on a blip.
     if (session?.error === "refresh_unavailable") {
         redirect("/auth/error?error=refresh_unavailable");
+    }
+    // An impersonation whose stop is not yet recorded: no data, the next request retries it.
+    if (session?.error === "impersonation_ending") {
+        redirect("/auth/error?error=impersonation_ending");
     }
     // Terminal errors (social login failure, user invalidated, refresh_failed, etc.)
     if (session?.error) {

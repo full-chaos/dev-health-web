@@ -148,18 +148,33 @@ export function expectSuccessfulProcess(result) {
     expect(result.status, result.stderr || result.stdout).toBe(0);
 }
 
-export async function listDefaultPlaywrightTests(shard, signal) {
+// The caller sets the limit (CHAOS-13465): a fixed 15 s here stopped the whole-suite list under CPU
+// contention while the test's own bound still had time, and the failure named no cause.
+export async function listDefaultPlaywrightTests(shard, { timeoutMs }) {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
+        throw new Error(`listDefaultPlaywrightTests needs a positive timeoutMs, got ${timeoutMs}`);
     const args = [PLAYWRIGHT_CLI, "test", "--list"];
     if (shard) args.push("--shard", shard);
 
-    const { stdout } = await execFileAsync(process.execPath, args, {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: { ...process.env, CI: "true", FORCE_COLOR: "0" },
-        maxBuffer: 1024 * 1024,
-        signal,
-        timeout: 15_000,
-    });
+    const startedAt = Date.now();
+    let stdout;
+    try {
+        ({ stdout } = await execFileAsync(process.execPath, args, {
+            cwd: ROOT,
+            encoding: "utf8",
+            env: { ...process.env, CI: "true", FORCE_COLOR: "0" },
+            maxBuffer: 1024 * 1024,
+            timeout: timeoutMs,
+        }));
+    } catch (error) {
+        if (error?.killed) {
+            throw new Error(
+                `playwright test --list for ${shard ? `shard ${shard}` : "the whole suite"} was stopped at its ${timeoutMs} ms limit after ${Date.now() - startedAt} ms`,
+                { cause: error },
+            );
+        }
+        throw error;
+    }
 
     const entryPattern = /^\[[^\]]+\] › .+:\d+:\d+ › .+$/u;
     const entries = stdout

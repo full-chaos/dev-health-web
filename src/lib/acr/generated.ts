@@ -4,6 +4,9 @@ export interface ACRClientCredentialMetadataV1 {
     name: string;
     token_prefix: string;
     org_id: string;
+    /**
+     * @maxItems 256
+     */
     repository_scopes: string[];
     /**
      * context:admin is retired: it is accepted here so a v1 credential that carried it stays valid, but it is never issued and no stored credential can carry it. Removal rides the next major version.
@@ -19,6 +22,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         ),
         ...(
             | "context:read"
@@ -28,6 +32,7 @@ export interface ACRClientCredentialMetadataV1 {
             | "data:read"
             | "credential_lifecycle:read"
             | "credential_lifecycle:revoke"
+            | "credential_lifecycle:revoke_organization"
         )[],
     ];
     created_at: string;
@@ -5102,6 +5107,25 @@ export interface OnBehalfCredentialRevocationRequestV1 {
     actor_id: string;
 }
 
+/**
+ * The body of POST /internal/v1/organization/credentials/revoke: the admin the Auth Control Plane authorized and why every credential of the organization is revoked. The caller's workload binding names the organization; the body never does.
+ */
+export interface OrganizationCredentialRevocationRequestV1 {
+    schema_version: "credential_revoke_organization_request.v1";
+    actor_id: string;
+    reason: "organization_disabled" | "organization_deleted";
+}
+
+/**
+ * The answer of one POST /internal/v1/organization/credentials/revoke call. revoked counts the credentials revoked that the caller's workload binding did not mint; caller_revoked counts those it did, the calling credential among them. more is true while live credentials the binding did not mint remain; the caller then calls again, and the call that answers more false has revoked the binding's own credentials too.
+ */
+export interface OrganizationCredentialRevocationResponseV1 {
+    schema_version: "credential_revoke_organization_response.v1";
+    revoked: number;
+    caller_revoked: number;
+    more: boolean;
+}
+
 export interface SelfCredentialRevocationRequestV1 {
     schema_version: "credential_revoke_request.v1";
     rollback_receipt?: {
@@ -5134,6 +5158,7 @@ export interface SelfCredentialRotationResponseV1 {
 export interface DeviceApprovalPreviewRequestV1 {
     schema_version: "device_approval_preview_request.v1";
     user_code: string;
+    repository_scopes?: [string, ...string[]] | ["*"];
 }
 
 export interface DeviceApprovalPreviewResponseV1 {
@@ -5141,7 +5166,7 @@ export interface DeviceApprovalPreviewResponseV1 {
     organization_id_hint?: string;
     /**
      * @minItems 1
-     * @maxItems 100
+     * @maxItems 256
      */
     repository_hints?: [string, ...string[]];
     /**
@@ -5179,7 +5204,7 @@ export interface DeviceAuthorizationRequestV1 {
     organization_id_hint?: string;
     /**
      * @minItems 1
-     * @maxItems 100
+     * @maxItems 256
      */
     repository_hints?: [string, ...string[]];
 }

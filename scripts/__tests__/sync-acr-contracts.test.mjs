@@ -140,7 +140,9 @@ describe("sync-acr-contracts", () => {
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
-    });
+        // CHAOS-13439: 14.7-15.2 s alone (3 runs, host load ~26); 72.6 s under `taskset -c 0-3 vitest
+        // --maxWorkers=32` (tier-branch-5.json of fcs-12901); 72.6 s x 1.5 = 109 s, rounded to 110 s.
+    }, 110_000);
 
     it("records the exact Todo 4 primary order before the explicit OpenAPI schema closure", () => {
         const manifest = JSON.parse(
@@ -180,6 +182,8 @@ describe("sync-acr-contracts", () => {
             "schemas/credential_ack_response.v1.schema.json",
             "schemas/credential_lifecycle_list.v1.schema.json",
             "schemas/credential_revoke_on_behalf_request.v1.schema.json",
+            "schemas/credential_revoke_organization_request.v1.schema.json",
+            "schemas/credential_revoke_organization_response.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
             "schemas/credential_revoke_response.v1.schema.json",
             "schemas/credential_rotate_request.v1.schema.json",

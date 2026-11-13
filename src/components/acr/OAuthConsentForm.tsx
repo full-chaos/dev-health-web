@@ -4,6 +4,7 @@ import type { OAuthConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
+import { GRANT_LIMIT_EXCEEDED_CODE, GRANT_LIMIT_MESSAGE } from "@/lib/acr/grantLimit";
 import { isKnownScope, scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -12,6 +13,7 @@ type ConsentState =
     | "denied"
     | "error"
     | "expired"
+    | "grantLimit"
     | "invalid"
     | "rateLimited"
     | "redirecting"
@@ -84,6 +86,8 @@ function stateCopy(state: ConsentState): { readonly description: string; readonl
                     "This authorization link has expired. Return to your application to start again.",
                 title: "Link expired",
             };
+        case "grantLimit":
+            return { description: GRANT_LIMIT_MESSAGE, title: "Too many repository grants" };
         case "invalid":
             return {
                 description:
@@ -121,9 +125,19 @@ function stateCopy(state: ConsentState): { readonly description: string; readonl
 
 type ErrorResponseBody = {
     readonly error?: {
+        readonly code?: unknown;
         readonly retryAfterSeconds?: unknown;
     };
 };
+
+async function readErrorCode(response: Response): Promise<unknown> {
+    try {
+        const body: ErrorResponseBody = await response.clone().json();
+        return body.error?.code;
+    } catch {
+        return undefined;
+    }
+}
 
 function consentErrorState(status: number): ConsentState {
     if (status === 410) return "expired";
@@ -197,6 +211,14 @@ export function OAuthConsentForm(props: OAuthConsentFormProps) {
             });
             if (!response.ok) {
                 const nextState = consentErrorState(response.status);
+                if (
+                    nextState === "denied" &&
+                    (await readErrorCode(response)) === GRANT_LIMIT_EXCEEDED_CODE
+                ) {
+                    setState("grantLimit");
+                    setMessage(GRANT_LIMIT_MESSAGE);
+                    return;
+                }
                 setState(nextState);
                 if (nextState === "rateLimited") {
                     setMessage(waitMessage(await readRetryAfterSeconds(response)));

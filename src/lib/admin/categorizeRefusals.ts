@@ -15,6 +15,18 @@ const MESSAGES: Record<string, string> = {
     provider_or_base_url_change_requires_api_key: TARGET_CHANGE_NEEDS_KEY_MESSAGE,
 };
 
-export function categorizeRefusalMessage(code: string | undefined): string | null {
-    return code && Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : null;
+const TYPESAFE_MESSAGES: Record<string, string> = {
+    categorize_byo_model_unsupported: "The model must be jev-1.13.0.",
+    invalid_base_url: "TypeSafe takes no base URL.",
+};
+
+export function categorizeRefusalMessage(
+    code: string | undefined,
+    provider?: string,
+): string | null {
+    if (!code) return null;
+    if (provider === "typesafe" && Object.hasOwn(TYPESAFE_MESSAGES, code)) {
+        return TYPESAFE_MESSAGES[code];
+    }
+    return Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : null;
 }

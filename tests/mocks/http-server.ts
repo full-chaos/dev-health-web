@@ -1,5 +1,14 @@
+import { readFileSync } from "node:fs";
 import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
+import {
+    JWT_TOKEN_TYPE,
+    PDP_DECISION_FILE,
+    TOKEN_EXCHANGE_GRANT,
+    WORKLOAD_AUDIENCE,
+    WORKLOAD_SUBJECT_FILE,
+    WORKLOAD_TOKEN,
+} from "./chaos13541Pdp";
 import { setEntitlementScenario } from "./entitlementScenario";
 import {
     handlers,
@@ -12,6 +21,7 @@ import {
 } from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
+import { mockDiscovery, mockJwks } from "./mockTokens";
 import { hardenMockServer } from "./serverSockets";
 
 const app = express();
@@ -218,6 +228,83 @@ app.use("/graphql", (req, res, next) => {
         return;
     }
     res.json(prDetailGraphQLResponse);
+});
+// The access-token issuer's discovery document and key set (EdDSA is the only access-token class).
+app.get("/.well-known/openid-configuration", (_req, res) => {
+    res.json(mockDiscovery());
+});
+app.get("/.well-known/jwks.json", (_req, res) => {
+    res.json(mockJwks());
+});
+// CHAOS-13541 consent screenshot (playwright.chaos-13541.config.ts): auth-service's workload-token
+// exchange and /v1/authorize. Each answers one known request shape only and refuses every other one.
+// Both files are read once here, so no handler touches the file system.
+const workloadSubject = readFileSync(WORKLOAD_SUBJECT_FILE, "utf8").trim();
+const pdpDecision = readFileSync(PDP_DECISION_FILE);
+const refuseShape = (res: express.Response, route: string) =>
+    res.status(400).json({
+        error: "invalid_request",
+        detail: `${route}: request shape not known to this mock`,
+    });
+const hasExactKeys = (value: unknown, keys: readonly string[]): value is Record<string, unknown> =>
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).sort().join(",") === [...keys].sort().join(",");
+app.post("/internal/v1/token/exchange", express.urlencoded({ extended: false }), (req, res) => {
+    const body: unknown = req.body;
+    const known =
+        req.is("application/x-www-form-urlencoded") &&
+        hasExactKeys(body, ["audience", "grant_type", "subject_token", "subject_token_type"]) &&
+        body.grant_type === TOKEN_EXCHANGE_GRANT &&
+        body.subject_token === workloadSubject &&
+        body.subject_token_type === JWT_TOKEN_TYPE &&
+        body.audience === WORKLOAD_AUDIENCE;
+    if (!known) {
+        refuseShape(res, "token exchange");
+        return;
+    }
+    res.json({
+        access_token: WORKLOAD_TOKEN,
+        expires_in: 300,
+        issued_token_type: JWT_TOKEN_TYPE,
+        token_type: "Bearer",
+    });
+});
+app.post("/v1/authorize", (req, res) => {
+    const body: unknown = req.body;
+    const request = hasExactKeys(body, [
+        "action",
+        "context",
+        "principal_reference",
+        "resource",
+        "schema_version",
+    ])
+        ? body
+        : undefined;
+    const resource = request?.resource;
+    const context = request?.context;
+    const known =
+        req.get("authorization") === `Bearer ${WORKLOAD_TOKEN}` &&
+        req.is("application/json") &&
+        request !== undefined &&
+        request.schema_version === "authorization_request.v1" &&
+        request.action === "acr.credential.issue" &&
+        typeof request.principal_reference === "string" &&
+        request.principal_reference !== "" &&
+        hasExactKeys(resource, ["key", "organization_id", "type"]) &&
+        resource.type === "organization" &&
+        typeof resource.key === "string" &&
+        resource.key === resource.organization_id &&
+        hasExactKeys(context, ["client_service", "request_id"]) &&
+        context.client_service === "dev-health-web" &&
+        typeof context.request_id === "string" &&
+        /^req_[A-Za-z0-9_-]{26}$/.test(context.request_id);
+    if (!known) {
+        refuseShape(res, "/v1/authorize");
+        return;
+    }
+    res.type("application/json").send(pdpDecision);
 });
 app.use(createMiddleware(...handlers));
 

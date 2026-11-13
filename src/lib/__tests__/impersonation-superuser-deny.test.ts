@@ -96,6 +96,9 @@ beforeEach(async () => {
             is_superuser: true,
             access_token: "access-admin-1",
             refresh_token: "refresh-admin-1",
+            // The delegated token is the impersonation (D6720); the status read only adds display data.
+            imp_access_token: "access-delegated-1",
+            imp_expires_at: Date.now() + 600_000,
             expires_at: Date.now() + 3_600_000,
             last_validated: Date.now(),
         },
