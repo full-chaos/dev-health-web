@@ -418,10 +418,43 @@ const ACTION_PROBE = async ([path, cancelBody, actionId]: [string, boolean, stri
     return response.status;
 };
 
+// The chunks are read from the test side, not with a fetch in the page. A fetch in the page goes through
+// the guard's route on the page origin and the page's own connection pool, and it failed now and then
+// with a bare "TypeError: Failed to fetch": no status and no URL, and Promise.all lost every other chunk.
+// Here each chunk is read on its own with a status check, at most CHUNK_READ_CONCURRENCY at a time; a
+// chunk that cannot be read fails the step with its URL and the reason, and no chunk is skipped.
+const CHUNK_READ_CONCURRENCY = 6;
+
+async function readClientChunks(page: Page, urls: string[]): Promise<string[]> {
+    expect(urls.length, "client chunks loaded by the page").toBeGreaterThan(0);
+    const bodies: string[] = [];
+    const failures: string[] = [];
+    let next = 0;
+    const reader = async () => {
+        while (next < urls.length) {
+            const index = next++;
+            const url = urls[index]!;
+            try {
+                const response = await page.request.get(url, { maxRedirects: 0 });
+                if (response.status() !== 200) failures.push(`${url}: status ${response.status()}`);
+                bodies[index] = await response.text();
+            } catch (error) {
+                failures.push(`${url}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    };
+    await Promise.all(
+        Array.from({ length: Math.min(CHUNK_READ_CONCURRENCY, urls.length) }, () => reader()),
+    );
+    expect(failures, "client chunks that could not be read").toEqual([]);
+    return bodies;
+}
+
 async function runBoundaryScenario(
     page: Page,
     baseURL: string | undefined,
     plant?: () => Promise<void>,
+    extraChunkUrls: string[] = [],
 ) {
     const { directAcrRequests, networkRecords, stop, actionCounts } = await watchNetwork(
         page,
@@ -462,18 +495,22 @@ async function runBoundaryScenario(
     await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
     await plant?.();
 
-    const clientChunks = await page.evaluate(async () => {
-        const urls = performance
+    const chunkUrls = await page.evaluate(() =>
+        performance
             .getEntriesByType("resource")
             .map((entry) => entry.name)
-            .filter((url) => url.includes("/_next/static/") && url.endsWith(".js"));
-        return Promise.all(urls.map(async (url) => (await fetch(url)).text()));
-    });
+            .filter((url) => url.includes("/_next/static/") && url.endsWith(".js")),
+    );
     await stop();
     expect(actionCounts.intercepted).toBeGreaterThan(0);
     expect(actionCounts.scanned).toBe(actionCounts.intercepted);
     expect(networkRecords.join("\n")).not.toMatch(secretPattern);
-    expect(clientChunks.join("\n")).not.toMatch(clientChunkForbiddenPattern);
+    const allChunkUrls = [...chunkUrls, ...extraChunkUrls];
+    const clientChunks = await readClientChunks(page, allChunkUrls);
+    expect(
+        allChunkUrls.filter((_, index) => clientChunkForbiddenPattern.test(clientChunks[index]!)),
+        "client chunks with forbidden text",
+    ).toEqual([]);
     // Asserted again after every page-own, probe and late request: a direct ACR request made after the
     // first check above must not pass unnoticed.
     expect(directAcrRequests).toEqual([]);
@@ -500,6 +537,66 @@ test("a direct ACR request made after the early checks fails the boundary scenar
             });
         }),
     ).rejects.toThrow(/__late-direct/u);
+});
+
+async function startChunkServer() {
+    const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+        if (req.url === "/_next/static/chunks/planted.js") {
+            res.writeHead(200, { "content-type": "application/javascript" });
+            res.end('self.planted = "ACR_API_ORIGIN";');
+            return;
+        }
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("not found");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("no chunk server port");
+    return {
+        origin: `http://127.0.0.1:${address.port}`,
+        close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    };
+}
+
+test("a client chunk with forbidden text fails the boundary scenario with its URL", async ({
+    baseURL,
+    page,
+}) => {
+    const chunkServer = await startChunkServer();
+    try {
+        await expect(
+            runBoundaryScenario(page, baseURL, undefined, [
+                `${chunkServer.origin}/_next/static/chunks/planted.js`,
+            ]),
+        ).rejects.toThrow(/client chunks with forbidden text[\s\S]*planted\.js/u);
+    } finally {
+        await chunkServer.close();
+    }
+});
+
+test("a client chunk that is not served fails the boundary scenario with its URL and status", async ({
+    baseURL,
+    page,
+}) => {
+    const origin = new URL(baseURL ?? "http://127.0.0.1:3001").origin;
+    await expect(
+        runBoundaryScenario(page, baseURL, undefined, [
+            `${origin}/_next/static/chunks/__missing-chunk.js`,
+        ]),
+    ).rejects.toThrow(/__missing-chunk\.js: status 404/u);
+});
+
+test("a client chunk whose connection is dropped fails the boundary scenario with its URL", async ({
+    baseURL,
+    page,
+}) => {
+    const chunkServer = await startChunkServer();
+    await chunkServer.close();
+    await expect(
+        runBoundaryScenario(page, baseURL, undefined, [
+            `${chunkServer.origin}/_next/static/chunks/dropped.js`,
+        ]),
+    ).rejects.toThrow(/dropped\.js: [^\n]*ECONNREFUSED/u);
 });
 
 test("scans the full body of a server action response for secret material", async ({
