@@ -281,6 +281,32 @@ export const ERROR_CLASSES = [
     "AbortError",
     "NetworkError",
 ] as const;
+/** CHAOS-11961: the Ask Dev interactions, the two surfaces, and the end kinds of a turn. */
+export const ASK_DEV_ACTIONS = ["open", "submit", "expand", "cancel", "retry", "terminal"] as const;
+export const ASK_DEV_SURFACES = ["panel", "page"] as const;
+export const ASK_DEV_TERMINALS = [
+    "answered",
+    "bounded",
+    "refused",
+    "failed",
+    "deadline",
+    "limited",
+    "stream_unavailable",
+    "mismatch",
+    "unreadable",
+    "unsaved",
+    "abandoned",
+    "interrupted",
+    "stalled",
+    "canceled",
+    "thread_closed",
+    "not_run",
+    "stopped",
+    "authorization_failed",
+    "unavailable",
+    "halted",
+    "other",
+] as const;
 /** Navigation groups, items and guides have no caller yet: none is accepted until one adds its set here. */
 const NO_VALUES: readonly string[] = [];
 
@@ -364,6 +390,12 @@ export const TELEMETRY_SCHEMA = {
         digest: nullable((value) => typeof value === "string" && /^[0-9]{1,20}$/.test(value)),
         errorClass: required(oneOf(ERROR_CLASSES)),
         routePattern: nullableRoute(),
+    },
+    ask_dev_interacted: {
+        action: required(oneOf(ASK_DEV_ACTIONS)),
+        surface: required(oneOf(ASK_DEV_SURFACES)),
+        terminal: nullable(oneOf(ASK_DEV_TERMINALS)),
+        turnCount: nullable(intUpTo(10_000)),
     },
 } satisfies Schema;
 
