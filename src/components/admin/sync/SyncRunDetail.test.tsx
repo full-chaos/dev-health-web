@@ -997,3 +997,71 @@ describe("SyncRunDetailLive — CHAOS-4318 manual refresh (no timer-driven polli
         });
     });
 });
+
+describe("SyncRunDetailLive skipped datasets", () => {
+    const withResult = (result: Record<string, unknown> | null) =>
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, result }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+    it("lists each skipped dataset with web text, not the served message", () => {
+        withResult({
+            skipped_datasets: [
+                { dataset_key: "incidents", reason: "feature_disabled", message: "SERVER TEXT A" },
+                {
+                    dataset_key: "deployments",
+                    reason: "feature_disabled",
+                    message: "SERVER TEXT B",
+                },
+            ],
+        });
+        expect(screen.getByText("incidents")).toBeInTheDocument();
+        expect(screen.getByText("deployments")).toBeInTheDocument();
+        expect(screen.getAllByText("skipped: feature off")).toHaveLength(2);
+        expect(screen.queryByText(/SERVER TEXT/)).not.toBeInTheDocument();
+    });
+
+    it("shows nothing new when the run has no skipped_datasets", () => {
+        withResult({});
+        expect(screen.queryByText("Skipped datasets")).not.toBeInTheDocument();
+    });
+
+    it("uses a fixed fallback for an unknown reason", () => {
+        withResult({ skipped_datasets: [{ dataset_key: "incidents", reason: "brand_new" }] });
+        expect(screen.getByText("skipped")).toBeInTheDocument();
+        expect(screen.queryByText(/brand_new/)).not.toBeInTheDocument();
+    });
+});
+
+describe("SyncRunDetailLive skipped datasets edge cases", () => {
+    const withResult = (result: Record<string, unknown>) =>
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, result }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+    it("uses the fallback for a reason that names an Object.prototype member", () => {
+        withResult({ skipped_datasets: [{ dataset_key: "incidents", reason: "constructor" }] });
+        expect(screen.getByText("skipped")).toBeInTheDocument();
+    });
+
+    it("does not warn about duplicate keys when a dataset repeats", () => {
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        withResult({
+            skipped_datasets: [
+                { dataset_key: "incidents", reason: "feature_disabled" },
+                { dataset_key: "incidents", reason: "feature_disabled" },
+            ],
+        });
+        expect(screen.getAllByText("skipped: feature off")).toHaveLength(2);
+        expect(spy.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+        spy.mockRestore();
+    });
+});
