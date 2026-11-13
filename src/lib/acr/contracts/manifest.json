@@ -1,9 +1,9 @@
 {
-  "source_commit": "4615b25fd72257e21c4e81a3235b128efeae2a9a",
+  "source_commit": "61f332eb97a8822ae5e793d3a2f4fc54b1f724e3",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "6b142944d4d9857b677588dd1b482dba3bd0533914c27bb2505f904477c7dd61"
+      "sha256": "11494c2b2fbdd10a5f0d9906bfd7bb92bcac04e1723e2d941d042e563f8f810e"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "29cd26837cff0d99b790461023b7519bd4d69f55c8c44b6c67d16058f0c49827"
+      "sha256": "f5f3eea2da1ca3f4d22474cbd4e967a083f678fd67e974319661c6323dc884a8"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -155,15 +155,15 @@
     },
     {
       "path": "schemas/device_approval_preview_request.v1.schema.json",
-      "sha256": "0bd37884ab5225d0371a877e2b6d0018fd25961ede592d9ebb4942c63141649d"
+      "sha256": "cda41b5565d3bcc722865ae221d084a3067b6cca5668e683fd456b39ad0079cc"
     },
     {
       "path": "schemas/device_approval_preview_response.v1.schema.json",
-      "sha256": "8a8ce0f3bbcf4bf1e7a5918211903926fabfe4bed3d4d85652a80dfad743255d"
+      "sha256": "840fb95a33c143c9695493e59d2df8192b147fad75602c8e08f707fc2599a039"
     },
     {
       "path": "schemas/device_approval_request.v1.schema.json",
-      "sha256": "c2a15c8aa5c4440fd450cb015b6305bb342a5fb45b2e47c0be62ca25af66f2cf"
+      "sha256": "5095f7708b111f118f87a6c6d3705a339296565e71aa0c1b07a0b022bfe07226"
     },
     {
       "path": "schemas/device_approval_response.v1.schema.json",
@@ -171,7 +171,7 @@
     },
     {
       "path": "schemas/device_authorization_request.v1.schema.json",
-      "sha256": "5cc601d597962f55ec463539fb2707ad457c59bd11baf05c431cc25484eddec3"
+      "sha256": "0026dc9e3e6f8f1f036ac0b3009a8386f9d77d8987ac9edbf018a8913d9e779e"
     },
     {
       "path": "schemas/device_authorization_response.v1.schema.json",

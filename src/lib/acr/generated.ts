@@ -4,6 +4,9 @@ export interface ACRClientCredentialMetadataV1 {
     name: string;
     token_prefix: string;
     org_id: string;
+    /**
+     * @maxItems 256
+     */
     repository_scopes: string[];
     /**
      * context:admin is retired: it is accepted here so a v1 credential that carried it stays valid, but it is never issued and no stored credential can carry it. Removal rides the next major version.
@@ -5155,6 +5158,7 @@ export interface SelfCredentialRotationResponseV1 {
 export interface DeviceApprovalPreviewRequestV1 {
     schema_version: "device_approval_preview_request.v1";
     user_code: string;
+    repository_scopes?: [string, ...string[]] | ["*"];
 }
 
 export interface DeviceApprovalPreviewResponseV1 {
@@ -5162,7 +5166,7 @@ export interface DeviceApprovalPreviewResponseV1 {
     organization_id_hint?: string;
     /**
      * @minItems 1
-     * @maxItems 100
+     * @maxItems 256
      */
     repository_hints?: [string, ...string[]];
     /**
@@ -5200,7 +5204,7 @@ export interface DeviceAuthorizationRequestV1 {
     organization_id_hint?: string;
     /**
      * @minItems 1
-     * @maxItems 100
+     * @maxItems 256
      */
     repository_hints?: [string, ...string[]];
 }

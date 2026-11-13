@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "4615b25fd72257e21c4e81a3235b128efeae2a9a";
+const SOURCE_COMMIT = "61f332eb97a8822ae5e793d3a2f4fc54b1f724e3";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
