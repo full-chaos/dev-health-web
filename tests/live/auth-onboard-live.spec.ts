@@ -233,12 +233,12 @@ test.describe("@guided onboarding journey", () => {
         await expect(page.getByText("Integration setup skipped")).toHaveCount(0);
     });
 
-    test("an onboarded user opening the workspace step is routed by the backend state", async () => {
+    test("an onboarded user who skipped the integration opening the workspace step is routed to the completion step", async () => {
         const { page } = user!;
         await page.goto("/auth/onboard/workspace");
         await page.waitForLoadState("networkidle").catch(() => undefined);
         note("guard-onboarded-on-workspace", `path=${where(page)}`);
-        expect(where(page)).toMatch(/^\/(auth\/onboard|dashboard)/);
+        expect(where(page)).toBe("/auth/onboard/complete");
     });
 });
 
