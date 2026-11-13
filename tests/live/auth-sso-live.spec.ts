@@ -225,8 +225,45 @@ test.describe("@auth-sso single sign-on", () => {
     test("OIDC: the sign-in page takes the provider id and signs the IdP user in", async ({
         page,
     }) => {
+        // RECORD-ONLY diagnostics (never code, state or tokens): what the browser sent the IdP and what it answered.
+        const note = (name: string, line: string) => {
+            console.log(`DIAG ${name}: ${line}`);
+            test.info().annotations.push({ type: `diag-${name}`, description: line });
+        };
+        const where = (raw: string) => {
+            const url = new URL(raw, WEB);
+            return `${url.protocol}//${url.host}${url.pathname}`;
+        };
+        page.on("request", (req) => {
+            if (!req.url().startsWith(`${IDP}/authorize`)) return;
+            const query = new URL(req.url()).searchParams;
+            note(
+                "idp-authorize-request",
+                `redirect_uri=${where(query.get("redirect_uri") ?? "none")} client_id_match=${String(query.get("client_id") === clientId)} code_challenge_method=${query.get("code_challenge_method") ?? "none"}`,
+            );
+        });
+        page.on("response", (res) => {
+            if (!res.url().startsWith(`${IDP}/authorize`)) return;
+            const location = res.headers().location;
+            note(
+                "idp-authorize-response",
+                `status=${String(res.status())} location=${location ? where(location) : "none"}`,
+            );
+        });
         await startSso(page, "oidc", oidcId);
-        await expectSignedInAs(page, idpEmail("alice"));
+        try {
+            await expectSignedInAs(page, idpEmail("alice"));
+        } catch (error) {
+            const text = await page
+                .locator("body")
+                .innerText({ timeout: 5_000 })
+                .catch(() => "unreadable");
+            note(
+                "final-page",
+                `url=${where(page.url())} text=${JSON.stringify(text.slice(0, 200))}`,
+            );
+            throw error;
+        }
     });
 
     test("SAML: the sign-in page takes the provider id and signs the IdP user in", async ({
