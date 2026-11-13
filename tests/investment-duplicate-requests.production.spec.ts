@@ -63,13 +63,82 @@ for (const { tab, f } of CASES) {
             );
         }
         expect(heavyReads(log), `GraphQL reads of ${label}`).toEqual(NEEDED[tab]);
-        const duplicates = rows.filter(([, n]) => n > 1);
-        expect(
-            duplicates.map(([key, n]) => `${n}x ${key.slice(0, 160)}`),
-            `identical backend requests on ${label}`,
-        ).toEqual([]);
+        expect(pageDuplicates(log), `identical backend requests on ${label}`).toEqual([]);
     });
 }
+
+// CHAOS-13399: the impersonation status read is left out of the count, and only that read (this
+// method and this exact path). It is a read of the session (the jwt callback of every request), not
+// of the page: the web server keeps its answer for 3 s of wall time, so a visit that lasts longer
+// reads it again by design. Its own count is the subject of
+// impersonation-status-shared-read.production.spec.ts.
+const STATUS_KEEP_MS = 3_000;
+const isStatusRead = (e: Entry) =>
+    e.method === "GET" && e.path === "/api/v1/admin/impersonate/status";
+
+function pageDuplicates(log: Entry[]): string[] {
+    return [...group(log.filter((e) => !isStatusRead(e))).entries()]
+        .filter(([, n]) => n > 1)
+        .sort((a, b) => b[1] - a[1])
+        .map(([key, n]) => `${n}x ${key.slice(0, 160)}`);
+}
+
+test("the page count leaves out the status read only and still reports every other duplicate", () => {
+    const row = (method: string, path: string, operation = path, variables = "{}"): Entry => ({
+        method,
+        path,
+        operation,
+        variables,
+    });
+    const status = row("GET", "/api/v1/admin/impersonate/status");
+    expect(
+        pageDuplicates([
+            status,
+            status,
+            status,
+            row("GET", "/graphql", "graphql InvestmentFull", '{"a":1}'),
+            row("GET", "/graphql", "graphql InvestmentFull", '{"a":1}'),
+            row("GET", "/graphql", "graphql InvestmentFull", '{"a":2}'),
+            row("GET", "/api/v1/admin/impersonate/status/x"),
+            row("GET", "/api/v1/admin/impersonate/status/x"),
+            row("POST", "/api/v1/admin/impersonate/status"),
+            row("POST", "/api/v1/admin/impersonate/status"),
+        ]),
+    ).toEqual([
+        '2x GET graphql InvestmentFull {"a":1}',
+        "2x GET /api/v1/admin/impersonate/status/x {}",
+        "2x POST /api/v1/admin/impersonate/status {}",
+    ]);
+});
+
+// CHAOS-13399: a visit whose browser requests reach the web server after the status keep has ended
+// (as under load). The browser holds its own /graphql and /api requests, so the jwt callback of
+// those requests runs after the keep of the document's status read.
+test("a visit that outlasts the status keep sends each identical page read once", async ({
+    page,
+    request,
+}) => {
+    await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "investment-enabled" } });
+    // End any keep of an earlier test: the document then starts its own status read.
+    await page.waitForTimeout(STATUS_KEEP_MS + 500);
+    await request.post(`${MOCK}/__test/backend-log/reset`);
+    await page.route("**/*", async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.startsWith("/graphql") || path.startsWith("/api/")) {
+            await new Promise((resolve) => setTimeout(resolve, STATUS_KEEP_MS + 500));
+        }
+        await route.continue();
+    });
+    await page.goto("/investment?tab=overview");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(2500);
+
+    const log = await readLog(request);
+    // The control: the visit outlasted the keep, so the status was read again in it.
+    expect(log.filter(isStatusRead).length, "status reads of the visit").toBeGreaterThanOrEqual(2);
+    expect(heavyReads(log), "GraphQL reads of the slow visit").toEqual(NEEDED.overview);
+    expect(pageDuplicates(log), "identical backend requests of the slow visit").toEqual([]);
+});
 
 // CHAOS-9166: a tab starts only the reads it draws. `InvestmentFull` is the sankey flow: the
 // team-category flow, its prior-window baseline, and the repo-team flow. CHAOS-9255: Overview and
