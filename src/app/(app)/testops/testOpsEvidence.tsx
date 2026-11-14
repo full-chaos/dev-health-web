@@ -22,11 +22,13 @@ export type TestOpsTile = {
 
 /**
  * Resolve the tiles of a TestOps tab from the served time series. The readers are the ones the
- * pages always used (`getLatestValue`, `getSparkline`, `getDelta`); a measure the registry does
- * not know is left out.
+ * pages always used (`getLatestValue`, `getSparkline`, `getDelta`), on one scope per measure
+ * (`teamIds`: the selected teams; see `seriesForScope`); a measure the registry does not know is
+ * left out.
  */
 export function resolveTestOpsTiles(
     measures: ReadonlyArray<{ id: string; ts: TimeseriesResult[] }>,
+    teamIds?: readonly string[],
 ): TestOpsTile[] {
     return measures.flatMap(({ id, ts }) => {
         const def = TESTOPS_MEASURES[id];
@@ -39,9 +41,9 @@ export function resolveTestOpsTiles(
                 note: def.note,
                 unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
                 inverseGood: def.goodDirection === "down",
-                value: getLatestValue(ts, id),
-                delta: getDelta(ts, id),
-                spark: getSparkline(ts, id),
+                value: getLatestValue(ts, id, teamIds),
+                delta: getDelta(ts, id, teamIds),
+                spark: getSparkline(ts, id, teamIds),
             },
         ];
     });

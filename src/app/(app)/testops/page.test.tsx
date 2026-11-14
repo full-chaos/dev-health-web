@@ -458,3 +458,71 @@ describe("TestOps Overview: failing workflows and jobs", () => {
         expect(screen.getByTestId("testops-ci-health")).toBeInTheDocument();
     });
 });
+
+describe("TestOps Overview tiles read one scope, never a mean across scopes", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+    const scoped = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        value: number,
+    ) => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: [{ date: "2026-11-13", value }],
+    });
+    const scopedServed = {
+        pipelines: {
+            timeseries: [
+                scoped("PIPELINE_SUCCESS_RATE", "team-a", "DIMENSION", 100),
+                scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+                scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 20),
+            ],
+            breakdowns: [],
+        },
+        tests: { timeseries: [], breakdowns: [] },
+        coverage: {
+            timeseries: [
+                scoped("COVERAGE_LINE_PCT", "team-a", "DIMENSION", 90),
+                scoped("COVERAGE_LINE_PCT", "team-b", "DIMENSION", 30),
+                scoped("COVERAGE_LINE_PCT", "org", "ORG", 40),
+            ],
+            breakdowns: [],
+        },
+    };
+    const tileValue = (label: string) =>
+        within(screen.getByTestId("testops-overview-tiles"))
+            .getAllByTestId("metric-tile")
+            .find((tile) => tile.getAttribute("data-label") === label)
+            ?.getAttribute("data-value");
+
+    it("with no team selected, Success Rate and Line Coverage show the ORG series", async () => {
+        mockFetchTestOpsData.mockResolvedValue(scopedServed);
+        await renderPage();
+        expect(tileValue("Success Rate")).toBe("20");
+        expect(tileValue("Line Coverage")).toBe("40");
+        expect(rateChartSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            points: [{ day: "2026-11-13", success: 20 }],
+        });
+    });
+
+    it("with one team selected, the tiles show that team's series", async () => {
+        mockFetchTestOpsData.mockResolvedValue(scopedServed);
+        await renderPage(
+            f({
+                time: { range_days: 14 },
+                scope: { level: "team", ids: ["team-b"] },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+        );
+        expect(Number(tileValue("Success Rate"))).toBeCloseTo(100 / 9, 6);
+        expect(tileValue("Line Coverage")).toBe("30");
+    });
+});
