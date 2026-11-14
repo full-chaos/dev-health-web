@@ -384,3 +384,70 @@ describe("TestOps Pipelines tiles read one scope, never a mean across scopes", (
         expect(Number(tileValue("Success Rate")) + Number(tileValue("Failure Rate"))).toBe(100);
     });
 });
+
+describe("TestOps Pipelines applies the scope bar's filter", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+    const teamFilter = (ids: string[], repos: string[] = []) =>
+        f({
+            time: { range_days: 14 },
+            scope: { level: "team", ids },
+            who: {},
+            what: repos.length > 0 ? { repos } : {},
+            why: {},
+            how: {},
+        });
+
+    it("sends the scope bar's team and repository selection to analytics", async () => {
+        await renderPage(teamFilter(["t1"], ["r1"]));
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "TEAM", ids: ["t1"] }, what: { repos: ["r1"] } },
+        });
+    });
+
+    it("with no filter sends the organization scope", async () => {
+        await renderPage();
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "ORG" } },
+        });
+    });
+
+    it("with one team selected, the tiles and the trend show that team's series", async () => {
+        const series = (
+            measure: string,
+            dimensionValue: string,
+            scope: "DIMENSION" | "ORG",
+            value: number,
+        ) => ({
+            dimension: "TEAM",
+            dimensionValue,
+            scope,
+            measure,
+            buckets: [{ date: "2026-11-13", value }],
+        });
+        // The API answers a team-b filter with team-b's series and the org series read under the
+        // filter; the page reads team-b's own series.
+        mockFetchTestOpsData.mockResolvedValue({
+            pipelines: {
+                timeseries: [
+                    series("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+                    series("PIPELINE_SUCCESS_RATE", "org", "ORG", 20),
+                    series("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+                ],
+                breakdowns: [],
+            },
+            tests: empty,
+            coverage: empty,
+        });
+        await renderPage(teamFilter(["team-b"]));
+        const success = screen
+            .getAllByTestId("metric-tile")
+            .find((tile) => tile.getAttribute("data-label") === "Success Rate");
+        expect(Number(success?.getAttribute("data-value"))).toBeCloseTo(100 / 9, 6);
+        const points = (
+            rateChartSpy.mock.calls.at(-1)?.[0] as { points: Array<{ success: number }> }
+        ).points;
+        expect(points[0].success).toBeCloseTo(100 / 9, 6);
+    });
+});
