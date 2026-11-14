@@ -292,7 +292,7 @@ run_access_token_corpus() {
     return 1
   fi
   echo "==> vitest access-token and authorization corpus (${WEB_OPS_CONTRACT_ROOT})"
-  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize ci/__tests__/live-e2e-plane-router-drift.test.ts
+  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken src/lib/auth/authorize src/lib/auth/platform/__tests__/actionTable.test.ts ci/__tests__/live-e2e-plane-router-drift.test.ts
 }
 
 run_e2e() {

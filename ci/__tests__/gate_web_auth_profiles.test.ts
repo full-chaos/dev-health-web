@@ -2240,6 +2240,7 @@ describe("tests.yml: the ops contract sparse checkout lists the schema closure o
         "contracts/auth/v1/credential-classes.schema.json",
         "contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json",
         "contracts/auth/v1/jsonschema/principal.v1.schema.json",
+        "contracts/auth/v1/vocabulary/actions.v1.json",
         "contracts/ingress/v1/planes.json",
     ];
 
@@ -2274,6 +2275,33 @@ describe("tests.yml: the ops contract sparse checkout lists the schema closure o
         const listed = sparseCheckoutPaths(mutated);
         expect(listed.length).toBeGreaterThan(0);
         expect(REQUIRED.filter((p) => !listed.includes(p))).toEqual([path]);
+    });
+});
+
+describe("run_tests.sh: the access-token corpus step runs the pinned action catalog parity cell", () => {
+    // The parity cell skips without an ops root; it runs only because this step lists it with the
+    // pinned checkout and the require flag. Dropping it from the command turns the cell back into a skip.
+    const script = readFileSync(resolve(WEB_ROOT, "ci/run_tests.sh"), "utf8");
+    const CELL = "src/lib/auth/platform/__tests__/actionTable.test.ts";
+
+    function corpusCommandNames(text: string, cell: string): boolean {
+        const start = text.indexOf("run_access_token_corpus() {");
+        if (start === -1) return false;
+        const end = text.indexOf("\n}\n", start);
+        return (
+            text
+                .slice(start, end)
+                .includes(`WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run`) &&
+            text.slice(start, end).includes(cell)
+        );
+    }
+
+    it("names the action table parity cell under the require flag", () => {
+        expect(corpusCommandNames(script, CELL)).toBe(true);
+    });
+
+    it("RED: the same assertion fails when the cell is dropped from the command", () => {
+        expect(corpusCommandNames(script.replace(` ${CELL}`, ""), CELL)).toBe(false);
     });
 });
 
