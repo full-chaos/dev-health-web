@@ -159,7 +159,7 @@ query TestOpsJobFailures($orgId: String!, $input: TestOpsJobFailuresInput!) {
 }
 `;
 
-// Test data coverage and the window pass, failure and flake rates of the Tests tab (CHAOS-13812).
+// Test data coverage and the window pass, failure and flake rates of the Tests tab.
 // The text is registered on the API side; nothing renders it yet. The rates and `sharePct` are
 // percents (0 to 100); null means nothing to divide by, never 0.
 export const TESTOPS_TEST_WINDOW_QUERY = `
