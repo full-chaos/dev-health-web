@@ -11,7 +11,15 @@ import {
 } from "../actionTable";
 
 const WEB_ROOT = join(__dirname, "..", "..", "..", "..", "..");
-const OPS_ROOT = process.env.WIRE_PARITY_OPS_ROOT || process.env.WIRE_PARITY_OPS_MAIN_ROOT || "";
+// The pinned ops checkout (ci/ops-contract.pin) wins over the moving parity checkouts.
+// WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 (the CI corpus step) turns a missing root into a failure.
+const OPS_ROOT =
+    process.env.WEB_OPS_CONTRACT_ROOT ||
+    process.env.WIRE_PARITY_OPS_ROOT ||
+    process.env.WIRE_PARITY_OPS_MAIN_ROOT ||
+    "";
+const REQUIRED = process.env.WEB_REQUIRE_ACCESS_TOKEN_CORPUS === "1";
+const LIVE_CATALOG = join(OPS_ROOT, "contracts/auth/v1/vocabulary/actions.v1.json");
 
 type CatalogAction = { action: string; scope: string; impersonation: string; risk_class: string };
 const actions = catalog.actions as CatalogAction[];
@@ -204,11 +212,16 @@ describe("C2 impersonation rule table against the pinned catalog", () => {
     });
 });
 
-describe.runIf(OPS_ROOT !== "")("pinned catalog snapshot matches the ops checkout", () => {
+const parity = OPS_ROOT !== "" || REQUIRED ? describe : describe.skip;
+
+parity("pinned catalog snapshot matches the ops checkout", () => {
+    it("is present when the gate requires it", () => {
+        expect(OPS_ROOT).not.toBe("");
+        expect(existsSync(LIVE_CATALOG)).toBe(true);
+    });
+
     it("holds the same catalog as contracts/auth/v1/vocabulary/actions.v1.json", () => {
-        const live = JSON.parse(
-            readFileSync(join(OPS_ROOT, "contracts/auth/v1/vocabulary/actions.v1.json"), "utf8"),
-        );
+        const live = JSON.parse(readFileSync(LIVE_CATALOG, "utf8"));
         expect(catalog).toEqual(live);
     });
 });

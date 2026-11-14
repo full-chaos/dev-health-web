@@ -62,7 +62,7 @@ impersonation): `admin.users`, `admin.orgs`, `admin.impersonate`, `admin.billing
 Organization actions the catalog denies to a delegated (impersonation) session:
 `settings.write`, `reports.write`, `integrations.write`, `members.invite`, `members.manage`,
 `members.update`, `org.write`, `org.delete`, `billing.manage`, `acr.credential.issue`,
-`acr.credential.revoke`. The web
+`acr.credential.revoke`, `sso.write`. The web
 refuses those it has a surface for (table above); the backend refuses the rest.
 
 ## Reading the shadow log line
