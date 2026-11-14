@@ -8,6 +8,9 @@ import { discoverTeams, importTeams } from "@/lib/admin/server";
 import type { DiscoveredTeam, TeamImportResponse } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
+export const REFUSED_CREDENTIAL_MESSAGE =
+    "The provider refused the saved credential. Check the token scopes or app permissions, then try again.";
+
 type Step = "provider" | "discovering" | "select" | "importing" | "result";
 
 const PROVIDERS = [
@@ -65,7 +68,7 @@ export function ImportTeamsDialog() {
             try {
                 const result = await discoverTeams(provider);
                 if (result.error) {
-                    toast.error(result.error);
+                    toast.error(result.status === 422 ? REFUSED_CREDENTIAL_MESSAGE : result.error);
                     setStep("provider");
                 } else if (result.data) {
                     setDiscoveredTeams(result.data.teams);

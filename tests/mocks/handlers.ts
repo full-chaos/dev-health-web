@@ -4621,8 +4621,15 @@ export const handlers = [
         HttpResponse.json({ changes: [], total: 0 }),
     ),
 
-    http.get("*/api/v1/admin/teams/discover", () =>
-        HttpResponse.json({
+    http.get("*/api/v1/admin/teams/discover", ({ request }) => {
+        // provider=refused-token: the provider refused the stored credential (422 with served text)
+        if (new URL(request.url).searchParams.get("provider") === "refused-token") {
+            return HttpResponse.json(
+                { detail: "SERVED-REFUSED-TOKEN-DETAIL provider said no" },
+                { status: 422 },
+            );
+        }
+        return HttpResponse.json({
             items: [
                 {
                     team_id: "discovered-team",
@@ -4630,8 +4637,8 @@ export const handlers = [
                     source: "github",
                 },
             ],
-        }),
-    ),
+        });
+    }),
 
     // One team by id (the edit page). After `pending-changes` and `discover`: the first match
     // wins, and those two are fixed paths under the same prefix.
