@@ -57,6 +57,12 @@ describe("C4 classifySocialRefusal", () => {
 });
 
 describe("the sign-in page path of a refusal", () => {
+    it("keeps an encoded query value of a local callbackUrl", () => {
+        expect(
+            sameOriginCallbackPath("http://localhost:3000/metrics?team=a%2Fb", "localhost:3000"),
+        ).toBe("/metrics?team=a%2Fb");
+    });
+
     it("keeps a local callbackUrl of the same host", () => {
         const path = sameOriginCallbackPath(
             "http://localhost:3000/metrics?team=a",
@@ -76,6 +82,26 @@ describe("the sign-in page path of a refusal", () => {
         ["no cookie", undefined, "localhost:3000"],
         ["no host", "http://localhost:3000/dashboard", undefined],
         ["not a URL", "::", "localhost:3000"],
+        ["a backslash path", "http://localhost:3000/\\evil.example/steal", "localhost:3000"],
+        ["a javascript: URL", "javascript:alert(document.cookie)", "localhost:3000"],
+        [
+            "an encoded double slash",
+            "http://localhost:3000/%2F%2Fevil.example/steal",
+            "localhost:3000",
+        ],
+        [
+            "an encoded backslash",
+            "http://localhost:3000/%5C%5Cevil.example/steal",
+            "localhost:3000",
+        ],
+        [
+            "an encoded control character",
+            "http://localhost:3000/dashboard%0d%0aSet-Cookie:x=1",
+            "localhost:3000",
+        ],
+        ["an encoded auth page", "http://localhost:3000/%61uth/signin", "localhost:3000"],
+        ["a malformed encoding", "http://localhost:3000/dashboard%E0%A4%A", "localhost:3000"],
+        ["a URL-encoded whole URL", "https%3A%2F%2Fevil.example%2Fsteal", "localhost:3000"],
     ])("drops the callbackUrl of %s: the page's safe default", (_name, raw, host) => {
         const path = sameOriginCallbackPath(raw, host);
         expect(path).toBeUndefined();

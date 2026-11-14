@@ -17,6 +17,30 @@ vi.stubEnv("AUTH_GITHUB_ID", "chaos-13756-github-client");
 vi.stubEnv("AUTH_GITHUB_SECRET", "chaos-13756-github-secret");
 vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "https://auth.example.test");
 
+// The request scope next/headers reads inside the Auth.js callback. Off by default: outside Next's request scope
+// next/headers throws, and the refusal then carries no callbackUrl. On, it serves the callback request's own host
+// and cookies (decoded, as Next's cookies() does).
+const requestScope = vi.hoisted(() => ({
+    on: false,
+    host: "",
+    cookies: new Map<string, string>(),
+}));
+vi.mock("next/headers", () => ({
+    headers: async () => {
+        if (!requestScope.on) throw new Error("called outside a request scope");
+        return new Headers({ host: requestScope.host });
+    },
+    cookies: async () => {
+        if (!requestScope.on) throw new Error("called outside a request scope");
+        return {
+            get: (name: string) => {
+                const value = requestScope.cookies.get(name);
+                return value === undefined ? undefined : { name, value: decodeURIComponent(value) };
+            },
+        };
+    },
+}));
+
 vi.mock("@/lib/logger", () => {
     const l: Record<string, unknown> = {};
     for (const level of ["trace", "debug", "info", "warn", "error", "fatal"]) l[level] = () => {};
@@ -74,7 +98,10 @@ const cookieHeader = (cookies: Map<string, string>) =>
     [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
 
 /** A real GitHub sign-in start, then the provider's callback with the state it started with. */
-async function signInWithGitHub(): Promise<Response> {
+async function signInWithGitHub(
+    callbackUrl = `${ORIGIN}/dashboard`,
+    inRequestScope = false,
+): Promise<Response> {
     const csrfResponse = await GET(new NextRequest(`${ORIGIN}/api/auth/csrf`));
     const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
     const start = await POST(
@@ -84,7 +111,7 @@ async function signInWithGitHub(): Promise<Response> {
                 cookie: cookieHeader(cookiePairs(csrfResponse)),
                 "content-type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams({ csrfToken, callbackUrl: `${ORIGIN}/dashboard` }).toString(),
+            body: new URLSearchParams({ csrfToken, callbackUrl }).toString(),
         }),
     );
     expect(start.status).toBe(302);
@@ -93,7 +120,14 @@ async function signInWithGitHub(): Promise<Response> {
     const url = new URL(`${ORIGIN}/api/auth/callback/github`);
     url.searchParams.set("code", "chaos-13756-code");
     url.searchParams.set("state", state);
-    return GET(new NextRequest(url, { headers: { cookie: cookieHeader(cookies) } }));
+    requestScope.on = inRequestScope;
+    requestScope.host = url.host;
+    requestScope.cookies = cookies;
+    try {
+        return await GET(new NextRequest(url, { headers: { cookie: cookieHeader(cookies) } }));
+    } finally {
+        requestScope.on = false;
+    }
 }
 
 const socialCalls = () => fetchSpy.mock.calls.filter(([input]) => String(input).endsWith(SOCIAL));
@@ -142,4 +176,22 @@ describe("a social sign-in the backend refuses (real Auth.js handlers)", () => {
             expect(cookiePairs(response).has(SESSION_COOKIE)).toBe(false);
         },
     );
+
+    it("N3 in a request scope the refusal keeps the sign-in's local callbackUrl through the real handlers", async () => {
+        backend = () => json({ detail: { message: "x", reason: "signup_unavailable" } }, 403);
+        const response = await signInWithGitHub(`${ORIGIN}/metrics?team=a`, true);
+        expect(response.status).toBe(302);
+        expect(response.headers.get("location")).toBe(
+            `${ORIGIN}/auth/signin?error=social_signup_unavailable&callbackUrl=%2Fmetrics%3Fteam%3Da`,
+        );
+        expect(cookiePairs(response).has(SESSION_COOKIE)).toBe(false);
+    });
+
+    it("N3 in a request scope a callbackUrl on an auth page is dropped through the real handlers", async () => {
+        backend = () => json({ detail: { message: "x", reason: "malformed" } }, 400);
+        const response = await signInWithGitHub(`${ORIGIN}/auth/signin`, true);
+        expect(response.headers.get("location")).toBe(
+            `${ORIGIN}/auth/signin?error=social_malformed`,
+        );
+    });
 });

@@ -45,7 +45,7 @@ export function classifySocialRefusal(status: number, body: unknown): SocialRefu
 
 /**
  * The local path of the sign-in's callbackUrl (the Auth.js callback-url cookie, an absolute URL) when it
- * is on host and a safe post-login target; undefined otherwise.
+ * is on host and a safe post-login target both as written and percent-decoded; undefined otherwise.
  */
 export function sameOriginCallbackPath(
     raw: string | undefined,
@@ -59,7 +59,15 @@ export function sameOriginCallbackPath(
         return undefined;
     }
     if (url.host !== host) return undefined;
-    return safePostLoginRedirect(`${url.pathname}${url.search}${url.hash}`);
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    let decoded: string;
+    try {
+        decoded = decodeURIComponent(path);
+    } catch {
+        return undefined;
+    }
+    if (!safePostLoginRedirect(decoded)) return undefined;
+    return safePostLoginRedirect(path);
 }
 
 /** The sign-in page path a refused social sign-in lands on. */
