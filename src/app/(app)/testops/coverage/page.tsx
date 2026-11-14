@@ -58,11 +58,12 @@ function getSparkline(series: TimeseriesResult | undefined) {
 }
 
 const UNRESOLVED_TEAM = "Unresolved";
+const ORGANIZATION = "Organization";
 
 // A team series is named by the served team name; a team without one reads "Unresolved", never
-// its key.
+// its key. The ORG series is the org-wide rate: it is named as the organization, never as a team.
 function coverageSeriesName(series: TimeseriesResult, teamNames: Record<string, string>) {
-    if (!series.dimensionValue) return "Organization";
+    if (series.scope === "ORG" || !series.dimensionValue) return ORGANIZATION;
     const dimension = series.dimension
         ? `${series.dimension[0]}${series.dimension.slice(1).toLowerCase()}`
         : "Series";
