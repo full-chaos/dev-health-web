@@ -1738,6 +1738,8 @@ export type Query = {
   testopsJobFailures: TestOpsJobFailuresResult;
   /** Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables. */
   testopsRisk: TestOpsRiskResult;
+  /** Test data coverage and window rates of the TestOps Tests tab (CHAOS-13773): the share of completed CI runs that report tests, and the pass, failure and flake rates over the window. Computed at read time; the rates are weighted over the window (summed counts, never a mean of rates). Missing is not zero: a value with nothing to divide by is null. */
+  testopsTestWindow: TestOpsTestWindowResult;
   /** Compute throughput-based capacity forecast */
   throughputForecast?: Maybe<ThroughputForecast>;
   /** Top-N work graph nodes ranked by degree over the full graph */
@@ -2014,6 +2016,12 @@ export type QueryTestopsJobFailuresArgs = {
 
 export type QueryTestopsRiskArgs = {
   input: TestOpsRiskInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryTestopsTestWindowArgs = {
+  input: TestOpsTestWindowInput;
   orgId: Scalars['String']['input'];
 };
 
@@ -2561,6 +2569,53 @@ export type TestOpsRiskTrendPoint = {
   __typename?: 'TestOpsRiskTrendPoint';
   date: Scalars['Date']['output'];
   riskScore: Scalars['Float']['output'];
+};
+
+/** The test cases of the window, summed over its repository days, by status. */
+export type TestOpsTestCaseCounts = {
+  __typename?: 'TestOpsTestCaseCounts';
+  /** Failed and errored cases. */
+  failed: Scalars['Int']['output'];
+  passed: Scalars['Int']['output'];
+  quarantined: Scalars['Int']['output'];
+  skipped: Scalars['Int']['output'];
+  /** Every case of the window, including skipped and quarantined. */
+  total: Scalars['Int']['output'];
+};
+
+/** How much of CI reports tests. A run counts when it is completed (success, failure, error or timeout, every workflow); cancelled, skipped, queued and running runs are not in it. */
+export type TestOpsTestCoverage = {
+  __typename?: 'TestOpsTestCoverage';
+  /** Completed CI runs whose start day is in the window, in scope, from every workflow and provider. */
+  completedRuns: Scalars['Int']['output'];
+  /** Of those, the runs with at least one stored test suite that holds at least one test case. */
+  runsWithTests: Scalars['Int']['output'];
+  /** ``runsWithTests`` as a percent of ``completedRuns`` (0 to 100). Null = no completed run in scope (not 0). */
+  sharePct?: Maybe<Scalars['Float']['output']>;
+};
+
+export type TestOpsTestWindowInput = {
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** First day of the window (UTC), included. */
+  sinceDate: Scalars['Date']['input'];
+  /** Team ids. Narrows to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Last day of the window (UTC), included. At most 90 days after ``sinceDate``; a later day, or a day before ``sinceDate``, is an error, not a cut answer. */
+  untilDate: Scalars['Date']['input'];
+};
+
+export type TestOpsTestWindowResult = {
+  __typename?: 'TestOpsTestWindowResult';
+  cases: TestOpsTestCaseCounts;
+  coverage: TestOpsTestCoverage;
+  /** ``failed / (passed + failed)`` over the window, as a percent (0 to 100). Null = no passed or failed case. */
+  failureRatePct?: Maybe<Scalars['Float']['output']>;
+  /** Summed flaky case names over summed distinct case names of the window, as a percent (0 to 100). Null = no distinct case, or a day stored without the counts (the whole window is then unavailable, not a smaller one). */
+  flakeRatePct?: Maybe<Scalars['Float']['output']>;
+  /** ``passed / (passed + failed)`` over the window, as a percent (0 to 100); skipped and quarantined cases are not in the denominator. Null = no passed or failed case. */
+  passRatePct?: Maybe<Scalars['Float']['output']>;
+  sinceDate: Scalars['Date']['output'];
+  untilDate: Scalars['Date']['output'];
 };
 
 export type ThresholdDirection =
