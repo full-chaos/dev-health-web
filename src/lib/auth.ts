@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import GitLab from "next-auth/providers/gitlab";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
@@ -42,6 +42,13 @@ import {
     wireConfigUsable,
 } from "@/lib/authServiceWire";
 import { ssoEnabled, type SsoSession } from "@/lib/authSso";
+import {
+    classifySocialRefusal,
+    refusedSocialSignInPath,
+    sameOriginCallbackPath,
+    SOCIAL_LOGIN_FAILED,
+    type SocialRefusalCode,
+} from "@/lib/authSocialRefusal";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -49,6 +56,80 @@ const authLogger = logger.child({ module: "auth" });
 // the session of that same read only: it is not kept in the session cookie (CHAOS-13105 byte
 // budget). No status answer in a run: the banner shows no address.
 const targetEmailOfRun = new WeakMap<object, string>();
+
+type AcceptedSocialExchange = {
+    // The backend's exchange answer (go-api SocialLoginResponse) as res.json() parsed it.
+    exchange: Awaited<ReturnType<Response["json"]>>;
+    read: Awaited<ReturnType<typeof readExchangeAnswer>>;
+};
+
+// The accepted social exchange of one Auth.js callback request, from signIn to jwt. With no adapter
+// both callbacks get the same account object (@auth/core lib/actions/callback/handle-login.js), so
+// each sign-in reads only its own answer, and an entry jwt never reads is collected with its account.
+const acceptedSocialExchange = new WeakMap<object, AcceptedSocialExchange>();
+
+// The sign-in page path of a refused social sign-in, with the sign-in's own callbackUrl when it is a
+// local path of this host. Outside a request scope (or with no such cookie) the callbackUrl is left out.
+async function refusedSocialSignIn(code: SocialRefusalCode): Promise<string> {
+    let callbackPath: string | undefined;
+    try {
+        const [requestHeaders, requestCookies] = await Promise.all([headers(), cookies()]);
+        const raw =
+            requestCookies.get("__Secure-authjs.callback-url")?.value ??
+            requestCookies.get("authjs.callback-url")?.value;
+        const host = (requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "")
+            .split(",")[0]
+            .trim();
+        callbackPath = sameOriginCallbackPath(raw, host);
+    } catch {
+        callbackPath = undefined;
+    }
+    return refusedSocialSignInPath(code, callbackPath);
+}
+
+// The social exchange of a sign-in: true with the answer handed to jwt, or the sign-in page path of
+// the refusal. The backend's detail.reason maps through a closed list; its text never reaches the URL.
+async function exchangeSocialSignIn(account: {
+    provider: string;
+    access_token?: string;
+}): Promise<true | string> {
+    const socialWire = wireConfigFromEnv();
+    // A missing issuer is a configuration fault: no exchange is started.
+    if (!wireConfigUsable(socialWire, "social_login"))
+        return refusedSocialSignIn(SOCIAL_LOGIN_FAILED);
+    const res = await deadlineFetch("auth")(`${getBackendUrl()}/api/v1/auth/social-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            provider: account.provider,
+            provider_access_token: account.access_token,
+        }),
+    });
+    if (!res.ok) {
+        const body: unknown = await res.json().catch((error: unknown) => {
+            authLogger.warn({ err: error }, "failed to parse social login error response");
+            return null;
+        });
+        const code = classifySocialRefusal(res.status, body);
+        authLogger.warn({ status: res.status, code }, "social login refused");
+        return refusedSocialSignIn(code);
+    }
+    const exchange = await res.json();
+    const read = await readExchangeAnswer(
+        {
+            accessToken: typeof exchange.access_token === "string" ? exchange.access_token : "",
+            sessionAccessToken: exchange.session_access_token,
+        },
+        socialWire,
+        "social_login",
+    );
+    // An answer that cannot be read is no sign-in.
+    if (read.kind === "refused" || read.kind === "unavailable") {
+        return refusedSocialSignIn(SOCIAL_LOGIN_FAILED);
+    }
+    acceptedSocialExchange.set(account, { exchange, read });
+    return true;
+}
 
 // No request reaches the jwt callback: read the incoming headers; outside a request scope send none.
 async function refreshClientIp(): Promise<string | undefined> {
@@ -242,6 +323,19 @@ const nextAuth = NextAuth({
             : []),
     ],
     callbacks: {
+        // A social sign-in exchanges the provider token here, before any session is written: a refusal
+        // goes to the sign-in page with its code and no session cookie (CHAOS-13756). Nothing it throws
+        // reaches Auth.js, which would answer AccessDenied on the error page.
+        async signIn({ account }) {
+            if (!account || account.provider === "credentials" || !account.access_token)
+                return true;
+            try {
+                return await exchangeSocialSignIn(account);
+            } catch (error) {
+                authLogger.error({ err: error }, "social login backend call failed");
+                return refusedSocialSignIn(SOCIAL_LOGIN_FAILED);
+            }
+        },
         async jwt({ token, user, account, trigger, session }) {
             const now = Date.now();
             clearHandoffUnconfirmed(token);
@@ -328,109 +422,45 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
-            // Social login: exchange OAuth token for backend JWT
-            const socialWire = wireConfigFromEnv();
-            if (
-                account &&
-                account.provider !== "credentials" &&
-                account.access_token &&
-                !wireConfigUsable(socialWire, "social_login")
-            ) {
-                // A missing issuer is a configuration fault: no exchange is started.
-                token.error = "social_login_failed";
-            } else if (account && account.provider !== "credentials" && account.access_token) {
-                try {
-                    const backendUrl = getBackendUrl();
-                    const res = await deadlineFetch("auth")(
-                        `${backendUrl}/api/v1/auth/social-login`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                provider: account.provider,
-                                provider_access_token: account.access_token,
-                            }),
-                        },
-                    );
-
-                    const exchange = res.ok ? await res.json() : undefined;
-                    const read = exchange
-                        ? await readExchangeAnswer(
-                              {
-                                  accessToken:
-                                      typeof exchange.access_token === "string"
-                                          ? exchange.access_token
-                                          : "",
-                                  sessionAccessToken: exchange.session_access_token,
-                              },
-                              socialWire,
-                              "social_login",
-                          )
-                        : undefined;
-                    if (read?.kind === "refused" || read?.kind === "unavailable") {
-                        // An answer that cannot be read is no sign-in.
-                        token.error = "social_login_failed";
-                    } else if (res.ok) {
-                        const data = exchange;
-                        token.id = data.user.id;
-                        token.org_id = data.user.org_id || undefined;
-                        token.role = data.user.role || undefined;
-                        token.is_superuser = data.user.is_superuser || false;
-                        token.needs_onboarding = data.needs_onboarding ?? false;
-                        // Only the exchange response can say the account is new; a client update() never can.
-                        token.is_new_user = data.is_new_user === true;
-                        token.access_token = data.access_token;
-                        token.refresh_token = data.refresh_token;
-                        // The exchange sets a new access token: the old service token is not its pair.
-                        setServiceToken(
-                            token,
-                            read?.kind === "read" && read.session.kind === "ok"
-                                ? {
-                                      token: read.session.token,
-                                      exp: read.session.exp,
-                                      actor:
-                                          typeof read.actor === "string" ? read.actor : undefined,
-                                  }
-                                : {
-                                      actor:
-                                          read?.kind === "read" && typeof read.actor === "string"
-                                              ? read.actor
-                                              : undefined,
-                                  },
-                        );
-                        if (read?.kind === "read" && read.sid !== undefined) token.sid = read.sid;
-                        token.expires_at =
-                            read?.kind === "read" && read.accessExp
-                                ? read.accessExp * 1000
-                                : Date.now() + (data.expires_in || 3600) * 1000;
-                        token.last_validated = Date.now();
-                    } else {
-                        const errorData = await res.json().catch((error) => {
-                            authLogger.warn(
-                                { err: error },
-                                "failed to parse social login error response",
-                            );
-                            return null;
-                        });
-                        token.error =
-                            errorData?.detail?.message ||
-                            errorData?.detail ||
-                            "social_login_failed";
-                    }
-                } catch (error) {
-                    authLogger.error({ err: error }, "social login backend call failed");
-                    token.error = "social_login_failed";
-                }
-            }
-            // A refused social sign-in is no session (CHAOS-13642): the token keeps the reason only,
-            // nothing that names a user or carries a credential.
-            if (
-                account &&
-                account.provider !== "credentials" &&
-                account.access_token &&
-                token.error
-            ) {
-                return { error: token.error } as JWT;
+            // Social login: signIn ran the exchange and hands the accepted answer over (CHAOS-13756). A refused
+            // social sign-in never reaches this callback: signIn sent it to the sign-in page with no session.
+            if (account && account.provider !== "credentials" && account.access_token) {
+                const accepted = acceptedSocialExchange.get(account);
+                acceptedSocialExchange.delete(account);
+                // signIn accepts a social sign-in only with a read answer: anything else writes no session.
+                if (!accepted) return null;
+                const { exchange: data, read } = accepted;
+                token.id = data.user.id;
+                token.org_id = data.user.org_id || undefined;
+                token.role = data.user.role || undefined;
+                token.is_superuser = data.user.is_superuser || false;
+                token.needs_onboarding = data.needs_onboarding ?? false;
+                // Only the exchange response can say the account is new; a client update() never can.
+                token.is_new_user = data.is_new_user === true;
+                token.access_token = data.access_token;
+                token.refresh_token = data.refresh_token;
+                // The exchange sets a new access token: the old service token is not its pair.
+                setServiceToken(
+                    token,
+                    read?.kind === "read" && read.session.kind === "ok"
+                        ? {
+                              token: read.session.token,
+                              exp: read.session.exp,
+                              actor: typeof read.actor === "string" ? read.actor : undefined,
+                          }
+                        : {
+                              actor:
+                                  read?.kind === "read" && typeof read.actor === "string"
+                                      ? read.actor
+                                      : undefined,
+                          },
+                );
+                if (read?.kind === "read" && read.sid !== undefined) token.sid = read.sid;
+                token.expires_at =
+                    read?.kind === "read" && read.accessExp
+                        ? read.accessExp * 1000
+                        : Date.now() + (data.expires_in || 3600) * 1000;
+                token.last_validated = Date.now();
             }
 
             if (handoff?.kind === "onboardComplete") {

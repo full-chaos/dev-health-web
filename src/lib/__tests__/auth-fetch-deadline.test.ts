@@ -57,6 +57,9 @@ type Token = Record<string, unknown>;
 type JwtCallback = (params: { token: Token; user?: unknown; account?: unknown }) => Promise<Token>;
 const jwt = (): JwtCallback =>
     (nextAuthConfig.value as { callbacks: { jwt: JwtCallback } }).callbacks.jwt;
+type SignInCallback = (params: { account?: unknown }) => Promise<boolean | string>;
+const signIn = (): SignInCallback =>
+    (nextAuthConfig.value as { callbacks: { signIn: SignInCallback } }).callbacks.signIn;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // A signed access token: the server verifies the token it receives against the key set.
 const NEW_ACCESS = mint({ sid: "ses_DeadlineAAAAAAAAAAAAAA", exp: inSeconds(1800) });
@@ -257,14 +260,11 @@ describe("auth jwt callback with a backend that never answers", () => {
     it("a social login that never answers settles at the deadline and logs the line (CHAOS-9112)", async () => {
         vi.stubGlobal("fetch", stallingFetch());
         const state = track(
-            jwt()({
-                token: {},
-                account: { provider: "github", access_token: "provider-token" },
-            }),
+            signIn()({ account: { provider: "github", access_token: "provider-token" } }),
         );
         await sleep(400);
         expect(state.settled).toBe(true);
-        expect((state.value as Token).error).toBe("social_login_failed");
+        expect(state.value).toBe("/auth/signin?error=social_login_failed");
         expect(deadlineLines()).toHaveLength(1);
         expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/social-login" });
     });

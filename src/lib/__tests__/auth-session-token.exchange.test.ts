@@ -58,6 +58,9 @@ type Jwt = (p: {
     account?: Record<string, unknown> | null;
 }) => Promise<Token>;
 const jwt = (): Jwt => (nextAuthConfig.value as { callbacks: { jwt: Jwt } }).callbacks.jwt;
+type SignIn = (p: { account?: Record<string, unknown> | null }) => Promise<boolean | string>;
+const signIn = (): SignIn =>
+    (nextAuthConfig.value as { callbacks: { signIn: SignIn } }).callbacks.signIn;
 const SOCIAL = "/api/v1/auth/social-login";
 const fetchMock = vi.fn();
 const logged = () => vi.mocked(logSessionBranch).mock.calls.map(([f]) => f);
@@ -74,6 +77,13 @@ const stored = (): Token => ({
     last_validated: Date.now(),
 });
 const account = { provider: "github", access_token: "gh-token" };
+/** One OAuth callback (CHAOS-13756): signIn runs the exchange; jwt stores what it accepted. */
+async function exchange(token: Token): Promise<Token> {
+    const callbackAccount = { ...account };
+    const verdict = await signIn()({ account: callbackAccount });
+    if (verdict !== true) return { refused: verdict };
+    return jwt()({ token, user: null, account: callbackAccount });
+}
 const answerOf =
     (access: string, extra: Record<string, unknown> = {}) =>
     () =>
@@ -112,7 +122,7 @@ describe("the social exchange answer", () => {
                 [SOCIAL]: answerOf(mint({ exp, act: ACTOR }), { session_access_token: service }),
             }),
         );
-        const out = await jwt()({ token: stored(), user: null, account });
+        const out = await exchange(stored());
         expect(out.access_token).not.toBe("old-access");
         expect(out.refresh_token).toBe("social-refresh");
         expect(out.session_access_token).toBe(service);
@@ -123,7 +133,7 @@ describe("the social exchange answer", () => {
         expect(out.error).toBeUndefined();
     });
 
-    it("(g2) a refused service token sets social_login_failed and keeps no token", async () => {
+    it("(g2) a refused service token lands on social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(
@@ -133,50 +143,50 @@ describe("the social exchange answer", () => {
                 }),
             }),
         );
-        const out = await jwt()({ token: stored(), user: null, account });
-        expect(out).toEqual({ error: "social_login_failed" });
+        const out = await exchange(stored());
+        expect(out).toEqual({ refused: "/auth/signin?error=social_login_failed" });
         expect(logged()).toEqual([
             { operation: "social_login", branch: "session_token_exp_mismatch" },
         ]);
     });
 
-    it("(g2b) the key set unavailable sets social_login_failed and keeps no token", async () => {
+    it("(g2b) the key set unavailable lands on social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
             if (String(input).startsWith(ISSUER)) return new Response("down", { status: 503 });
             return eddsaFetch({ [SOCIAL]: answerOf(mint({ exp })) })(input, init);
         });
-        const out = await jwt()({ token: stored(), user: null, account });
-        expect(out).toEqual({ error: "social_login_failed" });
+        const out = await exchange(stored());
+        expect(out).toEqual({ refused: "/auth/signin?error=social_login_failed" });
     });
 
-    it("(g3) an HS256 access token sets social_login_failed and keeps no token", async () => {
+    it("(g3) an HS256 access token lands on social_login_failed and keeps no token", async () => {
         eddsaEnv();
         const part = (value: string) => Buffer.from(value).toString("base64url");
         const hs256 = `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: SID, exp: inSeconds(1800) }))}.${part("sig")}`;
         fetchMock.mockImplementation(
             eddsaFetch({ [SOCIAL]: answerOf(hs256, { session_access_token: "svc-value" }) }),
         );
-        const out = await jwt()({ token: stored(), user: null, account });
-        expect(out).toEqual({ error: "social_login_failed" });
+        const out = await exchange(stored());
+        expect(out).toEqual({ refused: "/auth/signin?error=social_login_failed" });
     });
 
     it("(g4) an answer without the field clears the stored service token and is counted", async () => {
         eddsaEnv();
         const exp = inSeconds(1800);
         fetchMock.mockImplementation(eddsaFetch({ [SOCIAL]: answerOf(mint({ exp })) }));
-        const out = await jwt()({ token: stored(), user: null, account });
+        const out = await exchange(stored());
         expect(out.session_access_token).toBeUndefined();
         expect(out.act_sub).toBeUndefined();
         expect(out.error).toBeUndefined();
         expect(logged()).toEqual([{ operation: "social_login", branch: "session_token_missing" }]);
     });
 
-    it("(g5) no pinned issuer sets social_login_failed and calls nothing", async () => {
+    it("(g5) no pinned issuer lands on social_login_failed and calls nothing", async () => {
         vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
-        const out = await jwt()({ token: stored(), user: null, account });
-        expect(out.error).toBe("social_login_failed");
+        const out = await exchange(stored());
+        expect(out.refused).toBe("/auth/signin?error=social_login_failed");
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // CHAOS-10877: the social exchange for each provider. W-1 the request and the stored pair for
-// github, google and gitlab under the EdDSA access-token contract; W-2 every failure keeps only the reason
-// (no user, no credential: CHAOS-13642) and a provider token never reaches a log line; W-5 a new social user has no org at login
-// (D6145 correction: the org and the owner membership come at onboarding).
+// github, google and gitlab under the EdDSA access-token contract; W-2 every failure lands on the sign-in page with a
+// closed code and writes no session (CHAOS-13642, CHAOS-13756) and a provider token never reaches a log line; W-5 a new
+// social user has no org at login (D6145 correction: the org and the owner membership come at onboarding). The exchange
+// runs in the signIn callback; jwt stores the answer signIn accepted for the same account (CHAOS-13756).
 
-const { nextAuthConfig } = vi.hoisted(() => ({ nextAuthConfig: { value: null as unknown } }));
+const { nextAuthConfig, requestScope, backendUrl } = vi.hoisted(() => ({
+    nextAuthConfig: { value: null as unknown },
+    requestScope: {
+        host: undefined as string | undefined,
+        callbackUrl: undefined as string | undefined,
+    },
+    backendUrl: { fail: false },
+}));
 
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next-auth", () => ({
@@ -26,7 +34,22 @@ vi.mock("next-auth/providers/credentials", () => ({ default: vi.fn() }));
 vi.mock("next-auth/providers/github", () => ({ default: vi.fn() }));
 vi.mock("next-auth/providers/google", () => ({ default: vi.fn() }));
 vi.mock("next-auth/providers/gitlab", () => ({ default: vi.fn() }));
-vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
+vi.mock("@/lib/origin", () => ({
+    getBackendUrl: () => {
+        if (backendUrl.fail) throw new Error("BACKEND_URL is not set");
+        return "http://backend.test";
+    },
+}));
+// The request scope of the Auth.js callback: its host and the Auth.js callback-url cookie.
+vi.mock("next/headers", () => ({
+    headers: async () => new Headers(requestScope.host ? { host: requestScope.host } : {}),
+    cookies: async () => ({
+        get: (name: string) =>
+            name === "authjs.callback-url" && requestScope.callbackUrl
+                ? { name, value: requestScope.callbackUrl }
+                : undefined,
+    }),
+}));
 vi.mock("@/lib/authSessionLog", () => ({
     logSessionBranch: vi.fn(),
     thrownErrorName: (e: unknown) => (e instanceof Error ? e.name : typeof e),
@@ -58,6 +81,12 @@ type Jwt = (p: {
     account?: Record<string, unknown> | null;
 }) => Promise<Token>;
 const jwt = (): Jwt => (nextAuthConfig.value as { callbacks: { jwt: Jwt } }).callbacks.jwt;
+type SignIn = (p: {
+    user?: Record<string, unknown> | null;
+    account?: Record<string, unknown> | null;
+}) => Promise<boolean | string>;
+const signIn = (): SignIn =>
+    (nextAuthConfig.value as { callbacks: { signIn: SignIn } }).callbacks.signIn;
 
 const SOCIAL = "/api/v1/auth/social-login";
 const PROVIDERS = ["github", "google", "gitlab"] as const;
@@ -76,6 +105,19 @@ const stored = (): Token => ({
     last_validated: Date.now(),
 });
 const accountOf = (provider: string) => ({ provider, access_token: PROVIDER_TOKEN });
+const refusedTo = (code: string) => `/auth/signin?error=${code}`;
+
+/** One Auth.js OAuth callback: signIn with the account, then (when it accepts) jwt with the same account object. */
+async function socialSignIn(
+    provider: string,
+    token: Token = stored(),
+    user: Record<string, unknown> | null = null,
+): Promise<{ verdict: boolean | string; out?: Token | null }> {
+    const account = accountOf(provider);
+    const verdict = await signIn()({ user: { id: "provider-user" }, account });
+    if (verdict !== true) return { verdict };
+    return { verdict, out: await jwt()({ token, user, account }) };
+}
 const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
         status,
@@ -126,6 +168,9 @@ beforeEach(() => {
     ])
         vi.mocked(f).mockClear();
     fetchMock.mockReset();
+    requestScope.host = undefined;
+    requestScope.callbackUrl = undefined;
+    backendUrl.fail = false;
     resetKeySetCacheForTests();
     vi.stubGlobal("fetch", fetchMock);
 });
@@ -149,7 +194,9 @@ describe("W-1 the exchange for each provider", () => {
                     ),
                 ),
             );
-            const out = await jwt()({ token: stored(), user: null, account: accountOf(provider) });
+            const { verdict, out } = await socialSignIn(provider);
+            expect(verdict).toBe(true);
+            if (!out) throw new Error("no token");
             const calls = socialCalls();
             expect(calls).toHaveLength(1);
             expect(JSON.parse(String(calls[0][1].body))).toEqual({
@@ -166,9 +213,6 @@ describe("W-1 the exchange for each provider", () => {
 });
 
 describe("W-2 a failed exchange", () => {
-    const reasonOnly = (out: Token) =>
-        expect(Object.keys(out).filter((key) => out[key] !== undefined)).toEqual(["error"]);
-
     it.each(PROVIDERS)("%s: a refused answer under eddsa is no sign-in", async (provider) => {
         eddsaEnv();
         const exp = inSeconds(1800);
@@ -181,36 +225,74 @@ describe("W-2 a failed exchange", () => {
                 ),
             ),
         );
-        const out = await jwt()({ token: stored(), user: null, account: accountOf(provider) });
-        expect(out.error).toBe("social_login_failed");
-        reasonOnly(out);
+        const { verdict } = await socialSignIn(provider);
+        expect(verdict).toBe(refusedTo("social_login_failed"));
     });
 
     it.each([
-        [401, { detail: { message: "invalid_provider_token" } }, "invalid_provider_token"],
-        [403, { detail: { message: "signup_unavailable" } }, "signup_unavailable"],
-        [409, { detail: "email_already_registered" }, "email_already_registered"],
+        [401, { detail: { message: "Invalid or expired provider token" } }, "social_login_failed"],
+        [
+            401,
+            {
+                detail: {
+                    message: "Invalid or expired provider token",
+                    reason: "invalid_credentials",
+                },
+            },
+            "social_invalid_credentials",
+        ],
+        [
+            403,
+            {
+                detail: {
+                    message: "Sign-up with github is not available",
+                    reason: "signup_unavailable",
+                },
+            },
+            "social_signup_unavailable",
+        ],
+        [409, { detail: "email_already_registered" }, "social_login_failed"],
         [400, {}, "social_login_failed"],
-    ])("a %i answer sets the backend message as the error", async (status, body, message) => {
+    ])("a %i answer lands on its code, never on the backend's text", async (status, body, code) => {
         eddsaEnv();
         fetchMock.mockResolvedValue(json(body, status));
-        const out = await jwt()({ token: stored(), user: null, account: accountOf("github") });
-        expect(out.error).toBe(message);
-        reasonOnly(out);
+        const { verdict } = await socialSignIn("github");
+        expect(verdict).toBe(refusedTo(code));
+        expect(String(verdict)).not.toMatch(/Invalid|Sign-up|email_already/);
     });
 
-    it("a 5xx answer that is not JSON sets social_login_failed", async () => {
+    it("a 5xx answer that is not JSON lands on social_login_failed", async () => {
+        eddsaEnv();
         fetchMock.mockResolvedValue(new Response("bad gateway", { status: 502 }));
-        const out = await jwt()({ token: stored(), user: null, account: accountOf("google") });
-        expect(out.error).toBe("social_login_failed");
-        reasonOnly(out);
+        const { verdict } = await socialSignIn("google");
+        expect(verdict).toBe(refusedTo("social_login_failed"));
     });
 
-    it("a network error sets social_login_failed", async () => {
+    it("a network error lands on social_login_failed", async () => {
+        eddsaEnv();
         fetchMock.mockRejectedValue(new TypeError("fetch failed"));
-        const out = await jwt()({ token: stored(), user: null, account: accountOf("gitlab") });
-        expect(out.error).toBe("social_login_failed");
-        reasonOnly(out);
+        const { verdict } = await socialSignIn("gitlab");
+        expect(verdict).toBe(refusedTo("social_login_failed"));
+    });
+
+    it("K2 a throw anywhere in signIn lands on social_login_failed, never on Auth.js's AccessDenied", async () => {
+        eddsaEnv();
+        backendUrl.fail = true;
+        const { verdict } = await socialSignIn("github");
+        expect(verdict).toBe(refusedTo("social_login_failed"));
+        expect(socialCalls()).toHaveLength(0);
+    });
+
+    it("a missing access-token issuer starts no exchange", async () => {
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
+        const { verdict } = await socialSignIn("github");
+        expect(verdict).toBe(refusedTo("social_login_failed"));
+        expect(socialCalls()).toHaveLength(0);
+    });
+
+    it("C5 jwt writes no session for a social account signIn did not accept", async () => {
+        const out = await jwt()({ token: stored(), user: null, account: accountOf("github") });
+        expect(out).toBeNull();
     });
 
     it.each([
@@ -219,10 +301,80 @@ describe("W-2 a failed exchange", () => {
         ["unreadable 502", () => new Response("down", { status: 502 })],
     ])("W-2b no log line holds the provider token (%s)", async (_name, respond) => {
         fetchMock.mockImplementation(async () => respond());
-        await jwt()({ token: stored(), user: null, account: accountOf("github") });
+        await socialSignIn("github");
         fetchMock.mockRejectedValue(new Error("boom"));
-        await jwt()({ token: stored(), user: null, account: accountOf("github") });
+        await socialSignIn("github");
         expect(everyLogged()).not.toContain(PROVIDER_TOKEN);
+    });
+});
+
+describe("the callbackUrl of a refused social sign-in", () => {
+    beforeEach(() => {
+        eddsaEnv();
+        fetchMock.mockResolvedValue(json({ detail: { message: "x", reason: "malformed" } }, 400));
+    });
+
+    it("keeps the sign-in's local callbackUrl", async () => {
+        requestScope.host = "app.example.test";
+        requestScope.callbackUrl = "https://app.example.test/metrics?team=a";
+        const { verdict } = await socialSignIn("github");
+        expect(verdict).toBe(
+            "/auth/signin?error=social_malformed&callbackUrl=%2Fmetrics%3Fteam%3Da",
+        );
+    });
+
+    it("drops a cross-origin callbackUrl: the sign-in page's safe default", async () => {
+        requestScope.host = "app.example.test";
+        requestScope.callbackUrl = "https://evil.example/steal";
+        const { verdict } = await socialSignIn("github");
+        expect(verdict).toBe(refusedTo("social_malformed"));
+    });
+});
+
+describe("K3 the signIn to jwt hand-off", () => {
+    it("two interleaved sign-ins each store their own exchange answer, once", async () => {
+        eddsaEnv();
+        const exp = inSeconds(1800);
+        const access = { github: mint({ exp }), google: mint({ exp: exp + 60 }) };
+        fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
+            answerWith(() => {
+                const { provider } = JSON.parse(String(init?.body)) as {
+                    provider: "github" | "google";
+                };
+                return json({
+                    ...answerBody(access[provider]),
+                    user: { id: `user-${provider}`, org_id: `org-${provider}`, role: "member" },
+                });
+            })(input, init),
+        );
+        const a = accountOf("github");
+        const b = accountOf("google");
+        expect(await signIn()({ user: { id: "pa" }, account: a })).toBe(true);
+        expect(await signIn()({ user: { id: "pb" }, account: b })).toBe(true);
+        const outB = await jwt()({ token: {}, user: null, account: b });
+        const outA = await jwt()({ token: {}, user: null, account: a });
+        expect([outA?.id, outA?.access_token, outA?.org_id]).toEqual([
+            "user-github",
+            access.github,
+            "org-github",
+        ]);
+        expect([outB?.id, outB?.access_token, outB?.org_id]).toEqual([
+            "user-google",
+            access.google,
+            "org-google",
+        ]);
+        expect(await jwt()({ token: {}, user: null, account: a })).toBeNull();
+    });
+});
+
+describe("C3 sign-ins that are not social", () => {
+    it.each([
+        ["credentials", { provider: "credentials", type: "credentials" }],
+        ["sso ticket", { provider: "sso", type: "credentials" }],
+        ["no account", null],
+    ])("%s: signIn admits it and starts no exchange", async (_name, account) => {
+        expect(await signIn()({ user: { id: "u" }, account })).toBe(true);
+        expect(socialCalls()).toHaveLength(0);
     });
 });
 
@@ -239,11 +391,8 @@ describe("W-5 a social new user", () => {
                 }),
             ),
         );
-        const out = await jwt()({
-            token: {},
-            user: { id: "p" },
-            account: accountOf(provider),
-        });
+        const { out } = await socialSignIn(provider, {}, { id: "p" });
+        if (!out) throw new Error("no token");
         expect(out.id).toBe("new-user");
         expect(out.org_id).toBeUndefined();
         expect(out.needs_onboarding).toBe(true);
@@ -263,7 +412,8 @@ describe("W-5 a social new user", () => {
                 }),
             ),
         );
-        const out = await jwt()({ token: {}, user: { id: "p" }, account: accountOf("github") });
+        const { out } = await socialSignIn("github", {}, { id: "p" });
+        if (!out) throw new Error("no token");
         expect(out.org_id).toBe("o9");
         expect(out.needs_onboarding).toBe(false);
         expect(out.is_new_user).toBe(false);
