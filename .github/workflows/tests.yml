@@ -625,6 +625,9 @@ jobs:
                   fetch-depth: 2
                   persist-credentials: false
             - run: bash ci/run_tests.sh unit
+              id: unit-tests
+              env:
+                  VITEST_JUNIT_FILE: ${{ runner.temp }}/vitest-junit/junit.xml
             - name: Rolldown parse baseline diagnostics (CHAOS-8789)
               # Diagnostic only, never fails the job. Reads the log that
               # run_unit tees to $RUNNER_TEMP/unit.log.
@@ -640,6 +643,16 @@ jobs:
                   path: coverage/lcov.info
                   if-no-files-found: error
                   retention-days: 90
+            # CHAOS-13768: the JUnit of the unit run, so a failed case reaches the Tests tab. It uploads when the unit
+            # step failed too; when the step never ran (an earlier step failed) there is no file and no upload.
+            - name: Upload vitest JUnit
+              if: always() && steps.unit-tests.outcome != 'skipped'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+              with:
+                  name: vitest-junit-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: ${{ runner.temp }}/vitest-junit/junit.xml
+                  if-no-files-found: error
+                  retention-days: 14
 
     e2e-default:
         name: E2E tests (default, shard ${{ matrix.shard }}/5)

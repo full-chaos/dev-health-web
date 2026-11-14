@@ -60,6 +60,9 @@ const GENERAL_TIERS = [
         commands: ["exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov"],
         jobId: "unit",
         packageScripts: {},
+        // CHAOS-13768: the step carries an id (the JUnit upload reads its outcome) and the env that names the JUnit file.
+        stepExtras:
+            "\n              id: unit-tests\n              env:\n                  VITEST_JUNIT_FILE: ${{ runner.temp }}/vitest-junit/junit.xml",
         tier: "unit",
     },
 ];
@@ -144,14 +147,14 @@ describe("CHAOS-3017 executable CI boundaries", () => {
 
     it.each(GENERAL_TIERS)(
         "keeps the $jobId job and harness fail closed",
-        ({ commands, jobId, packageScripts, tier }) => {
+        ({ commands, jobId, packageScripts, stepExtras = "", tier }) => {
             const workflowJob = job(contents(TESTS_WORKFLOW), jobId);
             const workflowCommand = `bash ci/run_tests.sh ${tier}`;
             const scripts = JSON.parse(contents(PACKAGE_JSON)).scripts;
             expect(workflowJob).not.toContain("continue-on-error:");
             expect(workflowJob).toMatch(/^        if: needs\.changes\.outputs\.code == 'true'$/mu);
             expect(runStep(workflowJob, workflowCommand)).toBe(
-                `            - run: ${workflowCommand}`,
+                `            - run: ${workflowCommand}${stepExtras}`,
             );
             for (const [name, implementation] of Object.entries(packageScripts)) {
                 expect(scripts[name]).toBe(implementation);

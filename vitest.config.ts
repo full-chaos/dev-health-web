@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
+import { vitestReporters } from "./ci/vitest-reporters";
 
 export default defineConfig({
     resolve: {
@@ -18,6 +19,8 @@ export default defineConfig({
         // Measured on 4 pinned CPUs with 32 workers: main failed 33 files on the defaults; with a
         // 30 s bound the slowest passing test took 26.9 s, so 40 s keeps a margin of about 1.5x.
         // The bound stays finite so a real hang still fails.
+        // CHAOS-13768: with VITEST_JUNIT_FILE set (the unit job) a JUnit file is written next to the default output.
+        reporters: vitestReporters(process.env),
         testTimeout: 40_000,
         hookTimeout: 40_000,
         // Component tests use jsdom; lib/util tests keep node environment.
