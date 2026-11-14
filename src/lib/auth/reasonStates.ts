@@ -39,6 +39,7 @@ export const DECISION_REASON_CODES = [
 export const CODE_STATES: Readonly<Record<string, AuthUiState>> = Object.freeze({
     allowed_by_repository_grant: "allowed",
     allowed_by_role: "allowed",
+    allowed_by_platform_admin: "allowed",
     allowed_by_membership_default: "allowed",
     grant_absent: "denied",
     repository_not_granted: "denied",
