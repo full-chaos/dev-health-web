@@ -35,6 +35,11 @@ export const WIRE_REASON_CODES = [
 ] as const;
 export type WireReasonCode = (typeof WIRE_REASON_CODES)[number];
 
+// Accepted as an allow before the ops contract names it (expand step); disjoint from WIRE_REASON_CODES.
+// The corpus re-sync that adds it to the contract set empties this list in the same change.
+export const ACCEPT_AHEAD_REASON_CODES = ["allowed_by_platform_admin"] as const;
+export type AcceptAheadReasonCode = (typeof ACCEPT_AHEAD_REASON_CODES)[number];
+
 export type ParseFailure =
     | "bad_json"
     | "duplicate_member"
@@ -61,7 +66,7 @@ export interface Obligations {
 export interface Decision {
     decisionId: string;
     allowed: boolean;
-    reasonCode: WireReasonCode;
+    reasonCode: WireReasonCode | AcceptAheadReasonCode;
     principalId: string;
     organizationId: string | null;
     policyRevision: number;
@@ -77,10 +82,11 @@ export type BatchResult =
 
 const MAX_BATCH = 100;
 const MAX_ALLOWLIST = 256;
-const ALLOW_REASONS: readonly WireReasonCode[] = [
+const ALLOW_REASONS: readonly (WireReasonCode | AcceptAheadReasonCode)[] = [
     "allowed_by_membership_default",
     "allowed_by_repository_grant",
     "allowed_by_role",
+    "allowed_by_platform_admin",
 ];
 
 function isCalendarDay(year: number, month: number, day: number): boolean {
@@ -206,9 +212,15 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
     const expiresAtMs = Date.parse(doc.expires_at as string);
     if (Number.isNaN(expiresAtMs)) refuse("bad_shape");
     if (typeof doc.reason_code !== "string") refuse("bad_shape");
-    if (!(WIRE_REASON_CODES as readonly string[]).includes(doc.reason_code as string))
+    if (
+        !(WIRE_REASON_CODES as readonly string[]).includes(doc.reason_code as string) &&
+        !(ACCEPT_AHEAD_REASON_CODES as readonly string[]).includes(doc.reason_code as string)
+    )
         refuse("unknown_reason");
-    if ((doc.allowed === true) !== ALLOW_REASONS.includes(doc.reason_code as WireReasonCode))
+    if (
+        (doc.allowed === true) !==
+        (ALLOW_REASONS as readonly string[]).includes(doc.reason_code as string)
+    )
         refuse("reason_mismatch");
     let obligations: Obligations | undefined;
     if ("obligations" in doc) {
@@ -218,7 +230,7 @@ function decisionFrom(doc: unknown, nowMs: number): Decision {
     const decision: Decision = {
         decisionId: doc.decision_id as string,
         allowed: doc.allowed as boolean,
-        reasonCode: doc.reason_code as WireReasonCode,
+        reasonCode: doc.reason_code as WireReasonCode | AcceptAheadReasonCode,
         principalId: doc.principal_id as string,
         organizationId: org as string | null,
         policyRevision: rev as number,
