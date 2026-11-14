@@ -249,6 +249,30 @@ describe("CoveragePage team series names (CHAOS-8748)", () => {
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(screen.getAllByTestId("card-Line Coverage · Team: Unresolved")).toHaveLength(2);
     });
+
+    it("names the org series as the organization, never as a team, and keeps both values", async () => {
+        mockFetchTeamNames.mockResolvedValue({ "linear:CHAOS": "Fullchaos" });
+        mockFetchCoverageMetrics.mockResolvedValue({
+            timeseries: [
+                teamSeries("linear:CHAOS"),
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "org",
+                    scope: "ORG",
+                    measure: "COVERAGE_LINE_PCT",
+                    buckets: [{ date: "2026-06-01", value: 62.8 }],
+                },
+            ],
+            breakdowns: [],
+        });
+        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+
+        expect(screen.getByTestId("card-Line Coverage · Team: Fullchaos")).toHaveAttribute("data-value", "80");
+        expect(screen.getByTestId("card-Line Coverage · Organization")).toHaveAttribute("data-value", "62.8");
+        expect(screen.getByRole("heading", { name: "Line Coverage Trend · Organization" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Line Coverage Trend · Team: Fullchaos" })).toBeInTheDocument();
+        expect(screen.queryByText(/Unresolved/)).toBeNull();
+    });
 });
 
 describe("CoveragePage org scope (CHAOS-8272)", () => {
