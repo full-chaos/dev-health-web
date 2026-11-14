@@ -16,6 +16,7 @@ import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { mergeSeriesByMeasure } from "@/lib/testops/aggregateSeries";
+import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import { isMissingKey, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
 import { formatMetricValue } from "@/lib/formatters";
 import {
@@ -70,6 +71,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
+    // The scope bar's team and repository selection narrows every read, as on the other tabs.
+    const { analytics: analyticsScope } = testOpsScopeFromFilters(filters);
 
     const [health, testOpsData] = await Promise.all([
         checkApiHealth(),
@@ -109,6 +112,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         topN: 10,
                     },
                 ],
+                filters: analyticsScope,
             },
             isTestMode,
         ),
