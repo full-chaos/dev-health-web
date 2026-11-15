@@ -851,12 +851,14 @@ export interface SsoOidcConfigInput {
     client_id?: string;
     client_secret?: string;
     issuer?: string;
+    [optional: string]: unknown;
 }
 
 export interface SsoSamlConfigInput {
     entity_id?: string;
     sso_url?: string;
     certificate?: string;
+    [optional: string]: unknown;
 }
 
 export interface SsoProviderCreate {

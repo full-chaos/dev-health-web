@@ -27,6 +27,30 @@ function configText(provider: SsoProvider | undefined, key: string): string {
     return typeof value === "string" ? value : "";
 }
 
+// The optional members of each config block (go-api oidcConfigInput / samlConfigInput). auth-service replaces
+// the stored config with the block it gets, so an edit carries back every one the API served for this provider.
+const OIDC_OPTIONAL = [
+    "authorization_endpoint",
+    "token_endpoint",
+    "userinfo_endpoint",
+    "jwks_uri",
+    "scopes",
+    "claim_mapping",
+] as const;
+const SAML_OPTIONAL = ["slo_url", "name_id_format", "attribute_mapping"] as const;
+
+function servedOptional(
+    provider: SsoProvider | undefined,
+    keys: readonly string[],
+): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const key of keys) {
+        const value = provider?.config?.[key];
+        if (value !== undefined) out[key] = value;
+    }
+    return out;
+}
+
 function Field(props: {
     id: string;
     label: string;
@@ -144,12 +168,14 @@ export function SsoProviderForm({
         const update: SsoProviderUpdate = { name: name.trim(), ...flags };
         if (configChanged && protocol === "oidc") {
             update.oidc_config = {
+                ...servedOptional(initial, OIDC_OPTIONAL),
                 client_id: clientId.trim(),
                 client_secret: clientSecret,
                 issuer: issuer.trim(),
             };
         } else if (configChanged) {
             update.saml_config = {
+                ...servedOptional(initial, SAML_OPTIONAL),
                 entity_id: entityId.trim(),
                 sso_url: ssoUrl.trim(),
                 certificate: certificate.trim(),

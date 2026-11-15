@@ -241,6 +241,73 @@ describe("SsoProvidersPage", () => {
         });
     });
 
+    it("an OIDC config edit carries back every optional field the API served", async () => {
+        const served = {
+            authorization_endpoint: "https://idp.test/auth",
+            token_endpoint: "https://idp.test/token",
+            userinfo_endpoint: null,
+            jwks_uri: "https://idp.test/jwks",
+            scopes: ["openid", "email"],
+            claim_mapping: { email: "mail" },
+        };
+        mockList.mockResolvedValue(
+            listOf([
+                makeProvider({
+                    config: {
+                        client_id: "cid-1",
+                        client_secret: "********",
+                        issuer: "https://idp.test",
+                        ...served,
+                    },
+                }),
+            ]),
+        );
+        mockUpdate.mockResolvedValue({ data: makeProvider() });
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.type(screen.getByLabelText("Client secret"), "rotated");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+        expect(mockUpdate.mock.calls[0][1].oidc_config).toEqual({
+            ...served,
+            client_id: "cid-1",
+            client_secret: "rotated",
+            issuer: "https://idp.test",
+        });
+    });
+
+    it("a SAML config edit carries back every optional field the API served", async () => {
+        const served = {
+            slo_url: "https://sso.test/slo",
+            name_id_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+            attribute_mapping: { email: "mail" },
+        };
+        const saml = makeProvider({
+            protocol: "saml",
+            config: {
+                entity_id: "ent",
+                sso_url: "https://sso.test/s",
+                certificate: "AB...",
+                ...served,
+            },
+        });
+        mockList.mockResolvedValue(listOf([saml]));
+        mockUpdate.mockResolvedValue({ data: saml });
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.type(screen.getByLabelText("Certificate"), "CERT");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+        expect(mockUpdate.mock.calls[0][1].saml_config).toEqual({
+            ...served,
+            entity_id: "ent",
+            sso_url: "https://sso.test/s",
+            certificate: "CERT",
+        });
+    });
+
     it("a SAML config edit needs the certificate again, then sends the whole block", async () => {
         const saml = makeProvider({
             protocol: "saml",

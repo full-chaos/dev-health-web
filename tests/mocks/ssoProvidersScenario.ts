@@ -149,7 +149,17 @@ export function ssoProvidersRouter(): Router {
             });
             return;
         }
-        rows[index] = { ...rows[index], ...(req.body as object) };
+        // auth-service replaces the stored config with the block it gets (secret masked, certificate cut).
+        const block = body.oidc_config
+            ? { ...body.oidc_config, client_secret: "********" }
+            : body.saml_config
+              ? {
+                    ...body.saml_config,
+                    certificate: `${String(body.saml_config.certificate).slice(0, 50)}...`,
+                }
+              : null;
+        const { oidc_config: _oidc, saml_config: _saml, ...rest } = body;
+        rows[index] = { ...rows[index], ...rest, ...(block ? { config: block } : {}) };
         res.json(rows[index]);
     });
     router.delete("/api/v1/auth/sso/providers/:id", (req, res) => {
