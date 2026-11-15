@@ -46,6 +46,7 @@ const AUTH_OUTCOME_CODES = [
 
 const PINNED_DECISION_CODES = [
     "allowed_by_membership_default",
+    "allowed_by_platform_admin",
     "allowed_by_repository_grant",
     "allowed_by_role",
     "delegation_invalid",

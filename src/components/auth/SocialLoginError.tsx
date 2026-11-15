@@ -6,6 +6,21 @@ type SocialLoginErrorProps = {
 
 const ERROR_MESSAGES: Record<string, string> = {
     social_login_failed: "Social login failed. Please try again or use email and password.",
+    // CHAOS-13756: a refused social sign-in, by the backend's closed detail.reason. None says whether
+    // another account exists (identity_conflict is the backend's own generic text).
+    social_email_unverified:
+        "The sign-in provider has not verified your email address. Verify it with the provider, then try again.",
+    social_identity_conflict:
+        "This sign-in could not be completed. Contact your administrator if this continues.",
+    social_signup_unavailable:
+        "Sign-up with this provider is not available. Sign in with an existing account or contact your administrator.",
+    social_principal_deactivated: "This account is disabled. Contact your administrator.",
+    social_invalid_credentials:
+        "The sign-in provider did not accept this sign-in. Please try again.",
+    social_malformed:
+        "The sign-in provider returned an account that cannot be used. Please try again or use another sign-in method.",
+    social_dependency_unavailable:
+        "This sign-in method is not available right now. Please try again later or use another sign-in method.",
     OAuthAccountNotLinked:
         "This email is already registered with a different sign-in method. Please sign in with your original method.",
     OAuthCallbackError: "An error occurred during social login. Please try again.",

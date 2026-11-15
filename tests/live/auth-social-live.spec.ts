@@ -65,7 +65,7 @@ async function clickGitHub(page: Page) {
  * itself answers as Configuration on the error page, is sent by web's route wrapper to the sign-in page as social_login_failed
  * (src/lib/authCallbackRefusal.ts).
  */
-async function expectRefused(page: Page, landing: { path: string; error: string }) {
+async function expectRefused(page: Page, landing: { path: string; error: string | undefined }) {
     try {
         await expect(page).toHaveURL(
             (url) => url.pathname === landing.path && url.searchParams.has("error"),
@@ -77,7 +77,9 @@ async function expectRefused(page: Page, landing: { path: string; error: string 
             `DIAG refusal: path=${landed.pathname} error=${landed.searchParams.get("error") ?? "none"}`,
         );
     }
-    expect(new URL(page.url()).searchParams.get("error")).toBe(landing.error);
+    if (landing.error !== undefined) {
+        expect(new URL(page.url()).searchParams.get("error")).toBe(landing.error);
+    }
     expect(await sessionUser(page)).toBeUndefined();
 }
 
@@ -91,18 +93,21 @@ test.describe("@auth-social GitHub sign-in", () => {
         ).toBeVisible();
     });
 
-    // PIN (CHAOS-13642): a login the backend refuses leaves no identity in the browser's session answer, and /dashboard bounces to
-    // sign-in. The GraphQL answer is only recorded (see the next cell).
-    test("a refused social login leaves a session with no user, e-mail or id", async ({ page }) => {
+    // PIN (CHAOS-13642, CHAOS-13756): a login the backend refuses lands on the sign-in page with the code of the backend's
+    // detail.reason and a sentence, and writes no session; /dashboard bounces to sign-in. The GraphQL answer is only recorded
+    // (see the next cell).
+    test("a refused social login lands on the sign-in page with its code and leaves no session", async ({
+        page,
+    }) => {
         await answerAuthorize(page, refuse);
         await clickGitHub(page);
-        await expect
-            .poll(async () => (await sessionBody(page)) !== undefined, { timeout: 60_000 })
-            .toBe(true);
-        await page.waitForTimeout(3_000);
-        const body = await sessionBody(page);
-        expect(Object.keys(body ?? {}).sort(), "session keys").toEqual(["error", "expires"]);
-        expect(typeof body?.error, "session.error").toBe("string");
+        await expectRefused(page, { path: "/auth/signin", error: undefined });
+        const code = new URL(page.url()).searchParams.get("error") ?? "";
+        expect(code, "the refusal code").toMatch(/^social_[a-z_]+$/);
+        await expect(
+            page.getByText("An error occurred during sign in. Please try again."),
+        ).toHaveCount(0);
+        expect(await sessionBody(page), "session").toBeNull();
         const dashboard = await page.goto("/dashboard");
         const landed = new URL(page.url());
         const line = `status=${String(dashboard?.status())} path=${landed.pathname}`;

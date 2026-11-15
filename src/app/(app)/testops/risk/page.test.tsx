@@ -121,3 +121,33 @@ describe("RiskPage org scope (CHAOS-8272)", () => {
         expect(mockFetchRiskMetrics).not.toHaveBeenCalled();
     });
 });
+
+describe("Delivery Risk says the scope bar's team and repository do not apply", () => {
+    const NOTICE =
+        "Delivery Risk shows the whole organization. The team and repository selection does not apply on this tab.";
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(
+            JSON.stringify({ time: { range_days: 14 }, who: {}, why: {}, how: {}, ...filter }),
+            "utf8",
+        ).toString("base64url"),
+    });
+    const renderWith = async (searchParams: Record<string, string>) => {
+        mockFetchRiskMetrics.mockResolvedValue(risk([]));
+        render(await RiskPage({ searchParams: Promise.resolve(searchParams) }));
+    };
+
+    it("shows the notice when a team is picked", async () => {
+        await renderWith(f({ scope: { level: "team", ids: ["t1"] }, what: {} }));
+        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+    });
+
+    it("shows the notice when a repository is picked", async () => {
+        await renderWith(f({ scope: { level: "org", ids: [] }, what: { repos: ["r1"] } }));
+        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+    });
+
+    it("shows no notice when nothing is picked", async () => {
+        await renderWith({});
+        expect(screen.queryByText(NOTICE)).toBeNull();
+    });
+});
