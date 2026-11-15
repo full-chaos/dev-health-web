@@ -116,7 +116,7 @@ export async function fetchTestOpsData(
         // converting. Sample data is already in minutes and is NOT passed here.
         const analytics = normalizeAnalyticsDurations(pipelinesRes.analytics);
         // The TestOpsPipeline answer serves every measure of the batch with its scope, the ORG series
-        // included; the tests read it too (the registered TestOpsTest text has no scope).
+        // included; the tests read it too.
         return {
             pipelines: analytics,
             tests: analytics,
