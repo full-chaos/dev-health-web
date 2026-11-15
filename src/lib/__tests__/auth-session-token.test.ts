@@ -104,6 +104,9 @@ type Jwt = (p: {
     account?: Record<string, unknown> | null;
 }) => Promise<Token>;
 const jwt = (): Jwt => (nextAuthConfig.value as { callbacks: { jwt: Jwt } }).callbacks.jwt;
+type SignIn = (p: { account?: Record<string, unknown> | null }) => Promise<boolean | string>;
+const signIn = (): SignIn =>
+    (nextAuthConfig.value as { callbacks: { signIn: SignIn } }).callbacks.signIn;
 type SessionCb = (p: {
     session: { user: Record<string, unknown> } & Record<string, unknown>;
     token: Token;
@@ -262,10 +265,13 @@ describe("the sealed token keeps the session token beside the access token", () 
             if (url.endsWith("/.well-known/jwks.json")) return keysResponse();
             throw new Error(`unexpected fetch ${url}`);
         });
+        // CHAOS-13756: signIn runs the exchange; jwt stores the answer for the same account object.
+        const account = { provider: "github", access_token: "gh-token" };
+        expect(await signIn()({ account })).toBe(true);
         const out = await jwt()({
             token: withSession({ expires_at: Date.now() + 3600_000 }),
             user: null,
-            account: { provider: "github", access_token: "gh-token" },
+            account,
         });
         expect(out.access_token).toBe(socialAccess);
         expect(out.session_access_token).toBeUndefined();

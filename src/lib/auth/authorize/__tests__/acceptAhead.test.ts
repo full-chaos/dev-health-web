@@ -22,20 +22,21 @@ const decision = (over: Record<string, unknown> = {}) => ({
     ...over,
 });
 
-describe("accept-ahead reason set", () => {
-    it("is pinned exactly and disjoint from the contract set", () => {
-        expect([...ACCEPT_AHEAD_REASON_CODES]).toEqual([CODE]);
+describe("the platform-admin allow reason is a contract code", () => {
+    it("is in the contract set and the decision vocabulary, and the accept-ahead set is empty and disjoint", () => {
+        expect(WIRE_REASON_CODES as readonly string[]).toContain(CODE);
+        expect(DECISION_REASON_CODES as readonly string[]).toContain(CODE);
+        expect([...ACCEPT_AHEAD_REASON_CODES]).toEqual([]);
         for (const code of ACCEPT_AHEAD_REASON_CODES) {
             expect((WIRE_REASON_CODES as readonly string[]).includes(code)).toBe(false);
-            expect((DECISION_REASON_CODES as readonly string[]).includes(code)).toBe(false);
         }
     });
-    it("accepts allowed=true with allowed_by_platform_admin as an allow", () => {
+    it("accepts allowed=true with the code as an allow", () => {
         const r = parseDecision(JSON.stringify(decision()), NOW);
         expect(r.ok && r.decision.allowed).toBe(true);
         expect(r.ok && r.decision.reasonCode).toBe(CODE);
     });
-    it("refuses allowed=false with allowed_by_platform_admin", () => {
+    it("refuses allowed=false with the code", () => {
         expect(parseDecision(JSON.stringify(decision({ allowed: false })), NOW)).toEqual({
             ok: false,
             reason: "reason_mismatch",
@@ -51,6 +52,14 @@ describe("accept-ahead reason set", () => {
         expect(parseBatch(batch(decision({ allowed: false })), 1, NOW)).toEqual({
             ok: false,
             reason: "reason_mismatch",
+        });
+    });
+    it("still refuses a code outside both sets", () => {
+        expect(
+            parseDecision(JSON.stringify(decision({ reason_code: "allowed_by_nobody" })), NOW),
+        ).toEqual({
+            ok: false,
+            reason: "unknown_reason",
         });
     });
     it("maps the code to the allowed UI state", () => {

@@ -36,10 +36,13 @@ const PROVIDER_TOKEN = "gho_provider_token";
 
 const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
     if (String(input).endsWith(SOCIAL)) {
-        return new Response(JSON.stringify({ detail: { message: REFUSAL } }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-        });
+        return new Response(
+            JSON.stringify({ detail: { message: REFUSAL, reason: "email_unverified" } }),
+            {
+                status: 403,
+                headers: { "content-type": "application/json" },
+            },
+        );
     }
     throw new Error(`unexpected fetch ${String(input)}`);
 });
@@ -62,6 +65,9 @@ afterAll(() => {
 });
 
 const jwt = (): Jwt => (captured.config as { callbacks: { jwt: Jwt } }).callbacks.jwt;
+type SignIn = (p: Record<string, unknown>) => Promise<boolean | string>;
+const signIn = (): SignIn =>
+    (captured.config as { callbacks: { signIn: SignIn } }).callbacks.signIn;
 
 // The arguments of the jwt callback at an OAuth sign-in (@auth/core lib/actions/callback).
 const refusedSignIn = () =>
@@ -84,16 +90,36 @@ const refusedSignIn = () =>
         trigger: "signIn",
     });
 
-describe("a refused social sign-in (CHAOS-13642)", () => {
-    it("the jwt callback keeps the reason and nothing that names a user or carries a credential", async () => {
-        const token = await refusedSignIn();
+// The OAuth callback account of the refused sign-in, as Auth.js passes it to signIn and then jwt.
+const refusedAccount = () => ({
+    provider: "github",
+    type: "oauth",
+    providerAccountId: "583231",
+    access_token: PROVIDER_TOKEN,
+    token_type: "bearer",
+});
+
+describe("a refused social sign-in (CHAOS-13642, CHAOS-13756)", () => {
+    it("signIn sends it to the sign-in page with the reason's code: no session is written", async () => {
+        fetchSpy.mockClear();
+        const verdict = await signIn()({
+            user: { id: USER_ID, name: "Octo Cat", email: EMAIL },
+            account: refusedAccount(),
+            profile: { id: 583231, login: "octocat", email: EMAIL },
+        });
         expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith(SOCIAL))).toBe(true);
-        const kept = Object.fromEntries(Object.entries(token).filter(([, v]) => v !== undefined));
-        expect(kept).toEqual({ error: REFUSAL });
+        expect(verdict).toBe("/auth/signin?error=social_email_unverified");
+        expect(String(verdict)).not.toContain(REFUSAL);
     });
 
-    it("GET /api/auth/session serves no user, only the reason", async () => {
-        const token = await refusedSignIn();
+    it("jwt writes no session for a social account signIn did not accept, and calls no backend", async () => {
+        fetchSpy.mockClear();
+        expect(await refusedSignIn()).toBeNull();
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("GET /api/auth/session of a cookie a refused sign-in left before CHAOS-13756 serves no user, only the reason", async () => {
+        const token = { error: REFUSAL };
         const cookie = `${COOKIE}=${await encode({ secret: SECRET, salt: COOKIE, token })}`;
         const res = await GET(
             new NextRequest(`${ORIGIN}/api/auth/session`, { headers: { cookie } }),

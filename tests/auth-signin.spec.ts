@@ -54,3 +54,38 @@ test("successful sign-in returns to the protected URL including its query", asyn
 
     await expect(page).toHaveURL(/\/settings\?tab=integrations$/);
 });
+
+// CHAOS-13756: a refused social sign-in lands on /auth/signin?error=social_<reason>. Each code shows its
+// sentence; the screenshots (before: no code, after: each code) are attached to the report for the review.
+const SOCIAL_REFUSAL_SENTENCES: Record<string, string> = {
+    social_email_unverified:
+        "The sign-in provider has not verified your email address. Verify it with the provider, then try again.",
+    social_identity_conflict:
+        "This sign-in could not be completed. Contact your administrator if this continues.",
+    social_signup_unavailable:
+        "Sign-up with this provider is not available. Sign in with an existing account or contact your administrator.",
+    social_principal_deactivated: "This account is disabled. Contact your administrator.",
+    social_invalid_credentials:
+        "The sign-in provider did not accept this sign-in. Please try again.",
+    social_malformed:
+        "The sign-in provider returned an account that cannot be used. Please try again or use another sign-in method.",
+    social_dependency_unavailable:
+        "This sign-in method is not available right now. Please try again later or use another sign-in method.",
+    social_login_failed: "Social login failed. Please try again or use email and password.",
+};
+
+test("/auth/signin shows the sentence of each social refusal code", async ({ page }, testInfo) => {
+    await page.goto("/auth/signin");
+    await testInfo.attach("before-no-code", {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+    });
+    for (const [code, sentence] of Object.entries(SOCIAL_REFUSAL_SENTENCES)) {
+        await page.goto(`/auth/signin?error=${code}`);
+        await expect(page.getByText(sentence, { exact: true })).toBeVisible();
+        await testInfo.attach(`after-${code}`, {
+            body: await page.screenshot({ fullPage: true }),
+            contentType: "image/png",
+        });
+    }
+});

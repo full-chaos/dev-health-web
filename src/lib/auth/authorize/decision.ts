@@ -8,6 +8,7 @@ import { isRepositoryKeyOrAll } from "./repositoryKey";
 
 export const WIRE_REASON_CODES = [
     "allowed_by_membership_default",
+    "allowed_by_platform_admin",
     "allowed_by_repository_grant",
     "allowed_by_role",
     "delegation_invalid",
@@ -35,9 +36,10 @@ export const WIRE_REASON_CODES = [
 ] as const;
 export type WireReasonCode = (typeof WIRE_REASON_CODES)[number];
 
-// Accepted as an allow before the ops contract names it (expand step); disjoint from WIRE_REASON_CODES.
-// The corpus re-sync that adds it to the contract set empties this list in the same change.
-export const ACCEPT_AHEAD_REASON_CODES = ["allowed_by_platform_admin"] as const;
+// The expand mechanism for the next new reason code: a code listed here is accepted as an allow before the ops
+// contract names it, and stays disjoint from WIRE_REASON_CODES. The corpus re-sync that moves a code into the
+// contract set empties this list in the same change. Empty today.
+export const ACCEPT_AHEAD_REASON_CODES = [] as const;
 export type AcceptAheadReasonCode = (typeof ACCEPT_AHEAD_REASON_CODES)[number];
 
 export type ParseFailure =

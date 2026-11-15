@@ -120,15 +120,18 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const fetchFailed = Boolean(testOpsData.fetchFailed);
 
     // The approved Overview strip: five tiles. Queue Time and Rerun Rate are on the Pipelines tab.
-    const tiles = resolveTestOpsTiles([
-        { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
-        { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
-        { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
-        { id: "TEST_FLAKE_RATE", ts: testTimeseries },
-        { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
-    ]);
+    const tiles = resolveTestOpsTiles(
+        [
+            { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
+            { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
+            { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
+            { id: "TEST_FLAKE_RATE", ts: testTimeseries },
+            { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
+        ],
+        scope.teamIds,
+    );
 
-    const rateTrend = buildPipelineRateTrend(pipelineTimeseries);
+    const rateTrend = buildPipelineRateTrend(pipelineTimeseries, scope.teamIds);
     const failurePatterns = buildFailurePatternsModel(
         pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE"),
         "%",

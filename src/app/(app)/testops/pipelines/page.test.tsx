@@ -322,3 +322,132 @@ describe("PipelinesPage org scope (CHAOS-8272)", () => {
         expect(mockFetchTestOpsData).not.toHaveBeenCalled();
     });
 });
+
+describe("TestOps Pipelines tiles read one scope, never a mean across scopes", () => {
+    const scoped = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        values: Array<[string, number]>,
+    ) => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: values.map(([date, value]) => ({ date, value })),
+    });
+    // team-a 1 of 1 runs passed, team-b 1 of 9, the org 2 of 10 (the API's ORG series).
+    const success = [
+        scoped("PIPELINE_SUCCESS_RATE", "team-a", "DIMENSION", [["2026-11-13", 100]]),
+        scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", [["2026-11-13", 100 / 9]]),
+        scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", [["2026-11-13", 20]]),
+    ];
+    const failureTeams = [
+        scoped("PIPELINE_FAILURE_RATE", "team-a", "DIMENSION", [["2026-11-13", 0]]),
+        scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", [["2026-11-13", 800 / 9]]),
+    ];
+    const tileValue = (label: string) =>
+        screen
+            .getAllByTestId("metric-tile")
+            .find((tile) => tile.getAttribute("data-label") === label)
+            ?.getAttribute("data-value");
+
+    it("the Success Rate tile and trend show the ORG rate, not the mean of the teams and the org", async () => {
+        mockFetchTestOpsData.mockResolvedValue({
+            pipelines: { timeseries: [...success, ...failureTeams], breakdowns: [] },
+            tests: empty,
+            coverage: empty,
+        });
+        await renderPage();
+        expect(tileValue("Success Rate")).toBe("20");
+        expect(rateChartSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            points: [{ day: "2026-11-13", success: 20 }],
+        });
+    });
+
+    it("with ORG series for both rates from the same rows, Success + Failure = 100", async () => {
+        mockFetchTestOpsData.mockResolvedValue({
+            pipelines: {
+                timeseries: [
+                    ...success,
+                    ...failureTeams,
+                    scoped("PIPELINE_FAILURE_RATE", "org", "ORG", [["2026-11-13", 80]]),
+                ],
+                breakdowns: [],
+            },
+            tests: empty,
+            coverage: empty,
+        });
+        await renderPage();
+        expect(tileValue("Success Rate")).toBe("20");
+        expect(tileValue("Failure Rate")).toBe("80");
+        expect(Number(tileValue("Success Rate")) + Number(tileValue("Failure Rate"))).toBe(100);
+    });
+});
+
+describe("TestOps Pipelines applies the scope bar's filter", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+    const teamFilter = (ids: string[], repos: string[] = []) =>
+        f({
+            time: { range_days: 14 },
+            scope: { level: "team", ids },
+            who: {},
+            what: repos.length > 0 ? { repos } : {},
+            why: {},
+            how: {},
+        });
+
+    it("sends the scope bar's team and repository selection to analytics", async () => {
+        await renderPage(teamFilter(["t1"], ["r1"]));
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "TEAM", ids: ["t1"] }, what: { repos: ["r1"] } },
+        });
+    });
+
+    it("with no filter sends the organization scope", async () => {
+        await renderPage();
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "ORG" } },
+        });
+    });
+
+    it("with one team selected, the tiles and the trend show that team's series", async () => {
+        const series = (
+            measure: string,
+            dimensionValue: string,
+            scope: "DIMENSION" | "ORG",
+            value: number,
+        ) => ({
+            dimension: "TEAM",
+            dimensionValue,
+            scope,
+            measure,
+            buckets: [{ date: "2026-11-13", value }],
+        });
+        // The API answers a team-b filter with team-b's series and the org series read under the
+        // filter; the page reads team-b's own series.
+        mockFetchTestOpsData.mockResolvedValue({
+            pipelines: {
+                timeseries: [
+                    series("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+                    series("PIPELINE_SUCCESS_RATE", "org", "ORG", 20),
+                    series("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+                ],
+                breakdowns: [],
+            },
+            tests: empty,
+            coverage: empty,
+        });
+        await renderPage(teamFilter(["team-b"]));
+        const success = screen
+            .getAllByTestId("metric-tile")
+            .find((tile) => tile.getAttribute("data-label") === "Success Rate");
+        expect(Number(success?.getAttribute("data-value"))).toBeCloseTo(100 / 9, 6);
+        const points = (
+            rateChartSpy.mock.calls.at(-1)?.[0] as { points: Array<{ success: number }> }
+        ).points;
+        expect(points[0].success).toBeCloseTo(100 / 9, 6);
+    });
+});

@@ -1,6 +1,6 @@
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
 
-import { mergeSeriesByMeasure } from "./aggregateSeries";
+import { seriesForScope } from "./aggregateSeries";
 
 /** One day of the two-series pipeline trend. `null` = no served value for that day (a gap). */
 export type PipelineRatePoint = {
@@ -13,13 +13,16 @@ export type PipelineRatePoint = {
  * The daily success rate and failure rate of completed pipeline runs, side by side, for the
  * two-series trend chart (TestOps Overview and Pipelines).
  *
- * It only lines the two served series up by day (`mergeSeriesByMeasure` is the same roll-up the
- * tiles use). It computes no value: a day that one series does not serve stays `null` there, and
- * the failure rate is never derived from the success rate (the two need not sum to 100%).
+ * It only lines the two served series up by day (`seriesForScope` is the same pick the tiles use:
+ * one scope, never a mean across scopes). It computes no value: a day that one series does not
+ * serve stays `null` there, and the failure rate is never derived from the success rate.
  */
-export function buildPipelineRateTrend(timeseries: TimeseriesResult[]): PipelineRatePoint[] {
-    const success = mergeSeriesByMeasure(timeseries, "PIPELINE_SUCCESS_RATE");
-    const failure = mergeSeriesByMeasure(timeseries, "PIPELINE_FAILURE_RATE");
+export function buildPipelineRateTrend(
+    timeseries: TimeseriesResult[],
+    teamIds?: readonly string[],
+): PipelineRatePoint[] {
+    const success = seriesForScope(timeseries, "PIPELINE_SUCCESS_RATE", teamIds);
+    const failure = seriesForScope(timeseries, "PIPELINE_FAILURE_RATE", teamIds);
 
     const byDay = new Map<string, PipelineRatePoint>();
     const point = (day: string): PipelineRatePoint => {
