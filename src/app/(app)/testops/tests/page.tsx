@@ -70,8 +70,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
-
-    const { analytics: _analyticsScope, ...scope } = testOpsScopeFromFilters(filters);
+    // The scope bar's team and repository selection narrows every read, as on the other tabs.
+    const { analytics: analyticsScope, ...scope } = testOpsScopeFromFilters(filters);
     const [health, testWindow, testOpsData] = await Promise.all([
         checkApiHealth(),
         fetchTestWindow(
@@ -119,6 +119,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         topN: 10,
                     },
                 ],
+                filters: analyticsScope,
             },
             isTestMode,
         ),

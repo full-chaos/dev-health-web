@@ -506,3 +506,32 @@ describe("TestsPage org scope (CHAOS-8272)", () => {
         expect(mockFetchTestOpsData).not.toHaveBeenCalled();
     });
 });
+
+describe("TestOps Tests sends the scope bar's filter", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+
+    it("sends the scope bar's team and repository selection to analytics", async () => {
+        await renderPage(
+            f({
+                time: { range_days: 14 },
+                scope: { level: "team", ids: ["t1"] },
+                who: {},
+                what: { repos: ["r1"] },
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "TEAM", ids: ["t1"] }, what: { repos: ["r1"] } },
+        });
+    });
+
+    it("with no filter sends the organization scope", async () => {
+        await renderPage();
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: { scope: { level: "ORG" } },
+        });
+    });
+});
