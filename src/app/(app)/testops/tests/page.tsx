@@ -14,10 +14,13 @@ import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
-import { fetchTestOpsData } from "@/lib/testops/fetchers";
-import { mergeSeriesByMeasure } from "@/lib/testops/aggregateSeries";
+import { fetchTestOpsData, fetchTestWindow } from "@/lib/testops/fetchers";
+import { testOpsScopeFromFilters } from "@/lib/testops/scope";
+import { isPartialCoverage, testWindowFailed } from "@/lib/testops/testWindow";
+import { testWindowTiles } from "@/lib/testops/testWindowTiles";
+import { getSparkline, mergeSeriesByMeasure } from "@/lib/testops/aggregateSeries";
 import { isMissingKey, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
-import { formatMetricValue } from "@/lib/formatters";
+import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import {
     TimeseriesBucket,
     TimeseriesResult,
@@ -46,9 +49,6 @@ const FEW_FLAKY_GROUPS = 3;
 /** Height of the one-row flake heatmap (px). */
 const FLAKY_HEATMAP_HEIGHT = 160;
 
-/** Tiles whose change value must not be read as "no failures": the two failure-type rates. */
-const HISTORY_SENSITIVE = ["TEST_FAILURE_RATE", "TEST_FLAKE_RATE"];
-
 export default async function TestsPage({ searchParams }: TestsPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -71,8 +71,18 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
 
-    const [health, testOpsData] = await Promise.all([
+    const { analytics: _analyticsScope, ...scope } = testOpsScopeFromFilters(filters);
+    const [health, testWindow, testOpsData] = await Promise.all([
         checkApiHealth(),
+        fetchTestWindow(
+            {
+                sinceDate: startDate,
+                untilDate: endDate,
+                repoIds: scope.repoIds ?? null,
+                teamIds: scope.teamIds ?? null,
+            },
+            isTestMode,
+        ),
         fetchTestOpsData(
             {
                 timeseries: [
@@ -122,12 +132,18 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     const testBreakdowns = testOpsData.tests.breakdowns || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
 
-    const tiles = resolveTestOpsTiles([
-        { id: "TEST_PASS_RATE", ts: testTimeseries },
-        { id: "TEST_FAILURE_RATE", ts: testTimeseries },
-        { id: "TEST_FLAKE_RATE", ts: testTimeseries },
-        { id: "TEST_SUITE_DURATION_P95", ts: testTimeseries },
-    ]);
+    // The rate tiles read the window answer (coverage, pass, failure, flake, skipped); the series
+    // only draws their sparklines. The suite duration tile still reads its series.
+    const tiles = [
+        ...testWindowTiles(testWindow, {
+            pass: getSparkline(testTimeseries, "TEST_PASS_RATE"),
+            failure: getSparkline(testTimeseries, "TEST_FAILURE_RATE"),
+            flake: getSparkline(testTimeseries, "TEST_FLAKE_RATE"),
+        }),
+        ...resolveTestOpsTiles([{ id: "TEST_SUITE_DURATION_P95", ts: testTimeseries }]),
+    ];
+    const partialCoverage =
+        !testWindowFailed(testWindow) && isPartialCoverage(testWindow.coverage.sharePct);
 
     const passRatePoints = trendPoints(testTimeseries, "TEST_PASS_RATE");
     // The series that feeds the P95 Suite Duration tile (minutes, as the fetcher normalises it).
@@ -153,12 +169,6 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             scale: "linear" as const,
         },
     };
-
-    // A failure-type rate with no served change value has too little history to compare.
-    // Say so in words: a missing comparison is not a proven failure-free period.
-    const insufficientHistory = tiles
-        .filter((tile) => HISTORY_SENSITIVE.includes(tile.id) && tile.delta === undefined)
-        .map((tile) => tile.label);
 
     const trendCards = [
         {
@@ -200,14 +210,16 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 
             <TestOpsTabs activeId="tests" filters={filters} role={activeRole} />
 
-            <MetricStrip data-testid="testops-tests-tiles">
+            <MetricStrip data-testid="testops-tests-tiles" columns={3}>
                 {tiles.map((tile) => (
                     <MetricCard
                         key={tile.id}
                         label={tile.label}
                         value={tile.value}
+                        valueText={tile.valueText}
                         unit={tile.unit}
                         delta={tile.delta}
+                        deltaSlot={tile.noDelta ? <></> : undefined}
                         deltaUnavailableLabel="Insufficient history"
                         inverseGood={tile.inverseGood}
                         spark={tile.spark}
@@ -256,12 +268,13 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                 </div>
             </Section>
 
-            {insufficientHistory.length > 0 ? (
-                <Notice variant="info" live={false} data-testid="testops-tests-history-notice">
-                    {insufficientHistory.join(" and ")}{" "}
-                    {insufficientHistory.length === 1 ? "shows" : "show"} insufficient history in
-                    this window; {insufficientHistory.length === 1 ? "it does" : "they do"} not
-                    establish a proven failure-free period.
+            {partialCoverage && !testWindowFailed(testWindow) ? (
+                <Notice variant="info" live={false} data-testid="testops-tests-partial-notice">
+                    Partial coverage: the pass, failure and flake rates cover{" "}
+                    {formatNumber(testWindow.coverage.runsWithTests)} of{" "}
+                    {formatNumber(testWindow.coverage.completedRuns)} completed runs, the runs that
+                    report tests. Failed runs without a test report appear on Pipelines, and are not
+                    in these rates.
                 </Notice>
             ) : null}
 

@@ -18,6 +18,10 @@ export type TestOpsTile = {
     value: number | undefined;
     delta: number | undefined;
     spark: ReturnType<typeof getSparkline>;
+    /** The tile's own value text (a rate cut down, never rounded up); the evidence shows the same text. */
+    valueText?: string;
+    /** No change value is read for this tile: the card draws no delta and no "No prior period". */
+    noDelta?: boolean;
 };
 
 /**
@@ -70,9 +74,10 @@ export function testOpsEvidenceSubject(
                             key={tile.id}
                             label={tile.label}
                             value={
-                                tile.value === undefined
+                                tile.valueText ??
+                                (tile.value === undefined
                                     ? undefined
-                                    : formatMetricValue(tile.value, tile.unit)
+                                    : formatMetricValue(tile.value, tile.unit))
                             }
                         />
                     ))}

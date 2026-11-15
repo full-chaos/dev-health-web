@@ -379,3 +379,14 @@ export const SAMPLE_COVERAGE_BASELINES = [
 
 /** Test-mode sample of `coverageScopeBaseline` (an invented number). */
 export const SAMPLE_COVERAGE_SCOPE_BASELINE = { lineBaselinePct: 82.6, lineDays: 30 };
+
+/** Test-mode sample of `testopsTestWindow`: a low-coverage window (invented numbers). */
+export const SAMPLE_TEST_WINDOW = {
+    sinceDate: "2024-01-01",
+    untilDate: "2024-01-14",
+    coverage: { completedRuns: 1000, runsWithTests: 12, sharePct: 1.2 },
+    cases: { passed: 99984, failed: 5, skipped: 11, quarantined: 0, total: 100000 },
+    passRatePct: 99.9949995,
+    failureRatePct: 0.0050005,
+    flakeRatePct: 0,
+};
