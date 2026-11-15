@@ -1,7 +1,8 @@
 "use server";
 
-import { failureFromError } from "@/lib/actionFailure";
-import { selfRequest } from "../api/_request";
+import { failureFromError, UserFacingActionError } from "@/lib/actionFailure";
+import { AdminApiError, selfRequest } from "../api/_request";
+import { isImpersonationRefusal } from "../ssoRefusals";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/result";
 import type {
@@ -22,6 +23,14 @@ async function withStatus<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
     try {
         return { data: await fn() };
     } catch (err) {
+        // An impersonation refusal is a product sentence the page shows as it is; any other 403 stays a bare status.
+        if (
+            err instanceof AdminApiError &&
+            err.status === 403 &&
+            isImpersonationRefusal(err.detail)
+        ) {
+            return failureFromError("ssoProviders", new UserFacingActionError(403, err.detail));
+        }
         return failureFromError("ssoProviders", err);
     }
 }

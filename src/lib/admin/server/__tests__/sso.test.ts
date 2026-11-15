@@ -4,6 +4,7 @@ vi.mock("@/lib/logger", () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
+vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const sessionContext = vi.hoisted(() => vi.fn());
 vi.mock("../_shared", () => ({
@@ -16,6 +17,8 @@ vi.mock("@/lib/serverDeadline", async (importOriginal) => ({
     fetchWithDeadline: (...args: unknown[]) => fetchMock(...args),
 }));
 
+import { AdminApiError } from "../../api/_request";
+import { IMPERSONATION_LIMIT_MESSAGE } from "@/lib/auth/platform/limits";
 import {
     activateSsoProvider,
     createSsoProvider,
@@ -145,6 +148,29 @@ describe("the ops action sso.write", () => {
         const result = await deactivateSsoProvider("p");
         expect(result.status).toBe(403);
         expect(fetchMock).not.toHaveBeenCalled();
+    });
+});
+
+describe("an impersonation refusal", () => {
+    it("keeps its sentence: the web guard's, which is the limits message", async () => {
+        sessionContext.mockRejectedValue(
+            new AdminApiError(403, "Forbidden", IMPERSONATION_LIMIT_MESSAGE),
+        );
+        expect(await deactivateSsoProvider("p")).toEqual({
+            error: IMPERSONATION_LIMIT_MESSAGE,
+            status: 403,
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps its sentence: go-api's", async () => {
+        fetchMock.mockResolvedValue(
+            refused(403, "Forbidden", "Not allowed in an impersonation session"),
+        );
+        expect(await createSsoProvider({ name: "x", protocol: "saml" })).toEqual({
+            error: "Not allowed in an impersonation session",
+            status: 403,
+        });
     });
 });
 

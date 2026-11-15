@@ -21,6 +21,7 @@ import {
 } from "@/lib/admin/server";
 import type { SsoProvider, SsoProviderCreate, SsoProviderUpdate } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { isImpersonationRefusal } from "@/lib/admin/ssoRefusals";
 import { SsoProviderForm } from "./SsoProviderForm";
 import { SsoProviderTable } from "./SsoProviderTable";
 
@@ -36,7 +37,7 @@ export default function SsoProvidersPage() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<{ text: string; status?: number } | null>(null);
     const [actionError, setActionError] = useState<{ text: string; status?: number } | null>(null);
-    const [writeRefused, setWriteRefused] = useState(false);
+    const [writeRefusal, setWriteRefusal] = useState<string | null>(null);
     const [formState, setFormState] = useState<FormState>({ mode: "closed" });
     const [saving, setSaving] = useState(false);
     const [busyId, setBusyId] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export default function SsoProvidersPage() {
 
     const reportActionError = (message: string, status?: number) => {
         if (status === 403) {
-            setWriteRefused(true);
+            setWriteRefusal(isImpersonationRefusal(message) ? message : READ_ONLY_NOTICE);
             setFormState({ mode: "closed" });
             setActionError(null);
             return;
@@ -103,7 +104,7 @@ export default function SsoProvidersPage() {
 
     const listForbidden = loadError?.status === 403;
     const unavailable = loadError?.status === 503;
-    const canWrite = !writeRefused && loadError === null;
+    const canWrite = writeRefusal === null && loadError === null;
 
     return (
         <div className="space-y-6">
@@ -122,9 +123,9 @@ export default function SsoProvidersPage() {
                 ) : null}
             </AdminHeader>
 
-            {writeRefused || listForbidden ? (
+            {writeRefusal !== null || listForbidden ? (
                 <Notice variant="warn" live={false}>
-                    {READ_ONLY_NOTICE}
+                    {writeRefusal ?? READ_ONLY_NOTICE}
                 </Notice>
             ) : null}
 
@@ -175,7 +176,7 @@ export default function SsoProvidersPage() {
                 />
             ) : null}
 
-            {loadError === null || writeRefused ? (
+            {loadError === null || writeRefusal !== null ? (
                 <Section title="SSO providers">
                     {loading ? (
                         <DataState variant="loading" title="Loading SSO providers..." />

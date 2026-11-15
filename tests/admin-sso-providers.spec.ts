@@ -48,6 +48,22 @@ test("creates a provider from the form", async ({ page }) => {
     await expect(page.getByText("Entra ID")).toBeVisible();
 });
 
+test("a name-only edit is saved; a config edit needs the secret again and makes no call", async ({
+    page,
+}) => {
+    await scenario("providers");
+    await page.goto("/org/admin/sso");
+    await page.getByRole("button", { name: "Edit" }).first().click();
+    await page.getByLabel("Name").fill("Okta renamed");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Okta renamed")).toBeVisible();
+    await page.getByRole("button", { name: "Edit" }).first().click();
+    await page.getByLabel("Issuer").fill("https://other.example");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText(/Enter the client secret again/)).toBeVisible();
+    await shot(page, "10-edit-config-needs-secret");
+});
+
 test("deletes a provider only after the confirm", async ({ page }) => {
     await scenario("providers");
     await page.goto("/org/admin/sso");

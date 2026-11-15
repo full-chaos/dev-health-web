@@ -35,6 +35,7 @@ function Field(props: {
     onChangeAction: (value: string) => void;
     type?: string;
     placeholder?: string;
+    error?: string | null;
 }) {
     return (
         <div>
@@ -51,6 +52,11 @@ function Field(props: {
                 onChange={(event) => props.onChangeAction(event.target.value)}
                 className={INPUT}
             />
+            {props.error ? (
+                <p role="alert" className="mt-1 text-xs text-(--negative)">
+                    {props.error}
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -84,6 +90,28 @@ export function SsoProviderForm({
 
     const nameMissing = touched && name.trim() === "";
 
+    // The API takes a config block whole: its secret (OIDC) or certificate (SAML) is required in it, and it
+    // never serves them back. So an edit sends a config block only when a config field changed, and then
+    // the admin must type the secret or certificate again.
+    const editingConfig = mode === "edit";
+    const configChanged =
+        editingConfig &&
+        (protocol === "oidc"
+            ? clientId.trim() !== configText(initial, "client_id") ||
+              issuer.trim() !== configText(initial, "issuer") ||
+              clientSecret !== ""
+            : entityId.trim() !== configText(initial, "entity_id") ||
+              ssoUrl.trim() !== configText(initial, "sso_url") ||
+              certificate.trim() !== "");
+    const secretMissing =
+        configChanged && (protocol === "oidc" ? clientSecret === "" : certificate.trim() === "");
+    const secretError =
+        touched && secretMissing
+            ? protocol === "oidc"
+                ? "Enter the client secret again to change the connection settings."
+                : "Enter the certificate again to change the connection settings."
+            : null;
+
     function buildPayload(): SsoProviderCreate | SsoProviderUpdate {
         const flags = {
             is_default: isDefault,
@@ -114,19 +142,25 @@ export function SsoProviderForm({
                   };
         }
         const update: SsoProviderUpdate = { name: name.trim(), ...flags };
-        if (protocol === "oidc") {
-            update.oidc_config = { client_id: clientId.trim(), issuer: issuer.trim() };
-            if (clientSecret !== "") update.oidc_config.client_secret = clientSecret;
-        } else {
-            update.saml_config = { entity_id: entityId.trim(), sso_url: ssoUrl.trim() };
-            if (certificate.trim() !== "") update.saml_config.certificate = certificate.trim();
+        if (configChanged && protocol === "oidc") {
+            update.oidc_config = {
+                client_id: clientId.trim(),
+                client_secret: clientSecret,
+                issuer: issuer.trim(),
+            };
+        } else if (configChanged) {
+            update.saml_config = {
+                entity_id: entityId.trim(),
+                sso_url: ssoUrl.trim(),
+                certificate: certificate.trim(),
+            };
         }
         return update;
     }
 
     function handleSaveClick() {
         setTouched(true);
-        if (name.trim() === "") return;
+        if (name.trim() === "" || secretMissing) return;
         onSaveAction(buildPayload());
     }
 
@@ -177,8 +211,11 @@ export function SsoProviderForm({
                             type="password"
                             value={clientSecret}
                             placeholder={
-                                mode === "edit" ? "Leave blank to keep the stored secret" : ""
+                                mode === "edit"
+                                    ? "Leave blank to keep the stored secret; type it again to change other settings"
+                                    : ""
                             }
+                            error={secretError}
                             disabled={isSaving}
                             onChangeAction={setClientSecret}
                         />
@@ -211,8 +248,11 @@ export function SsoProviderForm({
                             label="Certificate"
                             value={certificate}
                             placeholder={
-                                mode === "edit" ? "Leave blank to keep the stored certificate" : ""
+                                mode === "edit"
+                                    ? "Leave blank to keep the stored certificate; type it again to change other settings"
+                                    : ""
                             }
+                            error={secretError}
                             disabled={isSaving}
                             onChangeAction={setCertificate}
                         />

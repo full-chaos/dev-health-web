@@ -10620,7 +10620,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 29
+                "line": 38
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10660,10 +10660,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:34, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:29).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:29).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:29)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:43, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:38).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:38).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:38)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10679,7 +10679,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 44
+                "line": 53
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10719,10 +10719,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:48, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:44).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:44).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:44)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:57, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:53).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:53).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:53)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10738,7 +10738,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 60
+                "line": 69
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10778,10 +10778,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:65, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:60).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:60).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:60)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:74, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:69).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:69).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:69)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10797,7 +10797,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 77
+                "line": 86
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10837,10 +10837,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:79, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:77).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:77).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:77)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:88, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:86).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:86).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:86)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10856,7 +10856,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 91
+                "line": 100
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10896,10 +10896,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:93, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:91).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:91).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:91)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:102, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:100).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:100).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:100)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -10915,7 +10915,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/sso.ts",
-                "line": 105
+                "line": 114
             },
             "classification": "protected",
             "public_rationale": null,
@@ -10955,10 +10955,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:107, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
-                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:105).",
-                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:105).",
-                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:105)."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:116, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:114).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:114).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:114)."
             ],
             "exposure": {
                 "reachability": "public_via_edge",

@@ -135,6 +135,20 @@ export function ssoProvidersRouter(): Router {
             res.status(404).json({ detail: "SSO provider not found" });
             return;
         }
+        const body = (req.body ?? {}) as Record<string, Record<string, unknown> | undefined>;
+        // go-api takes a config block whole: the secret (OIDC) or certificate (SAML) is required inside it.
+        const missing =
+            body.oidc_config && !body.oidc_config.client_secret
+                ? ["oidc_config", "client_secret"]
+                : body.saml_config && !body.saml_config.certificate
+                  ? ["saml_config", "certificate"]
+                  : null;
+        if (missing) {
+            res.status(422).json({
+                detail: [{ type: "missing", loc: ["body", ...missing], msg: "Field required" }],
+            });
+            return;
+        }
         rows[index] = { ...rows[index], ...(req.body as object) };
         res.json(rows[index]);
     });

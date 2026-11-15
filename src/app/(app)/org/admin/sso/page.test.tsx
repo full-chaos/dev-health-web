@@ -193,7 +193,7 @@ describe("SsoProvidersPage", () => {
         expect(await screen.findByText("issuer: Field required")).toBeTruthy();
     });
 
-    it("edits without a new secret: the PATCH body has no client_secret", async () => {
+    it("a name-only edit sends no config block at all", async () => {
         mockList.mockResolvedValue(listOf([makeProvider()]));
         mockUpdate.mockResolvedValue({ data: makeProvider({ name: "Okta 2" }) });
         render(<SsoProvidersPage />);
@@ -207,10 +207,25 @@ describe("SsoProvidersPage", () => {
         expect(mockUpdate.mock.calls[0][0]).toBe("p-1");
         const body = mockUpdate.mock.calls[0][1];
         expect(body.name).toBe("Okta 2");
+        expect(body).not.toHaveProperty("oidc_config");
+        expect(body).not.toHaveProperty("saml_config");
         expect(JSON.stringify(body)).not.toContain("client_secret");
     });
 
-    it("sends a new client secret only when one is typed", async () => {
+    it("an OIDC config edit without the secret shows a field error and makes no call", async () => {
+        mockList.mockResolvedValue(listOf([makeProvider()]));
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        const issuer = screen.getByLabelText("Issuer");
+        await userEvent.clear(issuer);
+        await userEvent.type(issuer, "https://other.test");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(/Enter the client secret again/u)).toBeTruthy();
+        expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("an OIDC config edit with the secret sends the whole block", async () => {
         mockList.mockResolvedValue(listOf([makeProvider()]));
         mockUpdate.mockResolvedValue({ data: makeProvider() });
         render(<SsoProvidersPage />);
@@ -219,10 +234,36 @@ describe("SsoProvidersPage", () => {
         await userEvent.type(screen.getByLabelText("Client secret"), "rotated");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
-        expect(mockUpdate.mock.calls[0][1].oidc_config).toMatchObject({
+        expect(mockUpdate.mock.calls[0][1].oidc_config).toEqual({
             client_id: "cid-1",
-            issuer: "https://idp.test",
             client_secret: "rotated",
+            issuer: "https://idp.test",
+        });
+    });
+
+    it("a SAML config edit needs the certificate again, then sends the whole block", async () => {
+        const saml = makeProvider({
+            protocol: "saml",
+            config: { entity_id: "ent", sso_url: "https://sso.test/s" },
+        });
+        mockList.mockResolvedValue(listOf([saml]));
+        mockUpdate.mockResolvedValue({ data: saml });
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        const url = screen.getByLabelText("SSO URL");
+        await userEvent.clear(url);
+        await userEvent.type(url, "https://sso.test/new");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(/Enter the certificate again/u)).toBeTruthy();
+        expect(mockUpdate).not.toHaveBeenCalled();
+        await userEvent.type(screen.getByLabelText("Certificate"), "CERT");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+        expect(mockUpdate.mock.calls[0][1].saml_config).toEqual({
+            entity_id: "ent",
+            sso_url: "https://sso.test/new",
+            certificate: "CERT",
         });
     });
 
@@ -251,20 +292,20 @@ describe("SsoProvidersPage", () => {
         expect(mockDeactivate).not.toHaveBeenCalled();
     });
 
-    it("shows the same write-refused notice for an impersonation 403 (no special copy)", async () => {
-        mockList.mockResolvedValue(listOf([makeProvider()]));
-        mockDeactivate.mockResolvedValue({
-            error: "Not allowed in an impersonation session",
-            status: 403,
-        });
-        render(<SsoProvidersPage />);
-        await screen.findByText("Okta");
-        await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
-        const dialog = await screen.findByRole("dialog");
-        await userEvent.click(within(dialog).getByRole("button", { name: "Deactivate" }));
-        await waitFor(() => expect(mockDeactivate).toHaveBeenCalledWith("p-1"));
-        expect(
-            await screen.findByText(/Only owners and admins can change SSO providers/u),
-        ).toBeTruthy();
-    });
+    it.each(["Not allowed in an impersonation session", "Not available while impersonating"])(
+        "shows the served impersonation text for a refused write: %s",
+        async (text) => {
+            mockList.mockResolvedValue(listOf([makeProvider()]));
+            mockDeactivate.mockResolvedValue({ error: text, status: 403 });
+            render(<SsoProvidersPage />);
+            await screen.findByText("Okta");
+            await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+            const dialog = await screen.findByRole("dialog");
+            await userEvent.click(within(dialog).getByRole("button", { name: "Deactivate" }));
+            await waitFor(() => expect(mockDeactivate).toHaveBeenCalledWith("p-1"));
+            expect(await screen.findByText(text)).toBeTruthy();
+            expect(screen.queryByText(/Only owners and admins/u)).toBeNull();
+            expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+        },
+    );
 });
