@@ -162,8 +162,12 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                         key={tile.id}
                         label={tile.label}
                         value={tile.value}
+                        valueText={tile.valueText}
+                        valueIsMessage={tile.valueIsMessage}
+                        hideTrend={tile.valueIsMessage}
                         unit={tile.unit}
                         delta={tile.delta}
+                        deltaSlot={tile.noDelta ? <></> : undefined}
                         deltaUnavailableLabel="Insufficient history"
                         inverseGood={tile.inverseGood}
                         spark={tile.spark}

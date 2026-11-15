@@ -18,7 +18,6 @@ import { JobFailuresResultSchema, type JobFailuresState } from "./jobFailures";
 import { TestWindowResultSchema, type TestWindowState } from "./testWindow";
 import {
     TESTOPS_PIPELINE_QUERY,
-    TESTOPS_TEST_QUERY,
     TESTOPS_COVERAGE_BASELINES_QUERY,
     TESTOPS_COVERAGE_QUERY,
     TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
@@ -101,12 +100,8 @@ export async function fetchTestOpsData(
     const orgId = await resolveOrgId(orgIdOverride);
 
     try {
-        const [pipelinesRes, testsRes, coverageRes] = await Promise.all([
+        const [pipelinesRes, coverageRes] = await Promise.all([
             graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_PIPELINE_QUERY, {
-                orgId,
-                batch,
-            }),
-            graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_TEST_QUERY, {
                 orgId,
                 batch,
             }),
@@ -119,9 +114,12 @@ export async function fetchTestOpsData(
         // Normalise duration measures from seconds (backend) to minutes so that
         // the display layer (formatMetricValue with unit "m") can label without
         // converting. Sample data is already in minutes and is NOT passed here.
+        const analytics = normalizeAnalyticsDurations(pipelinesRes.analytics);
+        // The TestOpsPipeline answer serves every measure of the batch with its scope, the ORG series
+        // included; the tests read it too (the registered TestOpsTest text has no scope).
         return {
-            pipelines: normalizeAnalyticsDurations(pipelinesRes.analytics),
-            tests: normalizeAnalyticsDurations(testsRes.analytics),
+            pipelines: analytics,
+            tests: analytics,
             coverage: coverageRes.analytics,
         };
     } catch (error) {

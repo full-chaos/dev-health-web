@@ -67,15 +67,21 @@ vi.mock("@/components/metrics/MetricCard", () => ({
         value,
         unit,
         caption,
+        valueText,
+        valueIsMessage,
     }: {
         label: string;
         value?: number;
         unit?: string;
         caption?: string;
+        valueText?: string;
+        valueIsMessage?: boolean;
     }) => (
         <article
             data-testid="metric-tile"
             data-label={label}
+            data-value-text={valueText ?? ""}
+            data-value-is-message={valueIsMessage ? "yes" : "no"}
             data-value={value === undefined ? "undefined" : String(value)}
             data-unit={unit}
             data-caption={caption ?? ""}
@@ -524,5 +530,56 @@ describe("TestOps Overview tiles read one scope, never a mean across scopes", ()
         );
         expect(Number(tileValue("Success Rate"))).toBeCloseTo(100 / 9, 6);
         expect(tileValue("Line Coverage")).toBe("30");
+    });
+});
+
+describe("TestOps duration tiles with no ORG series: one served series, or the pick-one-team state", () => {
+    const two = (measure: string, dimensionValue: string, value: number) => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope: "DIMENSION",
+        measure,
+        buckets: [{ date: "2026-11-13", value }],
+    });
+    const twoSeries = {
+        pipelines: {
+            timeseries: [
+                two("PIPELINE_DURATION_P95", "t1", 4),
+                two("PIPELINE_DURATION_P95", "t2", 20),
+            ],
+            breakdowns: [],
+        },
+        tests: { timeseries: [], breakdowns: [] },
+        coverage: { timeseries: [], breakdowns: [] },
+    };
+    const tile = (label: string) =>
+        screen.getAllByTestId("metric-tile").find((t) => t.getAttribute("data-label") === label);
+    const pick = (ids: string[]) => ({
+        f: Buffer.from(
+            JSON.stringify({
+                time: { range_days: 14 },
+                scope: { level: "team", ids },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+            "utf8",
+        ).toString("base64url"),
+    });
+
+    it("two team series and no team picked: no number, the pick-one-team state", async () => {
+        mockFetchTestOpsData.mockResolvedValue(twoSeries);
+        await renderPage();
+        expect(tile("P95 Duration")?.getAttribute("data-value")).toBe("undefined");
+        expect(tile("P95 Duration")?.getAttribute("data-value-text")).toBe("Pick one team");
+        expect(tile("P95 Duration")?.getAttribute("data-value-is-message")).toBe("yes");
+    });
+
+    it("one team picked: that team's value", async () => {
+        mockFetchTestOpsData.mockResolvedValue(twoSeries);
+        await renderPage(pick(["t2"]));
+        expect(tile("P95 Duration")?.getAttribute("data-value")).toBe("20");
+        expect(tile("P95 Duration")?.getAttribute("data-value-text")).toBe("");
     });
 });

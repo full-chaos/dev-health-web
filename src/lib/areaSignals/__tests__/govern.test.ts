@@ -742,6 +742,24 @@ describe("getGovernSignals — the served ORG series is the org value (CHAOS-973
         expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
     });
 
+    it("flake: the tests answer now carries the ORG series, so 2 team series plus ORG show the ORG value", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyAnalytics,
+            tests: {
+                timeseries: [
+                    series("TEST_FLAKE_RATE", 4, "t1", "DIMENSION"),
+                    series("TEST_FLAKE_RATE", 30, "t2", "DIMENSION"),
+                    series("TEST_FLAKE_RATE", 9, "org", "ORG"),
+                ],
+                breakdowns: [],
+            },
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockResolvedValue(emptyAnalytics);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.value).toBe("9% flake");
+    });
+
     it("a single DIMENSION series shows its value", async () => {
         withSeries([], [series("COVERAGE_LINE_PCT", 72, "t1", "DIMENSION")]);
         const signals = byId(await getGovernSignals(defaultMetricFilter));

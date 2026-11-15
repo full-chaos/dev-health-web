@@ -1,90 +1,14 @@
 import type { TimeseriesResult, TimeseriesBucket } from "@/lib/graphql/schemas/analytics";
 
-// Measures that represent raw counts and should be **summed** when merging
-// across teams. All other measures (rates, percentages, percentiles, durations)
-// are **averaged** — summing percentages or p95 latencies across teams is
-// mathematically wrong.
-//
-// Approximation note: a volume-weighted org rollup would be more accurate for
-// rate measures (e.g. weighting PIPELINE_SUCCESS_RATE by pipeline count per
-// team). That requires server-side denominator data not yet available in the
-// per-team TimeseriesResult payload. A client-side unweighted mean is the best
-// available approximation; it may diverge from the true org rate when teams
-// have very different volumes. The correct long-term fix is to compute the
-// aggregate server-side and return a single org-level series — tracked as a
-// deferred backend improvement.
-const COUNT_MEASURES = new Set(["COUNT"]);
-
-function isSumMeasure(measureId: string): boolean {
-    return COUNT_MEASURES.has(measureId);
-}
-
 /**
- * Merges every team `TimeseriesResult` (scope not ORG) whose `measure === measureId` into a
- * single synthetic series by combining values per date bucket across teams.
+ * The one served series a TestOps tile or trend reads for `measureId`. The web never makes a series
+ * from other series: no mean, no sum.
  *
- * - Rate / percentage / percentile / duration measures → **mean** per date.
- * - Raw-count measures (`COUNT`) → **sum** per date.
- * - A null bucket (backend had no data) is skipped, never counted as 0; a date
- *   where every team is null is null.
- *
- * Returns `undefined` when no matching series exist (matches prior `.find()`
- * behaviour so callers can still check for `undefined`).
- */
-export function mergeSeriesByMeasure(
-    timeseries: TimeseriesResult[],
-    measureId: string,
-): TimeseriesResult | undefined {
-    // The ORG series is the org rate: it is never one more "team" in a mean (CHAOS-13780).
-    const matching = timeseries.filter((s) => s.measure === measureId && s.scope !== "ORG");
-    if (matching.length === 0) return undefined;
-    if (matching.length === 1) return matching[0];
-
-    // Accumulate all values per date across every team series.
-    const dateMap = new Map<string, Array<number | null>>();
-    for (const series of matching) {
-        for (const bucket of series.buckets) {
-            const existing = dateMap.get(bucket.date);
-            if (existing) {
-                existing.push(bucket.value);
-            } else {
-                dateMap.set(bucket.date, [bucket.value]);
-            }
-        }
-    }
-
-    // Sort dates ascending, matching the SQL `bucket ASC` ordering.
-    const sortedDates = Array.from(dateMap.keys()).sort();
-
-    const useSum = isSumMeasure(measureId);
-    const mergedBuckets: TimeseriesBucket[] = sortedDates.map((date) => {
-        // Missing is not zero: a team with a null bucket contributes nothing (it
-        // is not a 0 that deflates the mean), and a date where every team is
-        // null stays null.
-        const values = (dateMap.get(date) ?? []).filter((v): v is number => v !== null);
-        if (values.length === 0) return { date, value: null };
-        const total = values.reduce((a, b) => a + b, 0);
-        const combined = useSum ? total : total / values.length;
-        return { date, value: combined };
-    });
-
-    return {
-        dimension: matching[0].dimension,
-        // "org" signals this is a rolled-up aggregate, not a single-team series.
-        dimensionValue: "org",
-        measure: measureId,
-        buckets: mergedBuckets,
-    };
-}
-
-/**
- * The one series a TestOps tile or trend reads for `measureId`: never a mean across scopes.
- *
- * - No team selected: the served ORG series (the org rate); without one, the merge of the team
- *   series (`mergeSeriesByMeasure`).
  * - One team selected: that team's series.
- * - Several teams selected: the ORG series, which the API reads under the request's team filter
- *   (only those teams' rows); without one, the merge of the served team series.
+ * - Otherwise the ORG series: the org rate, or with several teams selected the rate the API reads
+ *   under the request's team filter.
+ * - No ORG series (P95 durations, queue time): the one served team series, when exactly one is served.
+ *   Two or more is no value; `needsOneTeamPick` names that state.
  */
 export function seriesForScope(
     timeseries: TimeseriesResult[],
@@ -95,7 +19,24 @@ export function seriesForScope(
     if (teamIds?.length === 1) {
         return matching.find((s) => s.scope !== "ORG" && s.dimensionValue === teamIds[0]);
     }
-    return matching.find((s) => s.scope === "ORG") ?? mergeSeriesByMeasure(timeseries, measureId);
+    const org = matching.find((s) => s.scope === "ORG");
+    if (org) return org;
+    const teams = matching.filter((s) => s.scope !== "ORG");
+    return teams.length === 1 ? teams[0] : undefined;
+}
+
+/**
+ * True when the scope has no one served series for `measureId`: no ORG series and two or more team
+ * series. The tile and the trend then ask for one team, never show a number.
+ */
+export function needsOneTeamPick(
+    timeseries: TimeseriesResult[],
+    measureId: string,
+    teamIds?: readonly string[],
+): boolean {
+    if (teamIds?.length === 1) return false;
+    const matching = timeseries.filter((s) => s.measure === measureId);
+    return !matching.some((s) => s.scope === "ORG") && matching.length >= 2;
 }
 
 // ---------------------------------------------------------------------------
