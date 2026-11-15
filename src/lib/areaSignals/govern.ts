@@ -40,6 +40,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 import type { TestOpsData } from "@/lib/testops/types";
 
 import {
@@ -122,7 +123,13 @@ function changeFailureResolution(
  */
 function buildSignal(
     descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string; metricLabel?: string; driver?: string },
+    resolved: {
+        state: AreaSignalState;
+        value: string;
+        metricLabel?: string;
+        driver?: string;
+        emptyReason?: string;
+    },
 ): AreaSignal {
     return {
         id: descriptor.id,
@@ -133,6 +140,7 @@ function buildSignal(
         value: resolved.value,
         state: resolved.state,
         ...(resolved.driver ? { driver: resolved.driver } : {}),
+        ...(resolved.emptyReason ? { emptyReason: resolved.emptyReason } : {}),
         demoted: descriptor.demoted,
     };
 }
@@ -321,7 +329,12 @@ export async function getGovernSignals(
     const signals: AreaSignal[] = [];
     const push = (
         id: string,
-        resolved: { state: AreaSignalState; value: string; metricLabel?: string },
+        resolved: {
+            state: AreaSignalState;
+            value: string;
+            metricLabel?: string;
+            emptyReason?: string;
+        },
     ) => {
         const d = descriptor(id);
         if (d) signals.push(buildSignal(d, resolved));
@@ -370,7 +383,25 @@ export async function getGovernSignals(
               }
             : undefined;
 
-    push("testops", worstResolution([pipelineResolution, testsResolution, coverageResolution]));
+    const testopsResolution = worstResolution([
+        pipelineResolution,
+        testsResolution,
+        coverageResolution,
+    ]);
+    // The served reason of an answer with no value (a team that owns no repository): carried as
+    // served so the card does not read as "No data". A card with a value is never touched.
+    const testopsEmptyReason = [
+        testOps?.pipelines.filterEmptyReason,
+        testOps?.tests.filterEmptyReason,
+        testOps?.coverage.filterEmptyReason,
+        coverage?.filterEmptyReason,
+    ].find(teamOwnsNoRepository);
+    push(
+        "testops",
+        testopsResolution.state === "unavailable" && testopsEmptyReason
+            ? { ...testopsResolution, emptyReason: testopsEmptyReason }
+            : testopsResolution,
+    );
 
     // Quality — home REST signals[change_failure_rate].severity (RETURNED).
     const qualitySignal = homeSignalByMetric(homeData?.signals, "change_failure_rate");

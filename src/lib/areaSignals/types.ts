@@ -52,6 +52,12 @@ export type AreaSignal = {
      * read. Only set together with `state: "unavailable"`.
      */
     failed?: boolean;
+    /**
+     * The server's reason for an empty answer (`filterEmptyReason`), carried as served; never derived.
+     * Only set together with `state: "unavailable"`. A team that owns no repository
+     * (`team_owns_no_repository`) is a state of its own, not "No data for this window".
+     */
+    emptyReason?: string;
     /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
     state: AreaSignalState;
     /** Optional trend glyph direction for the metric. */
