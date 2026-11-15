@@ -58,7 +58,8 @@ function deltaOf(stripId: string, label: string): HTMLElement | null {
 
 const ts = (measure: string, first: number, last: number) => ({
     dimension: "TEAM",
-    dimensionValue: "all",
+    dimensionValue: "org",
+    scope: "ORG",
     measure,
     buckets: [
         { date: "2026-09-01", value: first },

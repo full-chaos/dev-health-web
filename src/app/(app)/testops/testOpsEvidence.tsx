@@ -2,12 +2,7 @@ import type { EvidenceContentSubject } from "@/components/evidence/EvidenceDrawe
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { formatMetricValue } from "@/lib/formatters";
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
-import {
-    getDelta,
-    getLatestValue,
-    getSparkline,
-    needsOneTeamPick,
-} from "@/lib/testops/aggregateSeries";
+import { getDelta, getLatestValue, getSparkline } from "@/lib/testops/aggregateSeries";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 
 /** One metric tile of a TestOps tab: the served series of one measure, as the tile shows it. */
@@ -19,7 +14,7 @@ export type TestOpsTile = {
     note: string | undefined;
     unit: string;
     inverseGood: boolean;
-    /** Latest served value; `undefined` when the API served none (shown as "--", never 0). */
+    /** Latest served value; `undefined` when the API served none (the tile reads "Not reported", never 0). */
     value: number | undefined;
     delta: number | undefined;
     spark: ReturnType<typeof getSparkline>;
@@ -27,22 +22,18 @@ export type TestOpsTile = {
     valueText?: string;
     /** No change value is read for this tile: the card draws no delta and no "No prior period". */
     noDelta?: boolean;
-    /** `valueText` is a state ("Pick one team"), not a value: no number, no trend. */
+    /** `valueText` is a state, not a value: no number, no trend. */
     valueIsMessage?: boolean;
 };
 
-/** The state of a measure with no ORG series when two or more team series are served. */
-export const PICK_ONE_TEAM = "Pick one team";
-
 /**
  * Resolve the tiles of a TestOps tab from the served time series. The readers are the ones the
- * pages always used (`getLatestValue`, `getSparkline`, `getDelta`), on one scope per measure
- * (`teamIds`: the selected teams; see `seriesForScope`); a measure the registry does not know is
- * left out.
+ * pages always used (`getLatestValue`, `getSparkline`, `getDelta`), on the served ORG series of
+ * each measure (read under the request's filters; see `seriesForScope`); a measure the registry
+ * does not know is left out.
  */
 export function resolveTestOpsTiles(
     measures: ReadonlyArray<{ id: string; ts: TimeseriesResult[] }>,
-    teamIds?: readonly string[],
 ): TestOpsTile[] {
     return measures.flatMap(({ id, ts }) => {
         const def = TESTOPS_MEASURES[id];
@@ -54,27 +45,13 @@ export function resolveTestOpsTiles(
             unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
             inverseGood: def.goodDirection === "down",
         };
-        if (needsOneTeamPick(ts, id, teamIds)) {
-            return [
-                {
-                    ...tile,
-                    note: "Served per team: no organization value for several teams",
-                    value: undefined,
-                    valueText: PICK_ONE_TEAM,
-                    valueIsMessage: true,
-                    delta: undefined,
-                    noDelta: true,
-                    spark: undefined,
-                },
-            ];
-        }
         return [
             {
                 ...tile,
                 note: def.note,
-                value: getLatestValue(ts, id, teamIds),
-                delta: getDelta(ts, id, teamIds),
-                spark: getSparkline(ts, id, teamIds),
+                value: getLatestValue(ts, id),
+                delta: getDelta(ts, id),
+                spark: getSparkline(ts, id),
             },
         ];
     });

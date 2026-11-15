@@ -49,7 +49,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
     // The scope bar's team and repository selection narrows every read, as on the other tabs.
-    const { analytics: analyticsScope, ...scope } = testOpsScopeFromFilters(filters);
+    const { analytics: analyticsScope } = testOpsScopeFromFilters(filters);
 
     const [health, testOpsData] = await Promise.all([
         checkApiHealth(),
@@ -109,18 +109,15 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     const pipelineBreakdowns = testOpsData.pipelines.breakdowns || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
 
-    const tiles = resolveTestOpsTiles(
-        [
-            { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
-            { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
-            { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
-            { id: "PIPELINE_QUEUE_TIME", ts: pipelineTimeseries },
-            { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
-        ],
-        scope.teamIds,
-    );
+    const tiles = resolveTestOpsTiles([
+        { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
+        { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
+        { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
+        { id: "PIPELINE_QUEUE_TIME", ts: pipelineTimeseries },
+        { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
+    ]);
 
-    const rateTrend = buildPipelineRateTrend(pipelineTimeseries, scope.teamIds);
+    const rateTrend = buildPipelineRateTrend(pipelineTimeseries);
     const failurePatterns = buildFailurePatternsModel(
         pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE"),
         "%",
