@@ -286,7 +286,8 @@ describe("TestOps Tests page — approved layout", () => {
             [99.99989, "99.9%"],
             [99.84, "99.8%"],
             [100, "100%"],
-            [0, "0.0%"],
+            [0.04, "<0.1%"],
+            [0, "0%"],
         ] as const) {
             mockFetchTestWindow.mockResolvedValue(windowOf({ passRatePct: served100 }));
             await renderPage();

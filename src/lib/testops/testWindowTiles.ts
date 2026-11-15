@@ -85,10 +85,7 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
             note: coveredBy,
             unit: "%",
             value: window.passRatePct ?? undefined,
-            valueText:
-                window.passRatePct === null
-                    ? undefined
-                    : `${formatTruncatedPercent(window.passRatePct)}%`,
+            valueText: window.passRatePct === null ? undefined : percentText(window.passRatePct),
             spark: window.passRatePct === null ? undefined : sparks.pass,
         },
         {

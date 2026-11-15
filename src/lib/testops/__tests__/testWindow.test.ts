@@ -84,6 +84,14 @@ describe("testWindowTiles", () => {
         expect(tiles[4].value).toBe(7347);
         expect(tiles.every((t) => t.noDelta === true && t.delta === undefined)).toBe(true);
     });
+    it("never writes a non-zero pass rate as 0: 0.04 reads <0.1%, a served 0 reads 0%, 99.99 stays 99.9%", () => {
+        const text = (passRatePct: number) =>
+            testWindowTiles(served({ passRatePct }), {})[1].valueText;
+        expect(text(0.04)).toBe("<0.1%");
+        expect(text(0)).toBe("0%");
+        expect(text(99.99)).toBe("99.9%");
+        expect(text(100)).toBe("100%");
+    });
     it("keeps a coverage above 10 % below 100: 99.6 reads 99.6, never 100", () => {
         const tiles = testWindowTiles(
             served({ coverage: { completedRuns: 1000, runsWithTests: 996, sharePct: 99.96 } }),
