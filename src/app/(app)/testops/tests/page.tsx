@@ -210,6 +210,16 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 
             <TestOpsTabs activeId="tests" filters={filters} role={activeRole} />
 
+            {partialCoverage && !testWindowFailed(testWindow) ? (
+                <Notice variant="info" live={false} data-testid="testops-tests-partial-notice">
+                    Partial coverage: the pass, failure and flake rates cover{" "}
+                    {formatNumber(testWindow.coverage.runsWithTests)} of{" "}
+                    {formatNumber(testWindow.coverage.completedRuns)} completed runs, the runs that
+                    report tests. Failed runs without a test report appear on Pipelines, and are not
+                    in these rates.
+                </Notice>
+            ) : null}
+
             <MetricStrip data-testid="testops-tests-tiles" columns={3}>
                 {tiles.map((tile) => (
                     <MetricCard
@@ -267,16 +277,6 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                     ))}
                 </div>
             </Section>
-
-            {partialCoverage && !testWindowFailed(testWindow) ? (
-                <Notice variant="info" live={false} data-testid="testops-tests-partial-notice">
-                    Partial coverage: the pass, failure and flake rates cover{" "}
-                    {formatNumber(testWindow.coverage.runsWithTests)} of{" "}
-                    {formatNumber(testWindow.coverage.completedRuns)} completed runs, the runs that
-                    report tests. Failed runs without a test report appear on Pipelines, and are not
-                    in these rates.
-                </Notice>
-            ) : null}
 
             {/* Not in the approved view: kept as a secondary card below it (it is served data). */}
             <Section

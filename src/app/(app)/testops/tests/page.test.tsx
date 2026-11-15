@@ -153,15 +153,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TestOps Tests page — approved layout", () => {
-    it("orders the page: header, scope bar, tab row, tiles, Test trends, notice, then the secondary heatmap card", async () => {
+    it("orders the page: header, scope bar, tab row, partial notice, tiles, Test trends, then the secondary heatmap card", async () => {
         await renderPage();
         const order = [
             screen.getByRole("heading", { level: 1, name: "TestOps" }),
             screen.getByTestId("scope-bar"),
             screen.getByTestId("testops-tabs"),
+            screen.getByTestId("testops-tests-partial-notice"),
             screen.getByTestId("testops-tests-tiles"),
             screen.getByTestId("testops-test-trends"),
-            screen.getByTestId("testops-tests-partial-notice"),
             screen.getByTestId("testops-flaky-patterns"),
         ];
         for (let i = 0; i < order.length - 1; i += 1) {
