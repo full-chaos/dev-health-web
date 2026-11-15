@@ -20,8 +20,8 @@ function isSumMeasure(measureId: string): boolean {
 }
 
 /**
- * Merges every `TimeseriesResult` whose `measure === measureId` into a single
- * synthetic org-level series by combining values per date bucket across teams.
+ * Merges every team `TimeseriesResult` (scope not ORG) whose `measure === measureId` into a
+ * single synthetic series by combining values per date bucket across teams.
  *
  * - Rate / percentage / percentile / duration measures → **mean** per date.
  * - Raw-count measures (`COUNT`) → **sum** per date.
@@ -35,7 +35,8 @@ export function mergeSeriesByMeasure(
     timeseries: TimeseriesResult[],
     measureId: string,
 ): TimeseriesResult | undefined {
-    const matching = timeseries.filter((s) => s.measure === measureId);
+    // The ORG series is the org rate: it is never one more "team" in a mean (CHAOS-13780).
+    const matching = timeseries.filter((s) => s.measure === measureId && s.scope !== "ORG");
     if (matching.length === 0) return undefined;
     if (matching.length === 1) return matching[0];
 
@@ -76,40 +77,67 @@ export function mergeSeriesByMeasure(
     };
 }
 
+/**
+ * The one series a TestOps tile or trend reads for `measureId`: never a mean across scopes.
+ *
+ * - No team selected: the served ORG series (the org rate); without one, the merge of the team
+ *   series (`mergeSeriesByMeasure`).
+ * - One team selected: that team's series.
+ * - Several teams selected: the ORG series, which the API reads under the request's team filter
+ *   (only those teams' rows); without one, the merge of the served team series.
+ */
+export function seriesForScope(
+    timeseries: TimeseriesResult[],
+    measureId: string,
+    teamIds?: readonly string[],
+): TimeseriesResult | undefined {
+    const matching = timeseries.filter((s) => s.measure === measureId);
+    if (teamIds?.length === 1) {
+        return matching.find((s) => s.scope !== "ORG" && s.dimensionValue === teamIds[0]);
+    }
+    return matching.find((s) => s.scope === "ORG") ?? mergeSeriesByMeasure(timeseries, measureId);
+}
+
 // ---------------------------------------------------------------------------
 // Page-level helpers (shared across tests, pipelines, and overview pages)
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the most recent bucket value for `measureId`, merged across all teams.
+ * Returns the most recent bucket value of the series `seriesForScope` reads for `measureId`.
  * `undefined` (rendered as "--") when there is no bucket or the latest bucket is
  * null; a produced 0 is returned as 0.
  */
 export function getLatestValue(
     timeseries: TimeseriesResult[],
     measureId: string,
+    teamIds?: readonly string[],
 ): number | undefined {
-    const series = mergeSeriesByMeasure(timeseries, measureId);
+    const series = seriesForScope(timeseries, measureId, teamIds);
     if (!series || series.buckets.length === 0) return undefined;
     return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
-/** Returns sparkline data for `measureId`, merged across all teams. */
+/** Returns sparkline data of the series `seriesForScope` reads for `measureId`. */
 export function getSparkline(
     timeseries: TimeseriesResult[],
     measureId: string,
+    teamIds?: readonly string[],
 ): { ts: string; value: number | null }[] | undefined {
-    const series = mergeSeriesByMeasure(timeseries, measureId);
+    const series = seriesForScope(timeseries, measureId, teamIds);
     if (!series) return undefined;
     return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
 /**
- * Period-over-period change (%) from first to last bucket, merged across all
- * teams. Returns `undefined` when history is insufficient.
+ * Period-over-period change (%) from first to last bucket of the series `seriesForScope` reads.
+ * Returns `undefined` when history is insufficient.
  */
-export function getDelta(timeseries: TimeseriesResult[], measureId: string): number | undefined {
-    const series = mergeSeriesByMeasure(timeseries, measureId);
+export function getDelta(
+    timeseries: TimeseriesResult[],
+    measureId: string,
+    teamIds?: readonly string[],
+): number | undefined {
+    const series = seriesForScope(timeseries, measureId, teamIds);
     const buckets = series?.buckets;
     if (!buckets || buckets.length < 2) return undefined;
     const prev = buckets[0].value;
