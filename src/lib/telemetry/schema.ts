@@ -123,6 +123,7 @@ export const APP_ROUTES: readonly string[] = [
     "/org/admin/ip-allowlist",
     "/org/admin/retention",
     "/org/admin/settings",
+    "/org/admin/sso",
     "/org/admin/sync",
     "/org/admin/sync/[configId]",
     "/org/admin/sync/[configId]/edit",

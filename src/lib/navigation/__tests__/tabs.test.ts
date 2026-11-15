@@ -178,6 +178,7 @@ describe("tab registry", () => {
             "Identities",
             "Audit Logs",
             "IP Allowlist",
+            "Single sign-on",
             "Data Retention",
             "AI Setup",
             "Settings",
@@ -223,9 +224,14 @@ describe("tab registry", () => {
     });
 
     it("keeps every page of the old admin sidebar, with its route and its entitlement key", () => {
-        const adminTabs = [getTabSet("admin-organization"), getTabSet("admin-connections")].flatMap(
-            (set): TabSet["tabs"][number][] => [...set.tabs],
-        );
+        const added = getTabSet("admin-organization").tabs.find((t) => t.id === "sso");
+        // CHAOS-13638: the SSO providers tab is new; it is not a page of the old sidebar, and it has no
+        // entitlement key, so the page can show the served 402 upgrade note.
+        expect(added).toMatchObject({ label: "Single sign-on", path: "/org/admin/sso" });
+        expect(added && "requiredFeature" in added).toBe(false);
+        const adminTabs = [getTabSet("admin-organization"), getTabSet("admin-connections")]
+            .flatMap((set): TabSet["tabs"][number][] => [...set.tabs])
+            .filter((t) => t.id !== "sso");
         expect(adminTabs).toHaveLength(ADMIN_SIDEBAR_BEFORE.length);
         for (const [label, path, feature] of ADMIN_SIDEBAR_BEFORE) {
             const tab = adminTabs.find((t) => t.path === path);

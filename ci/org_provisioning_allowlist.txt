@@ -70,3 +70,8 @@ PUT /llm-settings	src/lib/admin/api/llm-settings.ts	non-identity admin write; no
 PUT /settings/{}/{}	src/lib/admin/api/settings.ts	non-identity admin write; no org or membership change
 PUT /sync-configs/{}/repositories	src/lib/admin/api/sync.ts	non-identity admin write; no org or membership change
 UNKNOWN /admin	src/lib/admin/api/_request.ts	admin transport prefix; the caller passes the method (CHAOS-12792)
+POST /auth/sso/providers	src/lib/admin/server/sso.ts	SSO provider create; go-api route, no web proxy (CHAOS-13638)
+PATCH /auth/sso/providers/{}	src/lib/admin/server/sso.ts	SSO provider update; go-api route (CHAOS-13638)
+DELETE /auth/sso/providers/{}	src/lib/admin/server/sso.ts	SSO provider delete; go-api route (CHAOS-13638)
+POST /auth/sso/providers/{}/activate	src/lib/admin/server/sso.ts	SSO provider activate; go-api route (CHAOS-13638)
+POST /auth/sso/providers/{}/deactivate	src/lib/admin/server/sso.ts	SSO provider deactivate; go-api route (CHAOS-13638)

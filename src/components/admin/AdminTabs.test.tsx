@@ -39,7 +39,14 @@ describe("AdminTabs (AD-1 option A)", () => {
     it("shows the Organization row on an Organization page, without the feature tabs the org lacks", () => {
         renderAt("/org/admin/users");
         const row = screen.getByRole("tablist", { name: "Organization views" });
-        expect(tabNames(row)).toEqual(["Overview", "Users", "Teams", "Identities", "Settings"]);
+        expect(tabNames(row)).toEqual([
+            "Overview",
+            "Users",
+            "Teams",
+            "Identities",
+            "Single sign-on",
+            "Settings",
+        ]);
         expect(within(row).getByRole("tab", { name: "Users" })).toHaveAttribute(
             "aria-selected",
             "true",
@@ -67,6 +74,7 @@ describe("AdminTabs (AD-1 option A)", () => {
             "Identities",
             "Audit Logs",
             "IP Allowlist",
+            "Single sign-on",
             "Data Retention",
             "AI Setup",
             "Settings",

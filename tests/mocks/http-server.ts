@@ -21,6 +21,7 @@ import {
 } from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
+import { setSsoScenario, ssoProvidersRouter } from "./ssoProvidersScenario";
 import { mockDiscovery, mockJwks } from "./mockTokens";
 import { hardenMockServer } from "./serverSockets";
 
@@ -129,6 +130,15 @@ app.post("/__test/entitlements", (req, res) => {
     acrRequestCount = 0;
     res.status(204).end();
 });
+// CHAOS-13638: the go-api SSO provider routes, one scenario at a time.
+app.post("/__test/sso-providers", (req, res) => {
+    if (!setSsoScenario(req.body?.scenario)) {
+        res.status(400).json({ error: "Unknown SSO provider scenario" });
+        return;
+    }
+    res.status(204).end();
+});
+app.use(ssoProvidersRouter());
 app.get("/__test/acr-requests", (_req, res) => {
     res.json({ count: acrRequestCount });
 });

@@ -324,6 +324,10 @@ export const CTA_LABELS = {
     addServiceMapping: "Add service mapping",
     addRepositoryTarget: "Add repository target",
     removeServiceMapping: "Remove service",
+    /** Open the create-provider form on the SSO providers admin page (CHAOS-13638). */
+    addSsoProvider: "Add SSO provider",
+    activateSsoProvider: "Activate",
+    deactivateSsoProvider: "Deactivate",
     /** Open the create-entry form on the IP allowlist admin page (CHAOS-2842). */
     addIpAllowlistEntry: "Add IP Rule",
     /** Open the create-policy form on the data retention admin page (CHAOS-2842). */

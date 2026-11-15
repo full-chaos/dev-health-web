@@ -822,6 +822,69 @@ export interface AuditLogFilter {
     end_date?: string | null;
 }
 
+// ---- SSO providers (the go-api provider routes) ----
+
+export type SsoProtocol = "oidc" | "saml";
+
+export interface SsoProvider {
+    id: string;
+    org_id: string;
+    name: string;
+    protocol: SsoProtocol;
+    status: string;
+    is_default: boolean;
+    allow_idp_initiated: boolean;
+    auto_provision_users: boolean;
+    default_role: string;
+    /** The public config. The API masks `client_secret`; the page never renders it. */
+    config: Record<string, unknown>;
+    allowed_domains: string[] | null;
+    last_metadata_sync_at: string | null;
+    last_login_at: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SsoOidcConfigInput {
+    client_id?: string;
+    client_secret?: string;
+    issuer?: string;
+}
+
+export interface SsoSamlConfigInput {
+    entity_id?: string;
+    sso_url?: string;
+    certificate?: string;
+}
+
+export interface SsoProviderCreate {
+    name: string;
+    protocol: SsoProtocol;
+    oidc_config?: SsoOidcConfigInput;
+    saml_config?: SsoSamlConfigInput;
+    is_default?: boolean;
+    allow_idp_initiated?: boolean;
+    auto_provision_users?: boolean;
+}
+
+export interface SsoProviderUpdate {
+    name?: string;
+    oidc_config?: SsoOidcConfigInput;
+    saml_config?: SsoSamlConfigInput;
+    is_default?: boolean;
+    allow_idp_initiated?: boolean;
+    auto_provision_users?: boolean;
+}
+
+export interface SsoProviderListResponse {
+    items: SsoProvider[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
 // ---- IP Allowlist ----
 
 export interface IPAllowlist {
