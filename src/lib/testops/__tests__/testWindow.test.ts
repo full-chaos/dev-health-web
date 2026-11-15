@@ -104,6 +104,22 @@ describe("testWindowTiles", () => {
         expect(none.slice(0, 4).map((t) => [t.value, t.valueText])).toEqual(
             Array(4).fill([undefined, undefined]),
         );
+        // A trend is not drawn beside a tile that reads "Not reported".
+        const spark = [
+            { ts: "2026-11-01", value: 1 },
+            { ts: "2026-11-02", value: 2 },
+        ];
+        const sparked = testWindowTiles(
+            served({ passRatePct: null, failureRatePct: null, flakeRatePct: 1 }),
+            { pass: spark, failure: spark, flake: spark },
+        );
+        expect(sparked.map((t) => t.spark !== undefined)).toEqual([
+            false,
+            false,
+            false,
+            true,
+            false,
+        ]);
         const failed = testWindowTiles({ fetchFailed: true }, {});
         expect(failed.map((t) => t.value)).toEqual(Array(5).fill(undefined));
         expect(failed.map((t) => t.note)).toEqual(Array(5).fill("Test window could not be loaded"));

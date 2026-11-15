@@ -89,7 +89,7 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
                 window.passRatePct === null
                     ? undefined
                     : `${formatTruncatedPercent(window.passRatePct)}%`,
-            spark: sparks.pass,
+            spark: window.passRatePct === null ? undefined : sparks.pass,
         },
         {
             ...base,
@@ -101,7 +101,7 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
             value: window.failureRatePct ?? undefined,
             valueText:
                 window.failureRatePct === null ? undefined : percentText(window.failureRatePct),
-            spark: sparks.failure,
+            spark: window.failureRatePct === null ? undefined : sparks.failure,
         },
         {
             ...base,
@@ -112,7 +112,7 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
             unit: "%",
             value: window.flakeRatePct ?? undefined,
             valueText: window.flakeRatePct === null ? undefined : percentText(window.flakeRatePct),
-            spark: sparks.flake,
+            spark: window.flakeRatePct === null ? undefined : sparks.flake,
         },
         {
             ...base,
