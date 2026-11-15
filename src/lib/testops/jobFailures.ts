@@ -27,6 +27,7 @@ export const JobFailuresResultSchema = z.object({
     totalCount: z.number(),
     /** More groups exist than were served. */
     truncated: z.boolean(),
+    filterEmptyReason: z.string().nullish(),
 });
 
 export type JobFailureGroup = z.infer<typeof JobFailureGroupSchema>;

@@ -19,6 +19,7 @@ query TestOpsPipeline($orgId: String!, $batch: AnalyticsRequestInput!) {
         value
       }
     }
+    filterEmptyReason
   }
 }
 `;
@@ -71,6 +72,7 @@ key
         label
 }
     }
+    filterEmptyReason
   }
 }
 `;
@@ -157,6 +159,7 @@ query TestOpsJobFailures($orgId: String!, $input: TestOpsJobFailuresInput!) {
     }
     totalCount
     truncated
+    filterEmptyReason
   }
 }
 `;
@@ -184,6 +187,7 @@ query TestOpsTestWindow($orgId: String!, $input: TestOpsTestWindowInput!) {
     passRatePct
     failureRatePct
     flakeRatePct
+    filterEmptyReason
   }
 }
 `;

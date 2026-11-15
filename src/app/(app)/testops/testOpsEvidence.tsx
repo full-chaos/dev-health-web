@@ -1,6 +1,11 @@
 import type { EvidenceContentSubject } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { formatMetricValue } from "@/lib/formatters";
+import {
+    TEAM_OWNS_NO_REPOSITORY,
+    filterEmptyReasonText,
+    teamOwnsNoRepository,
+} from "@/lib/metrics/filterEmptyReason";
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
 import {
     getDelta,
@@ -31,6 +36,21 @@ export type TestOpsTile = {
     valueIsMessage?: boolean;
 };
 
+/** The tile state of a selected team that owns no repository (the server's reason; never derived here). */
+export const NO_OWNED_REPOSITORIES = filterEmptyReasonText(TEAM_OWNS_NO_REPOSITORY) ?? "";
+
+/** A tile that is the state, not a value: no number, no trend, no change. */
+export const noOwnedRepositoriesTile = <T extends object>(tile: T) => ({
+    ...tile,
+    note: undefined,
+    value: undefined,
+    valueText: NO_OWNED_REPOSITORIES,
+    valueIsMessage: true,
+    delta: undefined,
+    noDelta: true,
+    spark: undefined,
+});
+
 /** The state of a measure with no ORG series when two or more team series are served. */
 export const PICK_ONE_TEAM = "Pick one team";
 
@@ -38,11 +58,13 @@ export const PICK_ONE_TEAM = "Pick one team";
  * Resolve the tiles of a TestOps tab from the served time series. The readers are the ones the
  * pages always used (`getLatestValue`, `getSparkline`, `getDelta`), on one scope per measure
  * (`teamIds`: the selected teams; see `seriesForScope`); a measure the registry does not know is
- * left out.
+ * left out. `emptyReason` is the server's reason for the whole answer: a team that owns no
+ * repository makes every tile the state "No owned repositories".
  */
 export function resolveTestOpsTiles(
     measures: ReadonlyArray<{ id: string; ts: TimeseriesResult[] }>,
     teamIds?: readonly string[],
+    emptyReason?: string | null,
 ): TestOpsTile[] {
     return measures.flatMap(({ id, ts }) => {
         const def = TESTOPS_MEASURES[id];
@@ -54,6 +76,9 @@ export function resolveTestOpsTiles(
             unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
             inverseGood: def.goodDirection === "down",
         };
+        if (teamOwnsNoRepository(emptyReason)) {
+            return [noOwnedRepositoriesTile({ ...tile, note: undefined })];
+        }
         if (needsOneTeamPick(ts, id, teamIds)) {
             return [
                 {

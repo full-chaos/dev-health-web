@@ -10,6 +10,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FailurePatternsCard } from "@/components/testops/FailurePatternsCard";
 import { InvestigateTestOps } from "@/components/testops/InvestigateTestOps";
 import { PipelineRateTrendChart } from "@/components/testops/PipelineRateTrendChart";
+import { NoOwnedRepositoriesState } from "@/components/testops/NoOwnedRepositoriesState";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
@@ -19,6 +20,7 @@ import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateT
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 
 import { resolveTestOpsTiles, testOpsEvidenceSubject } from "./testOpsEvidence";
 import { TestOpsTabs } from "./TestOpsTabs";
@@ -118,6 +120,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const testTimeseries = testOpsData.tests.timeseries || [];
     const coverageTimeseries = testOpsData.coverage.timeseries || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
+    // The server's reason for the whole answer (a team that owns no repository); never derived here.
+    const emptyReason = testOpsData.pipelines.filterEmptyReason;
 
     // The approved Overview strip: five tiles. Queue Time and Rerun Rate are on the Pipelines tab.
     const tiles = resolveTestOpsTiles(
@@ -129,6 +133,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
         ],
         scope.teamIds,
+        emptyReason ?? testOpsData.coverage.filterEmptyReason,
     );
 
     const rateTrend = buildPipelineRateTrend(pipelineTimeseries, scope.teamIds);
@@ -187,6 +192,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                         title="Pipeline trend could not be loaded"
                         message="Pipeline analytics could not be loaded. Please try again later."
                     />
+                ) : teamOwnsNoRepository(emptyReason) ? (
+                    <NoOwnedRepositoriesState />
                 ) : !hasPipelineRateData(rateTrend) ? (
                     <DataState
                         variant="no-data-connected"
@@ -206,6 +213,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                     model={failurePatterns}
                     fetchFailed={fetchFailed}
                     jobFailures={jobFailures}
+                    emptyReason={emptyReason}
                 />
                 <InvestigateTestOps filters={filters} role={activeRole} />
             </div>

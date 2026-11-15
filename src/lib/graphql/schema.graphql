@@ -438,6 +438,9 @@ type AnalyticsResult {
   evidenceQualityDistribution: JSON
   evidenceQualityStats: EvidenceQualityStats
   evidenceQualityByGroup: [EvidenceQualityGroup!]
+  # PRE-ROLL (CHAOS-13869): local copy of the field the ops contract adds in CHAOS-13868. Replace this file with the verbatim ops copy after the ops roll.
+  "Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows."
+  filterEmptyReason: String
 }
 
 """
@@ -2234,6 +2237,9 @@ type TestOpsJobFailuresResult {
   totalCount: Int!
   """True = ``totalCount`` is above the number of ``groups`` served."""
   truncated: Boolean!
+  # PRE-ROLL (CHAOS-13869): local copy of the field the ops contract adds in CHAOS-13868. Replace this file with the verbatim ops copy after the ops roll.
+  "Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows."
+  filterEmptyReason: String
 }
 
 input TestOpsTestWindowInput {
@@ -2286,6 +2292,9 @@ type TestOpsTestWindowResult {
   Summed flaky case names over summed distinct case names of the window, as a percent (0 to 100). Null = no distinct case, or a day stored without the counts (the whole window is then unavailable, not a smaller one).
   """
   flakeRatePct: Float
+  # PRE-ROLL (CHAOS-13869): local copy of the field the ops contract adds in CHAOS-13868. Replace this file with the verbatim ops copy after the ops roll.
+  "Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows."
+  filterEmptyReason: String
 }
 
 type TestOpsRiskBreakdownItem {

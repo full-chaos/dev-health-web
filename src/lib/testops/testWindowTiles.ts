@@ -1,5 +1,6 @@
 import { formatMetricValue, formatNumber, formatTruncatedPercent } from "@/lib/formatters";
-import type { TestOpsTile } from "@/app/(app)/testops/testOpsEvidence";
+import { noOwnedRepositoriesTile, type TestOpsTile } from "@/app/(app)/testops/testOpsEvidence";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 import type { SparkPoint } from "@/lib/types";
 
 import { isPartialCoverage, testWindowFailed, type TestWindowState } from "./testWindow";
@@ -51,6 +52,24 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
             failed("TEST_FAILURE_RATE", "Failure Rate"),
             failed("TEST_FLAKE_RATE", "Flake Rate"),
             failed("TEST_SKIPPED", "Skipped cases"),
+        ];
+    }
+
+    if (teamOwnsNoRepository(window.filterEmptyReason)) {
+        const state = (id: string, label: string): TestOpsTile =>
+            noOwnedRepositoriesTile({
+                ...base,
+                id,
+                label,
+                description: `${label}: the selected team owns no repository, so there is nothing to measure.`,
+                unit: "",
+            }) as TestOpsTile;
+        return [
+            state("TEST_COVERAGE", "Test coverage"),
+            state("TEST_PASS_RATE", "Pass Rate"),
+            state("TEST_FAILURE_RATE", "Failure Rate"),
+            state("TEST_FLAKE_RATE", "Flake Rate"),
+            state("TEST_SKIPPED", "Skipped cases"),
         ];
     }
 

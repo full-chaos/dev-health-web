@@ -457,6 +457,8 @@ export type AnalyticsResult = {
   evidenceQualityByGroup?: Maybe<Array<EvidenceQualityGroup>>;
   evidenceQualityDistribution?: Maybe<Scalars['JSON']['output']>;
   evidenceQualityStats?: Maybe<EvidenceQualityStats>;
+  /** Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   flowMatrix?: Maybe<FlowMatrixResult>;
   sankey?: Maybe<SankeyResult>;
   timeseries: Array<TimeseriesResult>;
@@ -2514,6 +2516,8 @@ export type TestOpsJobFailuresInput = {
 
 export type TestOpsJobFailuresResult = {
   __typename?: 'TestOpsJobFailuresResult';
+  /** Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   /** The groups with the most failed runs first (then by job name, workflow name and provider), cut at ``limit``. */
   groups: Array<TestOpsJobFailureGroup>;
   /** Number of groups that match before the ``limit`` cut. Never less than ``groups``. */
@@ -2610,6 +2614,8 @@ export type TestOpsTestWindowResult = {
   coverage: TestOpsTestCoverage;
   /** ``failed / (passed + failed)`` over the window, as a percent (0 to 100). Null = no passed or failed case. */
   failureRatePct?: Maybe<Scalars['Float']['output']>;
+  /** Why the answer is empty, one value for the whole answer, set by the server. team_owns_no_repository: the selected teams own no repository. Null when they own one or more, also when the window has no rows. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   /** Summed flaky case names over summed distinct case names of the window, as a percent (0 to 100). Null = no distinct case, or a day stored without the counts (the whole window is then unavailable, not a smaller one). */
   flakeRatePct?: Maybe<Scalars['Float']['output']>;
   /** ``passed / (passed + failed)`` over the window, as a percent (0 to 100); skipped and quarantined cases are not in the denominator. Null = no passed or failed case. */

@@ -10,6 +10,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { NoOwnedRepositoriesState } from "@/components/testops/NoOwnedRepositoriesState";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
@@ -28,6 +29,7 @@ import {
     BreakdownItem,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
+import { TEAM_OWNS_NO_REPOSITORY, teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 
 import { PICK_ONE_TEAM, resolveTestOpsTiles, testOpsEvidenceSubject } from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
@@ -136,6 +138,10 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     const testTimeseries = testOpsData.tests.timeseries || [];
     const testBreakdowns = testOpsData.tests.breakdowns || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
+    // The server's reason, from either answer (same team scope): never derived here.
+    const noOwnedRepositories =
+        teamOwnsNoRepository(testOpsData.tests.filterEmptyReason) ||
+        (!testWindowFailed(testWindow) && teamOwnsNoRepository(testWindow.filterEmptyReason));
 
     // The rate tiles read the window answer (coverage, pass, failure, flake, skipped); the series
     // only draws their sparklines. The suite duration tile still reads its series.
@@ -148,6 +154,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         ...resolveTestOpsTiles(
             [{ id: "TEST_SUITE_DURATION_P95", ts: testTimeseries }],
             scope.teamIds,
+            noOwnedRepositories ? TEAM_OWNS_NO_REPOSITORY : null,
         ),
     ];
     const partialCoverage =
@@ -270,6 +277,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                                     title={`${card.title} could not be loaded`}
                                     message="Test analytics could not be loaded. Please try again later."
                                 />
+                            ) : noOwnedRepositories ? (
+                                <NoOwnedRepositoriesState compact />
                             ) : card.pickOneTeam ? (
                                 <DataState
                                     variant="insufficient-confidence"
@@ -312,6 +321,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         title="Flaky test patterns could not be loaded"
                         message="Test analytics could not be loaded. Please try again later."
                     />
+                ) : noOwnedRepositories ? (
+                    <NoOwnedRepositoriesState compact />
                 ) : heatmapData.cells.length === 0 ? (
                     <DataState
                         variant="detector-enabled-no-findings"
