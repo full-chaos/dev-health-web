@@ -134,6 +134,22 @@ const formatMetricDigits = (value: number, unit: string) => {
     return formatNumber(value);
 };
 
+/**
+ * A pass-type percent as text: one decimal, cut down, never rounded up. 99.84 is "99.8" and
+ * 99.99989 is "99.9"; only a served 100 is "100". `formatMetricDigits` rounds (99.84 -> "100"),
+ * which is right for a measure and wrong for a rate that must not read as perfect. A value above
+ * 100 or below 0 is clamped to the range a percent has.
+ */
+export const formatTruncatedPercent = (value: number): string => {
+    if (!Number.isFinite(value)) return "";
+    if (value >= 100) return "100";
+    if (value <= 0) return "0.0";
+    // The epsilon (a few ulps) keeps a value that floating point stores just below its tenth (4.3 as
+    // 4.2999...) on its tenth; a value below 100 never reaches "100".
+    const tenths = Math.min(Math.floor(value * 10 + 1e-12), 999);
+    return (tenths / 10).toFixed(1);
+};
+
 export const formatMetricValue = (value: number, unit: string) => {
     const number = formatMetricNumber(value, unit);
     if (unit === "%") {

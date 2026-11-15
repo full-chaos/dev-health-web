@@ -16,6 +16,7 @@ import {
     fetchCoverageBaselines,
     fetchCoverageScopeBaseline,
     fetchJobFailures,
+    fetchTestWindow,
     normalizeAnalyticsDurations,
 } from "../fetchers";
 import { SAMPLE_RISK_DATA } from "../sample-data";
@@ -566,5 +567,66 @@ describe("fetchCoverageScopeBaseline", () => {
         const result = await fetchCoverageScopeBaseline({ endDate: "2026-09-15" }, true);
         expect("lineDays" in result).toBe(true);
         expect(graphqlFetch).not.toHaveBeenCalled();
+    });
+});
+
+describe("fetchTestWindow", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockAuth({ user: { org_id: "org-1" } });
+    });
+
+    const served = {
+        sinceDate: "2026-08-01",
+        untilDate: "2026-08-31",
+        coverage: { completedRuns: 10, runsWithTests: 1, sharePct: 10 },
+        cases: { passed: 9, failed: 1, skipped: 0, quarantined: 0, total: 10 },
+        passRatePct: 90,
+        failureRatePct: 10,
+        flakeRatePct: null,
+    };
+
+    it("sends the window and only a scope that is set (a team pick sends teamIds, no pick sends neither)", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsTestWindow: served });
+
+        await fetchTestWindow({
+            sinceDate: "2026-08-01",
+            untilDate: "2026-08-31",
+            repoIds: [],
+            teamIds: ["t1"],
+        });
+        await fetchTestWindow({ sinceDate: "2026-08-01", untilDate: "2026-08-31" });
+
+        const calls = vi.mocked(graphqlFetch).mock.calls;
+        expect(calls[0][1]).toEqual({
+            orgId: "org-1",
+            input: { sinceDate: "2026-08-01", untilDate: "2026-08-31", teamIds: ["t1"] },
+        });
+        expect(calls[1][1]).toEqual({
+            orgId: "org-1",
+            input: { sinceDate: "2026-08-01", untilDate: "2026-08-31" },
+        });
+    });
+
+    it("returns the served answer, nulls included (missing is not 0)", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsTestWindow: served });
+        expect(await fetchTestWindow({ sinceDate: "a", untilDate: "b" })).toEqual(served);
+    });
+
+    it("reports a failed read, never an empty answer: an error or a wrong shape", async () => {
+        vi.mocked(graphqlFetch).mockRejectedValue(new Error("boom"));
+        expect(await fetchTestWindow({ sinceDate: "a", untilDate: "b" })).toEqual({
+            fetchFailed: true,
+        });
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsTestWindow: { passRatePct: 100 } });
+        expect(await fetchTestWindow({ sinceDate: "a", untilDate: "b" })).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("returns the sample window in test mode, without a request", async () => {
+        const state = await fetchTestWindow({ sinceDate: "a", untilDate: "b" }, true);
+        expect(vi.mocked(graphqlFetch)).not.toHaveBeenCalled();
+        expect("fetchFailed" in state).toBe(false);
     });
 });
