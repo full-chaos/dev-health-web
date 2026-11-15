@@ -82,3 +82,58 @@ describe("hasPipelineRateData", () => {
         expect(hasPipelineRateData([{ day: "2026-09-01", success: null, failure: 0 }])).toBe(true);
     });
 });
+
+describe("buildPipelineRateTrend reads one scope per series", () => {
+    const scoped = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        value: number,
+    ): TimeseriesResult => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: [{ date: "2026-11-13", value }],
+    });
+
+    it("draws the ORG success series, not a mean of the teams and the org", () => {
+        const points = buildPipelineRateTrend([
+            scoped("PIPELINE_SUCCESS_RATE", "team-a", "DIMENSION", 100),
+            scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+            scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 20),
+            scoped("PIPELINE_FAILURE_RATE", "team-a", "DIMENSION", 0),
+            scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+        ]);
+        expect(points).toHaveLength(1);
+        expect(points[0].success).toBe(20);
+        // No ORG failure series is served yet: the failure line stays the merge of the teams.
+        expect(points[0].failure).toBeCloseTo(400 / 9, 6);
+    });
+
+    it("with ORG series for both rates from the same rows, success and failure sum to 100", () => {
+        const points = buildPipelineRateTrend([
+            scoped("PIPELINE_SUCCESS_RATE", "team-a", "DIMENSION", 100),
+            scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+            scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 20),
+            scoped("PIPELINE_FAILURE_RATE", "team-a", "DIMENSION", 0),
+            scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+            scoped("PIPELINE_FAILURE_RATE", "org", "ORG", 80),
+        ]);
+        expect(points[0]).toEqual({ day: "2026-11-13", success: 20, failure: 80 });
+        expect((points[0].success ?? 0) + (points[0].failure ?? 0)).toBe(100);
+    });
+
+    it("with one team selected draws that team's series", () => {
+        const points = buildPipelineRateTrend(
+            [
+                scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
+                scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 100 / 9),
+                scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+            ],
+            ["team-b"],
+        );
+        expect(points[0].success).toBeCloseTo(100 / 9, 6);
+        expect(points[0].failure).toBeCloseTo(800 / 9, 6);
+    });
+});

@@ -1,13 +1,15 @@
-/** CHAOS-9077: the TestOps Tests tiles pass goodDirection as inverseGood; the tone must not move. */
+/** CHAOS-9077: the suite duration tile passes goodDirection as inverseGood and the window tiles draw no change; the tone must not move. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, within } from "@/test/utils";
 
-const { mockCheckApiHealth, mockFetchTestOpsData, mockFetchJobFailures } = vi.hoisted(() => ({
-    mockCheckApiHealth: vi.fn(),
-    mockFetchTestOpsData: vi.fn(),
-    mockFetchJobFailures: vi.fn(),
-}));
+const { mockCheckApiHealth, mockFetchTestOpsData, mockFetchJobFailures, mockFetchTestWindow } =
+    vi.hoisted(() => ({
+        mockCheckApiHealth: vi.fn(),
+        mockFetchTestOpsData: vi.fn(),
+        mockFetchJobFailures: vi.fn(),
+        mockFetchTestWindow: vi.fn(),
+    }));
 
 const requireSessionMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
@@ -21,6 +23,7 @@ vi.mock("@/lib/api/system", () => ({ checkApiHealth: mockCheckApiHealth }));
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchTestOpsData: mockFetchTestOpsData,
     fetchJobFailures: mockFetchJobFailures,
+    fetchTestWindow: mockFetchTestWindow,
 }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
@@ -67,10 +70,25 @@ const ts = (measure: string, first: number, last: number) => ({
     ],
 });
 
-async function renderWith(success: [number, number], failure: [number, number]) {
+const WINDOW = {
+    sinceDate: "2026-09-01",
+    untilDate: "2026-09-02",
+    coverage: { completedRuns: 100, runsWithTests: 80, sharePct: 80 },
+    cases: { passed: 90, failed: 10, skipped: 0, quarantined: 0, total: 100 },
+    passRatePct: 90,
+    failureRatePct: 10,
+    flakeRatePct: 1,
+};
+
+async function renderWith(duration: [number, number]) {
+    mockFetchTestWindow.mockResolvedValue(WINDOW);
     mockFetchTestOpsData.mockResolvedValue({
         tests: {
-            timeseries: [ts("TEST_PASS_RATE", ...success), ts("TEST_FAILURE_RATE", ...failure)],
+            timeseries: [
+                ts("TEST_PASS_RATE", 90, 95),
+                ts("TEST_FAILURE_RATE", 6, 3),
+                ts("TEST_SUITE_DURATION_P95", ...duration),
+            ],
             breakdowns: [],
         },
         pipelines: { timeseries: [], breakdowns: [] },
@@ -87,21 +105,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TestOps Tests tile change tone", () => {
-    it("failure rate (down is good): falling good, rising bad", async () => {
-        await renderWith([90, 90], [6, 3]);
-        expect(deltaOf("testops-tests-tiles", "Failure Rate")?.className).toContain(GOOD);
-        cleanup();
-        await renderWith([90, 90], [3, 6]);
-        const cls = deltaOf("testops-tests-tiles", "Failure Rate")?.className;
-        expect(cls).toContain(BAD);
-        expect(cls).not.toContain(GOOD);
+    it("the window tiles draw no change at all, and not the default 'No prior period'", async () => {
+        await renderWith([8, 5]);
+        for (const label of ["Test coverage", "Pass Rate", "Failure Rate", "Flake Rate"]) {
+            expect(deltaOf("testops-tests-tiles", label)).toBeNull();
+        }
+        expect(screen.queryByText("No prior period")).toBeNull();
     });
-    it("pass rate (up is good): rising good, falling bad", async () => {
-        await renderWith([90, 95], [3, 3]);
-        expect(deltaOf("testops-tests-tiles", "Pass Rate")?.className).toContain(GOOD);
+    it("suite duration (down is good, CHAOS-9077): falling good, rising bad", async () => {
+        await renderWith([8, 5]);
+        expect(deltaOf("testops-tests-tiles", "P95 Suite Duration")?.className).toContain(GOOD);
         cleanup();
-        await renderWith([95, 90], [3, 3]);
-        const cls = deltaOf("testops-tests-tiles", "Pass Rate")?.className;
+        await renderWith([5, 8]);
+        const cls = deltaOf("testops-tests-tiles", "P95 Suite Duration")?.className;
         expect(cls).toContain(BAD);
         expect(cls).not.toContain(GOOD);
     });

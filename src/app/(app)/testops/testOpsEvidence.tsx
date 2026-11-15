@@ -18,15 +18,21 @@ export type TestOpsTile = {
     value: number | undefined;
     delta: number | undefined;
     spark: ReturnType<typeof getSparkline>;
+    /** The tile's own value text (a rate cut down, never rounded up); the evidence shows the same text. */
+    valueText?: string;
+    /** No change value is read for this tile: the card draws no delta and no "No prior period". */
+    noDelta?: boolean;
 };
 
 /**
  * Resolve the tiles of a TestOps tab from the served time series. The readers are the ones the
- * pages always used (`getLatestValue`, `getSparkline`, `getDelta`); a measure the registry does
- * not know is left out.
+ * pages always used (`getLatestValue`, `getSparkline`, `getDelta`), on one scope per measure
+ * (`teamIds`: the selected teams; see `seriesForScope`); a measure the registry does not know is
+ * left out.
  */
 export function resolveTestOpsTiles(
     measures: ReadonlyArray<{ id: string; ts: TimeseriesResult[] }>,
+    teamIds?: readonly string[],
 ): TestOpsTile[] {
     return measures.flatMap(({ id, ts }) => {
         const def = TESTOPS_MEASURES[id];
@@ -39,9 +45,9 @@ export function resolveTestOpsTiles(
                 note: def.note,
                 unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
                 inverseGood: def.goodDirection === "down",
-                value: getLatestValue(ts, id),
-                delta: getDelta(ts, id),
-                spark: getSparkline(ts, id),
+                value: getLatestValue(ts, id, teamIds),
+                delta: getDelta(ts, id, teamIds),
+                spark: getSparkline(ts, id, teamIds),
             },
         ];
     });
@@ -70,9 +76,10 @@ export function testOpsEvidenceSubject(
                             key={tile.id}
                             label={tile.label}
                             value={
-                                tile.value === undefined
+                                tile.valueText ??
+                                (tile.value === undefined
                                     ? undefined
-                                    : formatMetricValue(tile.value, tile.unit)
+                                    : formatMetricValue(tile.value, tile.unit))
                             }
                         />
                     ))}

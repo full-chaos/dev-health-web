@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { mergeSeriesByMeasure, getLatestValue, getSparkline, getDelta } from "../aggregateSeries";
+import {
+    mergeSeriesByMeasure,
+    getLatestValue,
+    getSparkline,
+    getDelta,
+    seriesForScope,
+} from "../aggregateSeries";
 import { TESTOPS_MEASURES } from "../constants";
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
 
@@ -269,5 +275,69 @@ describe("getDelta truthfulness + goodDirection for inverseGood wiring", () => {
         for (const id of downMetrics) {
             expect(TESTOPS_MEASURES[id]?.goodDirection).toBe("down");
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// seriesForScope: one scope per tile or trend, never a mean across scopes
+// ---------------------------------------------------------------------------
+
+describe("seriesForScope", () => {
+    const SUCCESS = "PIPELINE_SUCCESS_RATE";
+    // The served shape: one series per team (scope DIMENSION) and the org-rate series (scope ORG).
+    // team-a 1 of 1 = 100 %, team-b 1 of 9 = 11.1 %, org 2 of 10 = 20 %.
+    const scoped = (
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        values: number[],
+        measure = SUCCESS,
+    ): TimeseriesResult => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: values.map((value, i) => ({ date: `2026-11-1${i}`, value })),
+    });
+    const served = [
+        scoped("team-a", "DIMENSION", [100, 100]),
+        scoped("team-b", "DIMENSION", [100 / 9, 100 / 9]),
+        scoped("org", "ORG", [30, 20]),
+    ];
+
+    it("with no team selected reads the ORG series", () => {
+        expect(seriesForScope(served, SUCCESS)?.scope).toBe("ORG");
+        expect(getLatestValue(served, SUCCESS)).toBe(20);
+    });
+
+    it("never averages the ORG series in with the team series", () => {
+        // The old reading: (100 + 11.1 + 20) / 3 = 43.70.
+        expect(getLatestValue(served, SUCCESS)).not.toBeCloseTo(43.7, 1);
+        expect(mergeSeriesByMeasure(served, SUCCESS)?.buckets.at(-1)?.value).toBeCloseTo(
+            (100 + 100 / 9) / 2,
+            6,
+        );
+    });
+
+    it("reads the spark and the change of the ORG series", () => {
+        expect(getSparkline(served, SUCCESS)?.map((p) => p.value)).toEqual([30, 20]);
+        expect(getDelta(served, SUCCESS)).toBeCloseTo(((20 - 30) / 30) * 100, 6);
+    });
+
+    it("with no ORG series served, keeps the merge of the team series", () => {
+        const teamsOnly = served.filter((series) => series.scope !== "ORG");
+        expect(getLatestValue(teamsOnly, SUCCESS)).toBeCloseTo((100 + 100 / 9) / 2, 6);
+    });
+
+    it("with one team selected reads that team's series", () => {
+        expect(getLatestValue(served, SUCCESS, ["team-b"])).toBeCloseTo(100 / 9, 6);
+    });
+
+    it("with one selected team that is not served reads no series", () => {
+        expect(seriesForScope(served, SUCCESS, ["team-x"])).toBeUndefined();
+        expect(getLatestValue(served, SUCCESS, ["team-x"])).toBeUndefined();
+    });
+
+    it("with several teams selected reads the ORG series, which the API reads under the team filter", () => {
+        expect(seriesForScope(served, SUCCESS, ["team-a", "team-b"])?.scope).toBe("ORG");
     });
 });
