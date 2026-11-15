@@ -123,7 +123,7 @@ type BreakdownResult = {
 };
 ```
 
-GraphQL queries are defined in `src/lib/testops/queries.ts` (`TESTOPS_PIPELINE_QUERY`, `TESTOPS_TEST_QUERY`, `TESTOPS_COVERAGE_QUERY`, `TESTOPS_RISK_QUERY`).
+GraphQL queries are defined in `src/lib/testops/queries.ts` (`TESTOPS_PIPELINE_QUERY`, `TESTOPS_COVERAGE_QUERY`, `TESTOPS_RISK_QUERY`).
 
 Measure metadata (labels, units, good-direction) is centralised in `src/lib/testops/constants.ts` as `TESTOPS_MEASURES`.
 
