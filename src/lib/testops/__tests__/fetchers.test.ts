@@ -630,3 +630,52 @@ describe("fetchTestWindow", () => {
         expect("fetchFailed" in state).toBe(false);
     });
 });
+
+describe("fetchTestOpsData reads the tests from the scoped TestOpsPipeline answer", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+    });
+
+    it("sends TestOpsPipeline and TestOpsCoverage only, and the tests carry the served ORG series", async () => {
+        const answer = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "team-a",
+                    scope: "DIMENSION",
+                    measure: "TEST_FLAKE_RATE",
+                    buckets: [{ date: "2026-11-14", value: 2 }],
+                },
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "org",
+                    scope: "ORG",
+                    measure: "TEST_FLAKE_RATE",
+                    buckets: [{ date: "2026-11-14", value: 3 }],
+                },
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "team-a",
+                    scope: "DIMENSION",
+                    measure: "TEST_SUITE_DURATION_P95",
+                    buckets: [{ date: "2026-11-14", value: 600 }],
+                },
+            ],
+            breakdowns: [],
+        };
+        vi.mocked(graphqlFetch).mockResolvedValue({ analytics: answer });
+
+        const result = await fetchTestOpsData({ timeseries: [], breakdowns: [] }, false, "org-1");
+
+        const sent = vi
+            .mocked(graphqlFetch)
+            .mock.calls.map(([query]) => /query (\w+)\(/.exec(String(query))?.[1]);
+        expect(sent.sort()).toEqual(["TestOpsCoverage", "TestOpsPipeline"]);
+        expect(result.tests.timeseries.find((s) => s.scope === "ORG")?.buckets[0].value).toBe(3);
+        // Duration buckets in minutes, as the pipelines read them.
+        expect(
+            result.tests.timeseries.find((s) => s.measure === "TEST_SUITE_DURATION_P95")?.buckets[0]
+                .value,
+        ).toBe(10);
+    });
+});

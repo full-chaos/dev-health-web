@@ -23,6 +23,8 @@ query TestOpsPipeline($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
+// Registered in query-api and kept for the wire-parity manifest; no read sends it (the tests read the
+// TestOpsPipeline answer, which carries the scope).
 export const TESTOPS_TEST_QUERY = `
 query TestOpsTest($orgId: String!, $batch: AnalyticsRequestInput!) {
   analytics(orgId: $orgId, batch: $batch) {

@@ -57,13 +57,13 @@ describe("buildPipelineRateTrend", () => {
         expect(points).toEqual([{ day: "2026-09-01", success: 100, failure: 0 }]);
     });
 
-    it("uses the same team roll-up as the tiles (mean of the teams that served a value)", () => {
+    it("draws no line from several team series and no ORG series (never their mean)", () => {
         const points = buildPipelineRateTrend([
             series("PIPELINE_SUCCESS_RATE", [["2026-09-01", 90]], "team-a"),
             series("PIPELINE_SUCCESS_RATE", [["2026-09-01", 70]], "team-b"),
             series("PIPELINE_SUCCESS_RATE", [["2026-09-01", null]], "team-c"),
         ]);
-        expect(points).toEqual([{ day: "2026-09-01", success: 80, failure: null }]);
+        expect(points).toEqual([]);
     });
 
     it("ignores other measures and returns no point without the two series", () => {
@@ -107,8 +107,8 @@ describe("buildPipelineRateTrend reads one scope per series", () => {
         ]);
         expect(points).toHaveLength(1);
         expect(points[0].success).toBe(20);
-        // No ORG failure series is served yet: the failure line stays the merge of the teams.
-        expect(points[0].failure).toBeCloseTo(400 / 9, 6);
+        // No ORG failure series and two team series: no failure value, never the merge of the teams.
+        expect(points[0].failure).toBeNull();
     });
 
     it("with ORG series for both rates from the same rows, success and failure sum to 100", () => {

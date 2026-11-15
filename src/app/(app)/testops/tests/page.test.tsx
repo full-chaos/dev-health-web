@@ -51,6 +51,8 @@ vi.mock("@/components/metrics/MetricCard", () => ({
         deltaUnavailableLabel,
         valueText,
         deltaSlot,
+        spark,
+        valueIsMessage,
     }: {
         label: string;
         value?: number;
@@ -59,9 +61,15 @@ vi.mock("@/components/metrics/MetricCard", () => ({
         deltaUnavailableLabel?: string;
         valueText?: string;
         deltaSlot?: ReactNode;
+        spark?: Array<{ value: number | null }>;
+        valueIsMessage?: boolean;
     }) => (
         <article
             data-testid="metric-tile"
+            data-spark={
+                spark === undefined ? "undefined" : JSON.stringify(spark.map((p) => p.value))
+            }
+            data-value-is-message={valueIsMessage ? "yes" : "no"}
             data-label={label}
             data-value={value === undefined ? "undefined" : String(value)}
             data-caption={caption ?? ""}
@@ -533,5 +541,116 @@ describe("TestOps Tests sends the scope bar's filter", () => {
         expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
             filters: { scope: { level: "ORG" } },
         });
+    });
+});
+
+describe("TestOps Tests reads one served series per scope, never a merge", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+    const teams = (ids: string[]) =>
+        f({
+            time: { range_days: 14 },
+            scope: { level: "team", ids },
+            who: {},
+            what: {},
+            why: {},
+            how: {},
+        });
+    const series = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        values: Array<[string, number]>,
+    ) => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: values.map(([date, value]) => ({ date, value })),
+    });
+    // Two team series and the API's ORG series for each rate; P95 has no ORG series.
+    const twoTeams = {
+        pipelines: empty,
+        tests: {
+            timeseries: [
+                series("TEST_PASS_RATE", "t1", "DIMENSION", [
+                    ["2026-09-01", 70],
+                    ["2026-09-02", 70],
+                ]),
+                series("TEST_PASS_RATE", "t2", "DIMENSION", [
+                    ["2026-09-01", 75],
+                    ["2026-09-02", 75],
+                ]),
+                series("TEST_PASS_RATE", "org", "ORG", [
+                    ["2026-09-01", 80],
+                    ["2026-09-02", 81],
+                ]),
+                series("TEST_FAILURE_RATE", "t1", "DIMENSION", [["2026-09-02", 30]]),
+                series("TEST_FAILURE_RATE", "t2", "DIMENSION", [["2026-09-02", 25]]),
+                series("TEST_FAILURE_RATE", "org", "ORG", [["2026-09-02", 19]]),
+                series("TEST_FLAKE_RATE", "t1", "DIMENSION", [["2026-09-02", 1]]),
+                series("TEST_FLAKE_RATE", "t2", "DIMENSION", [["2026-09-02", 5]]),
+                series("TEST_FLAKE_RATE", "org", "ORG", [["2026-09-02", 2]]),
+                series("TEST_SUITE_DURATION_P95", "t1", "DIMENSION", [
+                    ["2026-09-01", 9],
+                    ["2026-09-02", 8],
+                ]),
+                series("TEST_SUITE_DURATION_P95", "t2", "DIMENSION", [
+                    ["2026-09-01", 30],
+                    ["2026-09-02", 34],
+                ]),
+            ],
+            breakdowns: [],
+        },
+        coverage: empty,
+    };
+    const tile = (label: string) =>
+        screen.getAllByTestId("metric-tile").find((t) => t.getAttribute("data-label") === label)!;
+    const passTrend = () =>
+        (
+            chartSpy.mock.calls.find(() => true)?.[0] as { data: Array<{ value: number | null }> }
+        ).data.map((p) => p.value);
+
+    beforeEach(() => mockFetchTestOpsData.mockResolvedValue(twoTeams));
+
+    it("0 teams: the sparks and the pass-rate trend read the ORG series; P95 shows the pick-one-team state", async () => {
+        await renderPage();
+        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[80,81]");
+        expect(tile("Flake Rate").getAttribute("data-spark")).toBe("[2]");
+        expect(passTrend()).toEqual([80, 81]);
+        const p95 = tile("P95 Suite Duration");
+        expect(p95.getAttribute("data-value")).toBe("undefined");
+        expect(p95.getAttribute("data-value-text")).toBe("Pick one team");
+        expect(p95.getAttribute("data-value-is-message")).toBe("yes");
+        expect(p95.getAttribute("data-spark")).toBe("undefined");
+        const duration = screen.getByTestId("testops-trend-suite-duration");
+        expect(within(duration).getByText("Pick one team")).toBeInTheDocument();
+        expect(chartSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("1 team: every spark, trend and the P95 tile read that team's series", async () => {
+        await renderPage(teams(["t1"]));
+        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[70,70]");
+        expect(tile("Failure Rate").getAttribute("data-spark")).toBe("[30]");
+        expect(passTrend()).toEqual([70, 70]);
+        const p95 = tile("P95 Suite Duration");
+        expect(p95.getAttribute("data-value")).toBe("8");
+        expect(p95.getAttribute("data-spark")).toBe("[9,8]");
+        expect(screen.queryByText("Pick one team")).toBeNull();
+    });
+
+    it("several teams: the rates read the ORG series under the filter; P95 shows the pick-one-team state", async () => {
+        await renderPage(teams(["t1", "t2"]));
+        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[80,81]");
+        expect(passTrend()).toEqual([80, 81]);
+        expect(tile("P95 Suite Duration").getAttribute("data-value-text")).toBe("Pick one team");
+    });
+
+    it("the default view with one served team series shows its P95, never the pick-one-team state", async () => {
+        mockFetchTestOpsData.mockResolvedValue(served);
+        await renderPage();
+        expect(tile("P95 Suite Duration").getAttribute("data-value")).toBe("8.9");
+        expect(screen.queryByText("Pick one team")).toBeNull();
     });
 });

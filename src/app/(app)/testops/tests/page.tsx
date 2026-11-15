@@ -18,7 +18,7 @@ import { fetchTestOpsData, fetchTestWindow } from "@/lib/testops/fetchers";
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import { isPartialCoverage, testWindowFailed } from "@/lib/testops/testWindow";
 import { testWindowTiles } from "@/lib/testops/testWindowTiles";
-import { getSparkline, mergeSeriesByMeasure } from "@/lib/testops/aggregateSeries";
+import { getSparkline, needsOneTeamPick, seriesForScope } from "@/lib/testops/aggregateSeries";
 import { isMissingKey, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import {
@@ -29,7 +29,7 @@ import {
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
-import { resolveTestOpsTiles, testOpsEvidenceSubject } from "../testOpsEvidence";
+import { PICK_ONE_TEAM, resolveTestOpsTiles, testOpsEvidenceSubject } from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
 
 type TestsPageProps = {
@@ -37,8 +37,12 @@ type TestsPageProps = {
 };
 
 /** The served daily points of one measure for the trend chart; a null bucket stays a gap. */
-function trendPoints(timeseries: TimeseriesResult[], measureId: string) {
-    const series = mergeSeriesByMeasure(timeseries, measureId);
+function trendPoints(
+    timeseries: TimeseriesResult[],
+    measureId: string,
+    teamIds: readonly string[] | undefined,
+) {
+    const series = seriesForScope(timeseries, measureId, teamIds);
     return series
         ? series.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value }))
         : [];
@@ -137,18 +141,25 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     // only draws their sparklines. The suite duration tile still reads its series.
     const tiles = [
         ...testWindowTiles(testWindow, {
-            pass: getSparkline(testTimeseries, "TEST_PASS_RATE"),
-            failure: getSparkline(testTimeseries, "TEST_FAILURE_RATE"),
-            flake: getSparkline(testTimeseries, "TEST_FLAKE_RATE"),
+            pass: getSparkline(testTimeseries, "TEST_PASS_RATE", scope.teamIds),
+            failure: getSparkline(testTimeseries, "TEST_FAILURE_RATE", scope.teamIds),
+            flake: getSparkline(testTimeseries, "TEST_FLAKE_RATE", scope.teamIds),
         }),
-        ...resolveTestOpsTiles([{ id: "TEST_SUITE_DURATION_P95", ts: testTimeseries }]),
+        ...resolveTestOpsTiles(
+            [{ id: "TEST_SUITE_DURATION_P95", ts: testTimeseries }],
+            scope.teamIds,
+        ),
     ];
     const partialCoverage =
         !testWindowFailed(testWindow) && isPartialCoverage(testWindow.coverage.sharePct);
 
-    const passRatePoints = trendPoints(testTimeseries, "TEST_PASS_RATE");
+    const passRatePoints = trendPoints(testTimeseries, "TEST_PASS_RATE", scope.teamIds);
     // The series that feeds the P95 Suite Duration tile (minutes, as the fetcher normalises it).
-    const suiteDurationPoints = trendPoints(testTimeseries, "TEST_SUITE_DURATION_P95");
+    const suiteDurationPoints = trendPoints(
+        testTimeseries,
+        "TEST_SUITE_DURATION_P95",
+        scope.teamIds,
+    );
 
     const flakeBreakdown = testBreakdowns.find(
         (b: BreakdownResult) => b.measure === "TEST_FLAKE_RATE",
@@ -180,6 +191,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             valueFormat: "percent" as const,
             emptyDescription:
                 "Pass-rate history appears here once test runs are ingested for this scope.",
+            pickOneTeam: false,
         },
         {
             id: "suite-duration",
@@ -189,6 +201,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             valueFormat: "number" as const,
             emptyDescription:
                 "Suite-duration history appears here once test runs are ingested for this scope.",
+            pickOneTeam: needsOneTeamPick(testTimeseries, "TEST_SUITE_DURATION_P95", scope.teamIds),
         },
     ];
 
@@ -228,6 +241,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         label={tile.label}
                         value={tile.value}
                         valueText={tile.valueText}
+                        valueIsMessage={tile.valueIsMessage}
+                        hideTrend={tile.valueIsMessage}
                         unit={tile.unit}
                         delta={tile.delta}
                         deltaSlot={tile.noDelta ? <></> : undefined}
@@ -254,6 +269,12 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                                     variant="error"
                                     title={`${card.title} could not be loaded`}
                                     message="Test analytics could not be loaded. Please try again later."
+                                />
+                            ) : card.pickOneTeam ? (
+                                <DataState
+                                    variant="insufficient-confidence"
+                                    title={PICK_ONE_TEAM}
+                                    description="The API serves the P95 suite duration per team, with no organization value: pick one team in the scope bar to see its trend."
                                 />
                             ) : !card.points.some((point) => point.value !== null) ? (
                                 <DataState

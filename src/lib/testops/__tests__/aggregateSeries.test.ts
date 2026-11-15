@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 
 import {
-    mergeSeriesByMeasure,
     getLatestValue,
     getSparkline,
     getDelta,
     seriesForScope,
+    needsOneTeamPick,
 } from "../aggregateSeries";
 import { TESTOPS_MEASURES } from "../constants";
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
@@ -23,90 +23,6 @@ function makeSeries(
 }
 
 // ---------------------------------------------------------------------------
-// mergeSeriesByMeasure
-// ---------------------------------------------------------------------------
-
-describe("mergeSeriesByMeasure", () => {
-    it("returns undefined when no series match the measureId", () => {
-        const result = mergeSeriesByMeasure([], "TEST_PASS_RATE");
-        expect(result).toBeUndefined();
-    });
-
-    it("returns the single series unchanged when only one matches", () => {
-        const single = makeSeries("TEST_PASS_RATE", "team-1", [{ date: "2024-01-01", value: 95 }]);
-        const result = mergeSeriesByMeasure([single], "TEST_PASS_RATE");
-        expect(result).toBe(single); // same reference — no copy
-    });
-
-    it("averages matching series for a rate/percentage measure (multi-team)", () => {
-        const teamA = makeSeries("TEST_FLAKE_RATE", "team-a", [
-            { date: "2024-01-01", value: 10 },
-            { date: "2024-01-02", value: 20 },
-        ]);
-        const teamB = makeSeries("TEST_FLAKE_RATE", "team-b", [
-            { date: "2024-01-01", value: 30 },
-            { date: "2024-01-02", value: 40 },
-        ]);
-        const result = mergeSeriesByMeasure([teamA, teamB], "TEST_FLAKE_RATE");
-
-        expect(result).toBeDefined();
-        expect(result!.dimensionValue).toBe("org");
-        expect(result!.measure).toBe("TEST_FLAKE_RATE");
-        expect(result!.buckets).toEqual([
-            { date: "2024-01-01", value: 20 }, // (10 + 30) / 2
-            { date: "2024-01-02", value: 30 }, // (20 + 40) / 2
-        ]);
-    });
-
-    it("sums matching series for a COUNT measure", () => {
-        const teamA = makeSeries("COUNT", "team-a", [{ date: "2024-01-01", value: 100 }]);
-        const teamB = makeSeries("COUNT", "team-b", [{ date: "2024-01-01", value: 200 }]);
-        const result = mergeSeriesByMeasure([teamA, teamB], "COUNT");
-
-        expect(result!.buckets[0].value).toBe(300); // 100 + 200
-    });
-
-    it("ignores series for other measures", () => {
-        const flake = makeSeries("TEST_FLAKE_RATE", "team-a", [{ date: "2024-01-01", value: 5 }]);
-        const pass = makeSeries("TEST_PASS_RATE", "team-a", [{ date: "2024-01-01", value: 90 }]);
-        const result = mergeSeriesByMeasure([flake, pass], "TEST_FLAKE_RATE");
-
-        expect(result!.buckets).toHaveLength(1);
-        expect(result!.buckets[0].value).toBe(5);
-    });
-
-    it("handles sparse teams — dates present in only some series", () => {
-        const teamA = makeSeries("PIPELINE_SUCCESS_RATE", "team-a", [
-            { date: "2024-01-01", value: 80 },
-            { date: "2024-01-02", value: 90 },
-        ]);
-        // team-b only has one date
-        const teamB = makeSeries("PIPELINE_SUCCESS_RATE", "team-b", [
-            { date: "2024-01-02", value: 70 },
-        ]);
-        const result = mergeSeriesByMeasure([teamA, teamB], "PIPELINE_SUCCESS_RATE");
-
-        // 2024-01-01: only team-a → 80 / 1 = 80
-        // 2024-01-02: both teams → (90 + 70) / 2 = 80
-        expect(result!.buckets).toEqual([
-            { date: "2024-01-01", value: 80 },
-            { date: "2024-01-02", value: 80 },
-        ]);
-    });
-
-    it("returns sorted dates ascending when series have out-of-order buckets", () => {
-        const teamA = makeSeries("TEST_PASS_RATE", "team-a", [
-            { date: "2024-01-03", value: 85 },
-            { date: "2024-01-01", value: 75 },
-        ]);
-        const teamB = makeSeries("TEST_PASS_RATE", "team-b", [{ date: "2024-01-02", value: 80 }]);
-        const result = mergeSeriesByMeasure([teamA, teamB], "TEST_PASS_RATE");
-        const dates = result!.buckets.map((b) => b.date);
-        expect(dates).toEqual(["2024-01-01", "2024-01-02", "2024-01-03"]);
-    });
-});
-
-// ---------------------------------------------------------------------------
 // getLatestValue
 // ---------------------------------------------------------------------------
 
@@ -120,7 +36,7 @@ describe("getLatestValue", () => {
         expect(getLatestValue([series], "TEST_PASS_RATE")).toBeUndefined();
     });
 
-    it("returns the last bucket value of the merged series", () => {
+    it("returns no value for two team series and no ORG series (never their mean)", () => {
         const teamA = makeSeries("TEST_PASS_RATE", "team-a", [
             { date: "2024-01-01", value: 80 },
             { date: "2024-01-02", value: 90 },
@@ -129,8 +45,7 @@ describe("getLatestValue", () => {
             { date: "2024-01-01", value: 60 },
             { date: "2024-01-02", value: 70 },
         ]);
-        // merged last bucket = (90 + 70) / 2 = 80
-        expect(getLatestValue([teamA, teamB], "TEST_PASS_RATE")).toBe(80);
+        expect(getLatestValue([teamA, teamB], "TEST_PASS_RATE")).toBeUndefined();
     });
 });
 
@@ -143,7 +58,7 @@ describe("getSparkline", () => {
         expect(getSparkline([], "TEST_FLAKE_RATE")).toBeUndefined();
     });
 
-    it("returns sparkline points for merged series", () => {
+    it("returns no sparkline for two team series and no ORG series", () => {
         const teamA = makeSeries("TEST_FLAKE_RATE", "team-a", [
             { date: "2024-01-01", value: 4 },
             { date: "2024-01-02", value: 6 },
@@ -152,11 +67,7 @@ describe("getSparkline", () => {
             { date: "2024-01-01", value: 8 },
             { date: "2024-01-02", value: 10 },
         ]);
-        const spark = getSparkline([teamA, teamB], "TEST_FLAKE_RATE");
-        expect(spark).toEqual([
-            { ts: "2024-01-01", value: 6 }, // (4 + 8) / 2
-            { ts: "2024-01-02", value: 8 }, // (6 + 10) / 2
-        ]);
+        expect(getSparkline([teamA, teamB], "TEST_FLAKE_RATE")).toBeUndefined();
     });
 });
 
@@ -191,10 +102,7 @@ describe("getDelta", () => {
         expect(getDelta([series], "TEST_PASS_RATE")).toBeCloseTo(25);
     });
 
-    it("computes delta on the merged multi-team series, not a single team", () => {
-        // team-a: 20 → 40 alone would be +100%
-        // team-b: 80 → 80 alone would be 0%
-        // merged: (20+80)/2=50 → (40+80)/2=60 → ((60-50)/50)*100 = +20%
+    it("returns no delta for two team series and no ORG series", () => {
         const teamA = makeSeries("PIPELINE_SUCCESS_RATE", "team-a", [
             { date: "2024-01-01", value: 20 },
             { date: "2024-01-10", value: 40 },
@@ -203,24 +111,7 @@ describe("getDelta", () => {
             { date: "2024-01-01", value: 80 },
             { date: "2024-01-10", value: 80 },
         ]);
-        expect(getDelta([teamA, teamB], "PIPELINE_SUCCESS_RATE")).toBeCloseTo(20);
-    });
-
-    it("a multi-day merged series does not trip 'No trend yet' (length >= 2)", () => {
-        const teamA = makeSeries("TEST_FLAKE_RATE", "team-a", [
-            { date: "2024-01-01", value: 5 },
-            { date: "2024-01-02", value: 3 },
-            { date: "2024-01-03", value: 4 },
-        ]);
-        const teamB = makeSeries("TEST_FLAKE_RATE", "team-b", [
-            { date: "2024-01-01", value: 7 },
-            { date: "2024-01-02", value: 5 },
-            { date: "2024-01-03", value: 6 },
-        ]);
-        const merged = mergeSeriesByMeasure([teamA, teamB], "TEST_FLAKE_RATE");
-        // Merged has 3 buckets — getDelta should return a number, not undefined
-        expect(merged!.buckets.length).toBeGreaterThanOrEqual(2);
-        expect(getDelta([teamA, teamB], "TEST_FLAKE_RATE")).not.toBeUndefined();
+        expect(getDelta([teamA, teamB], "PIPELINE_SUCCESS_RATE")).toBeUndefined();
     });
 });
 
@@ -312,10 +203,6 @@ describe("seriesForScope", () => {
     it("never averages the ORG series in with the team series", () => {
         // The old reading: (100 + 11.1 + 20) / 3 = 43.70.
         expect(getLatestValue(served, SUCCESS)).not.toBeCloseTo(43.7, 1);
-        expect(mergeSeriesByMeasure(served, SUCCESS)?.buckets.at(-1)?.value).toBeCloseTo(
-            (100 + 100 / 9) / 2,
-            6,
-        );
     });
 
     it("reads the spark and the change of the ORG series", () => {
@@ -323,9 +210,9 @@ describe("seriesForScope", () => {
         expect(getDelta(served, SUCCESS)).toBeCloseTo(((20 - 30) / 30) * 100, 6);
     });
 
-    it("with no ORG series served, keeps the merge of the team series", () => {
+    it("with no ORG series and two team series served, reads no series (no merge)", () => {
         const teamsOnly = served.filter((series) => series.scope !== "ORG");
-        expect(getLatestValue(teamsOnly, SUCCESS)).toBeCloseTo((100 + 100 / 9) / 2, 6);
+        expect(seriesForScope(teamsOnly, SUCCESS)).toBeUndefined();
     });
 
     it("with one team selected reads that team's series", () => {
@@ -340,4 +227,96 @@ describe("seriesForScope", () => {
     it("with several teams selected reads the ORG series, which the API reads under the team filter", () => {
         expect(seriesForScope(served, SUCCESS, ["team-a", "team-b"])?.scope).toBe("ORG");
     });
+});
+
+// ---------------------------------------------------------------------------
+// No client-made series: the scope reads one served series, or none
+// ---------------------------------------------------------------------------
+
+describe("one served series per scope, never a merge of team series", () => {
+    const series = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        values: number[],
+    ): TimeseriesResult => ({
+        dimension: "TEAM",
+        dimensionValue,
+        scope,
+        measure,
+        buckets: values.map((value, i) => ({ date: `2026-11-1${i}`, value })),
+    });
+
+    it("two team series that share one repository give a different merged value than the ORG series", () => {
+        // team-a owns r1 (90 of 100 passed) and r2 (50 of 100); team-b owns r2 and r3 (100 of 100).
+        // r2 is in both team series; the ORG series counts each repository once.
+        const teamA = (90 + 50) / 200;
+        const teamB = (50 + 100) / 200;
+        const org = (90 + 50 + 100) / 300;
+        const served = [
+            series("TEST_PASS_RATE", "team-a", "DIMENSION", [teamA * 100]),
+            series("TEST_PASS_RATE", "team-b", "DIMENSION", [teamB * 100]),
+            series("TEST_PASS_RATE", "org", "ORG", [org * 100]),
+        ];
+        const oldMerge = ((teamA + teamB) / 2) * 100;
+        expect(oldMerge).not.toBeCloseTo(org * 100, 1);
+        expect(getLatestValue(served, "TEST_PASS_RATE")).toBeCloseTo(org * 100, 6);
+        const teamsOnly = served.filter((s) => s.scope !== "ORG");
+        expect(getLatestValue(teamsOnly, "TEST_PASS_RATE")).toBeUndefined();
+        expect(getSparkline(teamsOnly, "TEST_PASS_RATE")).toBeUndefined();
+        expect(getDelta(teamsOnly, "TEST_PASS_RATE")).toBeUndefined();
+    });
+
+    describe("a rate measure (it has an ORG series)", () => {
+        const served = [
+            series("TEST_FLAKE_RATE", "team-a", "DIMENSION", [2, 4]),
+            series("TEST_FLAKE_RATE", "team-b", "DIMENSION", [6, 8]),
+            series("TEST_FLAKE_RATE", "org", "ORG", [3, 5]),
+        ];
+        it("0 teams: the ORG series", () => {
+            expect(getSparkline(served, "TEST_FLAKE_RATE")?.map((p) => p.value)).toEqual([3, 5]);
+            expect(needsOneTeamPick(served, "TEST_FLAKE_RATE")).toBe(false);
+        });
+        it("1 team: that team's series", () => {
+            expect(
+                getSparkline(served, "TEST_FLAKE_RATE", ["team-b"])?.map((p) => p.value),
+            ).toEqual([6, 8]);
+        });
+        it("several teams: the ORG series, read under the team filter", () => {
+            expect(getLatestValue(served, "TEST_FLAKE_RATE", ["team-a", "team-b"])).toBe(5);
+            expect(needsOneTeamPick(served, "TEST_FLAKE_RATE", ["team-a", "team-b"])).toBe(false);
+        });
+    });
+
+    describe.each(["TEST_SUITE_DURATION_P95", "PIPELINE_DURATION_P95", "PIPELINE_QUEUE_TIME"])(
+        "%s (no ORG series)",
+        (measure) => {
+            const a = series(measure, "team-a", "DIMENSION", [10, 12]);
+            const b = series(measure, "team-b", "DIMENSION", [30, 40]);
+
+            it("0 teams and one served team series: that series, as served", () => {
+                expect(getLatestValue([a], measure)).toBe(12);
+                expect(getSparkline([a], measure)?.map((p) => p.value)).toEqual([10, 12]);
+                expect(needsOneTeamPick([a], measure)).toBe(false);
+            });
+            it("one team picked: that team's series", () => {
+                expect(getLatestValue([a, b], measure, ["team-b"])).toBe(40);
+                expect(needsOneTeamPick([a, b], measure, ["team-b"])).toBe(false);
+            });
+            it("two team series and no team picked: no value, the pick-one-team state", () => {
+                expect(getLatestValue([a, b], measure)).toBeUndefined();
+                expect(getSparkline([a, b], measure)).toBeUndefined();
+                expect(getDelta([a, b], measure)).toBeUndefined();
+                expect(needsOneTeamPick([a, b], measure)).toBe(true);
+            });
+            it("two team series and two teams picked: no value, the pick-one-team state", () => {
+                expect(getLatestValue([a, b], measure, ["team-a", "team-b"])).toBeUndefined();
+                expect(needsOneTeamPick([a, b], measure, ["team-a", "team-b"])).toBe(true);
+            });
+            it("nothing served: no value and no pick-one-team state", () => {
+                expect(getLatestValue([], measure)).toBeUndefined();
+                expect(needsOneTeamPick([], measure)).toBe(false);
+            });
+        },
+    );
 });
