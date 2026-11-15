@@ -61,25 +61,115 @@ describe("Delivery Risk page", () => {
         expect(props.showZoneOverlay).toBeUndefined();
     });
 
-    it("drops repos without finite rates and keeps the empty state when none is left", async () => {
+    it("keeps every repo: plots the measured ones and lists the rest as not measured", async () => {
         mockFetchRiskMetrics.mockResolvedValue(
             risk([
-                { id: "repo-a", pipeline_success_rate: 0.9, test_pass_rate: 0.95 },
-                { id: "repo-b", pipeline_success_rate: 0.9 },
-                { id: "repo-c", test_pass_rate: 0.5 },
+                { id: "repo-a", name: "repo-a", pipeline_success_rate: 90, test_pass_rate: 95 },
+                { id: "repo-b", name: "repo-b", pipeline_success_rate: 90 },
+                { id: "repo-c", name: "repo-c", test_pass_rate: 50 },
             ]),
         );
-        const first = render(await RiskPage({ searchParams: Promise.resolve({}) }));
+        render(await RiskPage({ searchParams: Promise.resolve({}) }));
         expect(screen.getByTestId("quadrant-chart")).toHaveAttribute("data-points", "1");
-        first.unmount();
-
-        mockFetchRiskMetrics.mockResolvedValue(
-            risk([{ id: "repo-b", pipeline_success_rate: 0.9 }]),
+        const items = within(screen.getByTestId("risk-not-measured")).getAllByRole("listitem");
+        expect(items).toHaveLength(2);
+        expect(screen.getByTestId("risk-not-measured-count")).toHaveTextContent(
+            "1 plotted, 2 not measured",
         );
+    });
+
+    it("keeps the empty state only when the window holds no repo at all", async () => {
+        mockFetchRiskMetrics.mockResolvedValue(risk([]));
         render(await RiskPage({ searchParams: Promise.resolve({}) }));
         expect(screen.queryByTestId("quadrant-chart")).toBeNull();
+        expect(screen.queryByTestId("risk-not-measured")).toBeNull();
         expect(screen.getByTestId("risk-throughput-empty")).toBeInTheDocument();
         expect(screen.getByText("No repo risk data for this window")).toBeInTheDocument();
+    });
+
+    describe("a repo with an absent rate (CHAOS-13847)", () => {
+        const both = {
+            id: "repo-a",
+            name: "repo-a",
+            pipeline_success_rate: 90,
+            test_pass_rate: 95,
+        };
+        const listed = () => screen.getByTestId("risk-not-measured");
+
+        it("(a) plots a repo with both rates and lists nothing as not measured", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(risk([both]));
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            expect(screen.getByTestId("quadrant-chart")).toHaveAttribute("data-points", "1");
+            expect(screen.queryByTestId("risk-not-measured")).toBeNull();
+            const point = quadrantProps.mock.calls[0][0].data.points[0];
+            expect([point.x, point.y]).toEqual([90, 95]);
+        });
+
+        it("(b) lists a repo with no test pass rate, naming that rate, and does not plot it", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(
+                risk([both, { id: "repo-b", name: "repo-b", pipeline_success_rate: 90 }]),
+            );
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            expect(screen.getByTestId("quadrant-chart")).toHaveAttribute("data-points", "1");
+            expect(listed()).toHaveTextContent("repo-b");
+            expect(listed()).toHaveTextContent("test pass rate not measured");
+            expect(listed()).not.toHaveTextContent("pipeline success rate");
+            expect(listed()).not.toHaveTextContent("0%");
+            const ids = quadrantProps.mock.calls[0][0].data.points.map(
+                (p: { entity_id: string }) => p.entity_id,
+            );
+            expect(ids).toEqual(["repo-a"]);
+        });
+
+        it("(c) lists a repo with no pipeline success rate, naming that rate, and does not plot it", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(
+                risk([both, { id: "repo-c", name: "repo-c", test_pass_rate: 50 }]),
+            );
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            expect(screen.getByTestId("quadrant-chart")).toHaveAttribute("data-points", "1");
+            expect(listed()).toHaveTextContent("repo-c");
+            expect(listed()).toHaveTextContent("pipeline success rate not measured");
+            expect(listed()).not.toHaveTextContent("test pass rate");
+            expect(listed()).not.toHaveTextContent("0%");
+        });
+
+        it("(d) lists a repo with both rates absent, and the list replaces the empty state", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(risk([{ id: "repo-d", name: "repo-d" }]));
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            expect(screen.queryByTestId("quadrant-chart")).toBeNull();
+            expect(screen.queryByTestId("risk-throughput-empty")).toBeNull();
+            expect(listed()).toHaveTextContent("repo-d");
+            expect(listed()).toHaveTextContent(
+                "pipeline success rate and test pass rate not measured",
+            );
+            expect(listed()).not.toHaveTextContent("0%");
+        });
+
+        it("(e) keeps a real 0 rate plotted, not listed", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(
+                risk([
+                    { id: "repo-z", name: "repo-z", pipeline_success_rate: 0, test_pass_rate: 0 },
+                ]),
+            );
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            expect(screen.getByTestId("quadrant-chart")).toHaveAttribute("data-points", "1");
+            expect(screen.queryByTestId("risk-not-measured")).toBeNull();
+        });
+
+        it("(f) orders the list by repo name, not by input order", async () => {
+            mockFetchRiskMetrics.mockResolvedValue(
+                risk([
+                    { id: "1", name: "zeta" },
+                    { id: "2", name: "alpha", test_pass_rate: 10 },
+                    { id: "3", name: "mid", pipeline_success_rate: 10 },
+                ]),
+            );
+            render(await RiskPage({ searchParams: Promise.resolve({}) }));
+            const names = within(listed())
+                .getAllByRole("listitem")
+                .map((li) => li.getAttribute("data-repo"));
+            expect(names).toEqual(["alpha", "mid", "zeta"]);
+        });
     });
 
     it("draws the three tiles as one joined metric strip and each chart in a shared section card", async () => {
