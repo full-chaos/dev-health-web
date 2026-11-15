@@ -17,6 +17,7 @@ import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import { getServerEnv } from "@/lib/config";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
+import { NotMeasuredRepos, type NotMeasuredRepo } from "./NotMeasuredRepos";
 import { isFiniteNumber, normalizePercent } from "@/lib/guards/numbers";
 
 type RiskPageProps = {
@@ -105,34 +106,34 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
           )
         : [];
 
-    const quadrantPoints = riskData.quadrant_data
-        ? riskData.quadrant_data.flatMap(
-              (item: {
-                  id: string;
-                  name?: string;
-                  pipeline_success_rate?: number;
-                  test_pass_rate?: number;
-              }) => {
-                  if (
-                      !isFiniteNumber(item.pipeline_success_rate) ||
-                      !isFiniteNumber(item.test_pass_rate)
-                  ) {
-                      return [];
-                  }
-                  return [
-                      {
-                          entity_id: item.id,
-                          entity_label: nameOrUnresolved(item.name),
-                          x: normalizePercent(item.pipeline_success_rate),
-                          y: normalizePercent(item.test_pass_rate),
-                          window_start: startDate,
-                          window_end: endDate,
-                          evidence_link: "#",
-                      },
-                  ];
-              },
-          )
-        : [];
+    const quadrantItems = riskData.quadrant_data ?? [];
+    const quadrantPoints = quadrantItems.flatMap((item) => {
+        if (!isFiniteNumber(item.pipeline_success_rate) || !isFiniteNumber(item.test_pass_rate)) {
+            return [];
+        }
+        return [
+            {
+                entity_id: item.id,
+                entity_label: nameOrUnresolved(item.name),
+                x: normalizePercent(item.pipeline_success_rate),
+                y: normalizePercent(item.test_pass_rate),
+                window_start: startDate,
+                window_end: endDate,
+                evidence_link: "#",
+            },
+        ];
+    });
+    const notMeasuredRepos: NotMeasuredRepo[] = quadrantItems
+        .flatMap((item) => {
+            const absent = [
+                ...(isFiniteNumber(item.pipeline_success_rate) ? [] : ["pipeline success rate"]),
+                ...(isFiniteNumber(item.test_pass_rate) ? [] : ["test pass rate"]),
+            ];
+            return absent.length > 0
+                ? [{ id: item.id, label: nameOrUnresolved(item.name), absent }]
+                : [];
+        })
+        .sort((a, b) => a.label.localeCompare(b.label));
 
     const quadrantData = {
         axes: {
@@ -234,14 +235,15 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     <div className="h-96" data-testid="risk-throughput-chart">
                         <QuadrantChart data={quadrantData} scopeType="repo" />
                     </div>
-                ) : (
+                ) : notMeasuredRepos.length === 0 ? (
                     <DataState
                         variant="insufficient-confidence"
                         title="No repo risk data for this window"
-                        description="This scatterplot needs finite repo-level pipeline success and test pass rates before it can be drawn."
+                        description="No repository has a pipeline success rate or a test pass rate in this window."
                         data-testid="risk-throughput-empty"
                     />
-                )}
+                ) : null}
+                <NotMeasuredRepos items={notMeasuredRepos} plotted={quadrantPoints.length} />
             </Section>
         </div>
     );
