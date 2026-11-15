@@ -6,7 +6,8 @@ import { reasonToState } from "../reasonStates";
 import { buildShadowRequest, newRequestId } from "../shadow/run";
 import { GUARDS, type GuardId } from "./catalog";
 import { DECIDE_TIMEOUT_MS, decideEnforced, getDecideTransport } from "./config";
-import { logDecision, type DecideLogger } from "./log";
+import { lastExchangeWindow } from "../workload/token";
+import { logDecideTimeout, logDecision, type DecideLogger } from "./log";
 
 export type { GuardId } from "./catalog";
 
@@ -73,9 +74,11 @@ export async function decideGuard(
             record(false, "client", "unavailable");
             return deny("unavailable");
         }
+        const budgetMs = deps.timeoutMs ?? DECIDE_TIMEOUT_MS;
+        const startedMs = Date.now();
         const outcome = await authorize(request, {
             transport: deps.transport,
-            timeoutMs: deps.timeoutMs ?? DECIDE_TIMEOUT_MS,
+            timeoutMs: budgetMs,
             nowMs: deps.nowMs,
         });
         if (outcome.allowed) {
@@ -85,6 +88,28 @@ export async function decideGuard(
         if (outcome.source === "pdp") {
             record(false, "pdp", outcome.decision.reasonCode);
             return deny(outcome.decision.reasonCode);
+        }
+        if (outcome.reason === "timeout") {
+            const endedMs = Date.now();
+            const window = lastExchangeWindow();
+            const exchangeMs = window
+                ? Math.max(
+                      0,
+                      Math.min(endedMs, window.endedMs ?? endedMs) -
+                          Math.max(startedMs, window.startedMs),
+                  )
+                : 0;
+            logDecideTimeout(
+                {
+                    guard: guardId,
+                    action,
+                    requestId,
+                    budgetMs,
+                    elapsedMs: endedMs - startedMs,
+                    exchangeMs,
+                },
+                deps.log,
+            );
         }
         record(false, "client", outcome.reason);
         return deny(outcome.reason);

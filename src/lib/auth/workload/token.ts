@@ -33,6 +33,19 @@ interface Entry {
 
 let entry: Entry | null = null;
 let flight: Promise<Entry> | null = null;
+let consecutiveFailures = 0;
+let recoveriesTotal = 0;
+let lastExchange: ExchangeWindow | null = null;
+
+export interface ExchangeWindow {
+    startedMs: number;
+    endedMs: number | null;
+}
+
+/** The window of the latest exchange (endedMs null while it runs): a decision that timed out reads its share of it. */
+export function lastExchangeWindow(): ExchangeWindow | null {
+    return lastExchange ? { ...lastExchange } : null;
+}
 
 interface Source {
     url: string;
@@ -193,14 +206,34 @@ export async function getWorkloadToken(): Promise<string | undefined> {
     if (entry && now >= entry.usableUntil) entry = null;
     if (entry && now < entry.refreshAt) return entry.token;
     if (!flight) {
+        const window: ExchangeWindow = { startedMs: Date.now(), endedMs: null };
+        lastExchange = window;
         const started = exchange(src).then(
             (fresh) => {
+                window.endedMs = Date.now();
                 entry = fresh;
+                const failedBefore = consecutiveFailures;
+                consecutiveFailures = 0;
+                if (failedBefore > 0) recoveriesTotal++;
+                logger.info(
+                    {
+                        duration_ms: window.endedMs - window.startedMs,
+                        recovered: failedBefore > 0,
+                        failed_before: failedBefore,
+                        recoveries_total: recoveriesTotal,
+                    },
+                    "workload token exchanged",
+                );
                 return fresh;
             },
             (err: unknown) => {
+                window.endedMs = Date.now();
+                consecutiveFailures++;
                 logger.warn(
-                    { reason: err instanceof WorkloadTokenError ? err.message : "exchange failed" },
+                    {
+                        reason: err instanceof WorkloadTokenError ? err.message : "exchange failed",
+                        consecutive_failures: consecutiveFailures,
+                    },
                     "workload token exchange failed",
                 );
                 throw err;

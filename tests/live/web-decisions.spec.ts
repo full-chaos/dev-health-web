@@ -20,8 +20,10 @@ import {
 } from "./helpers";
 import {
     decideLines,
+    expectRecovered,
     foreignSubjectJws,
     mark,
+    markLines,
     nextDecision,
     pdpDecideLines,
     sha256Hex,
@@ -107,6 +109,8 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
         const log = webLogPath();
         const file = workloadSubjectFile();
         const good = goodSubject;
+        const faultMark = markLines(log);
+        const events: { label: string; atMs: number }[] = [];
         try {
             for (const [label, subject] of [
                 ["a subject the TokenReview does not know", foreignSubjectJws(3600)],
@@ -125,18 +129,20 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             }
         } finally {
             writeFileSync(file, good);
+            events.push({ label: "subject file restored", atMs: Date.now() });
         }
         expect(sha256Hex(readFileSync(file)), "the subject file was not restored").toBe(
             sha256Hex(good),
         );
-        const since = mark(log);
-        await page.goto("/superadmin/orgs");
-        const line = await nextDecision(log, since, "platform.orgs");
-        expect(line.action).toBe("admin.orgs");
-        expect(line.source).toBe("pdp");
-        expect(line.allowed, `not allowed after the subject came back: ${line.reason_code}`).toBe(
-            true,
-        );
+        // The server held no token, so the first decision pays a cold exchange: the exchange must log its recovery.
+        await expectRecovered(page, log, {
+            guard: "platform.orgs",
+            action: "admin.orgs",
+            url: "/superadmin/orgs",
+            faultMark,
+            events,
+            requireExchange: true,
+        });
     });
 
     test("superuser: admin.users and admin.orgs are allowed by the PDP", async () => {
@@ -226,6 +232,9 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
     test("fail-closed: with auth-service stopped nothing is allowed, and it recovers", async () => {
         const page = superPage;
         const log = webLogPath();
+        const faultMark = markLines(log);
+        const events: { label: string; atMs: number }[] = [];
+        events.push({ label: "stop-auth", atMs: Date.now() });
         stack("stop-auth");
         try {
             const since = mark(log);
@@ -238,15 +247,18 @@ test.describe("web decisions: enforced by the PDP @enforce", () => {
             );
         } finally {
             stack("start-auth");
+            events.push({ label: "start-auth returned", atMs: Date.now() });
         }
-        const since = mark(log);
-        await page.goto("/superadmin/orgs");
-        const line = await nextDecision(log, since, "platform.orgs");
-        expect(line.action).toBe("admin.orgs");
-        expect(line.source).toBe("pdp");
-        expect(line.allowed, `not allowed after auth-service came back: ${line.reason_code}`).toBe(
-            true,
-        );
+        // A cached workload token may outlive the outage (no exchange, no recovery line); an exchange that failed during
+        // the outage makes the recovery line required.
+        await expectRecovered(page, log, {
+            guard: "platform.orgs",
+            action: "admin.orgs",
+            url: "/superadmin/orgs",
+            faultMark,
+            events,
+            requireExchange: false,
+        });
     });
 });
 
