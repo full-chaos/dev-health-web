@@ -2,6 +2,7 @@ import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { requireSession } from "@/lib/auth";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { metricDeltaParts } from "@/components/shared/MetricDelta";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -15,6 +16,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { fetchTeamNames } from "@/lib/api/filterOptions";
 import { checkApiHealth } from "@/lib/api/system";
+import { formatServedDay } from "@/lib/capacityDates";
 import {
     fetchCoverageBaselines,
     fetchCoverageMetrics,
@@ -55,6 +57,43 @@ function getSparkline(series: TimeseriesResult | undefined) {
         ts: b.date,
         value: b.value,
     }));
+}
+
+/**
+ * The change a tile shows: percentage points from the first bucket that holds a value to the latest
+ * bucket, "since" that first served day. "none" is the Coverage Delta tile (a change of a change is
+ * not shown); "unavailable" (fewer than 2 valued buckets, or no latest value) reads "No prior period".
+ */
+type CoverageChange = { points: number; since: string } | "none" | "unavailable";
+
+function coverageChange(measure: string, series: TimeseriesResult | undefined): CoverageChange {
+    const buckets = series?.buckets ?? [];
+    const valued = buckets.flatMap((bucket) =>
+        bucket.value === null ? [] : [{ date: bucket.date, value: bucket.value }],
+    );
+    // A latest bucket with no value is "no value" on the tile: no change is drawn against it.
+    const latest = buckets.length > 0 ? buckets[buckets.length - 1].value : null;
+    if (latest === null || valued.length < 2) return "unavailable";
+    if (measure === "COVERAGE_DELTA_PCT") return "none";
+    return { points: valued[valued.length - 1].value - valued[0].value, since: valued[0].date };
+}
+
+function coverageChangeSlot(change: CoverageChange | undefined, inverseGood: boolean) {
+    if (change === undefined || change === "unavailable") return undefined;
+    if (change === "none") return <></>;
+    const points = Math.round(change.points * 10) / 10 || 0;
+    const sign = points > 0 ? "+" : points < 0 ? "-" : "";
+    const since = formatServedDay(change.since) ?? change.since;
+    const tone = metricDeltaParts(points, { format: "number", precision: 1, inverseGood });
+    return (
+        <span
+            data-testid="metric-delta"
+            title="Change from the first served day of the window to the latest"
+            className={`font-medium ${tone?.toneClass ?? ""}`}
+        >
+            {`${sign}${Math.abs(points).toFixed(1)} pts since ${since}`}
+        </span>
+    );
 }
 
 const UNRESOLVED_TEAM = "Unresolved";
@@ -168,6 +207,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
     const coverageBreakdowns = coverageData.breakdowns || [];
     const fetchFailed = Boolean(coverageData.fetchFailed);
 
+    const changes: Record<string, CoverageChange> = {};
     const tiles: TestOpsTile[] = COVERAGE_TILES.flatMap((id) => {
         const def = TESTOPS_MEASURES[id];
         if (!def) return [];
@@ -175,8 +215,11 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
         // Preserve the established three tiles when the API returns one series. When it returns
         // more, each tile keeps the exact served series identity and value: no first-series
         // fallback and no client-side roll-up.
-        return (servedSeries.length > 0 ? servedSeries : [undefined]).map((series, index) => ({
-                id: `${id}-${series?.dimension ?? "unreported"}-${series?.dimensionValue ?? index}`,
+        return (servedSeries.length > 0 ? servedSeries : [undefined]).map((series, index) => {
+            const tileId = `${id}-${series?.dimension ?? "unreported"}-${series?.dimensionValue ?? index}`;
+            changes[tileId] = coverageChange(id, series);
+            return {
+                id: tileId,
                 label:
                     servedSeries.length > 1 && series
                         ? `${def.label} · ${coverageSeriesName(series, teamNames)}`
@@ -186,10 +229,11 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
                 inverseGood: def.goodDirection === "down",
                 value: getLatestValue(series),
-                // No change value is served on this tab: the tile reads "No prior period".
+                // The tile change is drawn from `changes` (points, not a relative percent).
                 delta: undefined,
                 spark: getSparkline(series),
-            }));
+            };
+        });
     });
 
     const lineCoverageSeries = coverageTimeseries.filter(
@@ -290,6 +334,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         // "Line Coverage Trend" card below. The other tiles keep their served spark.
                         spark={tile.id.startsWith("COVERAGE_LINE_PCT-") ? undefined : tile.spark}
                         hideTrend={tile.id.startsWith("COVERAGE_LINE_PCT-")}
+                        deltaSlot={coverageChangeSlot(changes[tile.id], tile.inverseGood)}
                         caption={tile.note}
                     />
                 ))}

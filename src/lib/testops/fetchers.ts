@@ -15,6 +15,7 @@ import {
     type ScopeCoverageBaselineState,
 } from "./coverageBaselines";
 import { JobFailuresResultSchema, type JobFailuresState } from "./jobFailures";
+import { TestWindowResultSchema, type TestWindowState } from "./testWindow";
 import {
     TESTOPS_PIPELINE_QUERY,
     TESTOPS_TEST_QUERY,
@@ -23,6 +24,7 @@ import {
     TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     TESTOPS_JOB_FAILURES_QUERY,
     TESTOPS_RISK_QUERY,
+    TESTOPS_TEST_WINDOW_QUERY,
 } from "./queries";
 import { mapRiskMetricsPayload, type RiskMetricsResult } from "./risk-metrics";
 import { TestOpsData } from "./types";
@@ -34,6 +36,7 @@ import {
     SAMPLE_COVERAGE_SCOPE_BASELINE,
     SAMPLE_JOB_FAILURES_DATA,
     SAMPLE_RISK_DATA,
+    SAMPLE_TEST_WINDOW,
 } from "./sample-data";
 
 const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
@@ -254,6 +257,55 @@ export async function fetchJobFailures(
         return parsed.data;
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch job failures");
+        return { fetchFailed: true };
+    }
+}
+
+/** The input of `testopsTestWindow`: a window and an optional scope (by ownership). */
+export type TestWindowInput = {
+    sinceDate: string;
+    untilDate: string;
+    repoIds?: string[] | null;
+    teamIds?: string[] | null;
+};
+
+/**
+ * Test coverage and the window pass, failure and flake rates. A failed read, and an answer that is
+ * not the served shape, are `{ fetchFailed: true }`: the tiles then say so and never show a rate
+ * of 0 in its place.
+ */
+export async function fetchTestWindow(
+    input: TestWindowInput,
+    isTestMode: boolean = false,
+    orgIdOverride?: string,
+): Promise<TestWindowState> {
+    if (isTestMode) {
+        return SAMPLE_TEST_WINDOW;
+    }
+
+    const orgId = await resolveOrgId(orgIdOverride);
+    try {
+        const res = await graphqlFetch<{ testopsTestWindow: unknown }>(TESTOPS_TEST_WINDOW_QUERY, {
+            orgId,
+            input: {
+                sinceDate: input.sinceDate,
+                untilDate: input.untilDate,
+                // A scope is sent only when it is set: an empty list would narrow to nothing.
+                ...(input.repoIds?.length ? { repoIds: input.repoIds } : {}),
+                ...(input.teamIds?.length ? { teamIds: input.teamIds } : {}),
+            },
+        });
+        const parsed = TestWindowResultSchema.safeParse(res.testopsTestWindow);
+        if (!parsed.success) {
+            logger.error(
+                { err: parsed.error },
+                "Test window failed schema validation; reporting a failed read",
+            );
+            return { fetchFailed: true };
+        }
+        return parsed.data;
+    } catch (error) {
+        logger.error({ err: error }, "Failed to fetch the test window");
         return { fetchFailed: true };
     }
 }

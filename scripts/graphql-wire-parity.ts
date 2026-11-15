@@ -80,6 +80,7 @@ import {
     TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     TESTOPS_JOB_FAILURES_QUERY,
     TESTOPS_RISK_QUERY,
+    TESTOPS_TEST_WINDOW_QUERY,
 } from "../src/lib/testops/queries";
 import {
     TESTOPS_COVERAGE_QUERY,
@@ -210,6 +211,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     sourceHealth: SOURCE_HEALTH_QUERY,
     testopsJobFailures: TESTOPS_JOB_FAILURES_QUERY,
     testopsRisk: TESTOPS_RISK_QUERY,
+    testopsTestWindow: TESTOPS_TEST_WINDOW_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
     triggerReport: TRIGGER_REPORT_MUTATION,
     updateSavedReport: UPDATE_REPORT_MUTATION,

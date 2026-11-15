@@ -1,6 +1,8 @@
 /**
- * CHAOS-9077: the TestOps Coverage tiles serve no change value and pass no direction, so they draw
- * no tone today. A rise and a fall of the served series must still draw no change element.
+ * The TestOps Coverage tiles show the change of their own served series in percentage points: the
+ * last bucket minus the first bucket that holds a value, "since" that first served day, toned by the
+ * measure's direction (CHAOS-9077 polarity). The Coverage Delta tile shows no change. Every tile with
+ * fewer than 2 valued buckets reads "No prior period".
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
@@ -48,32 +50,98 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const served = (first: number, last: number) => ({
-    timeseries: [
-        {
-            dimension: "TEAM",
-            dimensionValue: "t",
-            measure: "COVERAGE_LINE_PCT",
-            buckets: [
-                { date: "2026-06-01", value: first },
-                { date: "2026-06-02", value: last },
-            ],
-        },
-    ],
-    breakdowns: [],
-});
+const YEAR = new Date().getUTCFullYear();
+const day = (monthDay: string) => `${YEAR}-${monthDay}`;
 
-describe("TestOps Coverage tile change tone", () => {
+type Bucket = { date: string; value: number | null };
+const series = (measure: string, buckets: Bucket[]) => ({
+    dimension: "TEAM",
+    dimensionValue: "t",
+    measure,
+    buckets,
+});
+const served = (...timeseries: ReturnType<typeof series>[]) => ({ timeseries, breakdowns: [] });
+
+async function renderStrip(...timeseries: ReturnType<typeof series>[]) {
+    mockFetchCoverageMetrics.mockResolvedValue(served(...timeseries));
+    render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+    return screen.getByTestId("testops-coverage-tiles");
+}
+
+describe("TestOps Coverage tile change", () => {
     it.each([
-        ["rising", 50, 60],
-        ["falling", 60, 50],
-    ])("a %s line coverage draws no tone", async (_name, first, last) => {
-        mockFetchCoverageMetrics.mockResolvedValue(served(first, last));
-        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
-        const strip = screen.getByTestId("testops-coverage-tiles");
+        ["rising", 50, 60, "+10.0 pts since Jun 1", "text-(--positive)"],
+        ["falling", 60, 50, "-10.0 pts since Jun 1", "text-(--accent-negative)"],
+    ])("a %s line coverage shows the point change and its tone", async (_name, first, last, text, tone) => {
+        const strip = await renderStrip(
+            series("COVERAGE_LINE_PCT", [
+                { date: day("06-01"), value: first },
+                { date: day("06-02"), value: last },
+            ]),
+        );
         expect(within(strip).getByText("Line Coverage")).toBeInTheDocument();
-        expect(within(strip).queryByTestId("metric-delta")).toBeNull();
+        const change = within(strip).getByTestId("metric-delta");
+        expect(change).toHaveTextContent(text);
+        expect(change.className).toContain(tone);
+    });
+
+    it("a flat series shows 0.0 pts with no tone", async () => {
+        const strip = await renderStrip(
+            series("COVERAGE_BRANCH_PCT", [
+                { date: day("06-01"), value: 48 },
+                { date: day("06-14"), value: 48 },
+            ]),
+        );
+        const change = within(strip).getByTestId("metric-delta");
+        expect(change).toHaveTextContent("0.0 pts since Jun 1");
         expect(strip.innerHTML).not.toContain("text-(--positive)");
         expect(strip.innerHTML).not.toContain("text-(--accent-negative)");
+    });
+
+    it("a partial window counts from its first served day with a value, not the window start", async () => {
+        const strip = await renderStrip(
+            series("COVERAGE_LINE_PCT", [
+                { date: day("06-01"), value: null },
+                { date: day("06-06"), value: 60 },
+                { date: day("06-14"), value: 62.8 },
+            ]),
+        );
+        expect(within(strip).getByTestId("metric-delta")).toHaveTextContent("+2.8 pts since Jun 6");
+    });
+
+    it("fewer than 2 valued buckets read No prior period on every tile", async () => {
+        const strip = await renderStrip(
+            series("COVERAGE_LINE_PCT", [{ date: day("06-01"), value: 60 }]),
+            series("COVERAGE_BRANCH_PCT", [
+                { date: day("06-01"), value: null },
+                { date: day("06-02"), value: 48 },
+            ]),
+            series("COVERAGE_DELTA_PCT", [{ date: day("06-01"), value: 0.4 }]),
+        );
+        expect(within(strip).queryByTestId("metric-delta")).toBeNull();
+        expect(within(strip).getAllByText("No prior period")).toHaveLength(3);
+    });
+
+    it("a latest bucket with no value shows no change", async () => {
+        const strip = await renderStrip(
+            series("COVERAGE_LINE_PCT", [
+                { date: day("06-01"), value: 60 },
+                { date: day("06-02"), value: null },
+            ]),
+        );
+        expect(within(strip).queryByTestId("metric-delta")).toBeNull();
+    });
+
+    it("the Coverage Delta tile with 2 buckets shows no change and no No prior period", async () => {
+        const strip = await renderStrip(
+            series("COVERAGE_DELTA_PCT", [
+                { date: day("06-01"), value: 0.4 },
+                { date: day("06-14"), value: 1.1 },
+            ]),
+        );
+        expect(within(strip).queryByTestId("metric-delta")).toBeNull();
+        // Only the two tiles with no series read it; the Coverage Delta tile does not.
+        expect(within(strip).getAllByText("No prior period")).toHaveLength(2);
+        expect(strip.innerHTML).not.toContain(" pts since ");
     });
 });
