@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import {
-    getLatestValue,
-    getSparkline,
-    getDelta,
-    seriesForScope,
-    needsOneTeamPick,
-} from "../aggregateSeries";
+import { getLatestValue, getSparkline, getDelta, seriesForScope } from "../aggregateSeries";
 import { TESTOPS_MEASURES } from "../constants";
 import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
 
@@ -14,12 +8,14 @@ import type { TimeseriesResult } from "@/lib/graphql/schemas/analytics";
 // Helpers
 // ---------------------------------------------------------------------------
 
+// The served series of a scope is its ORG series; a team series is scope DIMENSION.
 function makeSeries(
     measure: string,
     dimensionValue: string,
     buckets: { date: string; value: number }[],
+    scope: "DIMENSION" | "ORG" = "ORG",
 ): TimeseriesResult {
-    return { dimension: "TEAM", dimensionValue, measure, buckets };
+    return { dimension: "TEAM", dimensionValue, scope, measure, buckets };
 }
 
 // ---------------------------------------------------------------------------
@@ -37,14 +33,24 @@ describe("getLatestValue", () => {
     });
 
     it("returns no value for two team series and no ORG series (never their mean)", () => {
-        const teamA = makeSeries("TEST_PASS_RATE", "team-a", [
-            { date: "2024-01-01", value: 80 },
-            { date: "2024-01-02", value: 90 },
-        ]);
-        const teamB = makeSeries("TEST_PASS_RATE", "team-b", [
-            { date: "2024-01-01", value: 60 },
-            { date: "2024-01-02", value: 70 },
-        ]);
+        const teamA = makeSeries(
+            "TEST_PASS_RATE",
+            "team-a",
+            [
+                { date: "2024-01-01", value: 80 },
+                { date: "2024-01-02", value: 90 },
+            ],
+            "DIMENSION",
+        );
+        const teamB = makeSeries(
+            "TEST_PASS_RATE",
+            "team-b",
+            [
+                { date: "2024-01-01", value: 60 },
+                { date: "2024-01-02", value: 70 },
+            ],
+            "DIMENSION",
+        );
         expect(getLatestValue([teamA, teamB], "TEST_PASS_RATE")).toBeUndefined();
     });
 });
@@ -59,14 +65,24 @@ describe("getSparkline", () => {
     });
 
     it("returns no sparkline for two team series and no ORG series", () => {
-        const teamA = makeSeries("TEST_FLAKE_RATE", "team-a", [
-            { date: "2024-01-01", value: 4 },
-            { date: "2024-01-02", value: 6 },
-        ]);
-        const teamB = makeSeries("TEST_FLAKE_RATE", "team-b", [
-            { date: "2024-01-01", value: 8 },
-            { date: "2024-01-02", value: 10 },
-        ]);
+        const teamA = makeSeries(
+            "TEST_FLAKE_RATE",
+            "team-a",
+            [
+                { date: "2024-01-01", value: 4 },
+                { date: "2024-01-02", value: 6 },
+            ],
+            "DIMENSION",
+        );
+        const teamB = makeSeries(
+            "TEST_FLAKE_RATE",
+            "team-b",
+            [
+                { date: "2024-01-01", value: 8 },
+                { date: "2024-01-02", value: 10 },
+            ],
+            "DIMENSION",
+        );
         expect(getSparkline([teamA, teamB], "TEST_FLAKE_RATE")).toBeUndefined();
     });
 });
@@ -103,14 +119,24 @@ describe("getDelta", () => {
     });
 
     it("returns no delta for two team series and no ORG series", () => {
-        const teamA = makeSeries("PIPELINE_SUCCESS_RATE", "team-a", [
-            { date: "2024-01-01", value: 20 },
-            { date: "2024-01-10", value: 40 },
-        ]);
-        const teamB = makeSeries("PIPELINE_SUCCESS_RATE", "team-b", [
-            { date: "2024-01-01", value: 80 },
-            { date: "2024-01-10", value: 80 },
-        ]);
+        const teamA = makeSeries(
+            "PIPELINE_SUCCESS_RATE",
+            "team-a",
+            [
+                { date: "2024-01-01", value: 20 },
+                { date: "2024-01-10", value: 40 },
+            ],
+            "DIMENSION",
+        );
+        const teamB = makeSeries(
+            "PIPELINE_SUCCESS_RATE",
+            "team-b",
+            [
+                { date: "2024-01-01", value: 80 },
+                { date: "2024-01-10", value: 80 },
+            ],
+            "DIMENSION",
+        );
         expect(getDelta([teamA, teamB], "PIPELINE_SUCCESS_RATE")).toBeUndefined();
     });
 });
@@ -215,17 +241,11 @@ describe("seriesForScope", () => {
         expect(seriesForScope(teamsOnly, SUCCESS)).toBeUndefined();
     });
 
-    it("with one team selected reads that team's series", () => {
-        expect(getLatestValue(served, SUCCESS, ["team-b"])).toBeCloseTo(100 / 9, 6);
-    });
-
-    it("with one selected team that is not served reads no series", () => {
-        expect(seriesForScope(served, SUCCESS, ["team-x"])).toBeUndefined();
-        expect(getLatestValue(served, SUCCESS, ["team-x"])).toBeUndefined();
-    });
-
-    it("with several teams selected reads the ORG series, which the API reads under the team filter", () => {
-        expect(seriesForScope(served, SUCCESS, ["team-a", "team-b"])?.scope).toBe("ORG");
+    it("with one team series and no ORG series, reads no series: a team series is never the scope's value", () => {
+        expect(seriesForScope([served[1]], SUCCESS)).toBeUndefined();
+        expect(getLatestValue([served[1]], SUCCESS)).toBeUndefined();
+        expect(getSparkline([served[1]], SUCCESS)).toBeUndefined();
+        expect(getDelta([served[1]], SUCCESS)).toBeUndefined();
     });
 });
 
@@ -267,56 +287,35 @@ describe("one served series per scope, never a merge of team series", () => {
         expect(getDelta(teamsOnly, "TEST_PASS_RATE")).toBeUndefined();
     });
 
-    describe("a rate measure (it has an ORG series)", () => {
-        const served = [
-            series("TEST_FLAKE_RATE", "team-a", "DIMENSION", [2, 4]),
-            series("TEST_FLAKE_RATE", "team-b", "DIMENSION", [6, 8]),
-            series("TEST_FLAKE_RATE", "org", "ORG", [3, 5]),
-        ];
-        it("0 teams: the ORG series", () => {
-            expect(getSparkline(served, "TEST_FLAKE_RATE")?.map((p) => p.value)).toEqual([3, 5]);
-            expect(needsOneTeamPick(served, "TEST_FLAKE_RATE")).toBe(false);
+    describe.each([
+        "TEST_FLAKE_RATE",
+        "TEST_SUITE_DURATION_P95",
+        "PIPELINE_DURATION_P95",
+        "PIPELINE_QUEUE_TIME",
+    ])("%s", (measure) => {
+        const a = series(measure, "team-a", "DIMENSION", [10, 12]);
+        const b = series(measure, "team-b", "DIMENSION", [30, 40]);
+        const org = series(measure, "org", "ORG", [3, 5]);
+
+        it("reads the served ORG series (the API reads it under the request's team filter)", () => {
+            expect(getLatestValue([a, b, org], measure)).toBe(5);
+            expect(getSparkline([a, b, org], measure)?.map((p) => p.value)).toEqual([3, 5]);
+            expect(getDelta([a, b, org], measure)).toBeCloseTo(((5 - 3) / 3) * 100, 6);
         });
-        it("1 team: that team's series", () => {
-            expect(
-                getSparkline(served, "TEST_FLAKE_RATE", ["team-b"])?.map((p) => p.value),
-            ).toEqual([6, 8]);
+        it("one served team series and no ORG series: no value, never that team's series", () => {
+            expect(getLatestValue([a], measure)).toBeUndefined();
+            expect(getSparkline([a], measure)).toBeUndefined();
         });
-        it("several teams: the ORG series, read under the team filter", () => {
-            expect(getLatestValue(served, "TEST_FLAKE_RATE", ["team-a", "team-b"])).toBe(5);
-            expect(needsOneTeamPick(served, "TEST_FLAKE_RATE", ["team-a", "team-b"])).toBe(false);
+        it("two team series and no ORG series: no value, never their mean (21 or 26)", () => {
+            expect(getLatestValue([a, b], measure)).toBeUndefined();
+            expect(getSparkline([a, b], measure)).toBeUndefined();
+            expect(getDelta([a, b], measure)).toBeUndefined();
+        });
+        it("an ORG series with no bucket: no value, not 0", () => {
+            expect(getLatestValue([a, { ...org, buckets: [] }], measure)).toBeUndefined();
+        });
+        it("nothing served: no value", () => {
+            expect(getLatestValue([], measure)).toBeUndefined();
         });
     });
-
-    describe.each(["TEST_SUITE_DURATION_P95", "PIPELINE_DURATION_P95", "PIPELINE_QUEUE_TIME"])(
-        "%s (no ORG series)",
-        (measure) => {
-            const a = series(measure, "team-a", "DIMENSION", [10, 12]);
-            const b = series(measure, "team-b", "DIMENSION", [30, 40]);
-
-            it("0 teams and one served team series: that series, as served", () => {
-                expect(getLatestValue([a], measure)).toBe(12);
-                expect(getSparkline([a], measure)?.map((p) => p.value)).toEqual([10, 12]);
-                expect(needsOneTeamPick([a], measure)).toBe(false);
-            });
-            it("one team picked: that team's series", () => {
-                expect(getLatestValue([a, b], measure, ["team-b"])).toBe(40);
-                expect(needsOneTeamPick([a, b], measure, ["team-b"])).toBe(false);
-            });
-            it("two team series and no team picked: no value, the pick-one-team state", () => {
-                expect(getLatestValue([a, b], measure)).toBeUndefined();
-                expect(getSparkline([a, b], measure)).toBeUndefined();
-                expect(getDelta([a, b], measure)).toBeUndefined();
-                expect(needsOneTeamPick([a, b], measure)).toBe(true);
-            });
-            it("two team series and two teams picked: no value, the pick-one-team state", () => {
-                expect(getLatestValue([a, b], measure, ["team-a", "team-b"])).toBeUndefined();
-                expect(needsOneTeamPick([a, b], measure, ["team-a", "team-b"])).toBe(true);
-            });
-            it("nothing served: no value and no pick-one-team state", () => {
-                expect(getLatestValue([], measure)).toBeUndefined();
-                expect(needsOneTeamPick([], measure)).toBe(false);
-            });
-        },
-    );
 });

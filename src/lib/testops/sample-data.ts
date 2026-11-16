@@ -5,6 +5,7 @@ export const SAMPLE_PIPELINES_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "PIPELINE_SUCCESS_RATE",
             buckets: [
                 { date: "2024-01-01", value: 85 },
@@ -19,6 +20,7 @@ export const SAMPLE_PIPELINES_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "PIPELINE_FAILURE_RATE",
             buckets: [
                 { date: "2024-01-01", value: 15 },
@@ -33,6 +35,7 @@ export const SAMPLE_PIPELINES_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "PIPELINE_DURATION_P95",
             buckets: [
                 { date: "2024-01-01", value: 15 },
@@ -47,6 +50,7 @@ export const SAMPLE_PIPELINES_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "PIPELINE_QUEUE_TIME",
             buckets: [
                 { date: "2024-01-01", value: 2 },
@@ -61,6 +65,7 @@ export const SAMPLE_PIPELINES_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "PIPELINE_RERUN_RATE",
             buckets: [
                 { date: "2024-01-01", value: 5 },
@@ -93,6 +98,7 @@ export const SAMPLE_TESTS_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "TEST_PASS_RATE",
             buckets: [
                 { date: "2024-01-01", value: 98 },
@@ -107,6 +113,7 @@ export const SAMPLE_TESTS_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "TEST_FAILURE_RATE",
             buckets: [
                 { date: "2024-01-01", value: 2 },
@@ -121,6 +128,7 @@ export const SAMPLE_TESTS_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "TEST_FLAKE_RATE",
             buckets: [
                 { date: "2024-01-01", value: 1.5 },
@@ -135,6 +143,7 @@ export const SAMPLE_TESTS_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "TEST_SUITE_DURATION_P95",
             buckets: [
                 { date: "2024-01-01", value: 5 },
@@ -165,6 +174,7 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "COVERAGE_LINE_PCT",
             buckets: [
                 { date: "2024-01-01", value: 80 },
@@ -179,6 +189,7 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "COVERAGE_BRANCH_PCT",
             buckets: [
                 { date: "2024-01-01", value: 75 },
@@ -193,6 +204,7 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
         {
             dimension: "TEAM",
             dimensionValue: "all",
+            scope: "ORG",
             measure: "COVERAGE_DELTA_PCT",
             buckets: [
                 { date: "2024-01-01", value: 0.1 },

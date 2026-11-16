@@ -24,6 +24,7 @@ const series = (
 ): TimeseriesResult => ({
     dimension: "TEAM",
     dimensionValue: team,
+    scope: "ORG",
     measure,
     buckets: buckets.map(([date, value]) => ({ date, value })),
 });
