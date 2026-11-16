@@ -47,7 +47,7 @@ type CoveragePageProps = {
 
 function getLatestValue(series: TimeseriesResult | undefined) {
     if (!series || !series.buckets || series.buckets.length === 0) return undefined;
-    // A null latest bucket is "no value" (rendered "--"), never a 0.
+    // A null latest bucket is "no value" (the tile reads "Not reported"), never a 0.
     return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 

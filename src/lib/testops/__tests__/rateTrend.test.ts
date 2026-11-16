@@ -7,10 +7,12 @@ import { buildPipelineRateTrend, hasPipelineRateData } from "../rateTrend";
 const series = (
     measure: string,
     buckets: Array<[string, number | null]>,
-    dimensionValue = "team-a",
+    dimensionValue = "org",
 ): TimeseriesResult => ({
     dimension: "TEAM",
     dimensionValue,
+    // A team-named series is a team (DIMENSION) series; the default is the scope's ORG series.
+    scope: dimensionValue === "org" ? "ORG" : "DIMENSION",
     measure,
     buckets: buckets.map(([date, value]) => ({ date, value })),
 });
@@ -124,16 +126,14 @@ describe("buildPipelineRateTrend reads one scope per series", () => {
         expect((points[0].success ?? 0) + (points[0].failure ?? 0)).toBe(100);
     });
 
-    it("with one team selected draws that team's series", () => {
-        const points = buildPipelineRateTrend(
-            [
-                scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 100 / 9),
-                scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 100 / 9),
-                scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
-            ],
-            ["team-b"],
-        );
+    it("with one team selected draws the ORG series read under the team filter, never the team series", () => {
+        const points = buildPipelineRateTrend([
+            scoped("PIPELINE_SUCCESS_RATE", "team-b", "DIMENSION", 50),
+            scoped("PIPELINE_SUCCESS_RATE", "org", "ORG", 100 / 9),
+            scoped("PIPELINE_FAILURE_RATE", "team-b", "DIMENSION", 800 / 9),
+        ]);
         expect(points[0].success).toBeCloseTo(100 / 9, 6);
-        expect(points[0].failure).toBeCloseTo(800 / 9, 6);
+        // No ORG failure series: no failure value, never the team's series.
+        expect(points[0].failure).toBeNull();
     });
 });

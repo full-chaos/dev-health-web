@@ -6,6 +6,7 @@ import { logger as defaultLogger } from "@/lib/logger";
 
 export interface DecideLogger {
     info(fields: Record<string, unknown>, message: string): void;
+    warn?(fields: Record<string, unknown>, message: string): void;
 }
 
 export interface DecisionRecord {
@@ -31,4 +32,33 @@ export function logDecision(record: DecisionRecord, log: DecideLogger = defaultL
         },
         DECIDE_MESSAGE,
     );
+}
+
+export const DECIDE_TIMEOUT_MESSAGE = "authz_decide_timeout";
+
+let timeoutsTotal = 0;
+
+export interface TimeoutRecord {
+    guard: string;
+    action: string;
+    requestId: string;
+    budgetMs: number;
+    elapsedMs: number;
+    exchangeMs: number;
+}
+
+// The decide budget won the race against the decision point: durations and counts only.
+export function logDecideTimeout(record: TimeoutRecord, log: DecideLogger = defaultLogger): void {
+    timeoutsTotal++;
+    const fields = {
+        guard: record.guard,
+        action: record.action,
+        request_id: record.requestId,
+        budget_ms: record.budgetMs,
+        elapsed_ms: record.elapsedMs,
+        exchange_ms: record.exchangeMs,
+        timeouts_total: timeoutsTotal,
+    };
+    if (log.warn) log.warn(fields, DECIDE_TIMEOUT_MESSAGE);
+    else log.info(fields, DECIDE_TIMEOUT_MESSAGE);
 }

@@ -95,9 +95,11 @@ vi.mock("@/components/charts/HeatmapChart", () => ({
 
 import TestsPage from "./page";
 
+// The served answer of a scope: its ORG series (the TestOps documents select scope).
 const ts = (measure: string, buckets: Array<[string, number | null]>) => ({
     dimension: "TEAM",
-    dimensionValue: "all",
+    dimensionValue: "org",
+    scope: "ORG",
     measure,
     buckets: buckets.map(([date, value]) => ({ date, value })),
 });
@@ -544,7 +546,7 @@ describe("TestOps Tests sends the scope bar's filter", () => {
     });
 });
 
-describe("TestOps Tests reads one served series per scope, never a merge", () => {
+describe("TestOps Tests reads the served ORG series for every scope, never a merge", () => {
     const f = (filter: Record<string, unknown>) => ({
         f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
     });
@@ -569,88 +571,94 @@ describe("TestOps Tests reads one served series per scope, never a merge", () =>
         measure,
         buckets: values.map(([date, value]) => ({ date, value })),
     });
-    // Two team series and the API's ORG series for each rate; P95 has no ORG series.
-    const twoTeams = {
+    // Two team series and the API's ORG series (pooled under the request's team filter) for every measure.
+    const rates = [
+        series("TEST_PASS_RATE", "t1", "DIMENSION", [
+            ["2026-09-01", 70],
+            ["2026-09-02", 70],
+        ]),
+        series("TEST_PASS_RATE", "t2", "DIMENSION", [
+            ["2026-09-01", 75],
+            ["2026-09-02", 75],
+        ]),
+        series("TEST_PASS_RATE", "org", "ORG", [
+            ["2026-09-01", 80],
+            ["2026-09-02", 81],
+        ]),
+        series("TEST_FAILURE_RATE", "t1", "DIMENSION", [["2026-09-02", 30]]),
+        series("TEST_FAILURE_RATE", "t2", "DIMENSION", [["2026-09-02", 25]]),
+        series("TEST_FAILURE_RATE", "org", "ORG", [["2026-09-02", 19]]),
+        series("TEST_FLAKE_RATE", "t1", "DIMENSION", [["2026-09-02", 1]]),
+        series("TEST_FLAKE_RATE", "t2", "DIMENSION", [["2026-09-02", 5]]),
+        series("TEST_FLAKE_RATE", "org", "ORG", [["2026-09-02", 2]]),
+    ];
+    const p95Teams = [
+        series("TEST_SUITE_DURATION_P95", "t1", "DIMENSION", [
+            ["2026-09-01", 9],
+            ["2026-09-02", 8],
+        ]),
+        series("TEST_SUITE_DURATION_P95", "t2", "DIMENSION", [
+            ["2026-09-01", 30],
+            ["2026-09-02", 34],
+        ]),
+    ];
+    const p95Org = series("TEST_SUITE_DURATION_P95", "org", "ORG", [
+        ["2026-09-01", 12],
+        ["2026-09-02", 13],
+    ]);
+    const answer = (timeseries: ReturnType<typeof series>[]) => ({
         pipelines: empty,
-        tests: {
-            timeseries: [
-                series("TEST_PASS_RATE", "t1", "DIMENSION", [
-                    ["2026-09-01", 70],
-                    ["2026-09-02", 70],
-                ]),
-                series("TEST_PASS_RATE", "t2", "DIMENSION", [
-                    ["2026-09-01", 75],
-                    ["2026-09-02", 75],
-                ]),
-                series("TEST_PASS_RATE", "org", "ORG", [
-                    ["2026-09-01", 80],
-                    ["2026-09-02", 81],
-                ]),
-                series("TEST_FAILURE_RATE", "t1", "DIMENSION", [["2026-09-02", 30]]),
-                series("TEST_FAILURE_RATE", "t2", "DIMENSION", [["2026-09-02", 25]]),
-                series("TEST_FAILURE_RATE", "org", "ORG", [["2026-09-02", 19]]),
-                series("TEST_FLAKE_RATE", "t1", "DIMENSION", [["2026-09-02", 1]]),
-                series("TEST_FLAKE_RATE", "t2", "DIMENSION", [["2026-09-02", 5]]),
-                series("TEST_FLAKE_RATE", "org", "ORG", [["2026-09-02", 2]]),
-                series("TEST_SUITE_DURATION_P95", "t1", "DIMENSION", [
-                    ["2026-09-01", 9],
-                    ["2026-09-02", 8],
-                ]),
-                series("TEST_SUITE_DURATION_P95", "t2", "DIMENSION", [
-                    ["2026-09-01", 30],
-                    ["2026-09-02", 34],
-                ]),
-            ],
-            breakdowns: [],
-        },
+        tests: { timeseries, breakdowns: [] },
         coverage: empty,
-    };
+    });
     const tile = (label: string) =>
         screen.getAllByTestId("metric-tile").find((t) => t.getAttribute("data-label") === label)!;
-    const passTrend = () =>
-        (
-            chartSpy.mock.calls.find(() => true)?.[0] as { data: Array<{ value: number | null }> }
-        ).data.map((p) => p.value);
+    const trends = () =>
+        chartSpy.mock.calls.map((call) =>
+            (call[0] as { data: Array<{ value: number | null }> }).data.map((p) => p.value),
+        );
 
-    beforeEach(() => mockFetchTestOpsData.mockResolvedValue(twoTeams));
+    it.each([
+        ["W1 0 teams", undefined],
+        ["W11 1 team", ["t1"]],
+        ["W2 2+ teams", ["t1", "t2"]],
+    ] as const)(
+        "%s: every spark, trend and the P95 tile read the ORG series",
+        async (_name, ids) => {
+            mockFetchTestOpsData.mockResolvedValue(answer([...rates, ...p95Teams, p95Org]));
+            await renderPage(ids ? teams([...ids]) : {});
+            expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[80,81]");
+            expect(tile("Flake Rate").getAttribute("data-spark")).toBe("[2]");
+            const p95 = tile("P95 Suite Duration");
+            expect(p95.getAttribute("data-value")).toBe("13");
+            expect(p95.getAttribute("data-value-text")).toBe("");
+            expect(p95.getAttribute("data-spark")).toBe("[12,13]");
+            expect(trends()).toEqual([
+                [80, 81],
+                [12, 13],
+            ]);
+            expect(screen.queryByText("Pick one team")).toBeNull();
+        },
+    );
 
-    it("0 teams: the sparks and the pass-rate trend read the ORG series; P95 shows the pick-one-team state", async () => {
-        await renderPage();
-        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[80,81]");
-        expect(tile("Flake Rate").getAttribute("data-spark")).toBe("[2]");
-        expect(passTrend()).toEqual([80, 81]);
-        const p95 = tile("P95 Suite Duration");
-        expect(p95.getAttribute("data-value")).toBe("undefined");
-        expect(p95.getAttribute("data-value-text")).toBe("Pick one team");
-        expect(p95.getAttribute("data-value-is-message")).toBe("yes");
-        expect(p95.getAttribute("data-spark")).toBe("undefined");
-        const duration = screen.getByTestId("testops-trend-suite-duration");
-        expect(within(duration).getByText("Pick one team")).toBeInTheDocument();
-        expect(chartSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("1 team: every spark, trend and the P95 tile read that team's series", async () => {
-        await renderPage(teams(["t1"]));
-        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[70,70]");
-        expect(tile("Failure Rate").getAttribute("data-spark")).toBe("[30]");
-        expect(passTrend()).toEqual([70, 70]);
-        const p95 = tile("P95 Suite Duration");
-        expect(p95.getAttribute("data-value")).toBe("8");
-        expect(p95.getAttribute("data-spark")).toBe("[9,8]");
-        expect(screen.queryByText("Pick one team")).toBeNull();
-    });
-
-    it("several teams: the rates read the ORG series under the filter; P95 shows the pick-one-team state", async () => {
-        await renderPage(teams(["t1", "t2"]));
-        expect(tile("Pass Rate").getAttribute("data-spark")).toBe("[80,81]");
-        expect(passTrend()).toEqual([80, 81]);
-        expect(tile("P95 Suite Duration").getAttribute("data-value-text")).toBe("Pick one team");
-    });
-
-    it("the default view with one served team series shows its P95, never the pick-one-team state", async () => {
-        mockFetchTestOpsData.mockResolvedValue(served);
-        await renderPage();
-        expect(tile("P95 Suite Duration").getAttribute("data-value")).toBe("8.9");
-        expect(screen.queryByText("Pick one team")).toBeNull();
-    });
+    it.each([
+        ["W4 0 teams, one team series", undefined, [p95Teams[0]]],
+        ["W5 2+ teams, two team series", ["t1", "t2"], p95Teams],
+        ["W6 1 team, its team series", ["t1"], p95Teams],
+    ] as const)(
+        "%s and no ORG P95 series: the tile is Not reported and the trend is not populated",
+        async (_name, ids, p95) => {
+            mockFetchTestOpsData.mockResolvedValue(answer([...rates, ...p95]));
+            await renderPage(ids ? teams([...ids]) : {});
+            const tileP95 = tile("P95 Suite Duration");
+            expect(tileP95.getAttribute("data-value")).toBe("undefined");
+            expect(tileP95.getAttribute("data-value-text")).toBe("");
+            expect(tileP95.getAttribute("data-value-is-message")).toBe("no");
+            expect(tileP95.getAttribute("data-spark")).toBe("undefined");
+            const duration = screen.getByTestId("testops-trend-suite-duration");
+            expect(within(duration).getByText("Suite duration not populated")).toBeInTheDocument();
+            expect(screen.queryByText("Pick one team")).toBeNull();
+            expect(trends()).toEqual([[80, 81]]);
+        },
+    );
 });
