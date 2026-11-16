@@ -132,11 +132,10 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             { id: "TEST_FLAKE_RATE", ts: testTimeseries },
             { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
         ],
-        scope.teamIds,
         emptyReason ?? testOpsData.coverage.filterEmptyReason,
     );
 
-    const rateTrend = buildPipelineRateTrend(pipelineTimeseries, scope.teamIds);
+    const rateTrend = buildPipelineRateTrend(pipelineTimeseries);
     const failurePatterns = buildFailurePatternsModel(
         pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE"),
         "%",

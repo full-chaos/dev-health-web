@@ -236,7 +236,7 @@
         "sentry": 0
     },
     "src/lib/auth/decide/log.ts": {
-        "log": 1,
+        "log": 3,
         "sentry": 0
     },
     "src/lib/auth/platform/limits.ts": {
@@ -248,7 +248,7 @@
         "sentry": 0
     },
     "src/lib/auth/workload/token.ts": {
-        "log": 1,
+        "log": 2,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {

@@ -82,11 +82,7 @@ import {
     TESTOPS_RISK_QUERY,
     TESTOPS_TEST_WINDOW_QUERY,
 } from "../src/lib/testops/queries";
-import {
-    TESTOPS_COVERAGE_QUERY,
-    TESTOPS_PIPELINE_QUERY,
-    TESTOPS_TEST_QUERY,
-} from "../src/lib/testops/queries";
+import { TESTOPS_COVERAGE_QUERY, TESTOPS_PIPELINE_QUERY } from "../src/lib/testops/queries";
 import {
     AI_ATTRIBUTED_PRS_QUERY,
     AI_ATTRIBUTION_OVERVIEW_QUERY,
@@ -205,7 +201,6 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     coverageScopeBaseline: TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     testOpsCoverage: TESTOPS_COVERAGE_QUERY,
     testOpsPipeline: TESTOPS_PIPELINE_QUERY,
-    testOpsTest: TESTOPS_TEST_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
     sourceHealth: SOURCE_HEALTH_QUERY,

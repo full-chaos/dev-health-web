@@ -94,9 +94,11 @@ vi.mock("@/components/charts/HeatmapChart", () => ({
 
 import PipelinesPage from "./page";
 
+// The served answer of a scope: its ORG series (the TestOps documents select scope).
 const ts = (measure: string, buckets: Array<[string, number | null]>) => ({
     dimension: "TEAM",
-    dimensionValue: "all",
+    dimensionValue: "org",
+    scope: "ORG",
     measure,
     buckets: buckets.map(([date, value]) => ({ date, value })),
 });
@@ -419,7 +421,7 @@ describe("TestOps Pipelines applies the scope bar's filter", () => {
         });
     });
 
-    it("with one team selected, the tiles and the trend show that team's series", async () => {
+    it("with one team selected, the tiles and the trend show the ORG series read under the team filter", async () => {
         const series = (
             measure: string,
             dimensionValue: string,
@@ -433,7 +435,7 @@ describe("TestOps Pipelines applies the scope bar's filter", () => {
             buckets: [{ date: "2026-11-13", value }],
         });
         // The API answers a team-b filter with team-b's series and the org series read under the
-        // filter; the page reads team-b's own series.
+        // filter; the page reads the org series (on a real answer the two are equal).
         mockFetchTestOpsData.mockResolvedValue({
             pipelines: {
                 timeseries: [
@@ -450,35 +452,41 @@ describe("TestOps Pipelines applies the scope bar's filter", () => {
         const success = screen
             .getAllByTestId("metric-tile")
             .find((tile) => tile.getAttribute("data-label") === "Success Rate");
-        expect(Number(success?.getAttribute("data-value"))).toBeCloseTo(100 / 9, 6);
+        expect(Number(success?.getAttribute("data-value"))).toBe(20);
         const points = (
             rateChartSpy.mock.calls.at(-1)?.[0] as { points: Array<{ success: number }> }
         ).points;
-        expect(points[0].success).toBeCloseTo(100 / 9, 6);
+        expect(points[0].success).toBe(20);
     });
 });
 
-describe("TestOps duration tiles with no ORG series: one served series, or the pick-one-team state", () => {
-    const two = (measure: string, dimensionValue: string, value: number) => ({
+describe("TestOps duration tiles read the served ORG series for every scope (0, 1, 2+ teams)", () => {
+    const one = (
+        measure: string,
+        dimensionValue: string,
+        scope: "DIMENSION" | "ORG",
+        value: number,
+    ) => ({
         dimension: "TEAM",
         dimensionValue,
-        scope: "DIMENSION",
+        scope,
         measure,
         buckets: [{ date: "2026-11-13", value }],
     });
-    const twoSeries = {
-        pipelines: {
-            timeseries: [
-                two("PIPELINE_DURATION_P95", "t1", 4),
-                two("PIPELINE_DURATION_P95", "t2", 20),
-                two("PIPELINE_QUEUE_TIME", "t1", 4),
-                two("PIPELINE_QUEUE_TIME", "t2", 20),
-            ],
-            breakdowns: [],
-        },
+    const answer = (timeseries: ReturnType<typeof one>[]) => ({
+        pipelines: { timeseries, breakdowns: [] },
         tests: { timeseries: [], breakdowns: [] },
         coverage: { timeseries: [], breakdowns: [] },
-    };
+    });
+    // The API's answer under the request's team filter: the ORG series (pooled under the filter) and the team series.
+    const withOrg = answer([
+        one("PIPELINE_DURATION_P95", "t1", "DIMENSION", 4),
+        one("PIPELINE_DURATION_P95", "t2", "DIMENSION", 20),
+        one("PIPELINE_DURATION_P95", "org", "ORG", 2),
+        one("PIPELINE_QUEUE_TIME", "t1", "DIMENSION", 4),
+        one("PIPELINE_QUEUE_TIME", "t2", "DIMENSION", 20),
+        one("PIPELINE_QUEUE_TIME", "org", "ORG", 1.5),
+    ]);
     const tile = (label: string) =>
         screen.getAllByTestId("metric-tile").find((t) => t.getAttribute("data-label") === label);
     const pick = (ids: string[]) => ({
@@ -494,24 +502,91 @@ describe("TestOps duration tiles with no ORG series: one served series, or the p
             "utf8",
         ).toString("base64url"),
     });
+    const expectValue = (label: string, value: string) => {
+        expect(tile(label)?.getAttribute("data-value")).toBe(value);
+        expect(tile(label)?.getAttribute("data-value-text")).toBe("");
+        expect(tile(label)?.getAttribute("data-value-is-message")).toBe("no");
+    };
+    // "Not reported" is MetricCard's own text for a tile with no value and no value text (one unavailable state).
+    const expectNotReported = (label: string) => {
+        expect(tile(label)?.getAttribute("data-value")).toBe("undefined");
+        expect(tile(label)?.getAttribute("data-value-text")).toBe("");
+        expect(tile(label)?.getAttribute("data-value-is-message")).toBe("no");
+    };
 
-    it("two team series and no team picked: no number, the pick-one-team state", async () => {
-        mockFetchTestOpsData.mockResolvedValue(twoSeries);
+    it("W1 0 teams: the ORG value, not a team value or their mean", async () => {
+        mockFetchTestOpsData.mockResolvedValue(withOrg);
         await renderPage();
-        expect(tile("P95 Duration")?.getAttribute("data-value")).toBe("undefined");
-        expect(tile("P95 Duration")?.getAttribute("data-value-text")).toBe("Pick one team");
-        expect(tile("P95 Duration")?.getAttribute("data-value-is-message")).toBe("yes");
-        expect(tile("Queue Time")?.getAttribute("data-value")).toBe("undefined");
-        expect(tile("Queue Time")?.getAttribute("data-value-text")).toBe("Pick one team");
-        expect(tile("Queue Time")?.getAttribute("data-value-is-message")).toBe("yes");
+        expectValue("P95 Duration", "2");
+        expectValue("Queue Time", "1.5");
     });
 
-    it("one team picked: that team's value", async () => {
-        mockFetchTestOpsData.mockResolvedValue(twoSeries);
+    it("W2 2+ teams: the ORG value read under the filter, never the pick-one-team state", async () => {
+        mockFetchTestOpsData.mockResolvedValue(withOrg);
+        await renderPage(pick(["t1", "t2"]));
+        expectValue("P95 Duration", "2");
+        expectValue("Queue Time", "1.5");
+        expect(screen.queryByText("Pick one team")).toBeNull();
+    });
+
+    it("W11 1 team: the ORG value under the one-team filter, not the team's own series", async () => {
+        mockFetchTestOpsData.mockResolvedValue(withOrg);
         await renderPage(pick(["t2"]));
-        expect(tile("P95 Duration")?.getAttribute("data-value")).toBe("20");
-        expect(tile("P95 Duration")?.getAttribute("data-value-text")).toBe("");
-        expect(tile("Queue Time")?.getAttribute("data-value")).toBe("20");
-        expect(tile("Queue Time")?.getAttribute("data-value-text")).toBe("");
+        expectValue("P95 Duration", "2");
+        expectValue("Queue Time", "1.5");
+    });
+
+    it("W4 0 teams and no ORG series: Not reported, never the one served team series", async () => {
+        mockFetchTestOpsData.mockResolvedValue(
+            answer([
+                one("PIPELINE_DURATION_P95", "t1", "DIMENSION", 4),
+                one("PIPELINE_QUEUE_TIME", "t1", "DIMENSION", 4),
+            ]),
+        );
+        await renderPage();
+        expectNotReported("P95 Duration");
+        expectNotReported("Queue Time");
+    });
+
+    it("W5 2+ teams and no ORG series: Not reported, never the pick-one-team state, never 0 or the mean 12", async () => {
+        mockFetchTestOpsData.mockResolvedValue(
+            answer([
+                one("PIPELINE_DURATION_P95", "t1", "DIMENSION", 4),
+                one("PIPELINE_DURATION_P95", "t2", "DIMENSION", 20),
+                one("PIPELINE_QUEUE_TIME", "t1", "DIMENSION", 4),
+                one("PIPELINE_QUEUE_TIME", "t2", "DIMENSION", 20),
+            ]),
+        );
+        await renderPage(pick(["t1", "t2"]));
+        expectNotReported("P95 Duration");
+        expectNotReported("Queue Time");
+        expect(screen.queryByText("Pick one team")).toBeNull();
+    });
+
+    it("W8 an ORG series with no bucket: Not reported, not 0", async () => {
+        mockFetchTestOpsData.mockResolvedValue({
+            ...answer([]),
+            pipelines: {
+                timeseries: [
+                    {
+                        dimension: "TEAM",
+                        dimensionValue: "org",
+                        scope: "ORG",
+                        measure: "PIPELINE_DURATION_P95",
+                        buckets: [],
+                    },
+                    {
+                        dimension: "TEAM",
+                        dimensionValue: "t1",
+                        scope: "DIMENSION",
+                        measure: "PIPELINE_DURATION_P95",
+                        buckets: [{ date: "2026-11-13", value: 4 }],
+                    },
+                ],
+                breakdowns: [],
+            },
+        });
+        await renderPage();
+        expectNotReported("P95 Duration");
     });
 });

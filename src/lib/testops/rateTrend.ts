@@ -17,12 +17,9 @@ export type PipelineRatePoint = {
  * one scope, never a mean across scopes). It computes no value: a day that one series does not
  * serve stays `null` there, and the failure rate is never derived from the success rate.
  */
-export function buildPipelineRateTrend(
-    timeseries: TimeseriesResult[],
-    teamIds?: readonly string[],
-): PipelineRatePoint[] {
-    const success = seriesForScope(timeseries, "PIPELINE_SUCCESS_RATE", teamIds);
-    const failure = seriesForScope(timeseries, "PIPELINE_FAILURE_RATE", teamIds);
+export function buildPipelineRateTrend(timeseries: TimeseriesResult[]): PipelineRatePoint[] {
+    const success = seriesForScope(timeseries, "PIPELINE_SUCCESS_RATE");
+    const failure = seriesForScope(timeseries, "PIPELINE_FAILURE_RATE");
 
     const byDay = new Map<string, PipelineRatePoint>();
     const point = (day: string): PipelineRatePoint => {

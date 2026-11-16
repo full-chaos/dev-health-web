@@ -14,6 +14,8 @@ export interface DecisionLine {
     allowed: boolean;
     source: string;
     reason_code: string;
+    request_id?: string;
+    time?: number;
 }
 
 export function webLogPath(): string {
@@ -177,4 +179,149 @@ export function stack(verb: "stop-auth" | "start-auth"): void {
         return;
     }
     execFileSync("bash", [script, verb, state], { stdio: "pipe", timeout: 90_000 });
+}
+
+const DECIDE = "authz_decide";
+const DECIDE_TIMEOUT = "authz_decide_timeout";
+const EXCHANGED = "workload token exchanged";
+const EXCHANGE_FAILED = "workload token exchange failed";
+const TIMELINE = new Set([DECIDE, DECIDE_TIMEOUT, EXCHANGED, EXCHANGE_FAILED]);
+const TIMELINE_SKIP = new Set(["level", "time", "pid", "hostname", "msg", "message"]);
+
+const msgOf = (l: Record<string, unknown>) => String(l.msg ?? l.message ?? "");
+const iso = (ms: unknown) => (typeof ms === "number" ? new Date(ms).toISOString() : "?");
+
+/** How many JSON lines the log holds now (all messages): the mark of linesSince and the recovery checks. */
+export function markLines(path: string): number {
+    return lines(path).length;
+}
+
+function linesSince(path: string, since: number): Record<string, unknown>[] {
+    return lines(path).slice(since);
+}
+
+/**
+ * The decision, timeout and workload exchange lines after the mark, one per row with its server time, plus the test
+ * events (written by the test clock): every recovery assertion carries it.
+ */
+export function timeline(
+    path: string,
+    since: number,
+    events: readonly { label: string; atMs: number }[],
+): string {
+    const rows = [
+        ...events.map((e) => ({ at: e.atMs, text: `${iso(e.atMs)} test: ${e.label}` })),
+        ...linesSince(path, since)
+            .filter((l) => TIMELINE.has(msgOf(l)))
+            .map((l) => {
+                const rest = Object.fromEntries(
+                    Object.entries(l).filter(([k]) => !TIMELINE_SKIP.has(k)),
+                );
+                return {
+                    at: typeof l.time === "number" ? l.time : 0,
+                    text: `${iso(l.time)} server: ${msgOf(l)} ${JSON.stringify(rest)}`,
+                };
+            }),
+    ].sort((a, b) => a.at - b.at);
+    return ["timeline:", ...rows.map((r) => `  ${r.text}`)].join("\n");
+}
+
+async function pollLine(
+    path: string,
+    since: number,
+    match: (l: Record<string, unknown>) => boolean,
+    missing: string,
+    show: () => string,
+): Promise<{ line: Record<string, unknown>; index: number }> {
+    let found: { line: Record<string, unknown>; index: number } | undefined;
+    try {
+        await expect
+            .poll(
+                () => {
+                    const all = linesSince(path, since);
+                    const i = all.findIndex(match);
+                    found = i < 0 ? undefined : { line: all[i], index: since + i };
+                    return found !== undefined;
+                },
+                { timeout: 20_000 },
+            )
+            .toBe(true);
+    } catch {
+        throw new Error(`missing signal: ${missing}\n${show()}`);
+    }
+    return found as { line: Record<string, unknown>; index: number };
+}
+
+/**
+ * After a fault ends (subject restored, auth-service started): the next decision of guard is the PDP's allow, or, on the
+ * cold path only, a LOUD fail-closed timeout. That timeout must carry its authz_decide_timeout line, the server must log
+ * the workload token recovery when an exchange failed during the fault, and the decision after that line must be the
+ * PDP's allow. No sleep: each step waits for a named line.
+ */
+export async function expectRecovered(
+    page: Page,
+    path: string,
+    opts: {
+        guard: string;
+        action: string;
+        url: string;
+        faultMark: number;
+        events: { label: string; atMs: number }[];
+        requireExchange: boolean;
+    },
+): Promise<void> {
+    const { guard, action, faultMark, events } = opts;
+    const show = () => timeline(path, faultMark, events);
+    const decision = (l: Record<string, unknown>) => msgOf(l) === DECIDE && l.guard === guard;
+    const failedDuringFault = linesSince(path, faultMark).some((l) => msgOf(l) === EXCHANGE_FAILED);
+    const needRecoveryLine = opts.requireExchange || failedDuringFault;
+    const recovered = (since: number) =>
+        pollLine(
+            path,
+            since,
+            (l) => msgOf(l) === EXCHANGED && l.recovered === true,
+            `no "${EXCHANGED}" line with recovered=true after the fault ended`,
+            show,
+        );
+
+    const first = markLines(path);
+    events.push({ label: `goto ${opts.url} (D1)`, atMs: Date.now() });
+    await page.goto(opts.url);
+    const d1 = await pollLine(path, first, decision, `no ${DECIDE} line for ${guard} (D1)`, show);
+    const d1Line = d1.line as unknown as DecisionLine;
+    expect(d1Line.action, show()).toBe(action);
+
+    if (d1Line.source === "pdp") {
+        expect(
+            d1Line.allowed,
+            `D1 is a PDP deny after the fault: ${d1Line.reason_code}\n${show()}`,
+        ).toBe(true);
+        if (needRecoveryLine) {
+            const rec = await recovered(faultMark);
+            expect(rec.index < d1.index, `the recovery line came after D1\n${show()}`).toBe(true);
+        }
+        return;
+    }
+
+    expect(
+        d1Line.reason_code,
+        `D1 failed closed for a reason other than the cold-path timeout\n${show()}`,
+    ).toBe("timeout");
+    await pollLine(
+        path,
+        faultMark,
+        (l) => msgOf(l) === DECIDE_TIMEOUT && l.request_id === d1Line.request_id,
+        `no ${DECIDE_TIMEOUT} line for D1 (${String(d1Line.request_id)}): the timeout was silent`,
+        show,
+    );
+    const rec = needRecoveryLine ? await recovered(faultMark) : undefined;
+    const second = markLines(path);
+    if (rec) expect(rec.index < second, `the recovery line is not before D2\n${show()}`).toBe(true);
+    events.push({ label: `goto ${opts.url} (D2)`, atMs: Date.now() });
+    await page.goto(opts.url);
+    const d2 = await pollLine(path, second, decision, `no ${DECIDE} line for ${guard} (D2)`, show);
+    const d2Line = d2.line as unknown as DecisionLine;
+    expect(d2Line.action, show()).toBe(action);
+    expect(d2Line.source, `D2 is not the PDP's after the loud D1 timeout\n${show()}`).toBe("pdp");
+    expect(d2Line.allowed, `D2 is a PDP deny: ${d2Line.reason_code}\n${show()}`).toBe(true);
 }
