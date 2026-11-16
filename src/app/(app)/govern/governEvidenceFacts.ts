@@ -1,5 +1,7 @@
 import type { PageFact } from "@/components/evidence/PageFactsEvidenceAction";
 import { areaOverviewBodyOrder } from "@/components/navigation/areaOverviewEvidence";
+import { NO_OWNED_REPOSITORIES } from "@/app/(app)/testops/testOpsEvidence";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 import { isAvailable } from "@/lib/areaSignals/sort";
 import type { AreaSignal } from "@/lib/areaSignals/types";
 
@@ -20,6 +22,8 @@ export function governEvidenceFacts(signals: readonly AreaSignal[]): PageFact[] 
             ? "Could not be read"
             : isAvailable(signal) && signal.value
               ? signal.value
-              : undefined,
+              : teamOwnsNoRepository(signal.emptyReason)
+                ? NO_OWNED_REPOSITORIES
+                : undefined,
     }));
 }

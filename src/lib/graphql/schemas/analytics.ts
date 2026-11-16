@@ -94,6 +94,8 @@ export const AnalyticsResultSchema = z.object({
     timeseries: z.array(TimeseriesResultSchema),
     breakdowns: z.array(BreakdownResultSchema),
     sankey: SankeyResultSchema.nullable().optional(),
+    // Why the answer is empty, set by the server (CHAOS-13854); absent when not selected.
+    filterEmptyReason: z.string().nullish(),
 });
 
 /**

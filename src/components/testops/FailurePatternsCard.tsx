@@ -3,8 +3,10 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { UNATTRIBUTED_LABEL, type FailurePatternsModel } from "@/lib/testops/failure-patterns";
+import { NoOwnedRepositoriesState } from "./NoOwnedRepositoriesState";
 import {
     jobFailureCutNote,
     jobFailureRows,
@@ -22,6 +24,8 @@ type FailurePatternsCardProps = {
      * failed. Left out on a page that does not read them: the card then has the team part only.
      */
     jobFailures?: JobFailuresState;
+    /** The server's reason for the analytics answer; a team that owns no repository is a state, not "No failure patterns". */
+    emptyReason?: string | null;
 };
 
 const STATE = "text-sm text-(--ink-muted)";
@@ -37,6 +41,10 @@ function JobFailures({ state }: { state: JobFailuresState }) {
                 <p className={STATE} data-testid="testops-job-failures-failed">
                     {READ_FAILED_MESSAGE}
                 </p>
+            ) : teamOwnsNoRepository(state.filterEmptyReason) ? (
+                <div data-testid="testops-job-failures-no-owned-repositories">
+                    <NoOwnedRepositoriesState compact />
+                </div>
             ) : state.groups.length === 0 ? (
                 <p className={STATE} data-testid="testops-job-failures-empty">
                     No data for this window
@@ -75,6 +83,7 @@ export function FailurePatternsCard({
     model,
     fetchFailed = false,
     jobFailures,
+    emptyReason,
 }: FailurePatternsCardProps) {
     const groups = model.heatmap.axes.x;
     const onlyUnattributed = groups.length === 1 && groups[0] === UNATTRIBUTED_LABEL;
@@ -95,6 +104,8 @@ export function FailurePatternsCard({
                         title="Failure patterns could not be loaded"
                         message="Pipeline analytics could not be loaded. Please try again later."
                     />
+                ) : teamOwnsNoRepository(emptyReason) ? (
+                    <NoOwnedRepositoriesState compact />
                 ) : model.isEmpty ? (
                     <DataState
                         variant="detector-enabled-no-findings"

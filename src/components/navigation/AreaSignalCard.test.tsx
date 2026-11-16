@@ -223,3 +223,35 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
         });
     });
 });
+
+describe("AreaSignalCard with the served reason of a team that owns no repository (CHAOS-13869)", () => {
+    const unavailable: AreaSignal = {
+        ...base,
+        id: "testops",
+        label: "TestOps",
+        state: "unavailable",
+        value: "",
+    };
+
+    it("says 'No owned repositories', not 'No data for this window'", () => {
+        draw({ ...unavailable, emptyReason: "team_owns_no_repository" });
+        expect(screen.getByTestId("area-signal-no-owned-repositories")).toHaveTextContent(
+            "No owned repositories",
+        );
+        expect(screen.queryByTestId("area-signal-unavailable")).toBeNull();
+        expect(screen.queryByTestId("area-signal-failed")).toBeNull();
+        expect(screen.getByTestId("area-signal-card")).toHaveAttribute("data-state", "unavailable");
+    });
+
+    it("no reason keeps today's empty card", () => {
+        draw(unavailable);
+        expect(screen.getByTestId("area-signal-unavailable")).toBeTruthy();
+        expect(screen.queryByTestId("area-signal-no-owned-repositories")).toBeNull();
+    });
+
+    it("a failed read is still 'could not be read'", () => {
+        draw({ ...unavailable, failed: true });
+        expect(screen.getByTestId("area-signal-failed")).toBeTruthy();
+        expect(screen.queryByTestId("area-signal-no-owned-repositories")).toBeNull();
+    });
+});

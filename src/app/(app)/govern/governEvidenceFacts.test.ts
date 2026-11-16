@@ -32,4 +32,11 @@ describe("governEvidenceFacts (CHAOS-8269)", () => {
         expect(byLabel["empty — Metric"]).toBeUndefined();
         expect(byLabel["served — Metric"]).toBe("7");
     });
+
+    it("a team that owns no repository reads 'No owned repositories', not 'Not reported'", () => {
+        const [fact] = governEvidenceFacts([
+            sig("a", { state: "unavailable", value: "", emptyReason: "team_owns_no_repository" }),
+        ]);
+        expect(fact.value).toBe("No owned repositories");
+    });
 });
