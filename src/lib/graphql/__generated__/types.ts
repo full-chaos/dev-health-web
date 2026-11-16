@@ -457,6 +457,8 @@ export type AnalyticsResult = {
   evidenceQualityByGroup?: Maybe<Array<EvidenceQualityGroup>>;
   evidenceQualityDistribution?: Maybe<Scalars['JSON']['output']>;
   evidenceQualityStats?: Maybe<EvidenceQualityStats>;
+  /** Why the answer is empty, one value for the whole answer, set by the server and never derived by a client (CHAOS-9098). team_owns_no_repository: the request's team scope selects teams that together own no repository (team_repo_ownership, as of now), so every series and breakdown of the team scope is empty. Null when the request has no team scope, when the selected teams own one or more repositories (also when the window has no rows), and when the batch holds a request that does not read repository ownership (a stored team column) or a sankey or flow matrix. Never a value of 0 and never a healthy answer. The ORG series is not changed by it. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   flowMatrix?: Maybe<FlowMatrixResult>;
   sankey?: Maybe<SankeyResult>;
   timeseries: Array<TimeseriesResult>;
@@ -2514,6 +2516,8 @@ export type TestOpsJobFailuresInput = {
 
 export type TestOpsJobFailuresResult = {
   __typename?: 'TestOpsJobFailuresResult';
+  /** Why the answer is empty, one value for the whole answer, set by the server and never derived by a client (CHAOS-9098). team_owns_no_repository: ``teamIds`` selects teams that together own no repository (team_repo_ownership, as of now). Null when ``teamIds`` is not set, and when the selected teams own one or more repositories, also when the window has no rows. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   /** The groups with the most failed runs first (then by job name, workflow name and provider), cut at ``limit``. */
   groups: Array<TestOpsJobFailureGroup>;
   /** Number of groups that match before the ``limit`` cut. Never less than ``groups``. */
@@ -2610,6 +2614,8 @@ export type TestOpsTestWindowResult = {
   coverage: TestOpsTestCoverage;
   /** ``failed / (passed + failed)`` over the window, as a percent (0 to 100). Null = no passed or failed case. */
   failureRatePct?: Maybe<Scalars['Float']['output']>;
+  /** Why the answer is empty, one value for the whole answer, set by the server and never derived by a client (CHAOS-9098). team_owns_no_repository: ``teamIds`` selects teams that together own no repository (team_repo_ownership, as of now). Null when ``teamIds`` is not set, and when the selected teams own one or more repositories, also when the window has no rows. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   /** Summed flaky case names over summed distinct case names of the window, as a percent (0 to 100). Null = no distinct case, or a day stored without the counts (the whole window is then unavailable, not a smaller one). */
   flakeRatePct?: Maybe<Scalars['Float']['output']>;
   /** ``passed / (passed + failed)`` over the window, as a percent (0 to 100); skipped and quarantined cases are not in the denominator. Null = no passed or failed case. */
@@ -2709,7 +2715,7 @@ export type TimeseriesResult = {
   scope: TimeseriesScope;
 };
 
-/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE, COVERAGE_LINE_PCT and TEST_FLAKE_RATE carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
+/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). The measures with an ORG series are PIPELINE_SUCCESS_RATE, PIPELINE_FAILURE_RATE, PIPELINE_RERUN_RATE, PIPELINE_DURATION_P95, PIPELINE_QUEUE_TIME, TEST_PASS_RATE, TEST_FAILURE_RATE, TEST_FLAKE_RATE, TEST_SUITE_DURATION_P95 and COVERAGE_LINE_PCT, on the non-investment path; every other measure carries DIMENSION series only. A P95 duration and the queue time are pooled over the raw runs (never a mean of the dimension series), and past the pooled row bound the answer is unavailable. */
 export type TimeseriesScope =
   | 'DIMENSION'
   | 'ORG';
