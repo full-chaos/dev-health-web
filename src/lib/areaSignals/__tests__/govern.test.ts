@@ -766,3 +766,76 @@ describe("getGovernSignals — the served ORG series is the org value (CHAOS-973
         expect(signals.testops.value).toContain("72");
     });
 });
+
+describe("getGovernSignals — a team that owns no repository (CHAOS-13869)", () => {
+    const REASON = "team_owns_no_repository";
+    const emptyWith = (filterEmptyReason: string | null | undefined) => ({
+        ...emptyAnalytics,
+        filterEmptyReason,
+    });
+
+    it("the TestOps card carries the served reason, with no value and not failed", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyWith(REASON),
+            tests: emptyWith(REASON),
+            coverage: emptyWith(REASON),
+        });
+        mockCoverage.mockResolvedValue(emptyWith(REASON));
+        const card = byId(await getGovernSignals(defaultMetricFilter)).testops;
+        expect(card).toMatchObject({ state: "unavailable", value: "", emptyReason: REASON });
+        expect(card.failed).toBeUndefined();
+    });
+
+    it("the reason of any one of the four answers is enough", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyAnalytics,
+            tests: emptyAnalytics,
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockResolvedValue(emptyWith(REASON));
+        expect(byId(await getGovernSignals(defaultMetricFilter)).testops.emptyReason).toBe(REASON);
+    });
+
+    it("no reason (null or absent) is today's empty card", async () => {
+        for (const reason of [null, undefined]) {
+            mockTestOps.mockResolvedValue({
+                pipelines: emptyWith(reason),
+                tests: emptyWith(reason),
+                coverage: emptyWith(reason),
+            });
+            mockCoverage.mockResolvedValue(emptyWith(reason));
+            const card = byId(await getGovernSignals(defaultMetricFilter)).testops;
+            expect(card).toMatchObject({ state: "unavailable", value: "" });
+            expect(card.emptyReason).toBeUndefined();
+        }
+    });
+
+    it("another reason is not this state", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyWith("repository_not_found"),
+            tests: emptyAnalytics,
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockResolvedValue(emptyAnalytics);
+        expect(
+            byId(await getGovernSignals(defaultMetricFilter)).testops.emptyReason,
+        ).toBeUndefined();
+    });
+
+    it("a card with a served value is never touched, and a served 0 stays 0", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: {
+                ...emptyAnalytics,
+                timeseries: [ts("PIPELINE_SUCCESS_RATE", 0)],
+                filterEmptyReason: REASON,
+            },
+            tests: emptyAnalytics,
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockResolvedValue(emptyAnalytics);
+        const card = byId(await getGovernSignals(defaultMetricFilter)).testops;
+        expect(card.emptyReason).toBeUndefined();
+        expect(card.state).not.toBe("unavailable");
+        expect(card.value).toContain("0%");
+    });
+});

@@ -12,6 +12,7 @@ import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { CoverageBaselineCard } from "@/components/testops/CoverageBaselineCard";
 import { RepositoryCoverageTable } from "@/components/testops/RepositoryCoverageTable";
+import { NoOwnedRepositoriesState } from "@/components/testops/NoOwnedRepositoriesState";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { fetchTeamNames } from "@/lib/api/filterOptions";
@@ -37,8 +38,13 @@ import {
     NullableBreakdownResult,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 
-import { testOpsEvidenceSubject, type TestOpsTile } from "../testOpsEvidence";
+import {
+    noOwnedRepositoriesTile,
+    testOpsEvidenceSubject,
+    type TestOpsTile,
+} from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
 
 type CoveragePageProps = {
@@ -206,9 +212,11 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
     const coverageTimeseries = coverageData.timeseries || [];
     const coverageBreakdowns = coverageData.breakdowns || [];
     const fetchFailed = Boolean(coverageData.fetchFailed);
+    // The server's reason for the whole answer (a team that owns no repository); never derived here.
+    const noOwnedRepositories = teamOwnsNoRepository(coverageData.filterEmptyReason);
 
     const changes: Record<string, CoverageChange> = {};
-    const tiles: TestOpsTile[] = COVERAGE_TILES.flatMap((id) => {
+    const servedTiles: TestOpsTile[] = COVERAGE_TILES.flatMap((id) => {
         const def = TESTOPS_MEASURES[id];
         if (!def) return [];
         const servedSeries = coverageTimeseries.filter((series) => series.measure === id);
@@ -235,6 +243,10 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
             };
         });
     });
+
+    const tiles: TestOpsTile[] = noOwnedRepositories
+        ? servedTiles.map((tile) => noOwnedRepositoriesTile(tile))
+        : servedTiles;
 
     const lineCoverageSeries = coverageTimeseries.filter(
         (series: TimeseriesResult) => series.measure === "COVERAGE_LINE_PCT",
@@ -329,25 +341,35 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         key={tile.id}
                         label={tile.label}
                         value={tile.value}
+                        valueText={tile.valueText}
+                        valueIsMessage={tile.valueIsMessage}
                         unit={tile.unit}
                         // The approved Line Coverage tile has no sparkline; its trend is the
                         // "Line Coverage Trend" card below. The other tiles keep their served spark.
                         spark={tile.id.startsWith("COVERAGE_LINE_PCT-") ? undefined : tile.spark}
-                        hideTrend={tile.id.startsWith("COVERAGE_LINE_PCT-")}
-                        deltaSlot={coverageChangeSlot(changes[tile.id], tile.inverseGood)}
+                        hideTrend={tile.valueIsMessage || tile.id.startsWith("COVERAGE_LINE_PCT-")}
+                        deltaSlot={
+                            tile.noDelta
+                                ? <></>
+                                : coverageChangeSlot(changes[tile.id], tile.inverseGood)
+                        }
                         caption={tile.note}
                     />
                 ))}
             </MetricStrip>
 
-            <CoverageBaselineCard
-                repositories={repositories}
-                baselines={baselines}
-                fetchFailed={fetchFailed}
-            />
+            {noOwnedRepositories ? null : (
+                <CoverageBaselineCard
+                    repositories={repositories}
+                    baselines={baselines}
+                    fetchFailed={fetchFailed}
+                />
+            )}
 
             <Section title="Repository coverage" data-testid="testops-repository-coverage">
-                {fetchFailed ? (
+                {noOwnedRepositories ? (
+                    <NoOwnedRepositoriesState />
+                ) : fetchFailed ? (
                     <DataState
                         variant="error"
                         title="Repository coverage could not be loaded"
@@ -359,7 +381,11 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
             </Section>
 
             {/* Not in the approved view: kept as a secondary card below it (it is served data). */}
-            {hasMultipleLineCoverageSeries ? (
+            {noOwnedRepositories ? (
+                <Section title="Line Coverage Trend" data-testid="testops-coverage-no-owned-repositories">
+                    <NoOwnedRepositoriesState />
+                </Section>
+            ) : hasMultipleLineCoverageSeries ? (
                 <Section title="Line Coverage Trends">
                     <div className="grid gap-6 xl:grid-cols-2">
                         {lineCoverageSeries.map((series) =>

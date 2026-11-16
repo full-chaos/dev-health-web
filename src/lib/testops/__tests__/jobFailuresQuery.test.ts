@@ -19,7 +19,12 @@ function fieldsOf(field: string): string[] {
 // CHAOS-8514: the request text is registered on the API side; a change here needs a new text there.
 describe("TESTOPS_JOB_FAILURES_QUERY", () => {
     it("asks for the groups, the served total and the truncated flag", () => {
-        expect(fieldsOf("testopsJobFailures")).toEqual(["groups", "totalCount", "truncated"]);
+        expect(fieldsOf("testopsJobFailures")).toEqual([
+            "groups",
+            "totalCount",
+            "truncated",
+            "filterEmptyReason",
+        ]);
     });
 
     it("asks for the names, the two counts and the served rate of each group", () => {

@@ -26,6 +26,7 @@ export const TestWindowResultSchema = z.object({
     passRatePct: z.number().nullable(),
     failureRatePct: z.number().nullable(),
     flakeRatePct: z.number().nullable(),
+    filterEmptyReason: z.string().nullish(),
 });
 
 export type TestWindowResult = z.infer<typeof TestWindowResultSchema>;

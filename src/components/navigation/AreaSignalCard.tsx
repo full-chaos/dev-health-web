@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NoOwnedRepositoriesState } from "@/components/testops/NoOwnedRepositoriesState";
 import { DataState } from "@/components/ui/DataState";
 import { ReadFailedState } from "@/components/ui/ReadFailedState";
 import {
@@ -8,6 +9,7 @@ import {
     DIRECTION_GLYPH,
 } from "@/components/home/severityTokens";
 import type { AreaSignal } from "@/lib/areaSignals/types";
+import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 import { AREA_UNAVAILABLE_EMPTY_STATE } from "@/lib/design/emptyState";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -74,6 +76,10 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                         headingLevel={4}
                         data-testid="area-signal-failed"
                     />
+                ) : teamOwnsNoRepository(signal.emptyReason) ? (
+                    <div className="mt-3" data-testid="area-signal-no-owned-repositories">
+                        <NoOwnedRepositoriesState compact />
+                    </div>
                 ) : (
                     <DataState
                         variant="detector-unavailable"

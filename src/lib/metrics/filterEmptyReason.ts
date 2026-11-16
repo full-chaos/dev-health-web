@@ -8,7 +8,14 @@ export const FILTER_EMPTY_REASON_TEXT: Readonly<Record<string, string>> = {
     repository_not_found: "The selected repository was not found.",
     service_not_found: "The selected service was not found.",
     developer_not_found: "The selected developer was not found.",
+    team_owns_no_repository: "No owned repositories",
 };
+
+/** The reason of a selected team that owns no repository: a state of its own, never a value (CHAOS-13854). */
+export const TEAM_OWNS_NO_REPOSITORY = "team_owns_no_repository";
+
+export const teamOwnsNoRepository = (reason: string | null | undefined): boolean =>
+    reason === TEAM_OWNS_NO_REPOSITORY;
 
 export const FILTER_EMPTY_REASON_NEUTRAL_TEXT = "The selected filter matched nothing.";
 

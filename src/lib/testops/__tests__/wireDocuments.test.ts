@@ -7,6 +7,7 @@ import { TESTOPS_COVERAGE_QUERY, TESTOPS_PIPELINE_QUERY } from "../queries";
 
 // The exact `query` string the real client puts on the wire (the cache exchange adds
 // __typename). The API registers these texts, so a change here needs an API registration first.
+// PRE-ROLL (CHAOS-13869): filterEmptyReason is registered by the ops change (CHAOS-13868); this build merges after that roll.
 async function wireQuery(document: string): Promise<string> {
     const bodies: string[] = [];
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -32,9 +33,9 @@ async function wireQuery(document: string): Promise<string> {
 }
 
 const PIPELINE_WIRE =
-    "query TestOpsPipeline($orgId: String!, $batch: AnalyticsRequestInput!) {\n  analytics(orgId: $orgId, batch: $batch) {\n    timeseries {\n      dimension\n      dimensionValue\n      scope\n      measure\n      buckets {\n        date\n        value\n        __typename\n      }\n      __typename\n    }\n    breakdowns {\n      dimension\n      measure\n      items {\n        key\n        value\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}";
+    "query TestOpsPipeline($orgId: String!, $batch: AnalyticsRequestInput!) {\n  analytics(orgId: $orgId, batch: $batch) {\n    timeseries {\n      dimension\n      dimensionValue\n      scope\n      measure\n      buckets {\n        date\n        value\n        __typename\n      }\n      __typename\n    }\n    breakdowns {\n      dimension\n      measure\n      items {\n        key\n        value\n        __typename\n      }\n      __typename\n    }\n    filterEmptyReason\n    __typename\n  }\n}";
 const COVERAGE_WIRE =
-    "query TestOpsCoverage($orgId: String!, $batch: AnalyticsRequestInput!) {\n  analytics(orgId: $orgId, batch: $batch) {\n    timeseries {\n      dimension\n      dimensionValue\n      scope\n      measure\n      buckets {\n        date\n        value\n        __typename\n      }\n      __typename\n    }\n    breakdowns {\n      dimension\n      measure\n      items {\n        key\n        value\n        label\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}";
+    "query TestOpsCoverage($orgId: String!, $batch: AnalyticsRequestInput!) {\n  analytics(orgId: $orgId, batch: $batch) {\n    timeseries {\n      dimension\n      dimensionValue\n      scope\n      measure\n      buckets {\n        date\n        value\n        __typename\n      }\n      __typename\n    }\n    breakdowns {\n      dimension\n      measure\n      items {\n        key\n        value\n        label\n        __typename\n      }\n      __typename\n    }\n    filterEmptyReason\n    __typename\n  }\n}";
 
 describe("TestOps wire documents (CHAOS-9738)", () => {
     afterEach(() => vi.restoreAllMocks());
