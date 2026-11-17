@@ -334,6 +334,68 @@ describe("SsoProvidersPage", () => {
         });
     });
 
+    it("keeps the line breaks of a pasted multiline PEM certificate", async () => {
+        const pem = "-----BEGIN CERTIFICATE-----\nMIIBkTCB\n+wIJAK0Z\n-----END CERTIFICATE-----";
+        mockList.mockResolvedValue(listOf([]));
+        mockCreate.mockResolvedValue({ data: makeProvider({ protocol: "saml" }) });
+        render(<SsoProvidersPage />);
+        await userEvent.click(await screen.findByRole("button", { name: "Add SSO provider" }));
+        await userEvent.type(screen.getByLabelText("Name"), "Corp");
+        await userEvent.selectOptions(screen.getByLabelText("Protocol"), "saml");
+        await userEvent.type(screen.getByLabelText("Entity ID"), "ent");
+        await userEvent.type(screen.getByLabelText("SSO URL"), "https://sso.test/s");
+        await userEvent.click(screen.getByLabelText("Certificate"));
+        await userEvent.paste(pem);
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+        expect(mockCreate.mock.calls[0][0].saml_config.certificate).toBe(pem);
+    });
+
+    it("clears the busy state and shows the generic failure when a row action rejects", async () => {
+        mockList.mockResolvedValue(listOf([makeProvider()]));
+        mockDeactivate.mockRejectedValue(new Error("network"));
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+        const dialog = await screen.findByRole("dialog");
+        await userEvent.click(within(dialog).getByRole("button", { name: "Deactivate" }));
+        await waitFor(() => expect(mockDeactivate).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText(/The change was not saved/u)).toBeTruthy();
+        expect((screen.getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(
+            false,
+        );
+        expect(mockDeactivate).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-enables the form and shows the generic failure when a save rejects", async () => {
+        mockList.mockResolvedValue(listOf([]));
+        mockCreate.mockRejectedValue(new Error("network"));
+        render(<SsoProvidersPage />);
+        await userEvent.click(await screen.findByRole("button", { name: "Add SSO provider" }));
+        await userEvent.type(screen.getByLabelText("Name"), "Okta");
+        await userEvent.type(screen.getByLabelText("Client ID"), "cid");
+        await userEvent.type(screen.getByLabelText("Client secret"), "s3cret");
+        await userEvent.type(screen.getByLabelText("Issuer"), "https://idp.test");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText(/The change was not saved/u)).toBeTruthy();
+        expect((screen.getByLabelText("Name") as HTMLInputElement).disabled).toBe(false);
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it("loads every page when there are more providers than one page", async () => {
+        const all = Array.from({ length: 120 }, (_, i) =>
+            makeProvider({ id: `p-${i}`, name: `Provider ${i}` }),
+        );
+        mockList.mockImplementation(async (limit: number, offset: number) => ({
+            data: { items: all.slice(offset, offset + limit), total: 120, limit, offset },
+        }));
+        render(<SsoProvidersPage />);
+        expect(await screen.findByText("Provider 119")).toBeTruthy();
+        expect(screen.getByText("Provider 0")).toBeTruthy();
+        expect(mockList.mock.calls.map((c) => c[1])).toEqual([0, 50, 100]);
+    });
+
     it("deletes only after the confirm, then reloads", async () => {
         mockList.mockResolvedValue(listOf([makeProvider()]));
         mockDelete.mockResolvedValue({ data: undefined });

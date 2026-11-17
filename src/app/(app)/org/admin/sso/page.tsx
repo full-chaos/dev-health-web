@@ -10,6 +10,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { formatDateUTC } from "@/lib/formatters";
+import { ACTION_FAILED_MESSAGE } from "@/lib/actionFailure";
 import { logger } from "@/lib/logger";
 import {
     listSsoProviders,
@@ -27,6 +28,7 @@ import { SsoProviderTable } from "./SsoProviderTable";
 
 type FormState = { mode: "closed" } | { mode: "create" } | { mode: "edit"; provider: SsoProvider };
 
+const PAGE_SIZE = 50;
 const READ_ONLY_NOTICE = "Only owners and admins can change SSO providers.";
 const UNAVAILABLE_NOTICE = "The SSO provider service is unavailable. Check again in a moment.";
 
@@ -46,12 +48,18 @@ export default function SsoProvidersPage() {
         setLoading(true);
         setLoadError(null);
         try {
-            const { data, error, status } = await listSsoProviders(50, 0);
-            if (error) {
-                setLoadError({ text: error, status });
-            } else if (data) {
-                setProviders(data.items);
+            const items: SsoProvider[] = [];
+            for (;;) {
+                const { data, error, status } = await listSsoProviders(PAGE_SIZE, items.length);
+                if (error) {
+                    setLoadError({ text: error, status });
+                    return;
+                }
+                if (!data) return;
+                items.push(...data.items);
+                if (data.items.length === 0 || items.length >= data.total) break;
             }
+            setProviders(items);
         } catch (err) {
             logger.error({ err }, "Failed to load SSO providers");
             setLoadError({ text: "An unexpected error occurred" });
@@ -81,8 +89,14 @@ export default function SsoProvidersPage() {
     ) => {
         setActionError(null);
         setBusyId(id);
-        const result = await call();
-        setBusyId(null);
+        let result: { error?: string; status?: number };
+        try {
+            result = await call();
+        } catch {
+            result = { error: ACTION_FAILED_MESSAGE };
+        } finally {
+            setBusyId(null);
+        }
         if (result.error) {
             reportActionError(result.error, result.status);
             return false;

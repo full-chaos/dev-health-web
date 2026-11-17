@@ -48,6 +48,20 @@ test("creates a provider from the form", async ({ page }) => {
     await expect(page.getByText("Entra ID")).toBeVisible();
 });
 
+test("the SAML certificate is a multiline box that keeps a pasted PEM", async ({ page }) => {
+    await scenario("providers");
+    await page.goto("/org/admin/sso");
+    await page.getByRole("button", { name: "Add SSO provider" }).click();
+    await page.getByLabel("Protocol").selectOption("saml");
+    const pem =
+        "-----BEGIN CERTIFICATE-----\nMIIBkTCB+wIJAK0Z\nQ2VydGlmaWNhdGU=\n-----END CERTIFICATE-----";
+    const box = page.getByLabel("Certificate");
+    await expect(box).toHaveJSProperty("tagName", "TEXTAREA");
+    await box.fill(pem);
+    await expect(box).toHaveValue(pem);
+    await shot(page, "11-saml-certificate-multiline");
+});
+
 test("a name-only edit is saved; a config edit needs the secret again and makes no call", async ({
     page,
 }) => {

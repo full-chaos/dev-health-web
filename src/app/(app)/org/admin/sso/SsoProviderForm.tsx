@@ -60,22 +60,37 @@ function Field(props: {
     type?: string;
     placeholder?: string;
     error?: string | null;
+    multiline?: boolean;
 }) {
     return (
         <div>
             <label htmlFor={props.id} className={LABEL}>
                 {props.label}
             </label>
-            <input
-                id={props.id}
-                type={props.type ?? "text"}
-                placeholder={props.placeholder}
-                value={props.value}
-                disabled={props.disabled}
-                autoComplete="off"
-                onChange={(event) => props.onChangeAction(event.target.value)}
-                className={INPUT}
-            />
+            {props.multiline ? (
+                <textarea
+                    id={props.id}
+                    rows={6}
+                    placeholder={props.placeholder}
+                    value={props.value}
+                    disabled={props.disabled}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => props.onChangeAction(event.target.value)}
+                    className={`${INPUT} font-mono`}
+                />
+            ) : (
+                <input
+                    id={props.id}
+                    type={props.type ?? "text"}
+                    placeholder={props.placeholder}
+                    value={props.value}
+                    disabled={props.disabled}
+                    autoComplete="off"
+                    onChange={(event) => props.onChangeAction(event.target.value)}
+                    className={INPUT}
+                />
+            )}
             {props.error ? (
                 <p role="alert" className="mt-1 text-xs text-(--negative)">
                     {props.error}
@@ -272,6 +287,7 @@ export function SsoProviderForm({
                         <Field
                             id="sso-certificate"
                             label="Certificate"
+                            multiline
                             value={certificate}
                             placeholder={
                                 mode === "edit"
