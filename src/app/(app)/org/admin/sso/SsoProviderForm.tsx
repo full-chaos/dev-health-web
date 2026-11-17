@@ -175,7 +175,7 @@ export function SsoProviderForm({
                       saml_config: {
                           entity_id: entityId.trim(),
                           sso_url: ssoUrl.trim(),
-                          certificate: certificate.trim(),
+                          certificate,
                       },
                       ...flags,
                   };
@@ -193,7 +193,7 @@ export function SsoProviderForm({
                 ...servedOptional(initial, SAML_OPTIONAL),
                 entity_id: entityId.trim(),
                 sso_url: ssoUrl.trim(),
-                certificate: certificate.trim(),
+                certificate,
             };
         }
         return update;

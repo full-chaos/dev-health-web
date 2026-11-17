@@ -139,7 +139,7 @@ export function SsoProviderTable({
             </div>
 
             <ConfirmDialog
-                isOpen={confirmToggle !== null}
+                isOpen={canWrite && confirmToggle !== null}
                 title={
                     confirmToggle?.status === "active"
                         ? "Deactivate this SSO provider?"
@@ -154,20 +154,20 @@ export function SsoProviderTable({
                 confirmLabel={toggleLabel(confirmToggle)}
                 isPending={busyId === confirmToggle?.id}
                 onConfirmAction={() => {
-                    if (confirmToggle) onToggleAction(confirmToggle);
+                    if (canWrite && confirmToggle) onToggleAction(confirmToggle);
                     setConfirmToggle(null);
                 }}
                 onCancelAction={() => setConfirmToggle(null)}
             />
 
             <ConfirmDialog
-                isOpen={confirmDelete !== null}
+                isOpen={canWrite && confirmDelete !== null}
                 title="Delete this SSO provider?"
                 tone="destructive"
                 description={`This permanently removes ${confirmDelete?.name ?? ""}. Members who signed in with it must use another sign-in method. This cannot be undone.`}
                 confirmLabel={CTA_LABELS.delete}
                 onConfirmAction={() => {
-                    if (confirmDelete) onDeleteAction(confirmDelete);
+                    if (canWrite && confirmDelete) onDeleteAction(confirmDelete);
                     setConfirmDelete(null);
                 }}
                 onCancelAction={() => setConfirmDelete(null)}

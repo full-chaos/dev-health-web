@@ -396,6 +396,97 @@ describe("SsoProvidersPage", () => {
         expect(mockList.mock.calls.map((c) => c[1])).toEqual([0, 50, 100]);
     });
 
+    it("closes an open confirm and sends no second write when a pending save is refused 403", async () => {
+        mockList.mockResolvedValue(listOf([makeProvider()]));
+        let refuse: (value: { error: string; status: number }) => void = () => {};
+        mockCreate.mockReturnValue(new Promise((resolve) => (refuse = resolve)));
+        render(<SsoProvidersPage />);
+        await screen.findByText("Okta");
+        await userEvent.click(screen.getByRole("button", { name: "Add SSO provider" }));
+        await userEvent.type(screen.getByLabelText("Name"), "New");
+        await userEvent.type(screen.getByLabelText("Client ID"), "cid");
+        await userEvent.type(screen.getByLabelText("Client secret"), "s3cret");
+        await userEvent.type(screen.getByLabelText("Issuer"), "https://idp.test");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+        await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+        const dialog = await screen.findByRole("dialog");
+        refuse({ error: "Could not be saved.", status: 403 });
+        expect(
+            await screen.findByText(/Only owners and admins can change SSO providers/u),
+        ).toBeTruthy();
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(dialog.isConnected).toBe(false);
+        expect(mockDeactivate).not.toHaveBeenCalled();
+    });
+
+    it.each(["Activate", "Deactivate", "Delete"])(
+        "sends no write from a %s confirm that was open when a write was refused",
+        async (label) => {
+            const status = label === "Activate" ? "inactive" : "active";
+            mockList.mockResolvedValue(
+                listOf([
+                    makeProvider(),
+                    makeProvider({
+                        id: "p-2",
+                        name: "Second",
+                        status: status as SsoProvider["status"],
+                    }),
+                ]),
+            );
+            let refuse: (value: { error: string; status: number }) => void = () => {};
+            mockDelete.mockReturnValue(new Promise((resolve) => (refuse = resolve)));
+            render(<SsoProvidersPage />);
+            await screen.findByText("Second");
+            await userEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+            const first = await screen.findByRole("dialog");
+            await userEvent.click(within(first).getByRole("button", { name: "Delete" }));
+            await waitFor(() => expect(mockDelete).toHaveBeenCalledTimes(1));
+            const rowButtons = screen.getAllByRole("button", { name: label });
+            await userEvent.click(rowButtons[rowButtons.length - 1]);
+            await screen.findByRole("dialog");
+            refuse({ error: "Could not be saved.", status: 403 });
+            await screen.findByText(/Only owners and admins can change SSO providers/u);
+            expect(screen.queryByRole("dialog")).toBeNull();
+            expect(mockDelete).toHaveBeenCalledTimes(1);
+            expect(mockActivate).not.toHaveBeenCalled();
+            expect(mockDeactivate).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        ["create", "\n-----BEGIN CERTIFICATE-----\nAAA\nBBB\n-----END CERTIFICATE-----\n"],
+        ["edit", "\n\n-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----\n\n"],
+    ])("sends a %s certificate unchanged, keeping outer line breaks", async (mode, pem) => {
+        const newlines = (v: string) => v.split("\n").length - 1;
+        const saml = makeProvider({
+            protocol: "saml",
+            config: { entity_id: "e", sso_url: "https://sso.test/s" },
+        });
+        mockList.mockResolvedValue(listOf(mode === "edit" ? [saml] : []));
+        mockCreate.mockResolvedValue({ data: saml });
+        mockUpdate.mockResolvedValue({ data: saml });
+        render(<SsoProvidersPage />);
+        if (mode === "create") {
+            await userEvent.click(await screen.findByRole("button", { name: "Add SSO provider" }));
+            await userEvent.type(screen.getByLabelText("Name"), "Corp");
+            await userEvent.selectOptions(screen.getByLabelText("Protocol"), "saml");
+            await userEvent.type(screen.getByLabelText("Entity ID"), "ent");
+            await userEvent.type(screen.getByLabelText("SSO URL"), "https://sso.test/s");
+        } else {
+            await screen.findByText("Okta");
+            await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        }
+        await userEvent.click(screen.getByLabelText("Certificate"));
+        await userEvent.paste(pem);
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        const mock = mode === "create" ? mockCreate : mockUpdate;
+        await waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+        const body = mock.mock.calls[0][mode === "create" ? 0 : 1];
+        expect(body.saml_config.certificate).toBe(pem);
+        expect(newlines(body.saml_config.certificate)).toBe(newlines(pem));
+    });
+
     it("deletes only after the confirm, then reloads", async () => {
         mockList.mockResolvedValue(listOf([makeProvider()]));
         mockDelete.mockResolvedValue({ data: undefined });
