@@ -57,6 +57,12 @@ overrides:
     # GHSA-68fv-2mgg-jv7q; no direct dependency upgrade is needed.
     source-map-js: "1.2.2"
 
+auditConfig:
+    ignoreGhsas:
+        # No patched picomatch exists (range <=4.0.7, first_patched none). Reached only through
+        # build tooling (@sentry/nextjs > @rollup/plugin-commonjs, fdir); glob patterns come from our own config.
+        - GHSA-fc5q-39xc-vjpf
+
 patchedDependencies:
     next-auth@5.0.0-beta.32: patches/next-auth@5.0.0-beta.32.patch
 
