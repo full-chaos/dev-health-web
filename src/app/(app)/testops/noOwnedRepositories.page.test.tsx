@@ -221,4 +221,40 @@ describe("split answers: one reason per page (CHAOS-13936)", () => {
             expect(screen.queryByTestId("rate-chart")).toBeNull();
         },
     );
+
+    it("Tests tab: only the coverage answer carries the reason, the tiles and notice follow it", async () => {
+        mocks.data.mockResolvedValue(split({ coverage: answer(REASON) }));
+        mocks.window.mockResolvedValue({
+            ...WINDOW(null),
+            coverage: { completedRuns: 10, runsWithTests: 4, sharePct: 40 },
+        });
+        render(await TestsPage({ searchParams: Promise.resolve({}) }));
+        const tiles = screen.getByTestId("testops-tests-tiles");
+        expect(within(tiles).getAllByText(NO_OWNED)).toHaveLength(6);
+        expect(screen.queryByTestId("testops-tests-partial-notice")).toBeNull();
+    });
+
+    it("Overview: the page reason reaches the workflow and job section", async () => {
+        mocks.data.mockResolvedValue(split({ coverage: answer(REASON) }));
+        mocks.coverage.mockResolvedValue(answer(null));
+        mocks.jobs.mockResolvedValue({
+            groups: [
+                {
+                    workflowName: "ci",
+                    jobName: "build",
+                    provider: "github",
+                    runs: 4,
+                    failedRuns: 2,
+                    failureRate: 0.5,
+                },
+            ],
+            totalCount: 1,
+            truncated: false,
+            filterEmptyReason: null,
+        });
+        render(await OverviewPage({ searchParams: Promise.resolve({}) }));
+        const part = screen.getByTestId("testops-job-failures");
+        expect(within(part).getByText(NO_OWNED)).toBeTruthy();
+        expect(screen.queryByTestId("testops-job-failure-rows")).toBeNull();
+    });
 });

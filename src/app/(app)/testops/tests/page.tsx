@@ -137,6 +137,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     // The server's reason, from either answer (same team scope): never derived here.
     const noOwnedRepositories =
         teamOwnsNoRepository(testOpsData.tests.filterEmptyReason) ||
+        teamOwnsNoRepository(testOpsData.coverage.filterEmptyReason) ||
         (!testWindowFailed(testWindow) && teamOwnsNoRepository(testWindow.filterEmptyReason));
 
     // The rate tiles read the window answer (coverage, pass, failure, flake, skipped); the series
