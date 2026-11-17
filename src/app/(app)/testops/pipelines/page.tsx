@@ -20,7 +20,7 @@ import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateT
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
-import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
+import { pageEmptyReason, teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 
 import { resolveTestOpsTiles, testOpsEvidenceSubject } from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
@@ -111,7 +111,11 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     const pipelineBreakdowns = testOpsData.pipelines.breakdowns || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
     // The server's reason for the whole answer (a team that owns no repository); never derived here.
-    const emptyReason = testOpsData.pipelines.filterEmptyReason;
+    const emptyReason = pageEmptyReason(
+        testOpsData.pipelines.filterEmptyReason,
+        testOpsData.tests.filterEmptyReason,
+        testOpsData.coverage.filterEmptyReason,
+    );
 
     const tiles = resolveTestOpsTiles(
         [

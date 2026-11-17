@@ -32,7 +32,13 @@ const STATE = "text-sm text-(--ink-muted)";
 const PART_HEADING = "mb-2.5 text-label-caps uppercase text-(--ink-muted)";
 
 /** "What fails": one meter row per served workflow and job group. Three states, apart. */
-function JobFailures({ state }: { state: JobFailuresState }) {
+function JobFailures({
+    state,
+    pageReason,
+}: {
+    state: JobFailuresState;
+    pageReason?: string | null;
+}) {
     const cutNote = jobFailuresFailed(state) ? null : jobFailureCutNote(state);
     return (
         <div className="mb-5" data-testid="testops-job-failures">
@@ -41,7 +47,8 @@ function JobFailures({ state }: { state: JobFailuresState }) {
                 <p className={STATE} data-testid="testops-job-failures-failed">
                     {READ_FAILED_MESSAGE}
                 </p>
-            ) : teamOwnsNoRepository(state.filterEmptyReason) ? (
+            ) : teamOwnsNoRepository(pageReason) ||
+              teamOwnsNoRepository(state.filterEmptyReason) ? (
                 <div data-testid="testops-job-failures-no-owned-repositories">
                     <NoOwnedRepositoriesState compact />
                 </div>
@@ -95,7 +102,7 @@ export function FailurePatternsCard({
             description="Failure rate within each group: a different denominator from the headline Failure Rate, so the figures are not directly comparable."
             data-testid="testops-failure-patterns"
         >
-            {jobFailures ? <JobFailures state={jobFailures} /> : null}
+            {jobFailures ? <JobFailures state={jobFailures} pageReason={emptyReason} /> : null}
             <div data-testid="testops-failure-teams">
                 {jobFailures ? <h3 className={PART_HEADING}>By team</h3> : null}
                 {fetchFailed ? (

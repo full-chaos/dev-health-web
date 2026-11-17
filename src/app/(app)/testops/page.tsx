@@ -21,6 +21,7 @@ import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 import { pageEmptyReason, teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
+import { jobFailuresFailed } from "@/lib/testops/jobFailures";
 
 import { resolveTestOpsTiles, testOpsEvidenceSubject } from "./testOpsEvidence";
 import { TestOpsTabs } from "./TestOpsTabs";
@@ -125,6 +126,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         testOpsData.pipelines.filterEmptyReason,
         testOpsData.tests.filterEmptyReason,
         testOpsData.coverage.filterEmptyReason,
+        jobFailuresFailed(jobFailures) ? null : jobFailures.filterEmptyReason,
     );
 
     // The approved Overview strip: five tiles. Queue Time and Rerun Rate are on the Pipelines tab.
