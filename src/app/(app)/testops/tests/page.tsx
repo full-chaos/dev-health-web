@@ -142,18 +142,24 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     // The rate tiles read the window answer (coverage, pass, failure, flake, skipped); the series
     // only draws their sparklines. The suite duration tile still reads its series.
     const tiles = [
-        ...testWindowTiles(testWindow, {
-            pass: getSparkline(testTimeseries, "TEST_PASS_RATE"),
-            failure: getSparkline(testTimeseries, "TEST_FAILURE_RATE"),
-            flake: getSparkline(testTimeseries, "TEST_FLAKE_RATE"),
-        }),
+        ...testWindowTiles(
+            testWindow,
+            {
+                pass: getSparkline(testTimeseries, "TEST_PASS_RATE"),
+                failure: getSparkline(testTimeseries, "TEST_FAILURE_RATE"),
+                flake: getSparkline(testTimeseries, "TEST_FLAKE_RATE"),
+            },
+            noOwnedRepositories,
+        ),
         ...resolveTestOpsTiles(
             [{ id: "TEST_SUITE_DURATION_P95", ts: testTimeseries }],
             noOwnedRepositories ? TEAM_OWNS_NO_REPOSITORY : null,
         ),
     ];
     const partialCoverage =
-        !testWindowFailed(testWindow) && isPartialCoverage(testWindow.coverage.sharePct);
+        !noOwnedRepositories &&
+        !testWindowFailed(testWindow) &&
+        isPartialCoverage(testWindow.coverage.sharePct);
 
     const passRatePoints = trendPoints(testTimeseries, "TEST_PASS_RATE");
     // The series that feeds the P95 Suite Duration tile (minutes, as the fetcher normalises it).

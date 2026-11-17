@@ -185,3 +185,40 @@ describe("a window answer on its own", () => {
         expect(within(tiles).getAllByText(NO_OWNED)).toHaveLength(6);
     });
 });
+
+describe("split answers: one reason per page (CHAOS-13936)", () => {
+    const split = (over: Partial<ReturnType<typeof analytics>>) => ({
+        ...analytics(null),
+        ...over,
+    });
+
+    it("Tests tab: the analytics answer alone carries the reason, the window tiles say it too", async () => {
+        mocks.data.mockResolvedValue(split({ tests: answer(REASON) }));
+        mocks.window.mockResolvedValue({
+            ...WINDOW(null),
+            coverage: { completedRuns: 10, runsWithTests: 4, sharePct: 40 },
+        });
+        render(await TestsPage({ searchParams: Promise.resolve({}) }));
+        const tiles = screen.getByTestId("testops-tests-tiles");
+        expect(within(tiles).getAllByText(NO_OWNED)).toHaveLength(6);
+        expect(screen.queryByTestId("testops-tests-partial-notice")).toBeNull();
+    });
+
+    it.each([
+        ["coverage", { coverage: answer(REASON) }],
+        ["tests", { tests: answer(REASON) }],
+    ] as const)(
+        "Overview: only the %s answer carries it, the trend and failures say it",
+        async (_n, over) => {
+            mocks.data.mockResolvedValue(split(over));
+            mocks.coverage.mockResolvedValue(answer(null));
+            mocks.jobs.mockResolvedValue(JOBS(null));
+            render(await OverviewPage({ searchParams: Promise.resolve({}) }));
+            const tiles = screen.getByTestId("testops-overview-tiles");
+            expect(within(tiles).getAllByText(NO_OWNED)).toHaveLength(5);
+            const trend = screen.getByTestId("testops-ci-health");
+            expect(within(trend).getByText(NO_OWNED)).toBeTruthy();
+            expect(screen.queryByTestId("rate-chart")).toBeNull();
+        },
+    );
+});
