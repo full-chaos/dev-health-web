@@ -15,6 +15,10 @@
 
 - [Reading the Investment View](investment-view.md) — sign in → read the theme mix → drill
   Theme → Subcategory → Evidence → interpret confidence.
+- [Signing in, sessions and organizations](sign-in-sessions-and-orgs.md) — sign in, understand
+  your session, sign out, and use the organization flows as a user or as an organization admin.
+- [Approving a device login (acr-mcp)](device-approval.md) — approve or deny a terminal or MCP
+  sign-in, set up the web assertion key and `AUTH_URL`, and fix the common failures.
 
 ---
 
