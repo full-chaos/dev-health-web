@@ -17,6 +17,18 @@ export const TEAM_OWNS_NO_REPOSITORY = "team_owns_no_repository";
 export const teamOwnsNoRepository = (reason: string | null | undefined): boolean =>
     reason === TEAM_OWNS_NO_REPOSITORY;
 
+/**
+ * The one reason of a page whose parts read separate answers (CHAOS-13936): "no owned repositories"
+ * when any answer carries it, else the first reason served. Never derived: it only picks among
+ * served reasons, so every tile, notice and trend of the page agrees.
+ */
+export const pageEmptyReason = (
+    ...reasons: ReadonlyArray<string | null | undefined>
+): string | null =>
+    reasons.some(teamOwnsNoRepository)
+        ? TEAM_OWNS_NO_REPOSITORY
+        : (reasons.find((reason) => Boolean(reason)) ?? null);
+
 export const FILTER_EMPTY_REASON_NEUTRAL_TEXT = "The selected filter matched nothing.";
 
 export function filterEmptyReasonText(reason: string | null | undefined): string | null {

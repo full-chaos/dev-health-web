@@ -20,7 +20,7 @@ import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateT
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
-import { teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
+import { pageEmptyReason, teamOwnsNoRepository } from "@/lib/metrics/filterEmptyReason";
 
 import { resolveTestOpsTiles, testOpsEvidenceSubject } from "./testOpsEvidence";
 import { TestOpsTabs } from "./TestOpsTabs";
@@ -121,7 +121,11 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const coverageTimeseries = testOpsData.coverage.timeseries || [];
     const fetchFailed = Boolean(testOpsData.fetchFailed);
     // The server's reason for the whole answer (a team that owns no repository); never derived here.
-    const emptyReason = testOpsData.pipelines.filterEmptyReason;
+    const emptyReason = pageEmptyReason(
+        testOpsData.pipelines.filterEmptyReason,
+        testOpsData.tests.filterEmptyReason,
+        testOpsData.coverage.filterEmptyReason,
+    );
 
     // The approved Overview strip: five tiles. Queue Time and Rerun Rate are on the Pipelines tab.
     const tiles = resolveTestOpsTiles(
@@ -132,7 +136,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             { id: "TEST_FLAKE_RATE", ts: testTimeseries },
             { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
         ],
-        emptyReason ?? testOpsData.coverage.filterEmptyReason,
+        emptyReason,
     );
 
     const rateTrend = buildPipelineRateTrend(pipelineTimeseries);

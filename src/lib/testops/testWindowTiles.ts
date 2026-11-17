@@ -28,7 +28,11 @@ const percentText = (value: number): string =>
  * text: a pass rate is cut down to one decimal and never reads 100 unless it is 100. No tile
  * carries a change value (the window field serves no prior window).
  */
-export function testWindowTiles(window: TestWindowState, sparks: TestWindowSparks): TestOpsTile[] {
+export function testWindowTiles(
+    window: TestWindowState,
+    sparks: TestWindowSparks,
+    pageNoOwnedRepositories = false,
+): TestOpsTile[] {
     const base = {
         inverseGood: false,
         delta: undefined,
@@ -55,7 +59,7 @@ export function testWindowTiles(window: TestWindowState, sparks: TestWindowSpark
         ];
     }
 
-    if (teamOwnsNoRepository(window.filterEmptyReason)) {
+    if (pageNoOwnedRepositories || teamOwnsNoRepository(window.filterEmptyReason)) {
         const state = (id: string, label: string): TestOpsTile =>
             noOwnedRepositoriesTile({
                 ...base,
