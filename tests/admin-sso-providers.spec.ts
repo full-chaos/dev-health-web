@@ -117,12 +117,33 @@ test("shows the generic load failure for the 500 stub", async ({ page }) => {
     await shot(page, "03-load-failure-500");
 });
 
-test("shows the read-only notice when the list answers 403", async ({ page }) => {
+test("shows the read-only notice when the list answers 403 (no role is guessed)", async ({
+    page,
+}) => {
     await scenario("list-forbidden");
     await page.goto("/org/admin/sso");
     await expect(page.getByText("Only owners and admins can change SSO providers.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Add SSO provider" })).toHaveCount(0);
-    await shot(page, "07-read-only-list-403");
+    await shot(page, "12-read-only-list-403");
+});
+
+test("a platform admin with no membership reads the list; a create is refused and shows the read-only notice", async ({
+    page,
+}) => {
+    await scenario("write-forbidden");
+    await page.goto("/org/admin/sso");
+    await expect(page.getByText("Okta (OIDC)")).toBeVisible();
+    await page.getByRole("button", { name: "Add SSO provider" }).click();
+    await page.getByLabel("Name").fill("Entra ID");
+    await page.getByLabel("Client ID").fill("cid-entra");
+    await page.getByLabel("Client secret").fill("s3cret");
+    await page.getByLabel("Issuer").fill("https://login.example/tenant");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Only owners and admins can change SSO providers.")).toBeVisible();
+    await expect(page.getByText("Okta (OIDC)")).toBeVisible();
+    await expect(page.getByLabel("Name")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add SSO provider" })).toHaveCount(0);
+    await shot(page, "07-platform-admin-no-membership");
 });
 
 test("a write that answers 403 closes the write buttons and keeps the list", async ({ page }) => {

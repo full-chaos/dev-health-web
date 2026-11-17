@@ -209,3 +209,85 @@ describe("failures keep the status the page keys on", () => {
         expect(JSON.stringify(forbidden)).not.toContain("Admin access required");
     });
 });
+
+describe("the text a failed write shows is the served detail and nothing else", () => {
+    const served = (status: number, body: unknown) => ({
+        ok: false,
+        status,
+        statusText: "x",
+        json: async () => body,
+    });
+    const EXTRAS = {
+        trace: "Traceback (most recent call last)",
+        request_id: "req-123",
+        status: 599,
+        error: "internal_code",
+        org_id: "org-secret",
+    };
+    const writes: Array<[string, () => Promise<{ error?: string; status?: number }>]> = [
+        ["create", () => createSsoProvider({ name: "x", protocol: "oidc" })],
+        ["update", () => updateSsoProvider("p", { name: "y" })],
+        ["delete", () => deleteSsoProvider("p")],
+        ["activate", () => activateSsoProvider("p")],
+        ["deactivate", () => deactivateSsoProvider("p")],
+    ];
+    const SERVED: Array<[number, string]> = [
+        [400, "SAML config required for SAML providers"],
+        [404, "SSO provider not found"],
+        [409, "An SSO provider with this name already exists"],
+    ];
+
+    it.each(SERVED.flatMap(([status, text]) => writes.map((w) => [status, text, ...w] as const)))(
+        "%i %s on %s shows the detail only, no other body field",
+        async (status, text, _name, write) => {
+            fetchMock.mockResolvedValue(served(status, { detail: text, ...EXTRAS }));
+            const result = await write();
+            expect(result).toEqual({ error: text, status });
+            expect(JSON.stringify(result)).not.toMatch(
+                /Traceback|req-123|599|internal_code|org-secret/u,
+            );
+        },
+    );
+
+    it("drops the submitted value a 422 echoes, keeping field and message", async () => {
+        fetchMock.mockResolvedValue(
+            served(422, {
+                detail: [
+                    {
+                        type: "missing",
+                        loc: ["body", "oidc_config", "issuer"],
+                        msg: "Field required",
+                        input: { client_secret: "s3cret-echoed" },
+                        ctx: { x: "y" },
+                    },
+                ],
+                ...EXTRAS,
+            }),
+        );
+        const result = await createSsoProvider({ name: "x", protocol: "oidc" });
+        expect(result).toEqual({ error: "oidc_config.issuer: Field required", status: 422 });
+        expect(JSON.stringify(result)).not.toContain("s3cret-echoed");
+    });
+
+    it("shows the rate-limit sentence for a 429, not the served text", async () => {
+        fetchMock.mockResolvedValue(
+            served(429, { detail: "slow down: bucket org-secret", ...EXTRAS }),
+        );
+        const result = await deactivateSsoProvider("p");
+        expect(result).toEqual({
+            error: "Too many requests. Try again in some minutes.",
+            status: 429,
+        });
+    });
+
+    it.each([500, 502, 503])(
+        "shows the generic sentence for a %i, never the served text",
+        async (status) => {
+            fetchMock.mockResolvedValue(
+                served(status, { detail: "boom: db password=hunter2", ...EXTRAS }),
+            );
+            const result = await createSsoProvider({ name: "x", protocol: "oidc" });
+            expect(result).toEqual({ error: "The change was not saved. Try again.", status });
+        },
+    );
+});
