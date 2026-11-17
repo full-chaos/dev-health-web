@@ -1,0 +1,355 @@
+"use client";
+
+import { useState } from "react";
+import { CTA_LABELS } from "@/lib/design/cta";
+import type {
+    SsoProtocol,
+    SsoProvider,
+    SsoProviderCreate,
+    SsoProviderUpdate,
+} from "@/lib/admin/types";
+
+type SsoProviderFormProps = {
+    mode: "create" | "edit";
+    /** Required when `mode === "edit"`. */
+    initialProvider?: SsoProvider;
+    isSaving: boolean;
+    onSaveAction: (data: SsoProviderCreate | SsoProviderUpdate) => void;
+    onCancelAction: () => void;
+};
+
+const INPUT =
+    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none";
+const LABEL = "mb-1 block text-xs font-medium text-(--ink-muted)";
+
+function configText(provider: SsoProvider | undefined, key: string): string {
+    const value = provider?.config?.[key];
+    return typeof value === "string" ? value : "";
+}
+
+// The optional members of each config block (go-api oidcConfigInput / samlConfigInput). auth-service replaces
+// the stored config with the block it gets, so an edit carries back every one the API served for this provider.
+const OIDC_OPTIONAL = [
+    "authorization_endpoint",
+    "token_endpoint",
+    "userinfo_endpoint",
+    "jwks_uri",
+    "scopes",
+    "claim_mapping",
+] as const;
+const SAML_OPTIONAL = ["slo_url", "name_id_format", "attribute_mapping"] as const;
+
+function servedOptional(
+    provider: SsoProvider | undefined,
+    keys: readonly string[],
+): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const key of keys) {
+        const value = provider?.config?.[key];
+        if (value !== undefined) out[key] = value;
+    }
+    return out;
+}
+
+function Field(props: {
+    id: string;
+    label: string;
+    value: string;
+    disabled: boolean;
+    onChangeAction: (value: string) => void;
+    type?: string;
+    placeholder?: string;
+    error?: string | null;
+    multiline?: boolean;
+}) {
+    return (
+        <div>
+            <label htmlFor={props.id} className={LABEL}>
+                {props.label}
+            </label>
+            {props.multiline ? (
+                <textarea
+                    id={props.id}
+                    rows={6}
+                    placeholder={props.placeholder}
+                    value={props.value}
+                    disabled={props.disabled}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => props.onChangeAction(event.target.value)}
+                    className={`${INPUT} font-mono`}
+                />
+            ) : (
+                <input
+                    id={props.id}
+                    type={props.type ?? "text"}
+                    placeholder={props.placeholder}
+                    value={props.value}
+                    disabled={props.disabled}
+                    autoComplete="off"
+                    onChange={(event) => props.onChangeAction(event.target.value)}
+                    className={INPUT}
+                />
+            )}
+            {props.error ? (
+                <p role="alert" className="mt-1 text-xs text-(--negative)">
+                    {props.error}
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
+/**
+ * Create/edit form for one SSO provider (CHAOS-13638). The API masks the client secret, so an edit
+ * starts with an empty secret field and sends `client_secret` only when the admin types a new one.
+ */
+export function SsoProviderForm({
+    mode,
+    initialProvider,
+    isSaving,
+    onSaveAction,
+    onCancelAction,
+}: SsoProviderFormProps) {
+    const initial = initialProvider;
+    const [name, setName] = useState(initial?.name ?? "");
+    const [protocol, setProtocol] = useState<SsoProtocol>(initial?.protocol ?? "oidc");
+    const [isDefault, setIsDefault] = useState(initial?.is_default ?? false);
+    const [allowIdpInitiated, setAllowIdpInitiated] = useState(
+        initial?.allow_idp_initiated ?? false,
+    );
+    const [autoProvision, setAutoProvision] = useState(initial?.auto_provision_users ?? true);
+    const [clientId, setClientId] = useState(configText(initial, "client_id"));
+    const [clientSecret, setClientSecret] = useState("");
+    const [issuer, setIssuer] = useState(configText(initial, "issuer"));
+    const [entityId, setEntityId] = useState(configText(initial, "entity_id"));
+    const [ssoUrl, setSsoUrl] = useState(configText(initial, "sso_url"));
+    const [certificate, setCertificate] = useState("");
+    const [touched, setTouched] = useState(false);
+
+    const nameMissing = touched && name.trim() === "";
+
+    // The API takes a config block whole: its secret (OIDC) or certificate (SAML) is required in it, and it
+    // never serves them back. So an edit sends a config block only when a config field changed, and then
+    // the admin must type the secret or certificate again.
+    const editingConfig = mode === "edit";
+    const configChanged =
+        editingConfig &&
+        (protocol === "oidc"
+            ? clientId.trim() !== configText(initial, "client_id") ||
+              issuer.trim() !== configText(initial, "issuer") ||
+              clientSecret !== ""
+            : entityId.trim() !== configText(initial, "entity_id") ||
+              ssoUrl.trim() !== configText(initial, "sso_url") ||
+              certificate.trim() !== "");
+    const secretMissing =
+        configChanged && (protocol === "oidc" ? clientSecret === "" : certificate.trim() === "");
+    const secretError =
+        touched && secretMissing
+            ? protocol === "oidc"
+                ? "Enter the client secret again to change the connection settings."
+                : "Enter the certificate again to change the connection settings."
+            : null;
+
+    function buildPayload(): SsoProviderCreate | SsoProviderUpdate {
+        const flags = {
+            is_default: isDefault,
+            allow_idp_initiated: allowIdpInitiated,
+            auto_provision_users: autoProvision,
+        };
+        if (mode === "create") {
+            return protocol === "oidc"
+                ? {
+                      name: name.trim(),
+                      protocol,
+                      oidc_config: {
+                          client_id: clientId.trim(),
+                          client_secret: clientSecret,
+                          issuer: issuer.trim(),
+                      },
+                      ...flags,
+                  }
+                : {
+                      name: name.trim(),
+                      protocol,
+                      saml_config: {
+                          entity_id: entityId.trim(),
+                          sso_url: ssoUrl.trim(),
+                          certificate,
+                      },
+                      ...flags,
+                  };
+        }
+        const update: SsoProviderUpdate = { name: name.trim(), ...flags };
+        if (configChanged && protocol === "oidc") {
+            update.oidc_config = {
+                ...servedOptional(initial, OIDC_OPTIONAL),
+                client_id: clientId.trim(),
+                client_secret: clientSecret,
+                issuer: issuer.trim(),
+            };
+        } else if (configChanged) {
+            update.saml_config = {
+                ...servedOptional(initial, SAML_OPTIONAL),
+                entity_id: entityId.trim(),
+                sso_url: ssoUrl.trim(),
+                certificate,
+            };
+        }
+        return update;
+    }
+
+    function handleSaveClick() {
+        setTouched(true);
+        if (name.trim() === "" || secretMissing) return;
+        onSaveAction(buildPayload());
+    }
+
+    return (
+        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <Field
+                        id="sso-name"
+                        label="Name"
+                        value={name}
+                        disabled={isSaving}
+                        onChangeAction={setName}
+                    />
+                    {nameMissing ? (
+                        <p role="alert" className="mt-1 text-xs text-(--negative)">
+                            Enter a name.
+                        </p>
+                    ) : null}
+                </div>
+                <div>
+                    <label htmlFor="sso-protocol" className={LABEL}>
+                        Protocol
+                    </label>
+                    <select
+                        id="sso-protocol"
+                        value={protocol}
+                        disabled={isSaving || mode === "edit"}
+                        onChange={(event) => setProtocol(event.target.value as SsoProtocol)}
+                        className={INPUT}
+                    >
+                        <option value="oidc">OIDC</option>
+                        <option value="saml">SAML</option>
+                    </select>
+                </div>
+                {protocol === "oidc" ? (
+                    <>
+                        <Field
+                            id="sso-client-id"
+                            label="Client ID"
+                            value={clientId}
+                            disabled={isSaving}
+                            onChangeAction={setClientId}
+                        />
+                        <Field
+                            id="sso-client-secret"
+                            label="Client secret"
+                            type="password"
+                            value={clientSecret}
+                            placeholder={
+                                mode === "edit"
+                                    ? "Leave blank to keep the stored secret; type it again to change other settings"
+                                    : ""
+                            }
+                            error={secretError}
+                            disabled={isSaving}
+                            onChangeAction={setClientSecret}
+                        />
+                        <Field
+                            id="sso-issuer"
+                            label="Issuer"
+                            value={issuer}
+                            disabled={isSaving}
+                            onChangeAction={setIssuer}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <Field
+                            id="sso-entity-id"
+                            label="Entity ID"
+                            value={entityId}
+                            disabled={isSaving}
+                            onChangeAction={setEntityId}
+                        />
+                        <Field
+                            id="sso-sso-url"
+                            label="SSO URL"
+                            value={ssoUrl}
+                            disabled={isSaving}
+                            onChangeAction={setSsoUrl}
+                        />
+                        <Field
+                            id="sso-certificate"
+                            label="Certificate"
+                            multiline
+                            value={certificate}
+                            placeholder={
+                                mode === "edit"
+                                    ? "Leave blank to keep the stored certificate; type it again to change other settings"
+                                    : ""
+                            }
+                            error={secretError}
+                            disabled={isSaving}
+                            onChangeAction={setCertificate}
+                        />
+                    </>
+                )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        checked={isDefault}
+                        disabled={isSaving}
+                        onChange={(event) => setIsDefault(event.target.checked)}
+                    />
+                    Default provider
+                </label>
+                <label className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        checked={allowIdpInitiated}
+                        disabled={isSaving}
+                        onChange={(event) => setAllowIdpInitiated(event.target.checked)}
+                    />
+                    Allow IdP-initiated sign-in
+                </label>
+                <label className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        checked={autoProvision}
+                        disabled={isSaving}
+                        onChange={(event) => setAutoProvision(event.target.checked)}
+                    />
+                    Create users on first sign-in
+                </label>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+                <button
+                    type="button"
+                    onClick={handleSaveClick}
+                    disabled={isSaving}
+                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                >
+                    {isSaving ? CTA_LABELS.savingConfiguration : CTA_LABELS.save}
+                </button>
+                <button
+                    type="button"
+                    onClick={onCancelAction}
+                    disabled={isSaving}
+                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                    {CTA_LABELS.cancel}
+                </button>
+            </div>
+        </div>
+    );
+}

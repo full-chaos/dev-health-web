@@ -10610,6 +10610,360 @@
                 "entitlement_requirement: searched the source from src/app/api/v1/auth/saml/[providerId]/acs/route.ts:6 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined.",
                 "token_shape: the handler calls into src/lib/authSsoRoutes.ts, so the absence proof (a handler holding no call at all) does not hold; the route reads no credential of its own, but that is not proven by the call walk. Manual review: not determined."
             ]
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#listSsoProviders",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 38
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:43, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:38).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:38).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:38)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#createSsoProvider",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 53
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sso\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:57, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:53).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:53).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:53)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#updateSsoProvider",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 69
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sso\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:74, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:69).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:69).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:69)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#deleteSsoProvider",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 86
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sso\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:88, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:86).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:86).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:86)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#activateSsoProvider",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 100
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sso\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:102, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:100).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:100).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:100)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/sso.ts#deactivateSsoProvider",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/sso.ts",
+                "line": 114
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 12,
+                    "line_end": 21
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 372
+                    },
+                    "earlier_auth_gate": true,
+                    "foreign_class_validator": false,
+                    "is_intended_validator": false
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sso\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "failureFromError (src/lib/actionFailure.ts) returns the HTTP status and, for a 4xx other than 401/403/429 on a write or a plan-gate sentence, the served text; every other answer is one plain sentence. The go-api provider routes under /api/v1/auth/sso/providers re-check the caller; the secret is masked by the API and never rendered.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/sso.ts:116, added by CHAOS-13638. action/resource_resolver were not independently re-derived for this row; the go-api provider route owns the role and licence decision (sso.write / settings.read, process-tier licence gate). The write names sso.write, so an impersonating session is refused before the call (src/lib/admin/server/_shared.ts authForOrgWrite).",
+                "action: not determined at web; the go-api route decides (see src/lib/admin/server/sso.ts:114).",
+                "resource_resolver: the organization comes from the session token and X-Org-Id (getSessionContext); the provider id is a path segment checked by the route (src/lib/admin/server/sso.ts:114).",
+                "entitlement_requirement: not gated in web; the go-api route answers 402 feature_not_licensed and the page shows the served sentence (src/lib/admin/server/sso.ts:114)."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
         }
     ]
 }

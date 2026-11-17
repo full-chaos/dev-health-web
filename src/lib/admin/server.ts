@@ -7,6 +7,7 @@ export * from "./server/sync";
 export * from "./server/identities";
 export * from "./server/teams";
 export * from "./server/settings";
+export * from "./server/sso";
 export * from "./server/aiFeatures";
 export * from "./server/ownModel";
 export * from "./server/promptCache";

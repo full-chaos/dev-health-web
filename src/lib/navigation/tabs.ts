@@ -180,6 +180,7 @@ export const TAB_SETS = [
                 path: "/org/admin/ip-allowlist",
                 requiredFeature: "ip_allowlist",
             },
+            { id: "sso", label: "Single sign-on", path: "/org/admin/sso" },
             {
                 id: "retention",
                 label: "Data Retention",

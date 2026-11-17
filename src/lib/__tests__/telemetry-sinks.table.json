@@ -67,6 +67,10 @@
         "log": 4,
         "sentry": 0
     },
+    "src/app/(app)/org/admin/sso/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/app/(app)/org/admin/sync/page.tsx": {
         "log": 1,
         "sentry": 0
