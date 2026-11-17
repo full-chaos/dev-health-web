@@ -8,7 +8,8 @@ web app does today. For the technical detail of authentication, see [auth-system
 
 1. Open the sign-in page (`/auth/signin`). Enter your email and password.
 2. If your organization uses single sign-on, choose "Continue with single sign-on". The page shows
-   this option only when single sign-on is turned on for the web app.
+   this option only when single sign-on is turned on for the web app. The form asks for a Protocol
+   (OpenID Connect or SAML) and a Provider ID. Your administrator shares the Provider ID.
 3. The page can also show buttons for GitHub, Google or GitLab. It shows a button only when the
    administrator of the web app has set up that provider.
 4. After a good sign-in, the page sends you on:
@@ -60,7 +61,8 @@ Sign-out runs these steps in this order. A failed step does not stop the next st
 5. It ends the web session and shows the sign-in page.
 
 If step 2 fails after the retry, the sign-in page shows: "Signed out on this device; other
-sessions may stay active." In that case, sign in again and sign out again to end the other sessions.
+sessions may stay active." The revoke call ends only the session of the credential in your sealed
+cookie. A new sign-in makes a new session and does not end the session that failed to revoke.
 
 ## Organizations: what a user sees
 
@@ -90,15 +92,15 @@ Common tasks:
 
 - Invite a person. Open the users area, choose to add a user, enter the email, pick a role
   (Member, Admin or Viewer), and send the invite. The page shows "Invite sent to" with the email.
-  The person joins when they accept the invite.
+  What happens when the person accepts the invite is backend behavior and this page does not show it.
 - Open the organization settings (`/org/admin/settings`) for the profile, billing and security
   settings.
 - Delete the organization. The settings page has a "Delete Organization" area. It shows a preview
   of what the deletion removes. Then you type the organization name to confirm. After the deletion
   the app signs you out.
 
-Other admin areas are under `/org/admin`: audit logs, identities, integrations, IP allowlist,
-retention, single sign-on, sync, teams and users.
+Other admin areas are under `/org/admin`: AI (bring your own LLM), audit logs, identities,
+integrations, IP allowlist, retention, single sign-on, sync, teams and users.
 
 ## Platform admin (superadmin) without an organization
 
