@@ -164,19 +164,13 @@ export default function SsoProvidersPage() {
             ) : null}
 
             {actionError ? (
-                actionError.status === 503 ? (
-                    <Notice variant="danger" live={false}>
-                        {UNAVAILABLE_NOTICE}
-                    </Notice>
-                ) : (
-                    <AdminErrorNotice
-                        error={actionError.text}
-                        kind="action"
-                        status={actionError.status}
-                        subject="SSO providers"
-                        onRetryAction={fetchProviders}
-                    />
-                )
+                <AdminErrorNotice
+                    error={actionError.text}
+                    kind="action"
+                    status={actionError.status}
+                    subject="SSO providers"
+                    onRetryAction={fetchProviders}
+                />
             ) : null}
 
             {canWrite && formState.mode !== "closed" ? (

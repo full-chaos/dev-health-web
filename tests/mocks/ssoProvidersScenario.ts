@@ -10,6 +10,7 @@ export const SSO_SCENARIOS = [
     "stub-500",
     "list-forbidden",
     "write-forbidden",
+    "write-unavailable",
 ] as const;
 export type SsoScenario = (typeof SSO_SCENARIOS)[number];
 
@@ -98,6 +99,12 @@ function refused(req: Request, res: Response): boolean {
         case "write-forbidden":
             if (write) {
                 res.status(403).json({ detail: "Admin access required" });
+                return true;
+            }
+            return false;
+        case "write-unavailable":
+            if (write) {
+                res.status(503).json({ detail: { message: "SSO provider service unavailable" } });
                 return true;
             }
             return false;

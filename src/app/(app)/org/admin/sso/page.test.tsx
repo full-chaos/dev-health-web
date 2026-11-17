@@ -487,6 +487,111 @@ describe("SsoProvidersPage", () => {
         expect(newlines(body.saml_config.certificate)).toBe(newlines(pem));
     });
 
+    describe("a 503 on a write shows the action notice, not the read-path unavailable sentence", () => {
+        const FAILED = "The change was not saved. Try again.";
+        const refused503 = { error: FAILED, status: 503 };
+        const expectActionNotice = async () => {
+            expect(await screen.findByText(FAILED)).toBeTruthy();
+            expect(screen.queryByText(/SSO provider service is unavailable/u)).toBeNull();
+        };
+        const confirmRow = async (name: string) => {
+            await userEvent.click(screen.getByRole("button", { name }));
+            const dialog = await screen.findByRole("dialog");
+            await userEvent.click(within(dialog).getByRole("button", { name }));
+        };
+
+        it("create OIDC", async () => {
+            mockList.mockResolvedValue(listOf([]));
+            mockCreate.mockResolvedValue(refused503);
+            render(<SsoProvidersPage />);
+            await userEvent.click(await screen.findByRole("button", { name: "Add SSO provider" }));
+            await userEvent.type(screen.getByLabelText("Name"), "Okta");
+            await userEvent.type(screen.getByLabelText("Client ID"), "cid");
+            await userEvent.type(screen.getByLabelText("Client secret"), "s3cret");
+            await userEvent.type(screen.getByLabelText("Issuer"), "https://idp.test");
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+            await expectActionNotice();
+            expect((screen.getByLabelText("Name") as HTMLInputElement).disabled).toBe(false);
+        });
+
+        it("create SAML", async () => {
+            mockList.mockResolvedValue(listOf([]));
+            mockCreate.mockResolvedValue(refused503);
+            render(<SsoProvidersPage />);
+            await userEvent.click(await screen.findByRole("button", { name: "Add SSO provider" }));
+            await userEvent.type(screen.getByLabelText("Name"), "Corp");
+            await userEvent.selectOptions(screen.getByLabelText("Protocol"), "saml");
+            await userEvent.type(screen.getByLabelText("Entity ID"), "ent");
+            await userEvent.type(screen.getByLabelText("SSO URL"), "https://sso.test/s");
+            await userEvent.type(screen.getByLabelText("Certificate"), "CERT");
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+            await expectActionNotice();
+            expect((screen.getByLabelText("Name") as HTMLInputElement).disabled).toBe(false);
+        });
+
+        it("edit OIDC", async () => {
+            mockList.mockResolvedValue(listOf([makeProvider()]));
+            mockUpdate.mockResolvedValue(refused503);
+            render(<SsoProvidersPage />);
+            await screen.findByText("Okta");
+            await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+            await userEvent.type(screen.getByLabelText("Client secret"), "rotated");
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+            await expectActionNotice();
+            expect((screen.getByLabelText("Name") as HTMLInputElement).disabled).toBe(false);
+        });
+
+        it("edit SAML", async () => {
+            mockList.mockResolvedValue(
+                listOf([
+                    makeProvider({
+                        protocol: "saml",
+                        config: { entity_id: "ent", sso_url: "https://sso.test/s" },
+                    }),
+                ]),
+            );
+            mockUpdate.mockResolvedValue(refused503);
+            render(<SsoProvidersPage />);
+            await screen.findByText("Okta");
+            await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+            await userEvent.type(screen.getByLabelText("Certificate"), "CERT");
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+            await expectActionNotice();
+            expect((screen.getByLabelText("Name") as HTMLInputElement).disabled).toBe(false);
+        });
+
+        it.each([
+            ["Activate", "inactive", mockActivate],
+            ["Deactivate", "active", mockDeactivate],
+            ["Delete", "active", mockDelete],
+        ] as const)("%s", async (label, status, mock) => {
+            mockList.mockResolvedValue(listOf([makeProvider({ status })]));
+            mock.mockResolvedValue(refused503);
+            render(<SsoProvidersPage />);
+            await screen.findByText("Okta");
+            await confirmRow(label);
+            await waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+            await expectActionNotice();
+            expect(
+                (screen.getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled,
+            ).toBe(false);
+            expect(
+                (screen.getByRole("button", { name: label }) as HTMLButtonElement).disabled,
+            ).toBe(false);
+        });
+
+        it("a 503 on the READ still shows the unavailable sentence", async () => {
+            mockList.mockResolvedValue({ error: "Could not be read.", status: 503 });
+            render(<SsoProvidersPage />);
+            expect(await screen.findByText(/SSO provider service is unavailable/u)).toBeTruthy();
+            expect(screen.queryByText(FAILED)).toBeNull();
+        });
+    });
+
     it("deletes only after the confirm, then reloads", async () => {
         mockList.mockResolvedValue(listOf([makeProvider()]));
         mockDelete.mockResolvedValue({ data: undefined });

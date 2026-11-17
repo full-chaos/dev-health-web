@@ -146,6 +146,20 @@ test("a platform admin with no membership reads the list; a create is refused an
     await shot(page, "07-platform-admin-no-membership");
 });
 
+test("a write that answers 503 shows the action notice, not the unavailable sentence", async ({
+    page,
+}) => {
+    await scenario("write-unavailable");
+    await page.goto("/org/admin/sso");
+    await expect(page.getByText("Okta (OIDC)")).toBeVisible();
+    await page.getByRole("button", { name: "Deactivate" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Deactivate" }).click();
+    await expect(page.getByText("The change was not saved. Try again.")).toBeVisible();
+    await expect(page.getByText(/SSO provider service is unavailable/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit" }).first()).toBeEnabled();
+    await shot(page, "13-write-503-action-notice");
+});
+
 test("a write that answers 403 closes the write buttons and keeps the list", async ({ page }) => {
     await scenario("write-forbidden");
     await page.goto("/org/admin/sso");
