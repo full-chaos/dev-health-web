@@ -95,6 +95,51 @@ export const COMPLETE_COVERAGE_SUMMARY = {
     ],
 } satisfies SyncCoverageSummary;
 
+const SECOND_SOURCE_ID = "src-repo-2";
+
+/** Complete coverage where one window was closed with reasons (CHAOS-13992). */
+export const CLOSED_WITH_REASON_COVERAGE_SUMMARY = {
+    ...COMPLETE_COVERAGE_SUMMARY,
+    datasets: [
+        {
+            ...COMPLETE_COVERAGE_SUMMARY.datasets[0],
+            requested_ranges: [jan1Jan3],
+            covered_ranges: [jan1Jan3],
+            closed_with_reason_ranges: [
+                {
+                    since: "2026-01-01T00:00:00Z",
+                    before: "2026-01-02T00:00:00Z",
+                    source_ids: [SOURCE_ID],
+                    reasons: ["artifact_expired"],
+                },
+                {
+                    since: "2026-01-02T00:00:00Z",
+                    before: "2026-01-03T00:00:00Z",
+                    source_ids: [SECOND_SOURCE_ID],
+                    reasons: ["malformed", "unsafe_doctype"],
+                },
+                {
+                    since: "2026-01-02T00:00:00Z",
+                    before: "2026-01-03T00:00:00Z",
+                    source_ids: [SOURCE_ID],
+                    reasons: ["future_reason"],
+                },
+            ],
+        },
+    ],
+    sources: [
+        ...COMPLETE_COVERAGE_SUMMARY.sources,
+        {
+            source_id: SECOND_SOURCE_ID,
+            source_name: "acme/other",
+            status: "healthy",
+            covered_through: "2026-01-03T00:00:00Z",
+            gap_count: 0,
+            failed_range_count: 0,
+        },
+    ],
+} satisfies SyncCoverageSummary;
+
 export const PARTIAL_COVERAGE_SUMMARY = {
     ...baseSummary,
     overall: {

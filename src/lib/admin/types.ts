@@ -203,6 +203,18 @@ export interface SyncCoverageOverall {
     failed_range_count: number;
 }
 
+/**
+ * A window the backend closed with a stable reason. It is also listed in
+ * `covered_ranges` and is never a gap, failure or backfill window.
+ */
+export interface SyncCoverageClosedWithReasonRange {
+    since: string;
+    before: string;
+    source_ids: string[];
+    /** Known: artifact_expired, malformed, unsafe_doctype. Future values must still render. */
+    reasons: string[];
+}
+
 export interface SyncCoverageDataset {
     dataset_key: string;
     status: SyncCoverageStatus;
@@ -212,6 +224,8 @@ export interface SyncCoverageDataset {
     gaps: SyncCoverageRange[];
     stale_ranges: SyncCoverageRange[];
     failed_ranges: SyncCoverageRange[];
+    /** Absent on answers from projections stored before the ops roll. */
+    closed_with_reason_ranges?: SyncCoverageClosedWithReasonRange[];
 }
 
 export interface SyncCoverageSource {

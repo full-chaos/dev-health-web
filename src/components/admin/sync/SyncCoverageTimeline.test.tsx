@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, within } from "@/test/utils";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import {
+    CLOSED_WITH_REASON_COVERAGE_SUMMARY,
     COMPLETE_COVERAGE_SUMMARY,
     FAILED_COVERAGE_SUMMARY,
     LEGACY_INSUFFICIENT_DATA_SUMMARY,
@@ -503,5 +504,69 @@ describe("SyncCoverageTimeline table scroll box (CHAOS-12459)", () => {
             />,
         );
         expect(screen.getAllByRole("table")[0].closest(".overflow-x-auto")).toHaveClass("relative");
+    });
+    describe("closed-with-reason ranges (CHAOS-13992)", () => {
+        it("renders no closed band and does not crash when the key is absent", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={COMPLETE_COVERAGE_SUMMARY}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            expect(screen.queryByTestId("coverage-closed-band-commits")).toBeNull();
+            expect(screen.queryByText(/closed:/)).toBeNull();
+            expect(screen.getByTestId("coverage-covered-band-commits")).toBeInTheDocument();
+        });
+
+        it("shows plain phrases, joined reasons and the raw unknown reason", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={CLOSED_WITH_REASON_COVERAGE_SUMMARY}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            expect(screen.getAllByTestId("coverage-closed-band-commits")).toHaveLength(3);
+            expect(
+                screen.getByText("Covered, closed: report expired at GitHub"),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    "Covered, closed: report file is broken; report refused for safety",
+                ),
+            ).toBeInTheDocument();
+            expect(screen.getByText("Covered, closed: future_reason")).toBeInTheDocument();
+            expect(screen.getAllByText("acme/other").length).toBeGreaterThan(0);
+        });
+
+        it("applies the source filter to closed ranges", async () => {
+            const user = userEvent.setup();
+            render(
+                <SyncCoverageTimeline
+                    coverage={CLOSED_WITH_REASON_COVERAGE_SUMMARY}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            await user.selectOptions(screen.getByLabelText("Source"), "src-repo-2");
+
+            expect(screen.getAllByTestId("coverage-closed-band-commits")).toHaveLength(1);
+            expect(screen.queryByText(/report expired at GitHub/)).toBeNull();
+            expect(screen.getByText(/report file is broken/)).toBeInTheDocument();
+        });
+
+        it("never offers a closed range as a backfill or selection", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={CLOSED_WITH_REASON_COVERAGE_SUMMARY}
+                    onBackfillWindowAction={vi.fn()}
+                    onBackfillWindowsAction={vi.fn()}
+                />,
+            );
+
+            expect(screen.queryByRole("button", { name: /backfill/i })).toBeNull();
+            expect(screen.queryByRole("checkbox")).toBeNull();
+        });
     });
 });

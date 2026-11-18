@@ -23,10 +23,11 @@ interface SyncCoverageTimelineProps {
     onBackfillWindowsAction?: (ranges: SyncCoverageBackfillWindow[]) => void;
 }
 
-type BandKind = "covered" | "gap" | "stale" | "failed";
+type BandKind = "covered" | "closed" | "gap" | "stale" | "failed";
 
 const BAND_TONE: Record<BandKind, CoverageTone> = {
     covered: "positive",
+    closed: "positive",
     gap: "negative",
     stale: "caution",
     failed: "negative",
@@ -34,6 +35,7 @@ const BAND_TONE: Record<BandKind, CoverageTone> = {
 
 const BAND_LABEL: Record<BandKind, string> = {
     covered: "Covered",
+    closed: "Closed",
     gap: "Gap",
     stale: "Stale",
     failed: "Failed",
@@ -41,6 +43,7 @@ const BAND_LABEL: Record<BandKind, string> = {
 
 const BAND_BAR_CLASS: Record<BandKind, string> = {
     covered: "bg-(--positive)",
+    closed: "border border-(--positive) bg-(--positive)/25",
     gap: "border border-dashed border-(--negative) bg-(--negative)/40",
     stale: "bg-(--caution)",
     failed: "bg-(--negative)",
@@ -50,6 +53,19 @@ interface TimelineRow {
     kind: BandKind;
     range: SyncCoverageRange;
     datasetKey: string;
+    /** Only on `closed` rows: the stable reasons the window was closed. */
+    reasons?: string[];
+}
+
+const CLOSED_REASON_PHRASE: Record<string, string> = {
+    artifact_expired: "report expired at GitHub",
+    malformed: "report file is broken",
+    unsafe_doctype: "report refused for safety",
+};
+
+/** Plain-words label; an unknown (future) reason is shown raw, never hidden. */
+function closedLabel(reasons: string[]): string {
+    return `closed: ${reasons.map((reason) => CLOSED_REASON_PHRASE[reason] ?? reason).join("; ")}`;
 }
 
 function windowLabel(window: SyncCoverageBackfillWindow): string {
@@ -157,7 +173,7 @@ function rangeKey(kind: BandKind, range: SyncCoverageRange): string {
     return `${kind}-${range.since}-${range.before}-${range.source_ids.join(",")}`;
 }
 
-function rangeIncludesSource(range: SyncCoverageRange, sourceId: string | null): boolean {
+function rangeIncludesSource(range: { source_ids: string[] }, sourceId: string | null): boolean {
     if (!sourceId) return true;
     return range.source_ids.includes(sourceId);
 }
@@ -170,6 +186,7 @@ function datasetExtent(dataset: SyncCoverageDataset): [number, number] | null {
         ...dataset.gaps,
         ...dataset.stale_ranges,
         ...dataset.failed_ranges,
+        ...(dataset.closed_with_reason_ranges ?? []),
     ];
     if (allRanges.length === 0) return null;
     let start = Number.POSITIVE_INFINITY;
@@ -348,7 +365,8 @@ export function SyncCoverageTimeline({
                 dataset.covered_ranges.length +
                 dataset.gaps.length +
                 dataset.stale_ranges.length +
-                dataset.failed_ranges.length >
+                dataset.failed_ranges.length +
+                (dataset.closed_with_reason_ranges?.length ?? 0) >
             0,
     );
     const hasCanonicalBackfill = (coverage.backfill_windows?.length ?? 0) > 0;
@@ -494,13 +512,19 @@ export function SyncCoverageTimeline({
                 {datasets.map((dataset) => {
                     const extent = timelineExtent(coverage, dataset);
                     const activeSourceId = sourceFilter === "all" ? null : sourceFilter;
-                    const filterBySource = (ranges: SyncCoverageRange[]) =>
+                    const filterBySource = <T extends { source_ids: string[] }>(ranges: T[]) =>
                         ranges.filter((r) => rangeIncludesSource(r, activeSourceId));
 
                     const rows: TimelineRow[] = [
                         ...filterBySource(dataset.covered_ranges).map((range) => ({
                             kind: "covered" as const,
                             range,
+                            datasetKey: dataset.dataset_key,
+                        })),
+                        ...filterBySource(dataset.closed_with_reason_ranges ?? []).map((range) => ({
+                            kind: "closed" as const,
+                            range: { ...range, run_ids: [] },
+                            reasons: range.reasons,
                             datasetKey: dataset.dataset_key,
                         })),
                         ...filterBySource(dataset.gaps).map((range) => ({
@@ -552,31 +576,40 @@ export function SyncCoverageTimeline({
                             {/* Decorative CSS band view — purely visual, mirrored by the table below. */}
                             {extent && (
                                 <div aria-hidden="true" className="space-y-1.5">
-                                    {(["covered", "gap", "stale", "failed"] as BandKind[]).map(
-                                        (kind) => {
-                                            const kindRanges = rows.filter(
-                                                (row) => row.kind === kind,
-                                            );
-                                            if (kindRanges.length === 0) return null;
-                                            return (
-                                                <div key={kind} className="flex items-center gap-2">
-                                                    <span className="w-16 shrink-0 text-xs text-(--ink-muted)">
-                                                        {BAND_LABEL[kind]}
-                                                    </span>
-                                                    <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--card-stroke)">
-                                                        {kindRanges.map((row) => (
-                                                            <div
-                                                                key={rangeKey(kind, row.range)}
-                                                                data-testid={`coverage-${kind}-band-${dataset.dataset_key}`}
-                                                                className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
-                                                                style={bandStyle(row.range, extent)}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                    {(
+                                        [
+                                            "covered",
+                                            "closed",
+                                            "gap",
+                                            "stale",
+                                            "failed",
+                                        ] as BandKind[]
+                                    ).map((kind) => {
+                                        const kindRanges = rows.filter((row) => row.kind === kind);
+                                        if (kindRanges.length === 0) return null;
+                                        return (
+                                            <div key={kind} className="flex items-center gap-2">
+                                                <span className="w-16 shrink-0 text-xs text-(--ink-muted)">
+                                                    {BAND_LABEL[kind]}
+                                                </span>
+                                                <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--card-stroke)">
+                                                    {kindRanges.map((row) => (
+                                                        <div
+                                                            key={rangeKey(kind, row.range)}
+                                                            data-testid={`coverage-${kind}-band-${dataset.dataset_key}`}
+                                                            title={
+                                                                row.reasons
+                                                                    ? `${closedLabel(row.reasons)} · ${formatDateUTC(row.range.since)} – ${formatDateUTC(row.range.before)}`
+                                                                    : undefined
+                                                            }
+                                                            className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
+                                                            style={bandStyle(row.range, extent)}
+                                                        />
+                                                    ))}
                                                 </div>
-                                            );
-                                        },
-                                    )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
 
@@ -644,7 +677,11 @@ export function SyncCoverageTimeline({
                                                         <td className="px-2 py-2">
                                                             <CoverageBadge
                                                                 tone={BAND_TONE[row.kind]}
-                                                                label={BAND_LABEL[row.kind]}
+                                                                label={
+                                                                    row.reasons
+                                                                        ? `Covered, ${closedLabel(row.reasons)}`
+                                                                        : BAND_LABEL[row.kind]
+                                                                }
                                                             />
                                                         </td>
                                                         <td className="px-2 py-2 text-foreground">
