@@ -10,6 +10,8 @@ allowBuilds:
     unrs-resolver: true
 
 overrides:
+    # ask-dev pins next 16.4.2 exactly; force one next. Drop when the ask-dev pin uses next >= 16.4.5 (CHAOS-14087).
+    next: 16.4.5
     # fast-uri: held inside major 3 (ajv 8 declares ^3.0.1; 4.x is a breaking major).
     # Floor raised again to clear GHSA-5jgf-p345-68v8 / GHSA-f65p-4m7j-42xc /
     # GHSA-fph4-wmhf-6fwf / GHSA-jqff-g426-hqxp (host confusion + SSRF via
