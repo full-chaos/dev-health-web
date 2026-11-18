@@ -6,7 +6,8 @@ import { createHash } from "node:crypto";
 // reason code in the body, so the decision rests on the HTTP status. Pure: no I/O, no logging.
 
 export type CallResult =
-    { status: number; body: unknown; retryAfterSeconds?: number } | { thrown: true };
+    | { status: number; body: unknown; retryAfterSeconds?: number; receivedAt?: number }
+    | { thrown: true };
 
 const RETRY_AFTER_MAX_SECONDS = 3600;
 

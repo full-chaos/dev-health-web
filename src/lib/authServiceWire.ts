@@ -61,9 +61,15 @@ function jsonHeaders(cfg: WireConfig): Record<string, string> {
         : { "Content-Type": "application/json", "X-Forwarded-For": ip };
 }
 
-async function send(url: string, init: RequestInit): Promise<Sent> {
+async function send(
+    url: string,
+    init: RequestInit,
+    bodyless?: (status: number) => boolean,
+): Promise<Sent> {
     try {
-        const res = await deadlineFetch("auth")(url, init);
+        const res = await deadlineFetch("auth", undefined, bodyless)(url, init);
+        // A bodyless status returns when its headers arrive, so this is the time of the answer.
+        const receivedAt = Date.now();
         let body: unknown;
         try {
             body = await res.json();
@@ -75,6 +81,7 @@ async function send(url: string, init: RequestInit): Promise<Sent> {
             result: {
                 status: res.status,
                 body,
+                ...(bodyless === undefined ? {} : { receivedAt }),
                 ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
             },
         };
@@ -338,19 +345,28 @@ export type RefreshResult =
     | { kind: "terminal"; reason: "status"; status: number }
     | { kind: "terminal"; reason: "invalid_response" }
     | { kind: "terminal"; reason: "token_refused" }
-    | { kind: "rate_limited"; retryAfterSeconds?: number }
+    | { kind: "rate_limited"; retryAfterSeconds?: number; receivedAt?: number }
     | { kind: "transient"; status?: number; errorName?: string; refreshToken?: string };
 
 // The refresh credential is single use: once the answer rotated it, the new one must be stored
 // whatever happens to the access token, and a refused access token ends the session.
 async function refreshOnce(refreshToken: string, cfg: WireConfig): Promise<RefreshResult> {
-    const sent = await send(`${cfg.backendUrl}/api/v1/auth/refresh`, {
-        method: "POST",
-        headers: jsonHeaders(cfg),
-        body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+    // A refused refresh (429) is decided from its status and Retry-After alone: its body is never read.
+    const sent = await send(
+        `${cfg.backendUrl}/api/v1/auth/refresh`,
+        {
+            method: "POST",
+            headers: jsonHeaders(cfg),
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        },
+        (status) => status === 429,
+    );
     const outcome = classifyRefresh(sent.result);
-    if (outcome.kind === "rate_limited") return outcome;
+    if (outcome.kind === "rate_limited") {
+        return "receivedAt" in sent.result && sent.result.receivedAt !== undefined
+            ? { ...outcome, receivedAt: sent.result.receivedAt }
+            : outcome;
+    }
     if (outcome.kind === "transient") {
         return {
             kind: "transient",

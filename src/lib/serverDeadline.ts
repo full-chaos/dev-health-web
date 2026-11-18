@@ -234,7 +234,11 @@ interface Orphan {
     cancel?: () => void;
 }
 
-async function buffered(raw: Response, orphan: Orphan): Promise<Response> {
+async function buffered(
+    raw: Response,
+    orphan: Orphan,
+    bodyless?: (status: number) => boolean,
+): Promise<Response> {
     if (!(raw instanceof Response)) return raw;
     const { status, statusText, headers } = raw;
     if (NULL_BODY_STATUS.has(status) || !raw.body) {
@@ -250,6 +254,12 @@ async function buffered(raw: Response, orphan: Orphan): Promise<Response> {
                     "server fetch orphan body cancel failed",
                 ),
             );
+    if (bodyless?.(status)) {
+        // The caller decides from the status and headers alone: the body is cancelled, never read, so a
+        // late or broken body cannot hold the answer or change it. The cancel is not awaited.
+        void cancel();
+        return new Response(null, { status, statusText, headers });
+    }
     if (orphan.lost) {
         // The headers came after the deadline: nobody waits for this body.
         await cancel();
@@ -277,6 +287,8 @@ export interface FetchDeadlineOptions {
     kind: ServerFetchKind;
     /** Log label. Default: `<METHOD> <pathname>` (no query string, ids replaced by `:id`). */
     op?: string;
+    /** A status the caller decides from its status and headers alone: its body is cancelled unread. */
+    bodyless?: (status: number) => boolean;
 }
 
 /** INNER layer: `fetch` plus the full body read, under one race. */
@@ -294,7 +306,7 @@ export async function fetchWithDeadline(
     try {
         let response: Response;
         const orphan: Orphan = { lost: false };
-        const work = fetch(input, init).then((raw) => buffered(raw, orphan));
+        const work = fetch(input, init).then((raw) => buffered(raw, orphan, options.bodyless));
         work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
         try {
             response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
@@ -332,9 +344,13 @@ export async function fetchWithDeadline(
  * `fetch`-shaped function bound to a kind, so a call site changes only its head:
  * `await deadlineFetch("read")(url, init)`.
  */
-export function deadlineFetch(kind: ServerFetchKind, op?: string) {
+export function deadlineFetch(
+    kind: ServerFetchKind,
+    op?: string,
+    bodyless?: (status: number) => boolean,
+) {
     return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-        fetchWithDeadline(input, init, { kind, op });
+        fetchWithDeadline(input, init, { kind, op, bodyless });
 }
 
 /**
