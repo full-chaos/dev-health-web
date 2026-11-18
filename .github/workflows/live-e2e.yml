@@ -368,9 +368,13 @@ jobs:
               working-directory: dev-health-ops
 
             - name: Enable OIDC and SAML on the throwaway stack (auth-sso)
-              # Before go-api starts: the licence, the SSO flags and the web switch are written to the job-local stack env files by
-              # the ops verb; none of them is a workflow value.
+              # Before go-api starts: the SSO flags and the web switch are written to the job-local stack env files by the ops verb.
+              # go-api gets no process licence (prod runs the community tier): the providers' organization is made enterprise by the
+              # spec. LIVE_E2E_WEB_ORIGIN is auth-service's APP_BASE_URL in this job only, with no prod meaning: a provider made
+              # through the route has no sp_acs_url, so the SAML ACS is built from it and must be the browser's origin (localhost).
               if: matrix.tier == 'auth-sso'
+              env:
+                  LIVE_E2E_WEB_ORIGIN: http://localhost:3002
               run: bash ci/live_e2e_auth_stack.sh enable-sso "${RUNNER_TEMP}/live-e2e-auth"
               working-directory: dev-health-ops
 

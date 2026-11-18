@@ -1,6 +1,5 @@
 /** UI single sign-on (OIDC and SAML) against auth-service and the ops IdP stand-in (idpstub). */
 import { randomBytes } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,7 +17,7 @@ import {
     verifyUserViaStack,
 } from "./helpers";
 
-// One owner, seeded providers, one stack: the cells run in order and spend no retries (the budget is small).
+// One owner, providers made through the provider route, one stack: the cells run in order and spend no retries (the budget is small).
 test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(180_000);
 
@@ -34,8 +33,10 @@ const clientSecret = `live-secret-${randomBytes(16).toString("hex")}`;
 const idpEmail = (local: string) => `${local}-${suffix}@${idpDomain}`;
 
 let ownerEmail = "";
+let ownerToken = "";
 let oidcId = "";
 let samlId = "";
+let samlTwo = "";
 let capturedAcs: { body: string; cookie: string } | undefined;
 let ownerOrgId = "";
 let aliceId = "";
@@ -54,7 +55,7 @@ function stackState(): string {
 
 /**
  * Start the IdP with one default user. The OIDC redirect allow-list is exact, so it names the OIDC provider id. No -acs-url: the
- * IdP then accepts any ACS, and the SAML provider is seeded after the start (its certificate is generated at every start).
+ * IdP then accepts any ACS, and the SAML provider is created after the start (its certificate is generated at every start).
  */
 function restartIdp(email: string, oidcProviderId: string): void {
     stackVerb("stop-idp");
@@ -71,68 +72,93 @@ function restartIdp(email: string, oidcProviderId: string): void {
     );
 }
 
-/**
- * The provider CRUD routes are not served by go-api (ops internal/api/sso/sso.go:18-20), so a provider is seeded by the ops
- * stack verb into the organization the admin e-mail owns. The client secret goes by environment, never by argument.
- * Returns the provider id the verb printed.
- */
-function seedProvider(adminEmail: string, protocol: "oidc" | "saml", name: string): string {
-    const script = process.env.LIVE_E2E_STACK_SCRIPT;
-    const state = stackState();
-    if (!script) {
-        envFault("LIVE_E2E_STACK_SCRIPT names the ops auth stack script");
-        return "";
-    }
-    const args =
-        protocol === "oidc"
-            ? [
-                  "-issuer",
-                  IDP,
-                  "-client-id",
-                  clientId,
-                  "-authorization-endpoint",
-                  `${IDP}/authorize`,
-                  "-token-endpoint",
-                  `${IDP}/token`,
-                  "-userinfo-endpoint",
-                  `${IDP}/userinfo`,
-                  "-jwks-uri",
-                  `${IDP}/jwks`,
-                  "-allowed-domains",
-                  idpDomain,
-              ]
-            : [
-                  "-entity-id",
-                  `${IDP}/saml/metadata`,
-                  "-sso-url",
-                  `${IDP}/saml/sso`,
-                  "-cert-file",
-                  join(state, "idp", "saml-cert.pem"),
-                  "-sp-entity-id",
-                  `urn:live-e2e:sp:${suffix}`,
-                  "-acs-base",
-                  WEB,
-                  "-allowed-domains",
-                  idpDomain,
-              ];
-    let out = "";
-    try {
-        out = execFileSync(
-            "bash",
-            [script, "seed-sso-provider", state, adminEmail, protocol, "-name", name, ...args],
-            {
-                encoding: "utf8",
-                stdio: ["ignore", "pipe", "ignore"],
-                timeout: 60_000,
-                env: { ...process.env, SSO_CLIENT_SECRET: clientSecret },
+const providersUrl = `${liveBackendUrl}/api/v1/auth/sso/providers`;
+
+/** The provider body the route takes (ops internal/api/sso/validate.go ssoProviderCreate) for the job's IdP stand-in. */
+function providerBody(protocol: "oidc" | "saml", name: string): Record<string, unknown> {
+    const common = {
+        name,
+        protocol,
+        default_role: "member",
+        auto_provision_users: true,
+        allowed_domains: [idpDomain],
+    };
+    if (protocol === "oidc") {
+        return {
+            ...common,
+            oidc_config: {
+                client_id: clientId,
+                client_secret: clientSecret,
+                issuer: IDP,
+                authorization_endpoint: `${IDP}/authorize`,
+                token_endpoint: `${IDP}/token`,
+                userinfo_endpoint: `${IDP}/userinfo`,
+                jwks_uri: `${IDP}/jwks`,
             },
-        );
-    } catch {
-        // execFileSync errors carry argv and captured output.
-        throw new Error(`seeding the ${protocol} provider failed`);
+        };
     }
-    const id = /^seeded (?:oidc|saml) provider ([0-9a-f-]{36})$/mu.exec(out)?.[1] ?? "";
-    expect(id, `the ${protocol} seed printed no provider id`).toMatch(/^[0-9a-f-]{36}$/u);
+    // No sp_entity_id or sp_acs_url: the model has neither, so auth-service builds both from APP_BASE_URL (ops
+    // internal/auth/identity/saml/config.go SPEntityID, ACSURL), which the job sets to the browser origin (LIVE_E2E_WEB_ORIGIN).
+    return {
+        ...common,
+        saml_config: {
+            entity_id: `${IDP}/saml/metadata`,
+            sso_url: `${IDP}/saml/sso`,
+            certificate: readFileSync(join(stackState(), "idp", "saml-cert.pem"), "utf8"),
+        },
+    };
+}
+
+type ProviderAnswer = {
+    id?: string;
+    org_id?: string;
+    name?: string;
+    protocol?: string;
+    status?: string;
+    default_role?: string;
+    config?: Record<string, unknown>;
+};
+
+/**
+ * The owner creates a provider through go-api's route (which calls auth-service, the providers' one writer) and activates it: a
+ * created provider is pending_setup (ops internal/auth/ssoprovider/ssoprovider.go Create) and only an active one signs in.
+ * Returns the provider id.
+ */
+async function createProvider(
+    request: APIRequestContext,
+    protocol: "oidc" | "saml",
+    name: string,
+): Promise<string> {
+    const created = await request.post(providersUrl, {
+        headers: authHeaders(ownerToken),
+        data: providerBody(protocol, name),
+    });
+    const text = await created.text();
+    expect(
+        created.status(),
+        `creating the ${protocol} provider answered ${String(created.status())}`,
+    ).toBe(201);
+    expect(text, "the create answer holds the client secret").not.toContain(clientSecret);
+    const provider = JSON.parse(text) as ProviderAnswer;
+    expect(provider.id).toMatch(UUID);
+    expect(provider).toMatchObject({
+        name,
+        protocol,
+        status: "pending_setup",
+        default_role: "member",
+    });
+    if (protocol === "oidc") {
+        expect(provider.config?.client_secret, "the OIDC client secret is masked").toBe("********");
+    }
+    const id = provider.id ?? "";
+    const activated = await request.post(`${providersUrl}/${id}/activate`, {
+        headers: authHeaders(ownerToken),
+    });
+    expect(
+        activated.status(),
+        `activating the ${protocol} provider answered ${String(activated.status())}`,
+    ).toBe(200);
+    expect(((await activated.json()) as ProviderAnswer).status).toBe("active");
     return id;
 }
 
@@ -311,7 +337,12 @@ async function expectRefused(page: Page) {
 }
 
 test.describe("@auth-sso single sign-on", () => {
-    test("an organization owner has an OIDC and a SAML provider seeded", async ({ request }) => {
+    // go-api runs with no process licence, as prod (community tier), so the provider routes admit a caller by its organization's
+    // own enterprise entitlement only (ops internal/api/sso/gate.go providerGate, product rule C1): the owner of a new
+    // (community) organization is refused with the legacy 402, before any write.
+    test("the owner of a community organization is refused a provider create with 402", async ({
+        request,
+    }) => {
         ownerEmail = testEmail("sso-owner");
         await registerUser(request, ownerEmail, ownerPassword);
         let verified = false;
@@ -321,12 +352,34 @@ test.describe("@auth-sso single sign-on", () => {
             envFault("Owner verification failed");
         }
         if (!verified) envFault("Owner could not be verified");
+        const login = await loginUser(request, ownerEmail, ownerPassword);
+        ownerToken = typeof login.access_token === "string" ? login.access_token : "";
+        expect(ownerToken, "the owner login gave no access token").not.toBe("");
+        const refused = await request.post(providersUrl, {
+            headers: authHeaders(ownerToken),
+            data: providerBody("oidc", `live-oidc-refused-${suffix}`),
+        });
+        expect(
+            refused.status(),
+            `a community organization's create answered ${String(refused.status())}`,
+        ).toBe(402);
+        expect(((await refused.json()) as { detail?: unknown }).detail).toEqual({
+            error: "feature_not_licensed",
+            feature: "sso_saml",
+            required_tier: "enterprise",
+            current_tier: "community",
+        });
+        const listed = await request.get(providersUrl, { headers: authHeaders(ownerToken) });
+        expect(listed.status(), "the community organization's list is refused too").toBe(402);
+    });
+
+    test("once the organization is enterprise, the owner creates and activates an OIDC and a SAML provider", async ({
+        request,
+    }) => {
         await makeOrganizationEnterprise(request, ownerEmail);
-        // The owner's own organization is the one register created: the verb seeds into the earliest membership of the e-mail.
-        oidcId = seedProvider(ownerEmail, "oidc", `live-oidc-${suffix}`);
+        oidcId = await createProvider(request, "oidc", `live-oidc-${suffix}`);
         restartIdp(idpEmail("alice"), oidcId);
-        samlId = seedProvider(ownerEmail, "saml", `live-saml-${suffix}`);
-        // The providers' organization: the seed verb puts them in the owner's earliest membership (ops ssoseedverb.go:105).
+        samlId = await createProvider(request, "saml", `live-saml-${suffix}`);
         const csrf = await request.get("/api/auth/csrf");
         const { csrfToken } = (await csrf.json()) as { csrfToken: string };
         await request.post("/api/auth/callback/credentials", {
@@ -346,6 +399,34 @@ test.describe("@auth-sso single sign-on", () => {
         ownerOrgId = owner?.org_id ?? "";
     });
 
+    // The two reads: the list (oldest first, ops ssoprovider.go List) and one provider, both in the owner's organization (the
+    // token's, never the body's), the SAML certificate masked as the legacy answer showed it.
+    test("the owner lists the organization's providers and reads one", async ({ request }) => {
+        const listed = await request.get(providersUrl, { headers: authHeaders(ownerToken) });
+        expect(listed.status()).toBe(200);
+        const page = (await listed.json()) as {
+            items?: ProviderAnswer[];
+            total?: number;
+            limit?: number;
+            offset?: number;
+        };
+        expect(page).toMatchObject({ total: 2, limit: 50, offset: 0 });
+        expect((page.items ?? []).map((item) => item.id)).toEqual([oidcId, samlId]);
+        for (const item of page.items ?? []) expect(item.org_id).toBe(ownerOrgId);
+        const read = await request.get(`${providersUrl}/${samlId}`, {
+            headers: authHeaders(ownerToken),
+        });
+        expect(read.status()).toBe(200);
+        const saml = (await read.json()) as ProviderAnswer;
+        expect(saml).toMatchObject({
+            id: samlId,
+            org_id: ownerOrgId,
+            protocol: "saml",
+            status: "active",
+        });
+        expect(String(saml.config?.certificate ?? "")).toMatch(/^[\s\S]{50}\.\.\.$/u);
+    });
+
     test("SAML: the sign-in page takes the provider id and signs the IdP user in", async ({
         page,
     }) => {
@@ -359,7 +440,7 @@ test.describe("@auth-sso single sign-on", () => {
         await startSso(page, "saml", samlId);
         await expectSignedInAs(page, idpEmail("alice"));
         // JIT: a new IdP account joins the PROVIDER's organization (ops internal/auth/identity/saml/pgjit.go:74) with the provider
-        // row's role through SignInRole (pgjit.go:26; the seed verb's default "member").
+        // row's role through SignInRole (pgjit.go:26; the provider's default_role "member").
         const alice = await sessionUser(page.request);
         recordJit("alice", alice);
         expect(alice?.org_id, "alice: the session organization").toBe(ownerOrgId);
@@ -493,9 +574,9 @@ test.describe("@auth-sso single sign-on", () => {
 
     // SAML only: an OIDC domain check runs after the code exchange, which the loopback guard refuses (see the OIDC cell above).
     test("SAML: an IdP user outside the allowed domains is refused", async ({ page }) => {
-        // A restart gives the IdP a new SAML key: a second SAML provider is seeded after it.
+        // A restart gives the IdP a new SAML key: a second SAML provider is created after it.
         restartIdp(`mallory-${suffix}@other-domain.example.com`, oidcId);
-        const samlTwo = seedProvider(ownerEmail, "saml", `live-saml2-${suffix}`);
+        samlTwo = await createProvider(page.request, "saml", `live-saml2-${suffix}`);
         const mark = logMark();
         await startSso(page, "saml", samlTwo);
         await expectRefused(page);
@@ -504,11 +585,40 @@ test.describe("@auth-sso single sign-on", () => {
         });
     });
 
+    // The three other writes on the provider the refusal cell used: a rename (only the named member changes), deactivate, and
+    // delete (204, after which the provider is not found in the organization).
+    test("the owner renames, deactivates and deletes a provider", async ({ request }) => {
+        const renamed = await request.patch(`${providersUrl}/${samlTwo}`, {
+            headers: authHeaders(ownerToken),
+            data: { name: `live-saml2-renamed-${suffix}` },
+        });
+        expect(renamed.status()).toBe(200);
+        expect((await renamed.json()) as ProviderAnswer).toMatchObject({
+            id: samlTwo,
+            name: `live-saml2-renamed-${suffix}`,
+            status: "active",
+        });
+        const deactivated = await request.post(`${providersUrl}/${samlTwo}/deactivate`, {
+            headers: authHeaders(ownerToken),
+        });
+        expect(deactivated.status()).toBe(200);
+        expect(((await deactivated.json()) as ProviderAnswer).status).toBe("inactive");
+        const deleted = await request.delete(`${providersUrl}/${samlTwo}`, {
+            headers: authHeaders(ownerToken),
+        });
+        expect(deleted.status()).toBe(204);
+        const gone = await request.get(`${providersUrl}/${samlTwo}`, {
+            headers: authHeaders(ownerToken),
+        });
+        expect(gone.status()).toBe(404);
+        expect(await gone.json()).toEqual({ detail: "SSO provider not found" });
+    });
+
     test("SAML: a second IdP user in the allowed domain signs in as their own account", async ({
         page,
     }) => {
         restartIdp(idpEmail("bob"), oidcId);
-        const samlThree = seedProvider(ownerEmail, "saml", `live-saml3-${suffix}`);
+        const samlThree = await createProvider(page.request, "saml", `live-saml3-${suffix}`);
         await startSso(page, "saml", samlThree);
         await expectSignedInAs(page, idpEmail("bob"));
         // The same JIT pins as alice (pgjit.go:74 organization, pgjit.go:26 role), as an account of its own.
@@ -524,7 +634,7 @@ test.describe("@auth-sso single sign-on", () => {
     // ci/live_e2e_auth_stack.sh enable_sso), so auth-service's OIDC client (externalurl.IdPTransport) reaches the IdP for the
     // discovery, the code exchange and the keys. A new IdP user (carol): alice already holds her e-mail through SAML, and a second
     // identity for one e-mail is a 409 (internal/auth/identity/oidc/service.go:807-813). It runs last because each IdP start makes
-    // a new SAML certificate, which only the providers seeded after that start trust.
+    // a new SAML certificate, which only the providers created after that start trust.
     test("OIDC: a new IdP user signs in past the callback into the provider's organization", async ({
         page,
     }) => {
@@ -532,7 +642,7 @@ test.describe("@auth-sso single sign-on", () => {
         await startSso(page, "oidc", oidcId);
         await expectSignedInAs(page, idpEmail("carol"));
         // OIDC JIT: the provider row's role through SignInRole (oidc/service.go:664), joined to the provider's organization
-        // (oidc/pgjit.go:57, :68); the OIDC provider is seeded in the owner's organization like the SAML ones.
+        // (oidc/pgjit.go:57, :68); the OIDC provider is in the owner's organization like the SAML ones.
         const carol = await sessionUser(page.request);
         recordJit("carol", carol);
         expect(carol?.org_id, "carol: the session organization").toBe(ownerOrgId);

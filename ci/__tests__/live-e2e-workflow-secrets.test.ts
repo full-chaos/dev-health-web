@@ -142,7 +142,7 @@ describe("live-e2e workflow keeps bearers and CA trust out of the wrong places",
 });
 
 describe("live-e2e workflow enables SSO only for the auth-sso tier", () => {
-    it("runs the ops enable-sso verb between auth and go-api startup, with no env of its own", () => {
+    it("runs the ops enable-sso verb between auth and go-api startup, with only the SAML ACS origin as env", () => {
         const name = "Enable OIDC and SAML on the throwaway stack (auth-sso)";
         const step = stepBlock(name);
         expect(step.match(/^\s+if: (.+)$/m)?.[1]).toBe("matrix.tier == 'auth-sso'");
@@ -150,7 +150,11 @@ describe("live-e2e workflow enables SSO only for the auth-sso tier", () => {
             /^\s+run: bash ci\/live_e2e_auth_stack\.sh enable-sso "\$\{RUNNER_TEMP\}\/live-e2e-auth"$/m,
         );
         expect(step).toMatch(/^\s+working-directory: dev-health-ops$/m);
-        expect(step).not.toMatch(/^\s+env:/m);
+        // The one env entry is the job-local browser origin auth-service builds the SAML ACS from (ops enable_sso APP_BASE_URL); no
+        // secret and no switch.
+        expect(step.match(/^\s+env:\n((?:\s{18}\S.*\n)+)/m)?.[1]).toBe(
+            "                  LIVE_E2E_WEB_ORIGIN: http://localhost:3002\n",
+        );
         expect(workflow.indexOf(name)).toBeGreaterThan(
             workflow.indexOf("- name: Start the auth-service stack"),
         );
