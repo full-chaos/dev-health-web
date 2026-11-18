@@ -96,8 +96,6 @@ export interface DeadlineOptions {
     op: string;
     /** Default `outer`. */
     layer?: Layer;
-    /** A value that arrives at or after the deadline is the deadline's answer, even if the timer has not run. */
-    strict?: boolean;
 }
 
 // Errors this module made, so a caller can tell a deadline from any other failure.
@@ -122,6 +120,35 @@ let innerDeadlines = 0;
  */
 export const WRITE_TIMED_OUT_MESSAGE = "Timed out; the change may have been applied.";
 
+// The deadline's answer: a TimeoutError this module marks, and its one "deadline exceeded" line.
+function deadlineExceeded(
+    options: DeadlineOptions,
+    layer: Layer,
+    deadlineMs: number,
+    started: number,
+    innerAtStart: number,
+): DOMException {
+    const error = new DOMException(
+        `server wait "${options.op}" exceeded ${deadlineMs} ms`,
+        "TimeoutError",
+    );
+    deadlineErrors.add(error);
+    if (options.kind === "write") writeDeadlineErrors.add(error);
+    if (layer === "inner") innerDeadlines += 1;
+    logger.warn(
+        {
+            op: options.op,
+            elapsed_ms: Date.now() - started,
+            deadline_ms: deadlineMs,
+            outcome: "deadline",
+            layer,
+            ...(layer === "outer" ? { inner_fired: innerDeadlines > innerAtStart } : {}),
+        },
+        "server fetch deadline exceeded",
+    );
+    return error;
+}
+
 /**
  * Race `promise` against the deadline of `kind`.
  * On the timer: reject with a `TimeoutError` and write the "deadline exceeded" line.
@@ -134,37 +161,12 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
     const started = Date.now();
 
     return new Promise<T>((resolve, reject) => {
-        const expire = () => {
-            const error = new DOMException(
-                `server wait "${options.op}" exceeded ${deadlineMs} ms`,
-                "TimeoutError",
-            );
-            deadlineErrors.add(error);
-            if (options.kind === "write") writeDeadlineErrors.add(error);
-            if (layer === "inner") innerDeadlines += 1;
-            logger.warn(
-                {
-                    op: options.op,
-                    elapsed_ms: Date.now() - started,
-                    deadline_ms: deadlineMs,
-                    outcome: "deadline",
-                    layer,
-                    ...(layer === "outer" ? { inner_fired: innerDeadlines > innerAtStart } : {}),
-                },
-                "server fetch deadline exceeded",
-            );
-            reject(error);
-        };
+        const expire = () =>
+            reject(deadlineExceeded(options, layer, deadlineMs, started, innerAtStart));
         const timer = setTimeout(expire, deadlineMs);
         Promise.resolve(promise).then(
             (value) => {
                 clearTimeout(timer);
-                // A value that arrives after the deadline, before the timer ran (a busy event loop),
-                // is the deadline's answer too, when the caller asks for the strict form.
-                if (options.strict && Date.now() - started >= deadlineMs) {
-                    expire();
-                    return;
-                }
                 resolve(value);
             },
             (error: unknown) => {
@@ -259,7 +261,9 @@ async function buffered(
     if (!(raw instanceof Response)) return raw;
     const { status, statusText, headers } = raw;
     if (NULL_BODY_STATUS.has(status) || !raw.body) {
-        return new Response(null, { status, statusText, headers });
+        const empty = new Response(null, { status, statusText, headers });
+        if (bodyless?.(status)) headTimes.set(empty, Date.now());
+        return empty;
     }
     const reader = raw.body.getReader();
     const cancel = () =>
@@ -329,14 +333,21 @@ export async function fetchWithDeadline(
         const work = fetch(input, init).then((raw) => buffered(raw, orphan, options.bodyless));
         work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
         try {
-            // A bodyless status resolves the moment its headers arrive, so a late head must not win
-            // the race against a timer the event loop has not run yet.
-            response = await withDeadline(work, {
-                kind: options.kind,
-                op,
-                layer: "inner",
-                strict: options.bodyless !== undefined,
-            });
+            response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+            // A bodyless answer resolves the moment its headers arrive, so a head that came at or after
+            // the deadline could win the race against a timer the event loop has not run yet. It is
+            // judged by the time its headers arrived; every other answer keeps the timer's verdict.
+            const head = headTimes.get(response);
+            const innerMs = limitMs(options.kind);
+            if (head !== undefined && head - started >= innerMs) {
+                throw deadlineExceeded(
+                    { kind: options.kind, op, layer: "inner" },
+                    "inner",
+                    innerMs,
+                    started,
+                    innerDeadlines,
+                );
+            }
         } catch (error) {
             if (isServerDeadlineError(error)) {
                 // Lost the race: close the body read (the header wait cannot be cancelled
