@@ -148,7 +148,13 @@ async function createProvider(
         default_role: "member",
     });
     if (protocol === "oidc") {
-        expect(provider.config?.client_secret, "the OIDC client secret is masked").toBe("********");
+        // auth-service seals the secret into encrypted_secrets and keeps it out of the stored config (ops
+        // internal/auth/authapi/provisioning_sso.go buildConfig; oidcConfigMembers has no client_secret), so the answer has none.
+        expect(provider.config?.client_id).toBe(clientId);
+        expect(
+            provider.config,
+            "the OIDC config answer holds a client_secret member",
+        ).not.toHaveProperty("client_secret");
     }
     const id = provider.id ?? "";
     const activated = await request.post(`${providersUrl}/${id}/activate`, {
