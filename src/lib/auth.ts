@@ -32,6 +32,7 @@ import {
     type ImpersonationPair,
 } from "@/lib/impersonationToken";
 import { deadlineFetch } from "@/lib/serverDeadline";
+import { markSessionChanged, runSessionRead } from "@/lib/sessionWriteScope";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import {
     passwordLogin,
@@ -340,6 +341,8 @@ const nextAuth = NextAuth({
             const now = Date.now();
             clearHandoffUnconfirmed(token);
             const refreshAdmin = async () => {
+                // Any refresh outcome changes the session state the cookie must carry.
+                markSessionChanged();
                 const env = getServerEnv();
                 return refreshSession(token.refresh_token as string, {
                     issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
@@ -380,6 +383,7 @@ const nextAuth = NextAuth({
                 refresh: refreshAdmin,
                 applyRotated,
             });
+            if (step.kind === "ended" || step.kind === "stopped") markSessionChanged();
             if (step.kind === "ended") return token;
             if (step.kind === "stopped") forgetImpersonationStatus(token.id);
 
@@ -954,15 +958,48 @@ export async function forgetOwnImpersonationStatus(): Promise<void> {
     forgetImpersonationStatus(session?.user?.id);
 }
 
+type SessionReadOptions = {
+    refusal?: "refresh_rate_limited";
+    /**
+     * The proxy's read (CHAOS-14039): the session is read from this request through next-auth's
+     * route form, which keeps the session answer's Set-Cookie. When this read changed the session
+     * (a refresh, an impersonation stop or end), `onSessionCookies` gets Auth.js's own Set-Cookie
+     * lines, unchanged; otherwise it is not called.
+     */
+    request?: Request;
+    onSessionCookies?: (setCookies: string[]) => void;
+};
+
+type RouteFormAuth = (ctx: {
+    req: { headers: Headers };
+    res: { headers: Headers };
+}) => Promise<Session | null>;
+
+async function readSession(options?: SessionReadOptions): Promise<Session | null> {
+    if (!options?.request) return getServerSession();
+    const sink = { headers: new Headers() };
+    try {
+        const read = await runSessionRead(() =>
+            (nextAuth.auth as unknown as RouteFormAuth)({
+                req: { headers: options.request!.headers },
+                res: sink,
+            }),
+        );
+        const setCookies = sink.headers.getSetCookie();
+        if (read.changed && setCookies.length > 0) options.onSessionCookies?.(setCookies);
+        return read.value;
+    } catch {
+        return null;
+    }
+}
+
 /**
  * The signed-in session, or null when it has no access token or carries an error. With `refusal`, a
  * session that carries exactly that error is returned as it is (no access token), so the proxy can
  * name it on the sign-in page; any other errored session is still null.
  */
-export async function auth(options?: {
-    refusal?: "refresh_rate_limited";
-}): Promise<Session | null> {
-    const session = await getServerSession();
+export async function auth(options?: SessionReadOptions): Promise<Session | null> {
+    const session = await readSession(options);
     // Only a session with no bearer at all: one that still holds a (delegated) access token stays null.
     if (
         options?.refusal !== undefined &&

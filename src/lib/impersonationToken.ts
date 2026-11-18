@@ -271,6 +271,15 @@ export async function resolveImpersonationStep(
     if (!delegatedExpired(token, now)) return { kind: "none" };
     let live = adminBearerLive(token, now);
     const expiresAt = token.expires_at as number | undefined;
+    // Inside a refresh back-off (a transient or rate-limited refresh dropped the administrator bearer
+    // and set the next try): no refresh now and no bearer served; the first read after the back-off
+    // refreshes and stops, or ends the session, as below (CHAOS-14039).
+    const inBackoff =
+        !live &&
+        (token.error === "refresh_unavailable" || token.error === "refresh_rate_limited") &&
+        expiresAt !== undefined &&
+        now <= expiresAt - ADMIN_REFRESH_LEAD_MS;
+    if (inBackoff) return { kind: "kept" };
     const near = live && expiresAt !== undefined && now > expiresAt - ADMIN_REFRESH_LEAD_MS;
     let refreshed: RefreshResult | undefined;
     if ((!live || near) && token.refresh_token) {

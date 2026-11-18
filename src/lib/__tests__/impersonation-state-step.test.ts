@@ -459,6 +459,31 @@ describe("S3 the state step runs before any other branch", () => {
     });
 });
 
+describe("S1 changed cell (CHAOS-14039): no live admin bearer inside a refresh back-off", () => {
+    it("is kept: no refresh, no stop, no bearer served; after the back-off the step refreshes and stops", async () => {
+        const backoffUntil = Date.now() + 5 * MIN + 15 * MIN;
+        const token = {
+            ...(await impersonating("expired", "valid")),
+            access_token: undefined,
+            error: "refresh_rate_limited",
+            expires_at: backoffUntil,
+        };
+        calls.length = 0;
+        const next = await later(token);
+        expect(refreshes()).toHaveLength(0);
+        expect(stops()).toHaveLength(0);
+        expect(next.imp_access_token).toBe(DELEGATED);
+        expect(next.refresh_token).toBe(ADMIN_REFRESH);
+        expect((await session(next)).access_token).toBeUndefined();
+
+        calls.length = 0;
+        const after = await later({ ...next, expires_at: Date.now() - 1_000 });
+        expect(refreshes()).toHaveLength(1);
+        expect(stops().map((c) => c.bearer)).toEqual([ADMIN_2]);
+        expect(after.imp_access_token).toBeUndefined();
+    });
+});
+
 describe("S4 case (c): no valid bearer", () => {
     it("drops imp_* and the admin pair, signs out, logs one event with the delegation id", async () => {
         const token = await impersonating("expired", "expired");
