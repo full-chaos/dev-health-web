@@ -2659,6 +2659,8 @@ export type ThroughputForecast = {
   /** How backlogSize was found: MEASURED, STALE, NO_ROWS or SUPPLIED (see ThroughputBacklogState). */
   backlogState: ThroughputBacklogState;
   computedAt: Scalars['String']['output'];
+  /** Why the backlog read is not a healthy measurement: the backlogState value (STALE or NO_ROWS) when the read is stale or found no work-item row; null when backlogState is MEASURED or SUPPLIED. */
+  degradedReason?: Maybe<Scalars['String']['output']>;
   estimateCoverage?: Maybe<ThroughputEstimateCoverage>;
   forecastId: Scalars['String']['output'];
   historyWeeks: Scalars['Int']['output'];
