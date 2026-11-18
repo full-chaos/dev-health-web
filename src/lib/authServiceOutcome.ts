@@ -10,11 +10,12 @@ export type CallResult =
 
 const RETRY_AFTER_MAX_SECONDS = 3600;
 
-// The delta-seconds form of Retry-After (RFC 9110 10.2.3), at most an hour; any other value is no value.
+// The delta-seconds form of Retry-After (RFC 9110 10.2.3), 0 included, at most an hour; only ASCII
+// space and tab around it are allowed. Any other value is no value.
 export function readRetryAfter(value: string | null | undefined): number | undefined {
-    if (value == null || !/^\d+$/.test(value.trim())) return undefined;
-    const seconds = Number(value.trim());
-    return seconds > 0 ? Math.min(seconds, RETRY_AFTER_MAX_SECONDS) : undefined;
+    const match = value == null ? null : /^[ \t]*([0-9]+)[ \t]*$/.exec(value);
+    if (match === null) return undefined;
+    return Math.min(Number(match[1]), RETRY_AFTER_MAX_SECONDS);
 }
 
 export interface SessionUser {

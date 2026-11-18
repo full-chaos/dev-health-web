@@ -576,7 +576,8 @@ const nextAuth = NextAuth({
                                       refreshed.retryAfterSeconds * 1000,
                                   ),
                               );
-                    token.expires_at = now + 5 * 60 * 1000 + delay;
+                    // From the answer, not the request start: a slow 429 must not shorten the wait.
+                    token.expires_at = Date.now() + 5 * 60 * 1000 + delay;
                     token.error = "refresh_rate_limited";
                     return token;
                 } else {
@@ -962,7 +963,14 @@ export async function auth(options?: {
     refusal?: "refresh_rate_limited";
 }): Promise<Session | null> {
     const session = await getServerSession();
-    if (options?.refusal !== undefined && session?.error === options.refusal) return session;
+    // Only a session with no bearer at all: one that still holds a (delegated) access token stays null.
+    if (
+        options?.refusal !== undefined &&
+        session?.error === options.refusal &&
+        !session.access_token
+    ) {
+        return session;
+    }
     if (!session?.access_token) return null;
     if (session.error) return null;
     return session;

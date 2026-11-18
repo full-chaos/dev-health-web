@@ -69,22 +69,25 @@ type Callbacks = {
 
 const callbacks = (): Callbacks => (nextAuthConfig.value as { callbacks: Callbacks }).callbacks;
 
-function refusedRefresh(headers: Record<string, string>): void {
+function refusedRefresh(headers: Record<string, string>, latencyMs = 0): void {
     vi.stubGlobal(
         "fetch",
-        vi.fn().mockResolvedValue({
-            ok: false,
-            status: 429,
-            headers: new Headers(headers),
-            json: async () => ({
-                detail: { message: "Rate limit exceeded. Please try again later." },
-            }),
-        } as unknown as Response),
+        vi.fn(async () => {
+            if (latencyMs > 0) vi.setSystemTime(Date.now() + latencyMs);
+            return {
+                ok: false,
+                status: 429,
+                headers: new Headers(headers),
+                json: async () => ({
+                    detail: { message: "Rate limit exceeded. Please try again later." },
+                }),
+            } as unknown as Response;
+        }),
     );
 }
 
-async function sessionAfterRefusedRefresh(headers: Record<string, string>) {
-    refusedRefresh(headers);
+async function sessionAfterRefusedRefresh(headers: Record<string, string>, latencyMs = 0) {
+    refusedRefresh(headers, latencyMs);
     const token = await callbacks().jwt({
         token: {
             id: "user-1",
@@ -124,6 +127,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     nextAuthSession.value = null;
@@ -166,5 +171,63 @@ describe("a refused refresh (429)", () => {
         expect(location.searchParams.get("callbackUrl")).toBe("/dashboard?x=1");
         const page = await signInPageAt(Object.fromEntries(location.searchParams));
         expect(page.html).toContain("Wait up to 15 minutes and reload the page, or sign in again.");
+    });
+
+    it("waits Retry-After from the answer, not from the request start", async () => {
+        vi.useFakeTimers({ toFake: ["Date"], now: 1_795_000_000_000 });
+        const { token } = await sessionAfterRefusedRefresh({ "Retry-After": "900" }, 2_000);
+        expect((token.expires_at as number) - 5 * 60 * 1000).toBe(
+            1_795_000_000_000 + 2_000 + 900_000,
+        );
+    });
+
+    it.each([
+        ["0", 5_000],
+        ["\t30", 30_000],
+        ["86400", 15 * 60 * 1000],
+    ])("Retry-After %j waits %i ms (floor 5 s, cap 15 min)", async (header, wait) => {
+        vi.useFakeTimers({ toFake: ["Date"], now: 1_795_000_000_000 });
+        const { token } = await sessionAfterRefusedRefresh({ "Retry-After": header });
+        expect((token.expires_at as number) - 5 * 60 * 1000 - 1_795_000_000_000).toBe(wait);
+    });
+
+    it("a malformed Retry-After gets the jittered back-off", async () => {
+        vi.useFakeTimers({ toFake: ["Date"], now: 1_795_000_000_000 });
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
+        const { token } = await sessionAfterRefusedRefresh({ "Retry-After": "\u00a0120" });
+        expect((token.expires_at as number) - 5 * 60 * 1000 - 1_795_000_000_000).toBe(32_500);
+    });
+
+    it("the site root redirects to sign-in with the code; a non-GET request keeps the plain redirect", async () => {
+        const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
+        nextAuthSession.value = session;
+        const root = await proxy(new NextRequest(new URL("/", "http://localhost:3000")));
+        expect(root.status).toBe(303);
+        expect(new URL(root.headers.get("Location")!).searchParams.get("error")).toBe(
+            "refresh_rate_limited",
+        );
+        const graphql = await proxy(
+            new NextRequest(new URL("/graphql", "http://localhost:3000"), { method: "POST" }),
+        );
+        expect(graphql.status).toBe(303);
+        const location = new URL(graphql.headers.get("Location")!);
+        expect(location.pathname + location.search).toBe("/auth/signin?callbackUrl=%2Fgraphql");
+    });
+
+    // An errored session that still holds a bearer (a live delegated one) is null to every auth() read, as on
+    // main: the proxy never lets it through.
+    it("a rate-limited session that still holds an access token is refused by the proxy", async () => {
+        nextAuthSession.value = {
+            user: { id: "user-1", org_id: "org-2", is_impersonating: true },
+            access_token: "live-delegated",
+            error: "refresh_rate_limited",
+            expires: "2099-01-01T00:00:00Z",
+        };
+        expect(await authModuleAuth({ refusal: "refresh_rate_limited" })).toBeNull();
+        const res = await proxy(new NextRequest(new URL("/dashboard", "http://localhost:3000")));
+        expect(res.status).toBe(303);
+        const location = new URL(res.headers.get("Location")!);
+        expect(location.pathname).toBe("/auth/signin");
+        expect(location.searchParams.get("error")).toBeNull();
     });
 });

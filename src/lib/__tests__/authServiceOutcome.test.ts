@@ -180,9 +180,12 @@ describe("classifyRefresh", () => {
     it("Retry-After is read in its delta-seconds form only, at most an hour", () => {
         expect(readRetryAfter("900")).toBe(900);
         expect(readRetryAfter(" 120 ")).toBe(120);
+        expect(readRetryAfter("\t120")).toBe(120);
+        expect(readRetryAfter("0")).toBe(0);
         expect(readRetryAfter("86400")).toBe(3600);
         for (const value of [
-            "0",
+            "\u00a0120",
+            "120\u00a0",
             "-5",
             "1.5",
             "Wed, 21 Oct 2026 07:28:00 GMT",
