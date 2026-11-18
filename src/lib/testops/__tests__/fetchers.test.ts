@@ -45,6 +45,7 @@ describe("fetchRiskMetrics", () => {
                 pipelineStability: null,
                 timeseries: [],
                 qualityDragBreakdown: [],
+                qualityDragPartial: true,
                 quadrantData: [],
                 confidenceSpark: [],
                 confidenceDelta: null,
@@ -75,6 +76,7 @@ describe("fetchRiskMetrics", () => {
         expect(result!.quality_drag_hours).toBeUndefined();
         expect(result!.pipeline_stability).toBeUndefined();
         expect(result!.quality_drag_breakdown).toEqual([]);
+        expect(result!.quality_drag_partial).toBe(true);
         expect(result!.quadrant_data).toEqual([]);
         expect(result!.timeseries).toEqual([]);
     });
