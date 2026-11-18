@@ -32,7 +32,11 @@ import {
     type ImpersonationPair,
 } from "@/lib/impersonationToken";
 import { deadlineFetch } from "@/lib/serverDeadline";
-import { markSessionChanged, runSessionRead } from "@/lib/sessionWriteScope";
+import {
+    markSessionChanged,
+    runSessionRead,
+    sessionChangedInThisRead,
+} from "@/lib/sessionWriteScope";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import {
     passwordLogin,
@@ -633,7 +637,7 @@ const nextAuth = NextAuth({
             // triggers always read again, so explicit start/stop is observed
             // immediately. The update payload itself is never trusted — only
             // the server response mutates the token.
-            if (token.is_superuser && token.access_token && !user) {
+            if (token.is_superuser && token.access_token && !user && !sessionChangedInThisRead()) {
                 const status = await readImpersonationStatus({
                     userId: token.id,
                     accessToken: token.access_token as string,
@@ -678,6 +682,7 @@ const nextAuth = NextAuth({
                 !user &&
                 token.access_token &&
                 !token.error &&
+                !sessionChangedInThisRead() &&
                 (!lastValidated || now - lastValidated >= VALIDATION_INTERVAL_MS)
             ) {
                 const before = { access: token.access_token, refresh: token.refresh_token };

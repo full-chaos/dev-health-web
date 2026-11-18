@@ -15,3 +15,12 @@ export function markSessionChanged(): void {
     const state = reads.getStore();
     if (state) state.changed = true;
 }
+
+/**
+ * Whether this read already changed the session. Once it has, the read does no further optional network
+ * step (the impersonation status read, the periodic validation): they run on the next read, so a slow one
+ * cannot push this read past the proxy deadline and lose the change. False outside a proxy read.
+ */
+export function sessionChangedInThisRead(): boolean {
+    return reads.getStore()?.changed ?? false;
+}
