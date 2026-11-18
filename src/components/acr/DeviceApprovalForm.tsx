@@ -2,7 +2,15 @@
 
 import { type SyntheticEvent, useId, useState } from "react";
 
+import { GrantedRepositoriesSection } from "@/components/acr/GrantedRepositoriesSection";
 import { Button } from "@/components/shared/Button";
+import {
+    type GrantedRepositories,
+    parseGrantedRepositories,
+    repositoryCountLabel,
+    SCOPE_CHANGED_CODE,
+    SCOPE_CHANGED_MESSAGE,
+} from "@/lib/acr/grantedRepositories";
 import { GRANT_LIMIT_EXCEEDED_CODE, GRANT_LIMIT_MESSAGE } from "@/lib/acr/grantLimit";
 import { scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -22,9 +30,13 @@ type DeviceApprovalFormProps = {
 
 type ApprovalResponse = {
     readonly status?: "approved";
+    readonly grantedRepositories?: unknown;
 };
 
-function stateCopy(state: ApprovalState): { readonly description: string; readonly title: string } {
+function stateCopy(
+    state: ApprovalState,
+    approved: GrantedRepositories | undefined,
+): { readonly description: string; readonly title: string } {
     switch (state) {
         case "denied":
             return {
@@ -44,13 +56,15 @@ function stateCopy(state: ApprovalState): { readonly description: string; readon
             };
         case "review":
             return {
-                description: "Review the organization-wide access requested for this device.",
+                description: "Review the access requested for this device.",
                 title: "Review device access",
             };
         case "success":
             return {
                 description:
-                    "All current and future repositories in your organization are approved. Return to your terminal to finish sign-in.",
+                    approved?.kind === "repositories"
+                        ? `Access to ${repositoryCountLabel(approved.repositories.length)} in your organization is approved. Return to your terminal to finish sign-in.`
+                        : "All current and future repositories in your organization are approved. Return to your terminal to finish sign-in.",
                 title: "Approval complete",
             };
     }
@@ -111,34 +125,56 @@ export function DeviceApprovalForm({
     const [state, setState] = useState<ApprovalState>(initialState);
     const [message, setMessage] = useState<string | null>(null);
     const [requestedScopes, setRequestedScopes] = useState<readonly string[]>([]);
+    const [granted, setGranted] = useState<GrantedRepositories | undefined>(undefined);
+    const [scopeFingerprint, setScopeFingerprint] = useState<string | undefined>(undefined);
+    const [approved, setApproved] = useState<GrantedRepositories | undefined>(undefined);
     const [submitting, setSubmitting] = useState(false);
     const descriptionId = useId();
-    const stateMessage = stateCopy(state);
+    const stateMessage = stateCopy(state, approved);
+
+    // One preview call; true when the review shows. The answer must state the granted repositories and their
+    // fingerprint (CHAOS-14134), or the page has nothing true to show and stays where it is.
+    async function loadPreview(): Promise<boolean> {
+        const response = await fetch("/api/acr/device", {
+            body: JSON.stringify({ action: "preview", user_code: code }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+        });
+        const result = await response.json();
+        const statement = parseGrantedRepositories(result?.grantedRepositories);
+        if (
+            response.ok &&
+            Array.isArray(result.repositoryHints) &&
+            statement !== undefined &&
+            typeof result.scopeFingerprint === "string"
+        ) {
+            setRequestedScopes(
+                Array.isArray(result.requestedScopes)
+                    ? result.requestedScopes.filter(
+                          (scope: unknown): scope is string => typeof scope === "string",
+                      )
+                    : [],
+            );
+            setGranted(statement);
+            setScopeFingerprint(result.scopeFingerprint);
+            setState("review");
+            return true;
+        }
+        if (response.ok) {
+            setMessage("We could not preview this request.");
+            return false;
+        }
+        setState(errorState(response));
+        setMessage(statusMessage(response, "preview", result));
+        return false;
+    }
 
     async function submitPreview(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setSubmitting(true);
         setMessage(null);
         try {
-            const response = await fetch("/api/acr/device", {
-                body: JSON.stringify({ action: "preview", user_code: code }),
-                headers: { "Content-Type": "application/json" },
-                method: "POST",
-            });
-            const result = await response.json();
-            if (response.ok && Array.isArray(result.repositoryHints)) {
-                setRequestedScopes(
-                    Array.isArray(result.requestedScopes)
-                        ? result.requestedScopes.filter(
-                              (scope: unknown): scope is string => typeof scope === "string",
-                          )
-                        : [],
-                );
-                setState("review");
-                return;
-            }
-            setState(errorState(response));
-            setMessage(statusMessage(response, "preview", result));
+            await loadPreview();
         } catch {
             setMessage("We could not reach the approval service. Please try again.");
         } finally {
@@ -155,6 +191,7 @@ export function DeviceApprovalForm({
                 body: JSON.stringify({
                     action: "approve",
                     repository_scopes: ["*"],
+                    scope_fingerprint: scopeFingerprint,
                     user_code: code,
                 }),
                 headers: { "Content-Type": "application/json" },
@@ -162,7 +199,13 @@ export function DeviceApprovalForm({
             });
             const result: ApprovalResponse = await response.json();
             if (response.ok && result.status === "approved") {
+                setApproved(parseGrantedRepositories(result.grantedRepositories));
                 setState("success");
+                return;
+            }
+            if (response.status === 409 && errorCode(result) === SCOPE_CHANGED_CODE) {
+                // The decided repositories changed since the preview: show the new set, ask again.
+                if (await loadPreview()) setMessage(SCOPE_CHANGED_MESSAGE);
                 return;
             }
             setState(errorState(response));
@@ -223,22 +266,13 @@ export function DeviceApprovalForm({
                         className="mt-6 space-y-6"
                         aria-describedby={descriptionId}
                     >
-                        <section
-                            aria-labelledby="organization-repositories-title"
-                            className="rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-4"
-                        >
-                            <h2
-                                id="organization-repositories-title"
-                                className="text-h3 font-medium"
-                            >
-                                All organization repositories
-                            </h2>
-                            <p className="mt-1 text-sm text-(--ink-muted)">
-                                This device can read context from all current and future
-                                repositories in your organization. Access never extends to another
-                                organization.
-                            </p>
-                        </section>
+                        {granted ? (
+                            <GrantedRepositoriesSection
+                                granted={granted}
+                                subject="device"
+                                titleId="organization-repositories-title"
+                            />
+                        ) : null}
                         {requestedScopes.length > 0 ? (
                             <section
                                 aria-labelledby="requested-access-title"

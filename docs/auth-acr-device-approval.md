@@ -175,6 +175,26 @@ an impersonation that starts between a preview and its approval refuses the appr
 With the switch on the order is: the Ops impersonation status read, the impersonation refusal, the PDP
 decision, the entitlement read, then the call to ACR. With the switch off the PDP decision is skipped.
 
+### What the pages state, and the previewed-set check
+
+The browser always asks for `["*"]`; the server decides the real set. So the pages learn the set from
+the server, never from the browser:
+
+- The preview answer of `POST /api/acr/device` and the consent page's review step carry
+  `grantedRepositories`: `{ "kind": "organization" }` when the authorization's scopes are `["*"]`,
+  else `{ "kind": "repositories", "repositories": [...] }` (the sorted keys). The device approve
+  answer carries it too, for the scopes that were sent to ACR. The value is built from the same
+  `credential:issue` authorization the call sends to ACR (`src/lib/acr/grantedRepositories.ts`,
+  `src/lib/acr/service.ts`). It is display only.
+- The pages show "All organization repositories" only for `organization`. A named reader sees the
+  count and, in a collapsed list, the keys.
+- Next to it the server sends `scopeFingerprint`: `organization`, or `sha256:` and the hex SHA-256 of
+  the sorted keys joined by a line feed. The page sends it back as `scope_fingerprint` on approve
+  (device and consent). The server decides the scopes again and compares the fingerprint of the new
+  set. A missing or different fingerprint is refused with 409 `scope_changed_review_again` before
+  ACR is called, and the page previews again and shows the new set. The server only compares; no
+  set from the browser is used.
+
 ## 6. The switch: `ACR_SCOPES_FROM_GRANTS`
 
 | Switch                              | What decides the approval                                                                                                           |

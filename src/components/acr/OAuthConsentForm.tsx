@@ -3,7 +3,14 @@
 import type { OAuthConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { useId, useState } from "react";
 
+import { GrantedRepositoriesSection } from "@/components/acr/GrantedRepositoriesSection";
 import { Button } from "@/components/shared/Button";
+import {
+    type GrantedRepositories,
+    parseGrantedRepositories,
+    SCOPE_CHANGED_CODE,
+    SCOPE_CHANGED_MESSAGE,
+} from "@/lib/acr/grantedRepositories";
 import { GRANT_LIMIT_EXCEEDED_CODE, GRANT_LIMIT_MESSAGE } from "@/lib/acr/grantLimit";
 import { isKnownScope, scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -47,18 +54,43 @@ type OAuthConsentPreviewData = {
 
 type OAuthConsentFormProps =
     | {
+          readonly grantedRepositories: GrantedRepositories;
           readonly handle: string;
           readonly initialState?: undefined;
           readonly preview: OAuthConsentPreviewData;
+          readonly scopeFingerprint: string;
       }
     | {
+          readonly grantedRepositories?: undefined;
           readonly handle?: undefined;
           readonly initialState: Exclude<
               ConsentState,
               "rateLimited" | "redirecting" | "retryableUnavailable" | "review"
           >;
           readonly preview?: undefined;
+          readonly scopeFingerprint?: undefined;
       };
+
+function parsePreview(value: unknown): OAuthConsentPreviewData | undefined {
+    if (typeof value !== "object" || value === null) return undefined;
+    const v = value as Record<string, unknown>;
+    const strings = ["clientKind", "clientName", "expiresAt", "redirectOrigin", "resource"];
+    if (!strings.every((key) => typeof v[key] === "string")) return undefined;
+    if (typeof v["clientSelfAsserted"] !== "boolean") return undefined;
+    const scopes = v["scopes"];
+    if (!Array.isArray(scopes) || !scopes.every((scope) => typeof scope === "string")) {
+        return undefined;
+    }
+    return {
+        clientKind: v["clientKind"] as string,
+        clientName: v["clientName"] as string,
+        clientSelfAsserted: v["clientSelfAsserted"] as boolean,
+        expiresAt: v["expiresAt"] as string,
+        redirectOrigin: v["redirectOrigin"] as string,
+        resource: v["resource"] as string,
+        scopes,
+    };
+}
 
 type DecisionResponse = Partial<Record<keyof OAuthConsentDecisionWire, unknown>>;
 
@@ -193,7 +225,39 @@ export function OAuthConsentForm(props: OAuthConsentFormProps) {
     const [submitting, setSubmitting] = useState(false);
     const descriptionId = useId();
     const copy = stateCopy(state);
-    const preview = props.preview;
+    const [preview, setPreview] = useState<OAuthConsentPreviewData | undefined>(props.preview);
+    const [granted, setGranted] = useState<GrantedRepositories | undefined>(
+        props.grantedRepositories,
+    );
+    const [scopeFingerprint, setScopeFingerprint] = useState<string | undefined>(
+        props.scopeFingerprint,
+    );
+
+    // The decided repositories changed since this page was made (CHAOS-14134): read the request again and show it.
+    async function reviewAgain(handle: string): Promise<void> {
+        const response = await fetch("/api/acr/authorize", {
+            body: JSON.stringify({ action: "preview", handle }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+        });
+        const result: unknown = response.ok ? await response.json() : undefined;
+        const nextPreview = parsePreview(result);
+        const nextGranted = parseGrantedRepositories(
+            (result as { grantedRepositories?: unknown } | undefined)?.grantedRepositories,
+        );
+        const nextFingerprint = (result as { scopeFingerprint?: unknown } | undefined)
+            ?.scopeFingerprint;
+        if (!nextPreview || !nextGranted || typeof nextFingerprint !== "string") {
+            setState(response.ok ? "error" : consentErrorState(response.status));
+            setMessage("We could not complete this request.");
+            return;
+        }
+        setPreview(nextPreview);
+        setGranted(nextGranted);
+        setScopeFingerprint(nextFingerprint);
+        setState("review");
+        setMessage(SCOPE_CHANGED_MESSAGE);
+    }
 
     async function decide(action: "approve" | "deny"): Promise<void> {
         if (!props.handle) return;
@@ -203,13 +267,25 @@ export function OAuthConsentForm(props: OAuthConsentFormProps) {
             const response = await fetch("/api/acr/authorize", {
                 body: JSON.stringify(
                     action === "approve"
-                        ? { action, handle: props.handle, repository_scopes: ["*"] }
+                        ? {
+                              action,
+                              handle: props.handle,
+                              repository_scopes: ["*"],
+                              scope_fingerprint: scopeFingerprint,
+                          }
                         : { action, handle: props.handle },
                 ),
                 headers: { "Content-Type": "application/json" },
                 method: "POST",
             });
             if (!response.ok) {
+                if (
+                    response.status === 409 &&
+                    (await readErrorCode(response)) === SCOPE_CHANGED_CODE
+                ) {
+                    await reviewAgain(props.handle);
+                    return;
+                }
                 const nextState = consentErrorState(response.status);
                 if (
                     nextState === "denied" &&
@@ -294,14 +370,9 @@ export function OAuthConsentForm(props: OAuthConsentFormProps) {
                                 ))}
                             </ul>
                         </section>
-                        <section className="rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-4">
-                            <h2 className="text-h3 font-medium">All organization repositories</h2>
-                            <p className="mt-1 text-sm text-(--ink-muted)">
-                                This application can read context from all current and future
-                                repositories in your organization. Access never extends to another
-                                organization.
-                            </p>
-                        </section>
+                        {granted ? (
+                            <GrantedRepositoriesSection granted={granted} subject="application" />
+                        ) : null}
                         <div className="flex gap-3">
                             <Button
                                 disabled={submitting}

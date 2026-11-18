@@ -55,6 +55,10 @@ describe("OAuthAuthorizePage", () => {
                 resource: "https://mcp.fullchaos.dev/mcp",
                 scopes: ["context:read", "evidence:read"],
             },
+            statement: {
+                grantedRepositories: { kind: "organization" },
+                scopeFingerprint: "organization",
+            },
         });
     });
 

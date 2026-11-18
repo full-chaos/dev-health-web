@@ -25,7 +25,11 @@ test("a code that is no longer valid between Preview and Approve shows a clear m
             await route.fulfill({
                 status: 200,
                 contentType: "application/json",
-                body: JSON.stringify({ repositoryHints: ["full-chaos/platform"] }),
+                body: JSON.stringify({
+                    grantedRepositories: { kind: "organization" },
+                    scopeFingerprint: "organization",
+                    repositoryHints: ["full-chaos/platform"],
+                }),
             });
             return;
         }

@@ -3,7 +3,7 @@
 // assertion. Consent refuses while the session impersonates, by that state (not by an org
 // mismatch). The first-party browser client completes its authorization with no click, server
 // to server, with the live org scope grant; third-party MCP clients keep the consent page.
-import { generateKeyPairSync, verify } from "node:crypto";
+import { createHash, generateKeyPairSync, verify } from "node:crypto";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -37,6 +37,13 @@ import {
     previewDeviceAuthorization,
     previewOAuthConsent,
 } from "../service";
+
+const fingerprintOf = (scopes: readonly string[]) =>
+    scopes.length === 1 && scopes[0] === "*"
+        ? "organization"
+        : `sha256:${createHash("sha256")
+              .update([...scopes].sort().join("\n"))
+              .digest("hex")}`;
 import OAuthAuthorizePage from "@/app/acr/authorize/page";
 import { POST as consentRoute } from "@/app/api/acr/authorize/route";
 
@@ -249,6 +256,7 @@ describe("credential:issue provenance", () => {
             action: "approve",
             handle: HANDLE,
             repositoryScopes: ["full-chaos/platform"],
+            scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
             signal: signal(),
         });
 
@@ -281,6 +289,7 @@ describe("credential:issue provenance", () => {
         await previewDeviceAuthorization({ signal: signal(), userCode: "ABCD2345" });
         await approveDeviceAuthorization({
             repositoryScopes: ["full-chaos/platform"],
+            scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
             signal: signal(),
             userCode: "ABCD2345",
         });
@@ -300,6 +309,7 @@ describe("credential:issue provenance", () => {
             action: "approve",
             handle: HANDLE,
             repositoryScopes: ["full-chaos/platform"],
+            scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
             signal: signal(),
         });
 
@@ -318,6 +328,7 @@ describe("credential:issue provenance", () => {
                     handle: HANDLE,
                     impersonating: false,
                     repository_scopes: ["full-chaos/platform"],
+                    scope_fingerprint: fingerprintOf(["full-chaos/platform"]),
                     session_id: FORGED_SID,
                     sid: FORGED_SID,
                 },
@@ -401,10 +412,12 @@ describe("provenance claims follow ACR_OAUTH_ISSUER", () => {
                 action: "approve",
                 handle: HANDLE,
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: signal(),
             });
             await approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: signal(),
                 userCode: "ABCD2345",
             });
@@ -440,6 +453,7 @@ describe("impersonation refusal by state", () => {
                     action: "approve",
                     handle: HANDLE,
                     repositoryScopes: ["full-chaos/platform"],
+                    scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                     signal: signal(),
                 }),
         ],
@@ -456,6 +470,7 @@ describe("impersonation refusal by state", () => {
             () =>
                 approveDeviceAuthorization({
                     repositoryScopes: ["full-chaos/platform"],
+                    scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                     signal: signal(),
                     userCode: "ABCD2345",
                 }),
@@ -493,7 +508,9 @@ describe("impersonation refusal by state", () => {
         },
     );
 
-    it("Given impersonation starts after the preview, when the route approves an MCP client, then the approval is refused and only the preview reached ACR", async () => {
+    // The approve decides its scopes first and compares them with the preview's (CHAOS-14134), so the impersonation
+    // seen on the second status read (the approve's own preview) refuses before any ACR call.
+    it("Given impersonation starts after the preview, when the route approves an MCP client, then the approval is refused and nothing reached ACR", async () => {
         const observed = installOps({ impersonatingFromRead: 2 });
         installAcr(observed);
 
@@ -502,10 +519,11 @@ describe("impersonation refusal by state", () => {
                 action: "approve",
                 handle: HANDLE,
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: signal(),
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
-        expect(observed.acrBodies).toEqual([{ action: "preview", handle: HANDLE }]);
+        expect(observed.acrBodies).toEqual([]);
         expect(observed.statusReads).toBe(2);
     });
 
@@ -557,6 +575,7 @@ describe("impersonation refusal by state", () => {
                 action: "approve",
                 handle: HANDLE,
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: signal(),
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable, retryable: true });
@@ -621,6 +640,7 @@ describe("first-party browser client", () => {
                 action: "approve",
                 handle: HANDLE,
                 repository_scopes: ["full-chaos/platform"],
+                scope_fingerprint: fingerprintOf(["full-chaos/platform"]),
             }),
         );
 
@@ -690,6 +710,7 @@ describe("third-party MCP client", () => {
                 action: "approve",
                 handle: HANDLE,
                 repository_scopes: ["full-chaos/platform"],
+                scope_fingerprint: fingerprintOf(["full-chaos/platform"]),
             }),
         );
 
