@@ -297,6 +297,7 @@ type Expect = {
 
 function expected(d: DelegatedState, a: AdminState, r: Refresh): Expect {
     const transient = r === 429 || r === 503 || r === "network";
+    const transientError = r === 429 ? "refresh_rate_limited" : "refresh_unavailable";
     if (d === "valid") {
         if (a === "valid" || r === "ok") {
             return { stop: null, imp: "kept", event: false, sessionBearer: DELEGATED };
@@ -307,7 +308,7 @@ function expected(d: DelegatedState, a: AdminState, r: Refresh): Expect {
                 imp: "kept",
                 event: false,
                 sessionBearer: DELEGATED,
-                error: "refresh_unavailable",
+                error: transientError,
             };
         }
         // invalid_grant: the session ends; a still-live admin bearer stops first.
@@ -335,7 +336,7 @@ function expected(d: DelegatedState, a: AdminState, r: Refresh): Expect {
             imp: "cleared",
             event: false,
             sessionBearer: undefined,
-            error: transient ? "refresh_unavailable" : "refresh_failed",
+            error: transient ? transientError : "refresh_failed",
         };
     }
     // Case (c): no live bearer.
