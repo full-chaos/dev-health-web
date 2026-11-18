@@ -237,20 +237,45 @@ describe("a refused refresh (429)", () => {
         expect(location.searchParams.get("error")).toBeNull();
     });
 
-    // Only a browser navigation gets the code: a background fetch (GET /api/...) or a client without fetch
-    // metadata keeps main's plain sign-in redirect.
+    // Only a browser navigation (Sec-Fetch-Mode: navigate, GET or HEAD) gets the code; every other request keeps
+    // main's plain sign-in redirect.
     it.each([
-        ["a background fetch", "/api/agent-context/repositories", { "sec-fetch-mode": "cors" }],
-        ["a request with no fetch metadata", "/dashboard", {}],
-    ])("%s keeps the plain sign-in redirect", async (_name, path, headers) => {
-        const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
-        nextAuthSession.value = session;
-        const res = await proxy(
-            new NextRequest(new URL(path, "http://localhost:3000"), { headers }),
-        );
-        expect(res.status).toBe(303);
-        const location = new URL(res.headers.get("Location")!);
-        expect(location.pathname).toBe("/auth/signin");
-        expect(location.searchParams.get("error")).toBeNull();
-    });
+        [
+            "a navigate GET",
+            "GET",
+            "/dashboard",
+            { "sec-fetch-mode": "navigate" },
+            "refresh_rate_limited",
+        ],
+        [
+            "a navigate HEAD",
+            "HEAD",
+            "/dashboard",
+            { "sec-fetch-mode": "navigate" },
+            "refresh_rate_limited",
+        ],
+        [
+            "a background fetch (cors GET)",
+            "GET",
+            "/api/agent-context/repositories",
+            { "sec-fetch-mode": "cors" },
+            null,
+        ],
+        ["a GET with no fetch metadata", "GET", "/dashboard", {}, null],
+        ["a navigate POST", "POST", "/dashboard", { "sec-fetch-mode": "navigate" }, null],
+        ["a POST with no fetch metadata", "POST", "/dashboard", {}, null],
+    ])(
+        "%s: the sign-in redirect code is as expected",
+        async (_name, method, path, headers, code) => {
+            const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
+            nextAuthSession.value = session;
+            const res = await proxy(
+                new NextRequest(new URL(path, "http://localhost:3000"), { method, headers }),
+            );
+            expect(res.status).toBe(303);
+            const location = new URL(res.headers.get("Location")!);
+            expect(location.pathname).toBe("/auth/signin");
+            expect(location.searchParams.get("error")).toBe(code);
+        },
+    );
 });
