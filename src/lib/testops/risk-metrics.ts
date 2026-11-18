@@ -21,6 +21,7 @@ const RiskMetricsSchema = z.object({
             hours: z.number(),
         }),
     ),
+    qualityDragPartial: z.boolean().nullish(),
     quadrantData: z.array(
         z.object({
             id: z.string(),
@@ -43,6 +44,7 @@ export type RiskMetricsResult = {
     pipeline_stability?: number;
     timeseries: { date: string; riskScore: number }[];
     quality_drag_breakdown: { category: string; hours: number }[];
+    quality_drag_partial?: boolean;
     quadrant_data: {
         id: string;
         name?: string;
@@ -68,6 +70,7 @@ export function mapRiskMetricsPayload(value: unknown): RiskMetricsResult | null 
         pipeline_stability: risk.pipelineStability ?? undefined,
         timeseries: risk.timeseries,
         quality_drag_breakdown: risk.qualityDragBreakdown,
+        quality_drag_partial: risk.qualityDragPartial ?? undefined,
         quadrant_data: risk.quadrantData.map((item) => ({
             id: item.id,
             name: item.name ?? undefined,
