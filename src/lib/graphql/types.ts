@@ -499,7 +499,12 @@ export interface ThroughputEstimateCoverage {
     estimatedCount: number;
     unestimatedCount: number;
     backlogSize: number;
+    /** Coverage grains read; 0 = no coverage row. Absent from a query-api that predates the field. */
+    grainCount?: number | null;
 }
+
+/** How backlogSize was found (ops ThroughputBacklogState). */
+export type ThroughputBacklogState = "MEASURED" | "STALE" | "NO_ROWS" | "SUPPLIED";
 
 export interface ThroughputForecast {
     forecastId: string;
@@ -507,6 +512,9 @@ export interface ThroughputForecast {
     teamId: string | null;
     workScopeId?: string | null;
     backlogSize: number;
+    backlogState?: ThroughputBacklogState | null;
+    /** The oldest newest work-item day the backlog is read from (YYYY-MM-DD); null for NO_ROWS and SUPPLIED. */
+    backlogAsOfDay?: string | null;
     historyWeeks: number;
     p50Weeks?: number | null;
     p75Weeks?: number | null;
