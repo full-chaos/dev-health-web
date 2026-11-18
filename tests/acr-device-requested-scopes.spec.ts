@@ -16,7 +16,12 @@ async function previewWith(
         await route.fulfill({
             status: 200,
             contentType: "application/json",
-            body: JSON.stringify(preview),
+            // The server's org-wide repository statement (CHAOS-14134).
+            body: JSON.stringify({
+                grantedRepositories: { kind: "organization" },
+                scopeFingerprint: "organization",
+                ...preview,
+            }),
         });
     });
     await page.goto(`/acr/device?user_code=${USER_CODE}`);

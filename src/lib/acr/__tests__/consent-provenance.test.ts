@@ -508,7 +508,9 @@ describe("impersonation refusal by state", () => {
         },
     );
 
-    it("Given impersonation starts after the preview, when the route approves an MCP client, then the approval is refused and only the preview reached ACR", async () => {
+    // The approve decides its scopes first and compares them with the preview's (CHAOS-14134), so the impersonation
+    // seen on the second status read (the approve's own preview) refuses before any ACR call.
+    it("Given impersonation starts after the preview, when the route approves an MCP client, then the approval is refused and nothing reached ACR", async () => {
         const observed = installOps({ impersonatingFromRead: 2 });
         installAcr(observed);
 
@@ -521,7 +523,7 @@ describe("impersonation refusal by state", () => {
                 signal: signal(),
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
-        expect(observed.acrBodies).toEqual([{ action: "preview", handle: HANDLE }]);
+        expect(observed.acrBodies).toEqual([]);
         expect(observed.statusReads).toBe(2);
     });
 

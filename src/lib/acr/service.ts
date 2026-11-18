@@ -743,12 +743,14 @@ export async function decideOAuthConsent(input: {
         });
     }
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes ?? ["*"]);
-    const { preview } = await previewConsent(handle, input.signal, consentIssuance);
     const { authorization, context } = await freshIssuance(
         requestedScopes,
         input.signal,
         "consent",
     );
+    // Compared before any ACR call, the preview included: a changed set never reaches ACR.
+    requireSameScopes(authorization.repositoryScopes, input.scopeFingerprint, context, "consent");
+    const { preview } = await previewConsent(handle, input.signal, consentIssuance);
     if (isFirstPartyBrowserClient(preview)) {
         logger.warn(
             {
@@ -760,7 +762,6 @@ export async function decideOAuthConsent(input: {
         );
         throw invalidOAuthConsentRequest();
     }
-    requireSameScopes(authorization.repositoryScopes, input.scopeFingerprint, context, "consent");
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
         authorization,
         body: JSON.stringify({

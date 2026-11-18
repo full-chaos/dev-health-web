@@ -171,7 +171,13 @@ test.describe("Context Fabric production entitlement boundary", () => {
             approvalBodies.push(body);
             await route.fulfill({
                 body: JSON.stringify(
-                    body.action === "approve" ? { status: "approved" } : { repositoryHints: [] },
+                    body.action === "approve"
+                        ? { status: "approved", grantedRepositories: { kind: "organization" } }
+                        : {
+                              grantedRepositories: { kind: "organization" },
+                              scopeFingerprint: "organization",
+                              repositoryHints: [],
+                          },
                 ),
                 contentType: "application/json",
                 status: 200,
@@ -204,6 +210,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             {
                 action: "approve",
                 repository_scopes: ["*"],
+                scope_fingerprint: "organization",
                 user_code: "EP23TUGG",
             },
         ]);

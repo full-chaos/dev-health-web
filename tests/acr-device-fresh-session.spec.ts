@@ -49,7 +49,11 @@ test("sign-in returns to /acr/device with the code prefilled, and approve comple
             await route.fulfill({
                 status: 200,
                 contentType: "application/json",
-                body: JSON.stringify({ repositoryHints: ["org/example-repo"] }),
+                body: JSON.stringify({
+                    grantedRepositories: { kind: "organization" },
+                    scopeFingerprint: "organization",
+                    repositoryHints: ["org/example-repo"],
+                }),
             });
             return;
         }

@@ -1159,6 +1159,7 @@ describe("the issued-repository statement and the previewed-set check", () => {
             seam.transport = pdp(named(NAMED_ALLOW));
             const preview = (await (await consentPreview()).json()) as Record<string, unknown>;
             seam.transport = pdp(named(after));
+            const acrCallsBefore = observed.acrScopes.length;
             const response = await consentRoute(
                 post("/api/acr/authorize", {
                     action: "approve",
@@ -1172,6 +1173,8 @@ describe("the issued-repository statement and the previewed-set check", () => {
                 "scope_changed_review_again",
             );
             expect(approveBodies()).toEqual([]);
+            // No ACR call at all on the refused approve, not even a preview.
+            expect(observed.acrScopes.length).toBe(acrCallsBefore);
         },
     );
 
@@ -1199,6 +1202,7 @@ describe("the issued-repository statement and the previewed-set check", () => {
                     ...(fingerprint === undefined ? {} : { scope_fingerprint: fingerprint }),
                 }),
             );
+            expect(observed.acrScopes).toEqual([]);
             for (const response of [device, consent]) {
                 expect(response.status).toBe(409);
                 expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
