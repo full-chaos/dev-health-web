@@ -6,6 +6,7 @@ import {
     classifyLogout,
     classifyRefresh,
     inFlightRefreshKeys,
+    readRetryAfter,
     serviceBearer,
     singleFlightRefresh,
 } from "@/lib/authServiceOutcome";
@@ -168,8 +169,36 @@ describe("classifyRefresh", () => {
         }
     });
 
-    it("refresh 429, 408, 425, 500, 502, 503, 504 and a thrown call are transient", () => {
-        for (const status of [408, 425, 429, 500, 502, 503, 504]) {
+    it("refresh 429 is rate_limited, with the answer's Retry-After seconds when it sent them", () => {
+        expect(classifyRefresh({ status: 429, body: null })).toEqual({ kind: "rate_limited" });
+        expect(classifyRefresh({ status: 429, body: null, retryAfterSeconds: 900 })).toEqual({
+            kind: "rate_limited",
+            retryAfterSeconds: 900,
+        });
+    });
+
+    it("Retry-After is read in its delta-seconds form only, at most an hour", () => {
+        expect(readRetryAfter("900")).toBe(900);
+        expect(readRetryAfter(" 120 ")).toBe(120);
+        expect(readRetryAfter("\t120")).toBe(120);
+        expect(readRetryAfter("0")).toBe(0);
+        expect(readRetryAfter("86400")).toBe(3600);
+        for (const value of [
+            "\u00a0120",
+            "120\u00a0",
+            "-5",
+            "1.5",
+            "Wed, 21 Oct 2026 07:28:00 GMT",
+            "",
+            null,
+            undefined,
+        ]) {
+            expect(readRetryAfter(value), String(value)).toBeUndefined();
+        }
+    });
+
+    it("refresh 408, 425, 500, 502, 503, 504 and a thrown call are transient", () => {
+        for (const status of [408, 425, 500, 502, 503, 504]) {
             expect(classifyRefresh({ status, body: null }), String(status)).toEqual({
                 kind: "transient",
                 status,

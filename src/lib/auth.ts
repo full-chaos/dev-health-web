@@ -547,8 +547,41 @@ const nextAuth = NextAuth({
                     setServiceToken(token, {});
                     token.error = "refresh_failed";
                     return token;
+                } else if (refreshed.kind === "rate_limited") {
+                    // The limiter refused before the exchange: the refresh token is unspent. The
+                    // next try waits for the answer's Retry-After, else the jittered backoff below.
+                    token.access_token = undefined;
+                    setServiceToken(token, {});
+                    const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
+                    token.refresh_failures = failures;
+                    logSessionBranch({
+                        operation: "refresh",
+                        branch: "refresh_rate_limited",
+                        status: 429,
+                        failures,
+                    });
+                    const delay =
+                        refreshed.retryAfterSeconds === undefined
+                            ? REFRESH_BACKOFF_FLOOR +
+                              Math.random() *
+                                  (Math.min(
+                                      REFRESH_BACKOFF_CAP,
+                                      REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
+                                  ) -
+                                      REFRESH_BACKOFF_FLOOR)
+                            : Math.min(
+                                  REFRESH_BACKOFF_CAP,
+                                  Math.max(
+                                      REFRESH_BACKOFF_FLOOR,
+                                      refreshed.retryAfterSeconds * 1000,
+                                  ),
+                              );
+                    // From the answer, not the request start: a slow 429 must not shorten the wait.
+                    token.expires_at = Date.now() + 5 * 60 * 1000 + delay;
+                    token.error = "refresh_rate_limited";
+                    return token;
                 } else {
-                    // 429/5xx/network, or a refresh that could not be judged now: drop the access
+                    // 5xx/network, or a refresh that could not be judged now: drop the access
                     // token (never expose an expired bearer), keep the refresh token so a later JWT
                     // callback retries after full jittered exponential backoff (self-healing). A
                     // credential the answer already rotated replaces the spent one.
@@ -921,8 +954,23 @@ export async function forgetOwnImpersonationStatus(): Promise<void> {
     forgetImpersonationStatus(session?.user?.id);
 }
 
-export async function auth(): Promise<Session | null> {
+/**
+ * The signed-in session, or null when it has no access token or carries an error. With `refusal`, a
+ * session that carries exactly that error is returned as it is (no access token), so the proxy can
+ * name it on the sign-in page; any other errored session is still null.
+ */
+export async function auth(options?: {
+    refusal?: "refresh_rate_limited";
+}): Promise<Session | null> {
     const session = await getServerSession();
+    // Only a session with no bearer at all: one that still holds a (delegated) access token stays null.
+    if (
+        options?.refusal !== undefined &&
+        session?.error === options.refusal &&
+        !session.access_token
+    ) {
+        return session;
+    }
     if (!session?.access_token) return null;
     if (session.error) return null;
     return session;

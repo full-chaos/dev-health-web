@@ -327,11 +327,45 @@ export async function proxy(request: NextRequest) {
 type ProxySession = Awaited<ReturnType<typeof auth>>;
 async function boundedProxyAuth(): Promise<{ session: ProxySession } | null> {
     try {
-        return { session: await withDeadline(auth(), { kind: "auth", op: "proxy auth" }) };
+        return {
+            session: await withDeadline(auth({ refusal: "refresh_rate_limited" }), {
+                kind: "auth",
+                op: "proxy auth",
+            }),
+        };
     } catch (error) {
         if (isServerDeadlineError(error)) return null;
         throw error;
     }
+}
+
+// A page navigation whose session refresh was rate limited: the session is kept (the refresh token is
+// unspent), and the sign-in page says why there is no access. A navigation is what the browser marks
+// Sec-Fetch-Mode: navigate; a fetch, or a client that sends no fetch metadata, keeps the plain redirect.
+function rateLimitedNavigation(request: NextRequest, session: ProxySession): boolean {
+    return (
+        (request.method === "GET" || request.method === "HEAD") &&
+        request.headers.get("sec-fetch-mode") === "navigate" &&
+        session?.error === "refresh_rate_limited" &&
+        !session.access_token
+    );
+}
+
+function signInRedirect(request: NextRequest, csp: string, rateLimited: boolean): NextResponse {
+    const signInUrl = new URL("/auth/signin", request.url);
+    if (rateLimited) signInUrl.searchParams.set("error", "refresh_rate_limited");
+    signInUrl.searchParams.set(
+        "callbackUrl",
+        sanitizeCallbackUrl(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+    );
+    const redirect = NextResponse.redirect(signInUrl, 303);
+    redirect.headers.set("Content-Security-Policy", csp);
+    // Next's own page-render pipeline auto-sets no-store on a dynamic
+    // page's 200 response; a middleware-issued redirect gets nothing
+    // by default. Belt-and-suspenders against any intermediary that
+    // caches redirects more aggressively than RFC 7231's default.
+    redirect.headers.set("Cache-Control", "private, no-store");
+    return redirect;
 }
 
 function authUnavailable(nonce: string, csp: string): NextResponse {
@@ -366,6 +400,7 @@ async function handleRequest(request: NextRequest) {
         const bounded = await boundedProxyAuth();
         if (!bounded) return authUnavailable(nonce, csp);
         const session = bounded.session;
+        if (rateLimitedNavigation(request, session)) return signInRedirect(request, csp, true);
         if (session && session.access_token) {
             // Superadmins without an org belong in the admin panel, not the dashboard
             const target =
@@ -404,19 +439,7 @@ async function handleRequest(request: NextRequest) {
             return ending;
         }
         if (!session || !session.access_token) {
-            const signInUrl = new URL("/auth/signin", request.url);
-            signInUrl.searchParams.set(
-                "callbackUrl",
-                sanitizeCallbackUrl(`${pathname}${request.nextUrl.search}`),
-            );
-            const redirect = NextResponse.redirect(signInUrl, 303);
-            redirect.headers.set("Content-Security-Policy", csp);
-            // Next's own page-render pipeline auto-sets no-store on a dynamic
-            // page's 200 response; a middleware-issued redirect gets nothing
-            // by default. Belt-and-suspenders against any intermediary that
-            // caches redirects more aggressively than RFC 7231's default.
-            redirect.headers.set("Cache-Control", "private, no-store");
-            return redirect;
+            return signInRedirect(request, csp, rateLimitedNavigation(request, session));
         }
         accessToken = session.access_token;
         sessionUserId = session.user?.id;

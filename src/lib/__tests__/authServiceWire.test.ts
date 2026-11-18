@@ -689,8 +689,21 @@ describe("refreshSession", () => {
         }
     });
 
-    it("refresh 429, 408, 425, 500, 502, 503, 504 and a thrown call are transient", async () => {
-        for (const status of [429, 408, 425, 500, 502, 503, 504]) {
+    it("refresh 429 is rate_limited and carries the answer's Retry-After", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                new Response("{}", { status: 429, headers: { "retry-after": "900" } }),
+        });
+        expect(await refreshSession("ref-r1", cfg())).toEqual({
+            kind: "rate_limited",
+            retryAfterSeconds: 900,
+        });
+        route({ [REFRESH_URL]: () => json(429, {}) });
+        expect(await refreshSession("ref-r2", cfg())).toEqual({ kind: "rate_limited" });
+    });
+
+    it("refresh 408, 425, 500, 502, 503, 504 and a thrown call are transient", async () => {
+        for (const status of [408, 425, 500, 502, 503, 504]) {
             route({ [REFRESH_URL]: () => json(status, {}) });
             expect(await refreshSession(`ref-t${status}`, cfg()), String(status)).toEqual({
                 kind: "transient",

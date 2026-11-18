@@ -453,7 +453,7 @@ describe("jwt callback — token lifecycle", () => {
 
         expect(first.access_token).toBeUndefined();
         expect(first.refresh_token).toBe("valid-refresh");
-        expect(first.error).toBe("refresh_unavailable");
+        expect(first.error).toBe("refresh_rate_limited");
         expect(first.refresh_failures).toBe(1);
         const nextRefreshAt = (first.expires_at as number) - 5 * 60 * 1000;
         expect(nextRefreshAt).toBeGreaterThan(Date.now());
@@ -462,7 +462,7 @@ describe("jwt callback — token lifecycle", () => {
         const second = await jwt({ token: first, user: null, account: null });
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(second.refresh_token).toBe("valid-refresh");
-        expect(second.error).toBe("refresh_unavailable");
+        expect(second.error).toBe("refresh_rate_limited");
     });
 
     it("(e2) refresh success resets refresh_failures after a transient backoff", async () => {
