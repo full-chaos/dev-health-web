@@ -32,6 +32,11 @@ import {
     type ImpersonationPair,
 } from "@/lib/impersonationToken";
 import { deadlineFetch } from "@/lib/serverDeadline";
+import {
+    markSessionChanged,
+    runSessionRead,
+    sessionChangedInThisRead,
+} from "@/lib/sessionWriteScope";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import {
     passwordLogin,
@@ -340,6 +345,8 @@ const nextAuth = NextAuth({
             const now = Date.now();
             clearHandoffUnconfirmed(token);
             const refreshAdmin = async () => {
+                // Any refresh outcome changes the session state the cookie must carry.
+                markSessionChanged();
                 const env = getServerEnv();
                 return refreshSession(token.refresh_token as string, {
                     issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
@@ -380,6 +387,7 @@ const nextAuth = NextAuth({
                 refresh: refreshAdmin,
                 applyRotated,
             });
+            if (step.kind === "ended" || step.kind === "stopped") markSessionChanged();
             if (step.kind === "ended") return token;
             if (step.kind === "stopped") forgetImpersonationStatus(token.id);
 
@@ -511,7 +519,6 @@ const nextAuth = NextAuth({
             }
 
             const expiresAt = token.expires_at as number | undefined;
-            const lastValidated = token.last_validated as number | undefined;
             const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000;
 
             // Step 1: Refresh expired tokens first (before validation).
@@ -630,7 +637,7 @@ const nextAuth = NextAuth({
             // triggers always read again, so explicit start/stop is observed
             // immediately. The update payload itself is never trusted — only
             // the server response mutates the token.
-            if (token.is_superuser && token.access_token && !user) {
+            if (token.is_superuser && token.access_token && !user && !sessionChangedInThisRead()) {
                 const status = await readImpersonationStatus({
                     userId: token.id,
                     accessToken: token.access_token as string,
@@ -642,11 +649,21 @@ const nextAuth = NextAuth({
                 // boolean `is_impersonating` changes nothing. A read with the administrator bearer
                 // that says false ends it; true refreshes the display data of a held token only.
                 if (status?.is_impersonating === false) {
+                    if (isImpersonatingToken(token) || token.impersonated_user_id !== undefined) {
+                        markSessionChanged();
+                    }
                     clearImpersonationToken(token);
                     token.impersonated_user_id = undefined;
                     token.impersonated_email = undefined;
                     token.impersonated_org_id = undefined;
                 } else if (status?.is_impersonating === true && isImpersonatingToken(token)) {
+                    if (
+                        token.impersonated_user_id !== status.impersonated_user_id ||
+                        token.impersonated_org_id !== status.impersonated_org_id ||
+                        token.impersonated_email !== undefined
+                    ) {
+                        markSessionChanged();
+                    }
                     token.impersonated_user_id = status.impersonated_user_id;
                     token.impersonated_email = undefined;
                     if (status.impersonated_email) {
@@ -659,13 +676,24 @@ const nextAuth = NextAuth({
             // Step 2: Periodic backend validation — confirm user still exists in DB.
             // Only runs when token is NOT expired (fresh or just-refreshed).
             // Runs every VALIDATION_INTERVAL_MS, skips on initial login.
+            // Read after the refresh: a token rotated in this read was validated by the rotation.
+            const lastValidated = token.last_validated as number | undefined;
             if (
                 !user &&
                 token.access_token &&
                 !token.error &&
+                !sessionChangedInThisRead() &&
                 (!lastValidated || now - lastValidated >= VALIDATION_INTERVAL_MS)
             ) {
+                const before = { access: token.access_token, refresh: token.refresh_token };
                 await applyBackendValidationMemo(token, now);
+                // A validation that ends the session must reach the cookie.
+                if (
+                    token.access_token !== before.access ||
+                    token.refresh_token !== before.refresh
+                ) {
+                    markSessionChanged();
+                }
             }
 
             return token;
@@ -955,15 +983,48 @@ export async function forgetOwnImpersonationStatus(): Promise<void> {
     forgetImpersonationStatus(session?.user?.id);
 }
 
+type SessionReadOptions = {
+    refusal?: "refresh_rate_limited";
+    /**
+     * The proxy's read (CHAOS-14039): the session is read from this request through next-auth's
+     * route form, which keeps the session answer's Set-Cookie. When this read changed the session
+     * (a refresh, an impersonation stop or end), `onSessionCookies` gets Auth.js's own Set-Cookie
+     * lines, unchanged; otherwise it is not called.
+     */
+    request?: Request;
+    onSessionCookies?: (setCookies: string[]) => void;
+};
+
+type RouteFormAuth = (ctx: {
+    req: { headers: Headers };
+    res: { headers: Headers };
+}) => Promise<Session | null>;
+
+async function readSession(options?: SessionReadOptions): Promise<Session | null> {
+    if (!options?.request) return getServerSession();
+    const sink = { headers: new Headers() };
+    try {
+        const read = await runSessionRead(() =>
+            (nextAuth.auth as unknown as RouteFormAuth)({
+                req: { headers: options.request!.headers },
+                res: sink,
+            }),
+        );
+        const setCookies = sink.headers.getSetCookie();
+        if (read.changed && setCookies.length > 0) options.onSessionCookies?.(setCookies);
+        return read.value;
+    } catch {
+        return null;
+    }
+}
+
 /**
  * The signed-in session, or null when it has no access token or carries an error. With `refusal`, a
  * session that carries exactly that error is returned as it is (no access token), so the proxy can
  * name it on the sign-in page; any other errored session is still null.
  */
-export async function auth(options?: {
-    refusal?: "refresh_rate_limited";
-}): Promise<Session | null> {
-    const session = await getServerSession();
+export async function auth(options?: SessionReadOptions): Promise<Session | null> {
+    const session = await readSession(options);
     // Only a session with no bearer at all: one that still holds a (delegated) access token stays null.
     if (
         options?.refusal !== undefined &&

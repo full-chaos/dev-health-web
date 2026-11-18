@@ -296,7 +296,10 @@ export async function proxy(request: NextRequest) {
     const { method } = request;
     const { pathname } = request.nextUrl;
 
-    const response = await handleRequest(request);
+    const sessionWrite: SessionWrite = {};
+    const response = await handleRequest(request, sessionWrite);
+    // A refresh the proxy's session read did is persisted on every answer (CHAOS-14039).
+    for (const line of sessionWrite.setCookies ?? []) response.headers.append("set-cookie", line);
 
     // The OAuth consent handle lives in this URL — never let it leak via a
     // Referer header on an outbound navigation (belt-and-suspenders with the
@@ -325,13 +328,37 @@ export async function proxy(request: NextRequest) {
  * `Retry-After: 2` and a short plain body, for a document, an RSC / prefetch and an action request alike.
  */
 type ProxySession = Awaited<ReturnType<typeof auth>>;
-async function boundedProxyAuth(): Promise<{ session: ProxySession } | null> {
+
+/**
+ * What the proxy's session read changed (CHAOS-14039): Auth.js's Set-Cookie lines for the browser,
+ * and the request `cookie` header the downstream render reads (the session-token chunks replaced),
+ * so it does not refresh the same token again. Empty when the read changed nothing.
+ */
+type SessionWrite = { setCookies?: string[]; cookieHeader?: string };
+
+async function boundedProxyAuth(
+    request: NextRequest,
+    sessionWrite: SessionWrite,
+): Promise<{ session: ProxySession } | null> {
     try {
         return {
-            session: await withDeadline(auth({ refusal: "refresh_rate_limited" }), {
-                kind: "auth",
-                op: "proxy auth",
-            }),
+            session: await withDeadline(
+                auth({
+                    refusal: "refresh_rate_limited",
+                    request,
+                    onSessionCookies: (setCookies) => {
+                        sessionWrite.setCookies = setCookies;
+                        sessionWrite.cookieHeader = withSessionCookies(
+                            request.headers.get("cookie"),
+                            setCookies,
+                        );
+                    },
+                }),
+                {
+                    kind: "auth",
+                    op: "proxy auth",
+                },
+            ),
         };
     } catch (error) {
         if (isServerDeadlineError(error)) return null;
@@ -368,6 +395,38 @@ function signInRedirect(request: NextRequest, csp: string, rateLimited: boolean)
     return redirect;
 }
 
+const SESSION_COOKIE = /^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/;
+
+/**
+ * The request cookie header with every session-token cookie (and chunk) replaced by the ones the
+ * Set-Cookie lines keep; a line that expires its cookie (Max-Age=0, or an empty value) only removes
+ * it. Every other cookie is kept as it was, in its order.
+ */
+export function withSessionCookies(cookieHeader: string | null, setCookies: string[]): string {
+    const pairs = (cookieHeader ?? "")
+        .split(";")
+        .map((pair) => pair.trim())
+        .filter((pair) => pair !== "");
+    const written: string[] = [];
+    let touched = false;
+    for (const line of setCookies) {
+        const [pair, ...attributes] = line.split(";");
+        const eq = pair.indexOf("=");
+        if (eq <= 0) continue;
+        const name = pair.slice(0, eq).trim();
+        const value = pair.slice(eq + 1).trim();
+        if (!SESSION_COOKIE.test(name)) continue;
+        touched = true;
+        const expired = attributes.some((a) => /^\s*max-age\s*=\s*0\s*$/i.test(a));
+        if (!expired && value !== "") written.push(`${name}=${value}`);
+    }
+    if (!touched) return pairs.join("; ");
+    return [
+        ...pairs.filter((pair) => !SESSION_COOKIE.test(pair.split("=", 1)[0])),
+        ...written,
+    ].join("; ");
+}
+
 function authUnavailable(nonce: string, csp: string): NextResponse {
     const response = new NextResponse("Service temporarily unavailable. Try again.", {
         status: 503,
@@ -382,7 +441,7 @@ function authUnavailable(nonce: string, csp: string): NextResponse {
     return response;
 }
 
-async function handleRequest(request: NextRequest) {
+async function handleRequest(request: NextRequest, sessionWrite: SessionWrite) {
     const { pathname } = request.nextUrl;
 
     // Generate a per-request nonce and attach it so the layout can read it.
@@ -397,7 +456,7 @@ async function handleRequest(request: NextRequest) {
     }
 
     if (pathname === "/") {
-        const bounded = await boundedProxyAuth();
+        const bounded = await boundedProxyAuth(request, sessionWrite);
         if (!bounded) return authUnavailable(nonce, csp);
         const session = bounded.session;
         if (rateLimitedNavigation(request, session)) return signInRedirect(request, csp, true);
@@ -412,6 +471,8 @@ async function handleRequest(request: NextRequest) {
         }
         const rootHeaders = new Headers(request.headers);
         rootHeaders.set("x-nonce", nonce);
+        if (sessionWrite.cookieHeader !== undefined)
+            rootHeaders.set("cookie", sessionWrite.cookieHeader);
         const response = NextResponse.next({ request: { headers: rootHeaders } });
         response.headers.set("x-nonce", nonce);
         response.headers.set("Content-Security-Policy", csp);
@@ -424,7 +485,7 @@ async function handleRequest(request: NextRequest) {
     let isSuperuser = false;
 
     if (!isPublicPath(pathname)) {
-        const bounded = await boundedProxyAuth();
+        const bounded = await boundedProxyAuth(request, sessionWrite);
         if (!bounded) return authUnavailable(nonce, csp);
         const session = bounded.session;
         // An impersonation whose stop is not yet recorded serves no bearer: say so instead of
@@ -469,15 +530,14 @@ async function handleRequest(request: NextRequest) {
     const shouldProxy = shouldProxyToOps(pathname);
 
     if (!shouldProxy) {
-        const response = NextResponse.next({
-            request: {
-                headers: new Headers({
-                    ...Object.fromEntries(request.headers),
-                    "x-nonce": nonce,
-                    "x-dev-health-path": pathname + request.nextUrl.search,
-                }),
-            },
+        const nextHeaders = new Headers({
+            ...Object.fromEntries(request.headers),
+            "x-nonce": nonce,
+            "x-dev-health-path": pathname + request.nextUrl.search,
         });
+        if (sessionWrite.cookieHeader !== undefined)
+            nextHeaders.set("cookie", sessionWrite.cookieHeader);
+        const response = NextResponse.next({ request: { headers: nextHeaders } });
         response.headers.set("x-nonce", nonce);
         response.headers.set("Content-Security-Policy", csp);
         return response;
@@ -488,6 +548,8 @@ async function handleRequest(request: NextRequest) {
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-nonce", nonce);
+    if (sessionWrite.cookieHeader !== undefined)
+        requestHeaders.set("cookie", sessionWrite.cookieHeader);
     if (accessToken) {
         requestHeaders.set("Authorization", `Bearer ${accessToken}`);
         if (orgId) {
