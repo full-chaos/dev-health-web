@@ -73,6 +73,8 @@ function answer429(body: ReadableStream<Uint8Array> | null, headMs = 0) {
         "fetch",
         vi.fn(async (input: RequestInfo | URL) => {
             calls.push(String(input));
+            // The clock moves after the request started (a later tick), as a slow head would.
+            await Promise.resolve();
             if (headMs > 0) vi.setSystemTime(Date.now() + headMs);
             return new Response(body, { status: 429, headers: { "Retry-After": "900" } });
         }),
@@ -98,6 +100,7 @@ afterEach(() => {
 
 describe("a refused refresh is decided from its head", () => {
     it("R1: a late body does not move the cooldown: Retry-After counts from the headers", async () => {
+        overrideDeadlinesForTests({ auth: 10_000, outerMargin: 100, slow: 60_000 });
         const body = new ReadableStream<Uint8Array>(
             {
                 pull(controller) {
@@ -200,6 +203,34 @@ describe("a refused refresh is decided from its head", () => {
         );
         expect(lines).toHaveLength(1);
         expect(lines[0][0]).toMatchObject({ outcome: "deadline", layer: "inner" });
+    });
+});
+
+describe("round-1 review cases", () => {
+    it("P1: a 429 head that arrives after the deadline, before the timer runs, is today's timeout", async () => {
+        // The head is delivered with the clock 15 ms past the 200 ms deadline, in the same tick:
+        // the deadline timer has not run yet.
+        answer429(null, 215);
+        const out = await jwt()({ token: dueToken(), account: null });
+        expect(out.error).toBe("refresh_unavailable");
+        expect(out.refresh_token).toBe("refresh-credential");
+        const lines = deadlineLines().filter(
+            ([f]) => (f as { op: string }).op === "POST /api/v1/auth/refresh",
+        );
+        expect(lines).toHaveLength(1);
+        expect(lines[0][0]).toMatchObject({ outcome: "deadline", layer: "inner" });
+    });
+
+    it("P2: a slow synchronous stream teardown does not move the cooldown", async () => {
+        const body = new ReadableStream<Uint8Array>({
+            cancel() {
+                vi.setSystemTime(Date.now() + 50);
+            },
+        });
+        answer429(body);
+        const out = await jwt()({ token: dueToken(), account: null });
+        expect(out.error).toBe("refresh_rate_limited");
+        expect((out.expires_at as number) - FIVE_MIN).toBe(T0 + 900_000);
     });
 });
 

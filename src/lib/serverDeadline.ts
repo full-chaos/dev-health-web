@@ -96,6 +96,8 @@ export interface DeadlineOptions {
     op: string;
     /** Default `outer`. */
     layer?: Layer;
+    /** A value that arrives at or after the deadline is the deadline's answer, even if the timer has not run. */
+    strict?: boolean;
 }
 
 // Errors this module made, so a caller can tell a deadline from any other failure.
@@ -132,7 +134,7 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
     const started = Date.now();
 
     return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => {
+        const expire = () => {
             const error = new DOMException(
                 `server wait "${options.op}" exceeded ${deadlineMs} ms`,
                 "TimeoutError",
@@ -152,10 +154,17 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
                 "server fetch deadline exceeded",
             );
             reject(error);
-        }, deadlineMs);
+        };
+        const timer = setTimeout(expire, deadlineMs);
         Promise.resolve(promise).then(
             (value) => {
                 clearTimeout(timer);
+                // A value that arrives after the deadline, before the timer ran (a busy event loop),
+                // is the deadline's answer too, when the caller asks for the strict form.
+                if (options.strict && Date.now() - started >= deadlineMs) {
+                    expire();
+                    return;
+                }
                 resolve(value);
             },
             (error: unknown) => {
@@ -228,6 +237,14 @@ function statusClass(status: number): string {
 
 const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
 
+// When the headers of a bodyless answer arrived, by the Response fetchWithDeadline returned.
+const headTimes = new WeakMap<Response, number>();
+
+/** When the headers of a `bodyless` answer arrived (ms since epoch); undefined for any other Response. */
+export function headReceivedAt(response: Response): number | undefined {
+    return headTimes.get(response);
+}
+
 /** A read that may lose the race: it is cancelled so its socket does not stay open. */
 interface Orphan {
     lost: boolean;
@@ -256,9 +273,12 @@ async function buffered(
             );
     if (bodyless?.(status)) {
         // The caller decides from the status and headers alone: the body is cancelled, never read, so a
-        // late or broken body cannot hold the answer or change it. The cancel is not awaited.
+        // late or broken body cannot hold the answer or change it. The time is taken before the cancel,
+        // which may run the stream's teardown synchronously. The cancel is not awaited.
+        const head = new Response(null, { status, statusText, headers });
+        headTimes.set(head, Date.now());
         void cancel();
-        return new Response(null, { status, statusText, headers });
+        return head;
     }
     if (orphan.lost) {
         // The headers came after the deadline: nobody waits for this body.
@@ -309,7 +329,14 @@ export async function fetchWithDeadline(
         const work = fetch(input, init).then((raw) => buffered(raw, orphan, options.bodyless));
         work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
         try {
-            response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+            // A bodyless status resolves the moment its headers arrive, so a late head must not win
+            // the race against a timer the event loop has not run yet.
+            response = await withDeadline(work, {
+                kind: options.kind,
+                op,
+                layer: "inner",
+                strict: options.bodyless !== undefined,
+            });
         } catch (error) {
             if (isServerDeadlineError(error)) {
                 // Lost the race: close the body read (the header wait cannot be cancelled

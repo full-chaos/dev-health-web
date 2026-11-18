@@ -22,7 +22,7 @@ import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { parseIpEntry } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
-import { deadlineFetch } from "@/lib/serverDeadline";
+import { deadlineFetch, headReceivedAt } from "@/lib/serverDeadline";
 
 // The credentials login and the logout, spoken to auth-service on the go-api compat wire
 // (CHAOS-10876). Outcomes are the closed tables of authServiceOutcome; this module adds the call,
@@ -68,8 +68,7 @@ async function send(
 ): Promise<Sent> {
     try {
         const res = await deadlineFetch("auth", undefined, bodyless)(url, init);
-        // A bodyless status returns when its headers arrive, so this is the time of the answer.
-        const receivedAt = Date.now();
+        const receivedAt = headReceivedAt(res) ?? Date.now();
         let body: unknown;
         try {
             body = await res.json();
