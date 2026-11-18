@@ -69,7 +69,7 @@ describe("useWorkItemTeamAttributions (CHAOS-7069)", () => {
         expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ pause: true }));
     });
 
-    it("indexes returned rows by workItemId — no client-side primary selection", () => {
+    it("indexes the primary row by workItemId", () => {
         const rows: WorkItemTeamAttribution[] = [
             {
                 workItemId: "linear:CHAOS-1",
@@ -92,6 +92,52 @@ describe("useWorkItemTeamAttributions (CHAOS-7069)", () => {
         );
 
         expect(result.current.byWorkItemId.get("linear:CHAOS-1")).toEqual(rows[0]);
+    });
+
+    it("keeps the is_primary row when provenance rows follow it (CHAOS-14069)", () => {
+        const base = {
+            workItemId: "linear:CHAOS-1",
+            provider: "linear",
+            confidence: "HIGH",
+        } as const;
+        const primary: WorkItemTeamAttribution = {
+            ...base,
+            teamId: "team-9",
+            teamName: "Platform",
+            source: "NATIVE_TEAM",
+            isPrimary: true,
+            evidence: "native team field",
+        };
+        const provenance: WorkItemTeamAttribution = {
+            ...base,
+            teamId: "team-3",
+            teamName: "Growth",
+            source: "ASSIGNEE_MEMBERSHIP",
+            isPrimary: false,
+            evidence: "membership",
+        };
+        const onlyProvenance: WorkItemTeamAttribution = {
+            ...provenance,
+            workItemId: "linear:CHAOS-2",
+        };
+        mockUseQuery.mockReturnValueOnce([
+            {
+                data: { workItemTeamAttributions: [primary, provenance, onlyProvenance] },
+                fetching: false,
+                error: undefined,
+            },
+            vi.fn(),
+        ]);
+
+        const { result } = renderHook(() =>
+            useWorkItemTeamAttributions({
+                filters: baseFilters,
+                workItemIds: ["linear:CHAOS-1", "linear:CHAOS-2"],
+            }),
+        );
+
+        expect(result.current.byWorkItemId.get("linear:CHAOS-1")).toEqual(primary);
+        expect(result.current.byWorkItemId.has("linear:CHAOS-2")).toBe(false);
     });
 });
 

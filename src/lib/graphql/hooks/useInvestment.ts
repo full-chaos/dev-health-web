@@ -518,12 +518,15 @@ export function useWorkItemTeamAttributions(
     });
 
     const byWorkItemId = useMemo(() => {
-        // One row per item (the backend already picked the owning team), so this
-        // is a direct index — no client-side primary selection.
+        // The reader returns every row of an item's latest snapshot: the
+        // backend-designated primary (`isPrimary`) plus provenance rows. Index
+        // only the primary; provenance is evidence, never the item's team.
         const map = new Map<string, WorkItemTeamAttribution>();
         const rows = result.data?.workItemTeamAttributions ?? [];
         for (const row of rows) {
-            map.set(row.workItemId, row);
+            if (row.isPrimary && !map.has(row.workItemId)) {
+                map.set(row.workItemId, row);
+            }
         }
         return map;
     }, [result.data]);
