@@ -2632,17 +2632,30 @@ export type ThresholdDirection =
   | 'ABOVE'
   | 'BELOW';
 
+/** How a throughputForecast backlogSize was found. MEASURED: the newest work-item day of every key (provider, work scope, team) of the scope is on or after the window start (the forecast day minus historyWeeks weeks). STALE: the newest day of at least one key is before the window start; backlogSize still holds the sum of the newest days, and backlogAsOfDay names the oldest of them. NO_ROWS: the scope has no work-item measurement, so backlogSize 0 is not a measured zero. SUPPLIED: the request gave backlogSize, and no backlog was read. */
+export type ThroughputBacklogState =
+  | 'MEASURED'
+  | 'NO_ROWS'
+  | 'STALE'
+  | 'SUPPLIED';
+
 export type ThroughputEstimateCoverage = {
   __typename?: 'ThroughputEstimateCoverage';
   backlogSize: Scalars['Int']['output'];
   estimatedCount: Scalars['Int']['output'];
+  /** The number of coverage grains (provider, work scope, team) the counts are read from. 0: the scope has no coverage row, and the zero counts and ratio 0 are not a measurement. */
+  grainCount: Scalars['Int']['output'];
   ratio?: Maybe<Scalars['Float']['output']>;
   unestimatedCount: Scalars['Int']['output'];
 };
 
 export type ThroughputForecast = {
   __typename?: 'ThroughputForecast';
+  /** The oldest of the newest work-item days that backlogSize is read from. Null when backlogState is NO_ROWS or SUPPLIED. */
+  backlogAsOfDay?: Maybe<Scalars['Date']['output']>;
   backlogSize: Scalars['Int']['output'];
+  /** How backlogSize was found: MEASURED, STALE, NO_ROWS or SUPPLIED (see ThroughputBacklogState). */
+  backlogState: ThroughputBacklogState;
   computedAt: Scalars['String']['output'];
   estimateCoverage?: Maybe<ThroughputEstimateCoverage>;
   forecastId: Scalars['String']['output'];
