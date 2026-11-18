@@ -606,6 +606,38 @@ export const SAMPLE_COVERAGE_NOT_ENABLED: SyncCoverageSummary = {
     ],
 };
 
+/** Healthy coverage where some windows were closed with a reason (CHAOS-13992). */
+export const SAMPLE_COVERAGE_CLOSED_WITH_REASON: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_HEALTHY,
+    datasets: SAMPLE_COVERAGE_HEALTHY.datasets.map((dataset, index) =>
+        index === 0
+            ? {
+                  ...dataset,
+                  closed_with_reason_ranges: [
+                      {
+                          since: "2026-06-05T00:00:00.000Z",
+                          before: "2026-06-08T00:00:00.000Z",
+                          source_ids: [SOURCE_PLATFORM],
+                          reasons: ["artifact_expired"],
+                      },
+                      {
+                          since: "2026-06-12T00:00:00.000Z",
+                          before: "2026-06-14T00:00:00.000Z",
+                          source_ids: [SOURCE_PLATFORM],
+                          reasons: ["malformed"],
+                      },
+                      {
+                          since: "2026-06-18T00:00:00.000Z",
+                          before: "2026-06-20T00:00:00.000Z",
+                          source_ids: [SOURCE_PLATFORM],
+                          reasons: ["unsafe_doctype", "artifact_expired"],
+                      },
+                  ],
+              }
+            : dataset,
+    ),
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
@@ -618,6 +650,7 @@ export const SYNC_COVERAGE_SAMPLES = {
     concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
     refreshing: SAMPLE_COVERAGE_REFRESHING,
     not_enabled: SAMPLE_COVERAGE_NOT_ENABLED,
+    closed_with_reason: SAMPLE_COVERAGE_CLOSED_WITH_REASON,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;
