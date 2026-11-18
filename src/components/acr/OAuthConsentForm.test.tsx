@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OAuthConsentForm } from "./OAuthConsentForm";
 
 const HANDLE = "A".repeat(43);
+// The server's statement of an org-wide reader's consent (CHAOS-14134).
+const ORG_STATEMENT = {
+    grantedRepositories: { kind: "organization" },
+    scopeFingerprint: "organization",
+} as const;
+
 const PREVIEW = {
     clientKind: "dynamic",
     clientName: "Claude Code",
@@ -70,7 +76,7 @@ describe("OAuthConsentForm", () => {
                 ),
             ),
         );
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
 
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
@@ -91,7 +97,7 @@ describe("OAuthConsentForm", () => {
     });
 
     it("Given a preview, when rendered, then shows the client, redirect origin and requested access", () => {
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
 
         expect(screen.getByRole("heading", { name: "Authorize application" })).toBeInTheDocument();
         expect(screen.getByText("Claude Code")).toBeVisible();
@@ -110,7 +116,7 @@ describe("OAuthConsentForm", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
         await screen.findByRole("heading", { name: "Returning to the application" });
@@ -121,6 +127,7 @@ describe("OAuthConsentForm", () => {
                     action: "approve",
                     handle: HANDLE,
                     repository_scopes: ["*"],
+                    scope_fingerprint: "organization",
                 }),
                 method: "POST",
             }),
@@ -141,7 +148,7 @@ describe("OAuthConsentForm", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Deny" }));
 
         await screen.findByRole("heading", { name: "Returning to the application" });
@@ -165,7 +172,7 @@ describe("OAuthConsentForm", () => {
             );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
         await screen.findByRole("heading", { name: "Something went wrong" });
@@ -178,7 +185,7 @@ describe("OAuthConsentForm", () => {
             .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 410 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
         await screen.findByRole("heading", { name: "Link expired" });
@@ -196,7 +203,7 @@ describe("OAuthConsentForm", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
         await screen.findByRole("heading", { name: "Too many attempts" });
@@ -231,7 +238,7 @@ describe("OAuthConsentForm", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
         await screen.findByRole("heading", { name: "Too many attempts" });
@@ -250,7 +257,7 @@ describe("OAuthConsentForm", () => {
             );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
+        render(<OAuthConsentForm {...ORG_STATEMENT} handle={HANDLE} preview={PREVIEW} />);
         fireEvent.click(screen.getByRole("button", { name: "Deny" }));
 
         await screen.findByRole("heading", { name: "Temporarily unavailable" });
@@ -265,6 +272,7 @@ describe("OAuthConsentForm", () => {
     it("Given each known scope, when reviewing, then shows its label and not the raw id", () => {
         render(
             <OAuthConsentForm
+                {...ORG_STATEMENT}
                 handle={HANDLE}
                 preview={{ ...PREVIEW, scopes: ["context:read", "evidence:read", "data:read"] }}
             />,
@@ -277,7 +285,11 @@ describe("OAuthConsentForm", () => {
 
     it("Given an unknown scope, when reviewing, then shows the generic line plus the id", () => {
         render(
-            <OAuthConsentForm handle={HANDLE} preview={{ ...PREVIEW, scopes: ["future:write"] }} />,
+            <OAuthConsentForm
+                {...ORG_STATEMENT}
+                handle={HANDLE}
+                preview={{ ...PREVIEW, scopes: ["future:write"] }}
+            />,
         );
         expect(screen.getByText(/Other access not described here/)).toBeVisible();
         expect(screen.getByText("future:write")).toBeVisible();

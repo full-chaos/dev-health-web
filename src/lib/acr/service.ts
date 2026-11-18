@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -14,6 +16,7 @@ import {
 } from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { acrScopesFromGrantsEnabled } from "./grantScopes";
+import type { GrantedRepositories } from "./grantedRepositories";
 import {
     compareScopeBytes,
     type OpsAuthorization,
@@ -325,55 +328,118 @@ function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
     return scopes;
 }
 
+/** The approval pages' statement of the issued scopes (CHAOS-14134), from the authorization sent to ACR only. */
+function grantedRepositoriesOf(scopes: readonly string[]): GrantedRepositories {
+    if (scopes.length === 1 && scopes[0] === "*") return { kind: "organization" };
+    return { kind: "repositories", repositories: [...scopes].sort(compareScopeBytes) };
+}
+
+/** The fingerprint of an issued scope set; format in ./grantedRepositories. */
+function scopeFingerprintOf(scopes: readonly string[]): string {
+    if (scopes.length === 1 && scopes[0] === "*") return "organization";
+    const sorted = [...scopes].sort(compareScopeBytes);
+    return `sha256:${createHash("sha256").update(sorted.join("\n")).digest("hex")}`;
+}
+
+export type ApprovalScopeStatement = {
+    readonly grantedRepositories: GrantedRepositories;
+    readonly scopeFingerprint: string;
+};
+
+function scopeStatementOf(scopes: readonly string[]): ApprovalScopeStatement {
+    return {
+        grantedRepositories: grantedRepositoriesOf(scopes),
+        scopeFingerprint: scopeFingerprintOf(scopes),
+    };
+}
+
+/**
+ * Approve only the set the page showed: the scopes are decided again here, and a fingerprint that differs from the
+ * one the preview gave (or none) refuses before ACR is called. The server compares only; no client set is used.
+ */
+function requireSameScopes(
+    scopes: readonly string[],
+    previewed: string | undefined,
+    context: IssuanceContext,
+    route: "consent" | "device",
+): void {
+    if (previewed !== undefined && previewed === scopeFingerprintOf(scopes)) return;
+    logger.info(
+        {
+            module: route === "device" ? "acr-device" : "acr-consent",
+            orgId: context.session.orgId,
+            userId: context.session.subject,
+            fingerprintSent: previewed !== undefined,
+            scopeCount: scopes.length,
+        },
+        "acr approval refused: the decided scopes differ from the previewed ones",
+    );
+    throw new AcrRuntimeError(
+        acrRuntimeErrorCodes.scopeChanged,
+        "The repositories of this approval changed since the preview.",
+        { status: 409 },
+    );
+}
+
 export async function approveDeviceAuthorization(input: {
     readonly repositoryScopes: readonly string[];
+    readonly scopeFingerprint: string | undefined;
     readonly signal: AbortSignal;
     readonly userCode: string;
-}): Promise<{ readonly status: "approved" }> {
+}): Promise<{ readonly status: "approved"; readonly grantedRepositories: GrantedRepositories }> {
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes);
-    const { authorization } = await freshIssuance(requestedScopes, input.signal, "device");
+    const { authorization, context } = await freshIssuance(requestedScopes, input.signal, "device");
+    requireSameScopes(authorization.repositoryScopes, input.scopeFingerprint, context, "device");
     const body = JSON.stringify({
         repository_scopes: authorization.repositoryScopes,
         schema_version: "device_approval_request.v1",
         user_code: input.userCode,
     });
-    return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApproval({
+    const approval = await new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApproval({
         authorization,
         body,
         signal: input.signal,
     });
+    return {
+        ...approval,
+        grantedRepositories: grantedRepositoriesOf(authorization.repositoryScopes),
+    };
 }
 
 export async function previewDeviceAuthorization(input: {
     readonly signal: AbortSignal;
     readonly userCode: string;
-}): Promise<{
-    readonly organizationIdHint?: string;
-    readonly repositoryHints: readonly string[];
-}> {
+}): Promise<
+    {
+        readonly organizationIdHint?: string;
+        readonly repositoryHints: readonly string[];
+    } & ApprovalScopeStatement
+> {
     const { authorization } = await freshIssuance(["*"], input.signal, "device");
     const body = JSON.stringify({
         schema_version: "device_approval_preview_request.v1",
         user_code: input.userCode,
     });
-    return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApprovalPreview({
+    const preview = await new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApprovalPreview({
         authorization,
         body,
         signal: input.signal,
     });
+    return { ...preview, ...scopeStatementOf(authorization.repositoryScopes) };
 }
 
 async function previewConsent(
     handle: string,
     signal: AbortSignal,
     issuance: Issuance,
-): Promise<OAuthConsentPreview> {
+): Promise<{ readonly preview: OAuthConsentPreview; readonly statement: ApprovalScopeStatement }> {
     const { authorization } = await issuance(["*"], signal);
-    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
+    const preview = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
         authorization,
         body: JSON.stringify({ action: "preview", handle }),
         signal,
     });
+    return { preview, statement: scopeStatementOf(authorization.repositoryScopes) };
 }
 
 /**
@@ -394,13 +460,22 @@ function isFirstPartyBrowserClient(preview: OAuthConsentPreview): boolean {
 export async function previewOAuthConsent(input: {
     readonly handle: string;
     readonly signal: AbortSignal;
-}): Promise<OAuthConsentPreview> {
-    return previewConsent(canonicalHandle(input.handle), input.signal, consentIssuance);
+}): Promise<OAuthConsentPreview & ApprovalScopeStatement> {
+    const { preview, statement } = await previewConsent(
+        canonicalHandle(input.handle),
+        input.signal,
+        consentIssuance,
+    );
+    return { ...preview, ...statement };
 }
 
 export type OAuthConsentOpening =
     | { readonly kind: "approved"; readonly redirectUrl: string }
-    | { readonly kind: "review"; readonly preview: OAuthConsentPreview };
+    | {
+          readonly kind: "review";
+          readonly preview: OAuthConsentPreview;
+          readonly statement: ApprovalScopeStatement;
+      };
 
 /**
  * The consent page's server step. A third-party (MCP) client gets the preview to review and choose
@@ -425,8 +500,8 @@ async function openConsent(
     previewIssuance: Issuance,
 ): Promise<OAuthConsentOpening> {
     const handle = canonicalHandle(input.handle);
-    const preview = await previewConsent(handle, input.signal, previewIssuance);
-    if (!isFirstPartyBrowserClient(preview)) return { kind: "review", preview };
+    const { preview, statement } = await previewConsent(handle, input.signal, previewIssuance);
+    if (!isFirstPartyBrowserClient(preview)) return { kind: "review", preview, statement };
     const { authorization, context } = await legacyIssuance(["*"], input.signal);
     if (context.provenance.sessionId === undefined) {
         logger.warn(
@@ -653,6 +728,7 @@ export async function decideOAuthConsent(input: {
     readonly action: "approve" | "deny";
     readonly handle: string;
     readonly repositoryScopes?: readonly string[];
+    readonly scopeFingerprint?: string;
     readonly signal: AbortSignal;
 }): Promise<{ readonly redirectUrl: string }> {
     const handle = canonicalHandle(input.handle);
@@ -667,7 +743,7 @@ export async function decideOAuthConsent(input: {
         });
     }
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes ?? ["*"]);
-    const preview = await previewConsent(handle, input.signal, consentIssuance);
+    const { preview } = await previewConsent(handle, input.signal, consentIssuance);
     const { authorization, context } = await freshIssuance(
         requestedScopes,
         input.signal,
@@ -684,6 +760,7 @@ export async function decideOAuthConsent(input: {
         );
         throw invalidOAuthConsentRequest();
     }
+    requireSameScopes(authorization.repositoryScopes, input.scopeFingerprint, context, "consent");
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
         authorization,
         body: JSON.stringify({

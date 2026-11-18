@@ -11,6 +11,13 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 import { auth } from "@/lib/auth";
 import { approveDeviceAuthorization, previewDeviceAuthorization } from "../service";
 
+const fingerprintOf = (scopes: readonly string[]) =>
+    scopes.length === 1 && scopes[0] === "*"
+        ? "organization"
+        : `sha256:${createHash("sha256")
+              .update([...scopes].sort().join("\n"))
+              .digest("hex")}`;
+
 // Every credential:issue call reads the impersonation state from Ops first (CHAOS-12095).
 const server = setupServer(
     http.get("http://ops.example.test/api/v1/admin/impersonate/status", () =>
@@ -128,7 +135,11 @@ describe("approveDeviceAuthorization", () => {
                 signal: new AbortController().signal,
                 userCode: "ALU23456",
             }),
-        ).resolves.toEqual({ repositoryHints: [] });
+        ).resolves.toEqual({
+            repositoryHints: [],
+            grantedRepositories: { kind: "organization" },
+            scopeFingerprint: "organization",
+        });
     });
 
     it("Given an explicit selected repository, when approving, then sends only the bounded grant with a body-bound credential assertion", async () => {
@@ -168,10 +179,14 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
-        ).resolves.toEqual({ status: "approved" });
+        ).resolves.toEqual({
+            status: "approved",
+            grantedRepositories: { kind: "repositories", repositories: ["full-chaos/platform"] },
+        });
         expect(ops.repositoryCatalogRequests).toBe(0);
     });
 
@@ -240,14 +255,17 @@ describe("approveDeviceAuthorization", () => {
         ).resolves.toEqual({
             organizationIdHint: "org_fullchaos",
             repositoryHints: ["full-chaos/platform"],
+            grantedRepositories: { kind: "organization" },
+            scopeFingerprint: "organization",
         });
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["*"],
+                scopeFingerprint: fingerprintOf(["*"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
-        ).resolves.toEqual({ status: "approved" });
+        ).resolves.toEqual({ status: "approved", grantedRepositories: { kind: "organization" } });
         expect(assertions).toHaveLength(2);
         expect(assertions[0]).not.toBe(assertions[1]);
         expect(ops.repositoryCatalogRequests).toBe(0);
@@ -276,6 +294,7 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["*"],
+                scopeFingerprint: fingerprintOf(["*"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
@@ -297,7 +316,11 @@ describe("approveDeviceAuthorization", () => {
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
-        ).resolves.toEqual({ repositoryHints: [] });
+        ).resolves.toEqual({
+            repositoryHints: [],
+            grantedRepositories: { kind: "organization" },
+            scopeFingerprint: "organization",
+        });
     });
 
     it("Given a preview with requested scopes, when ACR returns them, then passes them through in order", async () => {
@@ -319,6 +342,8 @@ describe("approveDeviceAuthorization", () => {
         ).resolves.toEqual({
             repositoryHints: [],
             requestedScopes: ["context:read", "data:read"],
+            grantedRepositories: { kind: "organization" },
+            scopeFingerprint: "organization",
         });
     });
 
@@ -451,6 +476,7 @@ describe("approveDeviceAuthorization", () => {
             await expect(
                 approveDeviceAuthorization({
                     repositoryScopes,
+                    scopeFingerprint: undefined,
                     signal: new AbortController().signal,
                     userCode: "ABCD2345",
                 }),
@@ -485,6 +511,7 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["*"],
+                scopeFingerprint: fingerprintOf(["*"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
@@ -513,6 +540,7 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
@@ -536,6 +564,7 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
+                scopeFingerprint: fingerprintOf(["full-chaos/platform"]),
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),

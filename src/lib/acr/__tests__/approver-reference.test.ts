@@ -28,6 +28,13 @@ import {
 } from "../config";
 import { approveDeviceAuthorization, previewDeviceAuthorization } from "../service";
 
+const fingerprintOf = (scopes: readonly string[]) =>
+    scopes.length === 1 && scopes[0] === "*"
+        ? "organization"
+        : `sha256:${createHash("sha256")
+              .update([...scopes].sort().join("\n"))
+              .digest("hex")}`;
+
 const SID = "ses_fQw-UpG0T3qKYw5bnC1PEA";
 const USER = "5e5510aa-6a1e-4c4e-9d3b-2b7f0c1a9e01";
 const ORG = "3f9a1c77-2e4b-4d10-b5c8-6a7e9d0b1c23";
@@ -222,6 +229,7 @@ afterEach(() => {
 const approve = () =>
     approveDeviceAuthorization({
         repositoryScopes: ["*"],
+        scopeFingerprint: fingerprintOf(["*"]),
         signal: new AbortController().signal,
         userCode: "ABCD2345",
     });
@@ -230,7 +238,10 @@ describe("the approval calls", () => {
     it("W2/W5 the approval sends a reference over the exact assertion it sends, with the token's sid", async () => {
         authenticate(opsAccessToken(SID));
         const seen = captureAcr();
-        await expect(approve()).resolves.toEqual({ status: "approved" });
+        await expect(approve()).resolves.toEqual({
+            status: "approved",
+            grantedRepositories: { kind: "organization" },
+        });
         expect(seen).toHaveLength(1);
         const { assertion, reference } = seen[0] as Seen;
         expect(assertion).not.toBeNull();

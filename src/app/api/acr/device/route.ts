@@ -65,6 +65,11 @@ function asScopeList(value: unknown): readonly string[] | undefined {
     return value;
 }
 
+// The preview's `scopeFingerprint` echoed by the page (CHAOS-14134); the server only compares it.
+function asFingerprint(value: unknown): string | undefined {
+    return typeof value === "string" && value.length <= 80 ? value : undefined;
+}
+
 function asUserCode(value: unknown): string | undefined {
     return typeof value === "string" ? value : undefined;
 }
@@ -129,6 +134,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
         const approval = await approveDeviceAuthorization({
             repositoryScopes,
+            scopeFingerprint: asFingerprint(body?.["scope_fingerprint"]),
             signal: request.signal,
             userCode,
         });

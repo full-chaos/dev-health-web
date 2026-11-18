@@ -5,6 +5,12 @@ import { DeviceApprovalForm } from "./DeviceApprovalForm";
 
 afterEach(() => vi.unstubAllGlobals());
 
+// The server's statement of an org-wide preview (CHAOS-14134).
+const ORG_STATEMENT = {
+    grantedRepositories: { kind: "organization" },
+    scopeFingerprint: "organization",
+} as const;
+
 describe("DeviceApprovalForm", () => {
     // pm D6973: a refusal over the decision point's 256-key allowlist bound names the cap (grant_limit_exceeded).
     it.each(["preview", "approve"] as const)(
@@ -23,7 +29,9 @@ describe("DeviceApprovalForm", () => {
             const fetchMock = vi.fn();
             if (step === "approve") {
                 fetchMock.mockResolvedValueOnce(
-                    new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
+                    new Response(JSON.stringify({ ...ORG_STATEMENT, repositoryHints: [] }), {
+                        status: 200,
+                    }),
                 );
             }
             fetchMock.mockResolvedValueOnce(refusal);
@@ -63,9 +71,12 @@ describe("DeviceApprovalForm", () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(
-                new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
-                    status: 200,
-                }),
+                new Response(
+                    JSON.stringify({ ...ORG_STATEMENT, repositoryHints: ["full-chaos/platform"] }),
+                    {
+                        status: 200,
+                    },
+                ),
             )
             .mockResolvedValueOnce(
                 new Response(JSON.stringify({ status: "approved" }), { status: 200 }),
@@ -104,6 +115,7 @@ describe("DeviceApprovalForm", () => {
                 body: JSON.stringify({
                     action: "approve",
                     repository_scopes: ["*"],
+                    scope_fingerprint: "organization",
                     user_code: "EP23TUGG",
                 }),
                 method: "POST",
@@ -116,7 +128,10 @@ describe("DeviceApprovalForm", () => {
             .fn()
             .mockResolvedValueOnce(
                 new Response(
-                    JSON.stringify({ repositoryHints: ["full-chaos/cataloged-repository"] }),
+                    JSON.stringify({
+                        ...ORG_STATEMENT,
+                        repositoryHints: ["full-chaos/cataloged-repository"],
+                    }),
                     { status: 200 },
                 ),
             )
@@ -144,6 +159,7 @@ describe("DeviceApprovalForm", () => {
                 body: JSON.stringify({
                     action: "approve",
                     repository_scopes: ["*"],
+                    scope_fingerprint: "organization",
                     user_code: "EP23TUGG",
                 }),
                 method: "POST",
@@ -165,9 +181,12 @@ describe("DeviceApprovalForm", () => {
 
     it("Given a valid initialUserCode, when the typed fallback overwrites it and the form is submitted, then previews using the EDITED code, not the prefill", async () => {
         const fetchMock = vi.fn().mockResolvedValueOnce(
-            new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
-                status: 200,
-            }),
+            new Response(
+                JSON.stringify({ ...ORG_STATEMENT, repositoryHints: ["full-chaos/platform"] }),
+                {
+                    status: 200,
+                },
+            ),
         );
         vi.stubGlobal("fetch", fetchMock);
 
@@ -251,9 +270,12 @@ describe("DeviceApprovalForm", () => {
                 }),
             )
             .mockResolvedValueOnce(
-                new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
-                    status: 200,
-                }),
+                new Response(
+                    JSON.stringify({ ...ORG_STATEMENT, repositoryHints: ["full-chaos/platform"] }),
+                    {
+                        status: 200,
+                    },
+                ),
             );
         vi.stubGlobal("fetch", fetchMock);
 
@@ -283,9 +305,12 @@ describe("DeviceApprovalForm", () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(
-                new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
-                    status: 200,
-                }),
+                new Response(
+                    JSON.stringify({ ...ORG_STATEMENT, repositoryHints: ["full-chaos/platform"] }),
+                    {
+                        status: 200,
+                    },
+                ),
             )
             .mockResolvedValueOnce(
                 new Response(JSON.stringify({ error: { code: "invalid_request", message: "" } }), {
@@ -313,6 +338,7 @@ describe("DeviceApprovalForm", () => {
             vi.fn().mockResolvedValueOnce(
                 new Response(
                     JSON.stringify({
+                        ...ORG_STATEMENT,
                         repositoryHints: [],
                         requestedScopes: ["context:read", "data:read"],
                     }),
@@ -340,11 +366,11 @@ describe("DeviceApprovalForm", () => {
     it("Given no requested scopes in the preview, when reviewing, then shows no scope list", async () => {
         vi.stubGlobal(
             "fetch",
-            vi
-                .fn()
-                .mockResolvedValueOnce(
-                    new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
-                ),
+            vi.fn().mockResolvedValueOnce(
+                new Response(JSON.stringify({ ...ORG_STATEMENT, repositoryHints: [] }), {
+                    status: 200,
+                }),
+            ),
         );
 
         render(<DeviceApprovalForm />);

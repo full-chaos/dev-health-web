@@ -311,22 +311,31 @@ function post(path: string, body: unknown): Request {
         method: "POST",
     });
 }
-const deviceApprove = (scopes: readonly string[]) =>
+// The fingerprint the page echoes from its preview (CHAOS-14134): of the set the server will issue on this approve.
+const fingerprintOf = (scopes: readonly string[]) =>
+    scopes.length === 1 && scopes[0] === "*"
+        ? "organization"
+        : `sha256:${createHash("sha256")
+              .update([...scopes].sort().join("\n"))
+              .digest("hex")}`;
+const deviceApprove = (scopes: readonly string[], issued: readonly string[] = scopes) =>
     deviceRoute(
         post("/api/acr/device", {
             action: "approve",
             repository_scopes: scopes,
+            scope_fingerprint: fingerprintOf(issued),
             user_code: "ABCD2345",
         }),
     );
 const devicePreview = () =>
     deviceRoute(post("/api/acr/device", { action: "preview", user_code: "ABCD2345" }));
-const consentApprove = (scopes: readonly string[]) =>
+const consentApprove = (scopes: readonly string[], issued: readonly string[] = scopes) =>
     consentRoute(
         post("/api/acr/authorize", {
             action: "approve",
             handle: HANDLE,
             repository_scopes: scopes,
+            scope_fingerprint: fingerprintOf(issued),
         }),
     );
 
@@ -376,7 +385,10 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
             signIn({ role });
             const response = await deviceApprove(["*"]);
             expect(response.status).toBe(200);
-            expect(await response.json()).toEqual({ status: "approved" });
+            expect(await response.json()).toEqual({
+                status: "approved",
+                grantedRepositories: { kind: "organization" },
+            });
             expect(issueAsks()).toEqual([
                 {
                     action: "acr.credential.issue",
@@ -475,10 +487,10 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
 
     it("Given the grants allow only a nested key, then a `*` request sends that key and a mixed allowlist sends both (already held)", async () => {
         seam.transport = pdp({ issue: { allowlist: [NESTED] }, read: () => "deny" });
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], [NESTED])).status).toBe(200);
         expect(observed.acrScopes.at(-1)).toEqual([NESTED]);
         seam.transport = pdp({ issue: { allowlist: ["acme/alpha", NESTED] }, read: () => "deny" });
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], ["acme/alpha", NESTED])).status).toBe(200);
         expect(observed.acrScopes.at(-1)).toEqual(["acme/alpha", NESTED]);
     });
 
@@ -486,7 +498,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
     // issue allowlist is the answer: a named allow never issues "*".
     it('Given the credential.issue allow names repositories and the reads are org-wide, then the named allowlist is sent, never ["*"], with no read decision', async () => {
         seam.transport = pdp({ issue: { allowlist: CATALOG }, read: () => "org-wide" });
-        const response = await deviceApprove(["*"]);
+        const response = await deviceApprove(["*"], CATALOG);
         expect(response.status).toBe(200);
         expect(observed.acrScopes.at(-1)).toEqual(CATALOG);
         expect(readAsks()).toEqual([]);
@@ -518,7 +530,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
             issue: { allowlist: CATALOG },
             read: () => ({ allowlist: CATALOG }),
         });
-        const response = await deviceApprove(["*"]);
+        const response = await deviceApprove(["*"], CATALOG);
         expect(response.status).toBe(200);
         expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual(CATALOG);
         expect(observed.acrScopes.at(-1)).toEqual(CATALOG);
@@ -530,7 +542,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: device approval and consent", () => {
             issue: { allowlist: ["acme/alpha", "acme/gamma"] },
             read: () => ({ allowlist: ["acme/alpha", "acme/gamma"] }),
         });
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], ["acme/alpha", "acme/gamma"])).status).toBe(200);
         expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual([
             "acme/alpha",
             "acme/gamma",
@@ -744,8 +756,8 @@ const errorOf = async (response: Response) =>
 
 describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue allowlist", () => {
     it.each([
-        ["device approve", () => deviceApprove(["*"]), 1],
-        ["consent approve", () => consentApprove(["*"]), 2],
+        ["device approve", () => deviceApprove(["*"], SEVERAL_KEYS), 1],
+        ["consent approve", () => consentApprove(["*"], SEVERAL_KEYS), 2],
     ])(
         "Given a named credential.issue allow, when %s for every repository, then the allowlist is sent with no catalog read and no read decision",
         async (_n, call, assertions) => {
@@ -763,7 +775,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue al
     it("Given a grant on a repository absent from the analytics catalog, then that repository is issued", async () => {
         seam.transport = issueAnswers(severalKeys);
         expect(CATALOG).not.toContain("full-chaos/dev-health-ops");
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], SEVERAL_KEYS)).status).toBe(200);
         expect(observed.acrScopes.at(-1)).toContain("full-chaos/dev-health-ops");
     });
 
@@ -784,7 +796,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue al
         seam.transport = issueAnswers(atTheBound);
         const keys = atTheBound.obligations.repository_allowlist;
         expect(keys).toHaveLength(256);
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], keys)).status).toBe(200);
         expect(observed.acrScopes.at(-1)).toEqual(keys);
         expect(observed.catalogReads).toBe(0);
     });
@@ -841,7 +853,7 @@ describe("ACR_SCOPES_FROM_GRANTS on: `*` scopes from the acr.credential.issue al
         seam.transport = issueAnswers(nestedKeys);
         const keys = nestedKeys.obligations.repository_allowlist;
         expect(keys).toContain("acme/platform/web");
-        expect((await deviceApprove(["*"])).status).toBe(200);
+        expect((await deviceApprove(["*"], keys)).status).toBe(200);
         expect(observed.acrScopes.at(-1)).toEqual(keys);
         expect(observed.acrBodies.at(-1)?.["repository_scopes"]).toEqual(keys);
         expect(observed.catalogReads).toBe(0);
@@ -1033,5 +1045,175 @@ describe("Ask Dev and the first-party approve ignore ACR_SCOPES_FROM_GRANTS", ()
         });
         expect(asked).toEqual([]);
         expect(grantLines()).toEqual([]);
+    });
+});
+
+// CHAOS-14134: the server states the issued repositories on the preview answers and the consent page, and approves
+// only the set it previewed (a fingerprint of it), refusing scope_changed_review_again before ACR is called.
+describe("the issued-repository statement and the previewed-set check", () => {
+    const NAMED_ALLOW = ["acme/alpha", "acme/beta"];
+    const named = (allowlist: readonly string[]): Policy => ({
+        issue: { allowlist },
+        read: () => "deny",
+    });
+    const consentPreview = () =>
+        consentRoute(post("/api/acr/authorize", { action: "preview", handle: HANDLE }));
+    const approveBodies = () =>
+        observed.acrBodies.filter(
+            (body) =>
+                body["schema_version"] === "device_approval_request.v1" ||
+                body["action"] === "approve",
+        );
+
+    it("Given a named reader, when previewing the device, then the answer states the named keys and their fingerprint", async () => {
+        seam.transport = pdp(named(NAMED_ALLOW));
+        const response = await devicePreview();
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as Record<string, unknown>;
+        expect(body["grantedRepositories"]).toEqual({
+            kind: "repositories",
+            repositories: NAMED_ALLOW,
+        });
+        expect(body["scopeFingerprint"]).toBe(fingerprintOf(NAMED_ALLOW));
+    });
+
+    it("Given an org-wide reader, when previewing the device and consent, then the answers state organization", async () => {
+        for (const response of [await devicePreview(), await consentPreview()]) {
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as Record<string, unknown>;
+            expect(body["grantedRepositories"]).toEqual({ kind: "organization" });
+            expect(body["scopeFingerprint"]).toBe("organization");
+        }
+    });
+
+    it("Given a named reader, when the consent page opens, then the form gets the named keys and their fingerprint", async () => {
+        seam.transport = pdp(named(NAMED_ALLOW));
+        const props = (await OAuthAuthorizePage({
+            searchParams: Promise.resolve({ handle: HANDLE }),
+        })) as unknown as { props: Record<string, unknown> };
+        expect(props.props["grantedRepositories"]).toEqual({
+            kind: "repositories",
+            repositories: NAMED_ALLOW,
+        });
+        expect(props.props["scopeFingerprint"]).toBe(fingerprintOf(NAMED_ALLOW));
+    });
+
+    it("Given a named reader, when approving the device with the preview's fingerprint, then it is approved and the answer states the issued keys", async () => {
+        seam.transport = pdp(named(NAMED_ALLOW));
+        const preview = (await (await devicePreview()).json()) as Record<string, unknown>;
+        const response = await deviceRoute(
+            post("/api/acr/device", {
+                action: "approve",
+                repository_scopes: ["*"],
+                scope_fingerprint: preview["scopeFingerprint"],
+                user_code: "ABCD2345",
+            }),
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            status: "approved",
+            grantedRepositories: { kind: "repositories", repositories: NAMED_ALLOW },
+        });
+        expect(observed.acrScopes.at(-1)).toEqual(NAMED_ALLOW);
+    });
+
+    it.each([
+        ["a grant added", ["acme/alpha", "acme/beta", "acme/gamma"]],
+        ["a grant removed", ["acme/alpha"]],
+        ["the grants widened to org-wide", "org-wide"],
+    ] as const)(
+        "Given %s between the device preview and approve, then approve is refused 409 scope_changed_review_again and ACR gets no approval",
+        async (_case, after) => {
+            seam.transport = pdp(named(NAMED_ALLOW));
+            const preview = (await (await devicePreview()).json()) as Record<string, unknown>;
+            seam.transport = pdp(
+                after === "org-wide" ? ALL_ORG_WIDE : named(after as readonly string[]),
+            );
+            const response = await deviceRoute(
+                post("/api/acr/device", {
+                    action: "approve",
+                    repository_scopes: ["*"],
+                    scope_fingerprint: preview["scopeFingerprint"],
+                    user_code: "ABCD2345",
+                }),
+            );
+            expect(response.status).toBe(409);
+            expect(await response.json()).toEqual({
+                error: {
+                    code: "scope_changed_review_again",
+                    message:
+                        "The repositories this approval covers changed. Review the updated request, then approve again.",
+                    retryable: false,
+                },
+            });
+            expect(approveBodies()).toEqual([]);
+        },
+    );
+
+    it.each([
+        ["a grant added", ["acme/alpha", "acme/beta", "acme/gamma"]],
+        ["a grant removed", ["acme/alpha"]],
+    ] as const)(
+        "Given %s between the consent preview and approve, then approve is refused 409 scope_changed_review_again and ACR gets no approval",
+        async (_case, after) => {
+            seam.transport = pdp(named(NAMED_ALLOW));
+            const preview = (await (await consentPreview()).json()) as Record<string, unknown>;
+            seam.transport = pdp(named(after));
+            const response = await consentRoute(
+                post("/api/acr/authorize", {
+                    action: "approve",
+                    handle: HANDLE,
+                    repository_scopes: ["*"],
+                    scope_fingerprint: preview["scopeFingerprint"],
+                }),
+            );
+            expect(response.status).toBe(409);
+            expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+                "scope_changed_review_again",
+            );
+            expect(approveBodies()).toEqual([]);
+        },
+    );
+
+    it.each([
+        ["no fingerprint", undefined],
+        ["a fingerprint of another set", fingerprintOf(["acme/alpha"])],
+        ["a non-string fingerprint", 42],
+    ] as const)(
+        "Given %s on approve, then device and consent are refused 409 scope_changed_review_again with nothing sent",
+        async (_case, fingerprint) => {
+            seam.transport = pdp(named(NAMED_ALLOW));
+            const device = await deviceRoute(
+                post("/api/acr/device", {
+                    action: "approve",
+                    repository_scopes: ["*"],
+                    ...(fingerprint === undefined ? {} : { scope_fingerprint: fingerprint }),
+                    user_code: "ABCD2345",
+                }),
+            );
+            const consent = await consentRoute(
+                post("/api/acr/authorize", {
+                    action: "approve",
+                    handle: HANDLE,
+                    repository_scopes: ["*"],
+                    ...(fingerprint === undefined ? {} : { scope_fingerprint: fingerprint }),
+                }),
+            );
+            for (const response of [device, consent]) {
+                expect(response.status).toBe(409);
+                expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+                    "scope_changed_review_again",
+                );
+            }
+            expect(approveBodies()).toEqual([]);
+        },
+    );
+
+    it("Given the switch off (legacy), when previewing, then the statement is organization and that fingerprint approves", async () => {
+        vi.stubEnv("ACR_SCOPES_FROM_GRANTS", "false");
+        const preview = (await (await devicePreview()).json()) as Record<string, unknown>;
+        expect(preview["grantedRepositories"]).toEqual({ kind: "organization" });
+        expect(preview["scopeFingerprint"]).toBe("organization");
+        expect((await deviceApprove(["*"])).status).toBe(200);
     });
 });

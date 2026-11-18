@@ -76,7 +76,14 @@ export default async function OAuthAuthorizePage({
     // The first-party browser client: approved by the server, no click (chris decision 2).
     if (opening?.kind === "approved") redirect(opening.redirectUrl);
     if (opening?.kind === "review") {
-        return <OAuthConsentForm handle={handle} preview={opening.preview} />;
+        return (
+            <OAuthConsentForm
+                grantedRepositories={opening.statement.grantedRepositories}
+                handle={handle}
+                preview={opening.preview}
+                scopeFingerprint={opening.statement.scopeFingerprint}
+            />
+        );
     }
     return <OAuthConsentForm initialState={errorState ?? "unavailable"} />;
 }
