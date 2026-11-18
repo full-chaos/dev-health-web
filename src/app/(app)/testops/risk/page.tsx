@@ -193,7 +193,11 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     delta={riskData.drag_delta}
                     polarity="lowerIsBetter"
                     spark={riskData.drag_spark}
-                    caption="Hours lost to test/pipeline issues"
+                    caption={
+                        riskData.quality_drag_partial
+                            ? "Hours lost to test/pipeline issues · partial"
+                            : "Hours lost to test/pipeline issues"
+                    }
                 />
                 <MetricCard
                     label="Pipeline Stability"

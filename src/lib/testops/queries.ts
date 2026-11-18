@@ -65,6 +65,7 @@ query TestOpsRisk($orgId: String!, $input: TestOpsRiskInput!) {
       category
       hours
     }
+    qualityDragPartial
     quadrantData {
       id
       name

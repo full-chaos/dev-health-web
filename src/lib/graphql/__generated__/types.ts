@@ -2561,6 +2561,8 @@ export type TestOpsRiskResult = {
   quadrantData: Array<TestOpsRiskQuadrantPoint>;
   qualityDragBreakdown: Array<TestOpsRiskBreakdownItem>;
   qualityDragHours?: Maybe<Scalars['Float']['output']>;
+  /** True when any repository row of the latest quality-drag day has a failure-rework, flake-investigation, queue-wait or retry-overhead part that was not measured; qualityDragHours and the breakdown then sum only the known parts. */
+  qualityDragPartial: Scalars['Boolean']['output'];
   releaseConfidence?: Maybe<Scalars['Float']['output']>;
   stabilityDelta?: Maybe<Scalars['Float']['output']>;
   stabilitySpark: Array<TestOpsRiskSparkPoint>;
