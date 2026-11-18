@@ -13,8 +13,12 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { Notice } from "@/components/ui/Notice";
-import { formatNumber } from "@/lib/formatters";
-import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import { formatDateUTC, formatNumber } from "@/lib/formatters";
+import type {
+    ThroughputBacklogState,
+    ThroughputForecast,
+    ThroughputRiskOverlay,
+} from "@/lib/graphql/types";
 import { STATUS_PILL } from "@/lib/statusPill";
 
 // ── StatusBadge ───────────────────────────────────────────────────────────────
@@ -189,15 +193,31 @@ type BacklogConditionCardProps = {
     /** Raw backlog item count (sum of latest wip_count_end_of_day rows). */
     backlogSize: number;
     staleWip: StaleWip;
+    backlogState?: ThroughputBacklogState | null;
+    backlogAsOfDay?: string | null;
 };
+
+/** The caption for a backlog that is not a current measurement; null for a fresh, supplied or unknown state. */
+export function backlogStateCaption(
+    state: ThroughputBacklogState | null | undefined,
+    asOfDay: string | null | undefined,
+): string | null {
+    if (state === "STALE")
+        return asOfDay ? `Stale as of ${formatDateUTC(asOfDay)}` : "Stale backlog";
+    if (state === "NO_ROWS") return "No backlog rows";
+    return null;
+}
 
 export function BacklogConditionCard({
     overlay,
     backlogSize,
     staleWip,
+    backlogState,
+    backlogAsOfDay,
 }: BacklogConditionCardProps) {
     const p90 = staleWip?.p90AgeHours;
     const p50 = staleWip?.p50AgeHours;
+    const stateCaption = backlogStateCaption(backlogState, backlogAsOfDay);
 
     return (
         <Section
@@ -215,6 +235,15 @@ export function BacklogConditionCard({
                     <EvidenceFact label="Median work age" value={formatAgeHours(p50)} />
                 ) : null}
             </EvidenceFactList>
+            {stateCaption ? (
+                <p
+                    data-testid="backlog-state-caption"
+                    data-state={backlogState ?? undefined}
+                    className="mt-2 text-xs font-medium text-foreground"
+                >
+                    {stateCaption}
+                </p>
+            ) : null}
             <p className="mt-3 text-xs text-(--ink-muted)">
                 Threshold {formatCongestion(overlay.threshold)} — ratio of current WIP to recent
                 average. Items in backlog are the current snapshot.
@@ -377,6 +406,8 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
                     overlay={forecast.wipCongestion}
                     backlogSize={forecast.backlogSize}
                     staleWip={forecast.staleWip}
+                    backlogState={forecast.backlogState}
+                    backlogAsOfDay={forecast.backlogAsOfDay}
                 />
                 <EstimateCoverageCard estimateCoverage={forecast.estimateCoverage} />
             </div>
