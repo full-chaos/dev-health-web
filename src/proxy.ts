@@ -340,10 +340,12 @@ async function boundedProxyAuth(): Promise<{ session: ProxySession } | null> {
 }
 
 // A page navigation whose session refresh was rate limited: the session is kept (the refresh token is
-// unspent), and the sign-in page says why there is no access. Other requests keep the plain redirect.
+// unspent), and the sign-in page says why there is no access. A navigation is what the browser marks
+// Sec-Fetch-Mode: navigate; a fetch, or a client that sends no fetch metadata, keeps the plain redirect.
 function rateLimitedNavigation(request: NextRequest, session: ProxySession): boolean {
     return (
         (request.method === "GET" || request.method === "HEAD") &&
+        request.headers.get("sec-fetch-mode") === "navigate" &&
         session?.error === "refresh_rate_limited" &&
         !session.access_token
     );

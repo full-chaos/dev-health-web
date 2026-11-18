@@ -62,6 +62,8 @@ import { ISSUER } from "@/test/eddsaAnswer";
 import { proxy } from "@/proxy";
 import SignInPage from "@/app/(auth)/auth/signin/page";
 
+const NAVIGATE = { "sec-fetch-mode": "navigate" };
+
 type Callbacks = {
     jwt: (p: Record<string, unknown>) => Promise<Record<string, unknown>>;
     session: (p: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -162,7 +164,9 @@ describe("a refused refresh (429)", () => {
         const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
         nextAuthSession.value = session;
         const res = await proxy(
-            new NextRequest(new URL("/dashboard?x=1", "http://localhost:3000")),
+            new NextRequest(new URL("/dashboard?x=1", "http://localhost:3000"), {
+                headers: NAVIGATE,
+            }),
         );
         expect(res.status).toBe(303);
         const location = new URL(res.headers.get("Location")!);
@@ -201,7 +205,9 @@ describe("a refused refresh (429)", () => {
     it("the site root redirects to sign-in with the code; a non-GET request keeps the plain redirect", async () => {
         const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
         nextAuthSession.value = session;
-        const root = await proxy(new NextRequest(new URL("/", "http://localhost:3000")));
+        const root = await proxy(
+            new NextRequest(new URL("/", "http://localhost:3000"), { headers: NAVIGATE }),
+        );
         expect(root.status).toBe(303);
         expect(new URL(root.headers.get("Location")!).searchParams.get("error")).toBe(
             "refresh_rate_limited",
@@ -225,6 +231,23 @@ describe("a refused refresh (429)", () => {
         };
         expect(await authModuleAuth({ refusal: "refresh_rate_limited" })).toBeNull();
         const res = await proxy(new NextRequest(new URL("/dashboard", "http://localhost:3000")));
+        expect(res.status).toBe(303);
+        const location = new URL(res.headers.get("Location")!);
+        expect(location.pathname).toBe("/auth/signin");
+        expect(location.searchParams.get("error")).toBeNull();
+    });
+
+    // Only a browser navigation gets the code: a background fetch (GET /api/...) or a client without fetch
+    // metadata keeps main's plain sign-in redirect.
+    it.each([
+        ["a background fetch", "/api/agent-context/repositories", { "sec-fetch-mode": "cors" }],
+        ["a request with no fetch metadata", "/dashboard", {}],
+    ])("%s keeps the plain sign-in redirect", async (_name, path, headers) => {
+        const { session } = await sessionAfterRefusedRefresh({ "Retry-After": "900" });
+        nextAuthSession.value = session;
+        const res = await proxy(
+            new NextRequest(new URL(path, "http://localhost:3000"), { headers }),
+        );
         expect(res.status).toBe(303);
         const location = new URL(res.headers.get("Location")!);
         expect(location.pathname).toBe("/auth/signin");
