@@ -89,5 +89,7 @@ Reading the badge:
   `TeamAttributionBadge`; expanding the unit shows the full
   `source · confidence · team` provenance line
   (`src/components/work/investment/InvestmentEvidenceTable.tsx`).
-- Data flows: `InvestmentView` → `useWorkItemTeamAttributions(filters,
-workItemIds)` → `attributionByWorkItem` map → `InvestmentEvidenceTable`.
+- Data flows: `InvestmentView` → `useWorkUnitTeamAttributions` →
+  `attributionByWorkUnit` map → `InvestmentEvidenceTable`.
+  `useWorkItemTeamAttributions` has no application caller yet; it indexes only
+  the `isPrimary` row per work item.
