@@ -515,7 +515,6 @@ const nextAuth = NextAuth({
             }
 
             const expiresAt = token.expires_at as number | undefined;
-            const lastValidated = token.last_validated as number | undefined;
             const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000;
 
             // Step 1: Refresh expired tokens first (before validation).
@@ -646,11 +645,21 @@ const nextAuth = NextAuth({
                 // boolean `is_impersonating` changes nothing. A read with the administrator bearer
                 // that says false ends it; true refreshes the display data of a held token only.
                 if (status?.is_impersonating === false) {
+                    if (isImpersonatingToken(token) || token.impersonated_user_id !== undefined) {
+                        markSessionChanged();
+                    }
                     clearImpersonationToken(token);
                     token.impersonated_user_id = undefined;
                     token.impersonated_email = undefined;
                     token.impersonated_org_id = undefined;
                 } else if (status?.is_impersonating === true && isImpersonatingToken(token)) {
+                    if (
+                        token.impersonated_user_id !== status.impersonated_user_id ||
+                        token.impersonated_org_id !== status.impersonated_org_id ||
+                        token.impersonated_email !== undefined
+                    ) {
+                        markSessionChanged();
+                    }
                     token.impersonated_user_id = status.impersonated_user_id;
                     token.impersonated_email = undefined;
                     if (status.impersonated_email) {
@@ -663,13 +672,23 @@ const nextAuth = NextAuth({
             // Step 2: Periodic backend validation — confirm user still exists in DB.
             // Only runs when token is NOT expired (fresh or just-refreshed).
             // Runs every VALIDATION_INTERVAL_MS, skips on initial login.
+            // Read after the refresh: a token rotated in this read was validated by the rotation.
+            const lastValidated = token.last_validated as number | undefined;
             if (
                 !user &&
                 token.access_token &&
                 !token.error &&
                 (!lastValidated || now - lastValidated >= VALIDATION_INTERVAL_MS)
             ) {
+                const before = { access: token.access_token, refresh: token.refresh_token };
                 await applyBackendValidationMemo(token, now);
+                // A validation that ends the session must reach the cookie.
+                if (
+                    token.access_token !== before.access ||
+                    token.refresh_token !== before.refresh
+                ) {
+                    markSessionChanged();
+                }
             }
 
             return token;

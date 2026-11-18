@@ -200,6 +200,35 @@ describe("C1: the proxy persists its refresh", () => {
     });
 });
 
+describe("what a failed refresh writes", () => {
+    it("a transient refresh (503) writes the back-off: access token dropped, refresh token kept, next try later", async () => {
+        backendAnswer = async (url) =>
+            url.endsWith(REFRESH_PATH) ? new Response("{}", { status: 503 }) : Response.json({});
+        const prior = await seal(dueToken());
+        const first = await proxyModule.proxy(request("/dashboard", prior));
+        expect(sessionSetCookies(first)).toHaveLength(1);
+        const written = await tokenIn(jar(prior, first));
+        expect(written?.error).toBe("refresh_unavailable");
+        expect(written?.access_token).toBeUndefined();
+        expect(written?.refresh_token).toBe(OLD_REFRESH);
+        expect(written?.expires_at as number).toBeGreaterThan(Date.now());
+        await proxyModule.proxy(request("/dashboard", jar(prior, first)));
+        expect(refreshCalls()).toBe(1);
+    });
+
+    it("a refused refresh (401) writes the ended session: both tokens cleared, the answer is the sign-in redirect", async () => {
+        backendAnswer = async () => new Response("{}", { status: 401 });
+        const prior = await seal(dueToken());
+        const res = await proxyModule.proxy(request("/dashboard", prior));
+        expect(res.status).toBe(303);
+        expect(new URL(res.headers.get("location")!).pathname).toBe("/auth/signin");
+        const written = await tokenIn(jar(prior, res));
+        expect(written?.error).toBe("refresh_failed");
+        expect(written?.access_token).toBeUndefined();
+        expect(written?.refresh_token).toBeUndefined();
+    });
+});
+
 describe("acp conditions", () => {
     it("1: two interleaved requests: only the one that refreshes gets Set-Cookie", async () => {
         backendAnswer = rotating(50);
@@ -286,6 +315,152 @@ describe("acp conditions", () => {
         expect(refreshCalls()).toBe(1);
         expect((await tokenIn(jar(prior, a)))?.refresh_token).toBe(NEW_REFRESH);
         expect((await tokenIn(jar(prior, b)))?.refresh_token).toBe(NEW_REFRESH);
+    });
+});
+
+describe("r1 ruling: every jwt step that changes the persisted session is written back", () => {
+    const VALIDATE_PATH = "/api/v1/auth/validate";
+    const STATUS_PATH = "/api/v1/admin/impersonate/status";
+
+    async function resetMemos() {
+        (await import("@/lib/impersonationStatusMemo")).resetImpersonationStatusForTests();
+        (await import("@/lib/authValidationMemo")).resetValidationMemoForTests();
+    }
+    beforeEach(resetMemos);
+
+    const forwardedBearer = (res: Response) =>
+        res.headers.get("x-middleware-request-authorization");
+
+    it("A (i): a refresh of 8 s then a slow validation stays inside the deadline: the rotated token is not validated again", async () => {
+        const { overrideDeadlinesForTests } = await import("@/lib/serverDeadline");
+        // The deadline scaled down 100x: 15 s -> 150 ms, refresh 8 s -> 80 ms, validation 7.1 s -> 71 ms.
+        overrideDeadlinesForTests({ auth: 100, outerMargin: 50, slow: 60_000 });
+        try {
+            backendAnswer = async (url) => {
+                if (url.endsWith(REFRESH_PATH)) {
+                    await new Promise((r) => setTimeout(r, 80));
+                    return rotating()(url);
+                }
+                if (url.endsWith(VALIDATE_PATH)) {
+                    await new Promise((r) => setTimeout(r, 71));
+                    return Response.json({ valid: true });
+                }
+                return Response.json({});
+            };
+            const prior = await seal(dueToken({ last_validated: Date.now() - 3_600_000 }));
+            const res = await proxyModule.proxy(request("/dashboard", prior));
+            expect(res.status).toBe(200);
+            expect(sessionSetCookies(res)).toHaveLength(1);
+            expect((await tokenIn(jar(prior, res)))?.refresh_token).toBe(NEW_REFRESH);
+            expect(calls.filter((c) => c.url.endsWith(VALIDATE_PATH))).toHaveLength(0);
+        } finally {
+            overrideDeadlinesForTests(null);
+        }
+    });
+
+    it("(b) an impersonation stop is written back: the delegated token is gone from the cookie", async () => {
+        const prior = await seal(
+            dueToken({
+                is_superuser: true,
+                expires_at: Date.now() + 3_600_000,
+                imp_access_token: "delegated-token",
+                imp_expires_at: Date.now() - 500,
+                impersonated_user_id: "user-2",
+            }),
+        );
+        const res = await proxyModule.proxy(request("/dashboard", prior));
+        expect(sessionSetCookies(res)).toHaveLength(1);
+        expect((await tokenIn(jar(prior, res)))?.imp_access_token).toBeUndefined();
+        expect(refreshCalls()).toBe(0);
+    });
+
+    it("(c) the status read's clear is written back", async () => {
+        const statusAnswer: () => Response = () => Response.json({ is_impersonating: false });
+        backendAnswer = async (url) =>
+            url.endsWith(STATUS_PATH) ? statusAnswer() : Response.json({ valid: true });
+        let cookie = await seal(
+            dueToken({
+                is_superuser: true,
+                org_id: "org-1",
+                expires_at: Date.now() + 3_600_000,
+                imp_access_token: "delegated-token",
+                imp_expires_at: Date.now() + 600_000,
+                impersonated_user_id: "user-2",
+                impersonated_org_id: "org-2",
+            }),
+        );
+        const cleared = await proxyModule.proxy(request("/graphql", cookie));
+        expect(sessionSetCookies(cleared)).toHaveLength(1);
+        cookie = jar(cookie, cleared);
+        expect((await tokenIn(cookie))?.imp_access_token).toBeUndefined();
+    });
+
+    it("P1b security: after the status read clears the delegation, a transient status failure never forwards the stale delegated bearer", async () => {
+        let statusAnswer: () => Response = () => Response.json({ is_impersonating: false });
+        backendAnswer = async (url) =>
+            url.endsWith(STATUS_PATH) ? statusAnswer() : Response.json({ valid: true });
+        let cookie = await seal(
+            dueToken({
+                is_superuser: true,
+                org_id: "org-1",
+                expires_at: Date.now() + 3_600_000,
+                imp_access_token: "delegated-token",
+                imp_expires_at: Date.now() + 600_000,
+                impersonated_user_id: "user-2",
+                impersonated_org_id: "org-2",
+            }),
+        );
+        const cleared = await proxyModule.proxy(request("/graphql", cookie));
+        cookie = jar(cookie, cleared);
+
+        await resetMemos();
+        statusAnswer = () => new Response("{}", { status: 503 });
+        const later = await proxyModule.proxy(request("/graphql", cookie));
+        expect(forwardedBearer(later)).not.toBe("Bearer delegated-token");
+    });
+
+    it("(c) a display-field change is written back; an unchanged status read writes nothing", async () => {
+        backendAnswer = async (url) =>
+            url.endsWith(STATUS_PATH)
+                ? Response.json({
+                      is_impersonating: true,
+                      target_user_id: "user-3",
+                      target_org_id: "org-3",
+                  })
+                : Response.json({ valid: true });
+        let cookie = await seal(
+            dueToken({
+                is_superuser: true,
+                expires_at: Date.now() + 3_600_000,
+                imp_access_token: "delegated-token",
+                imp_expires_at: Date.now() + 600_000,
+                impersonated_user_id: "user-2",
+                impersonated_org_id: "org-2",
+            }),
+        );
+        const changed = await proxyModule.proxy(request("/graphql", cookie));
+        expect(sessionSetCookies(changed)).toHaveLength(1);
+        cookie = jar(cookie, changed);
+        expect((await tokenIn(cookie))?.impersonated_user_id).toBe("user-3");
+        await resetMemos();
+        const same = await proxyModule.proxy(request("/graphql", cookie));
+        expect(same.headers.getSetCookie()).toEqual([]);
+    });
+
+    it("(d) a validation that ends the session is written back: both tokens cleared", async () => {
+        backendAnswer = async (url) =>
+            url.endsWith(VALIDATE_PATH) ? Response.json({ valid: false }) : Response.json({});
+        const prior = await seal(
+            dueToken({
+                expires_at: Date.now() + 3_600_000,
+                last_validated: Date.now() - 3_600_000,
+            }),
+        );
+        const res = await proxyModule.proxy(request("/dashboard", prior));
+        expect(sessionSetCookies(res)).toHaveLength(1);
+        const written = await tokenIn(jar(prior, res));
+        expect(written?.error).toBe("user_invalid");
+        expect(written?.refresh_token).toBeUndefined();
     });
 });
 
