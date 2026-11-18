@@ -120,6 +120,35 @@ let innerDeadlines = 0;
  */
 export const WRITE_TIMED_OUT_MESSAGE = "Timed out; the change may have been applied.";
 
+// The deadline's answer: a TimeoutError this module marks, and its one "deadline exceeded" line.
+function deadlineExceeded(
+    options: DeadlineOptions,
+    layer: Layer,
+    deadlineMs: number,
+    started: number,
+    innerAtStart: number,
+): DOMException {
+    const error = new DOMException(
+        `server wait "${options.op}" exceeded ${deadlineMs} ms`,
+        "TimeoutError",
+    );
+    deadlineErrors.add(error);
+    if (options.kind === "write") writeDeadlineErrors.add(error);
+    if (layer === "inner") innerDeadlines += 1;
+    logger.warn(
+        {
+            op: options.op,
+            elapsed_ms: Date.now() - started,
+            deadline_ms: deadlineMs,
+            outcome: "deadline",
+            layer,
+            ...(layer === "outer" ? { inner_fired: innerDeadlines > innerAtStart } : {}),
+        },
+        "server fetch deadline exceeded",
+    );
+    return error;
+}
+
 /**
  * Race `promise` against the deadline of `kind`.
  * On the timer: reject with a `TimeoutError` and write the "deadline exceeded" line.
@@ -132,27 +161,9 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
     const started = Date.now();
 
     return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => {
-            const error = new DOMException(
-                `server wait "${options.op}" exceeded ${deadlineMs} ms`,
-                "TimeoutError",
-            );
-            deadlineErrors.add(error);
-            if (options.kind === "write") writeDeadlineErrors.add(error);
-            if (layer === "inner") innerDeadlines += 1;
-            logger.warn(
-                {
-                    op: options.op,
-                    elapsed_ms: Date.now() - started,
-                    deadline_ms: deadlineMs,
-                    outcome: "deadline",
-                    layer,
-                    ...(layer === "outer" ? { inner_fired: innerDeadlines > innerAtStart } : {}),
-                },
-                "server fetch deadline exceeded",
-            );
-            reject(error);
-        }, deadlineMs);
+        const expire = () =>
+            reject(deadlineExceeded(options, layer, deadlineMs, started, innerAtStart));
+        const timer = setTimeout(expire, deadlineMs);
         Promise.resolve(promise).then(
             (value) => {
                 clearTimeout(timer);
@@ -228,17 +239,31 @@ function statusClass(status: number): string {
 
 const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
 
+// When the headers of a bodyless answer arrived, by the Response fetchWithDeadline returned.
+const headTimes = new WeakMap<Response, number>();
+
+/** When the headers of a `bodyless` answer arrived (ms since epoch); undefined for any other Response. */
+export function headReceivedAt(response: Response): number | undefined {
+    return headTimes.get(response);
+}
+
 /** A read that may lose the race: it is cancelled so its socket does not stay open. */
 interface Orphan {
     lost: boolean;
     cancel?: () => void;
 }
 
-async function buffered(raw: Response, orphan: Orphan): Promise<Response> {
+async function buffered(
+    raw: Response,
+    orphan: Orphan,
+    bodyless?: (status: number) => boolean,
+): Promise<Response> {
     if (!(raw instanceof Response)) return raw;
     const { status, statusText, headers } = raw;
     if (NULL_BODY_STATUS.has(status) || !raw.body) {
-        return new Response(null, { status, statusText, headers });
+        const empty = new Response(null, { status, statusText, headers });
+        if (bodyless?.(status)) headTimes.set(empty, Date.now());
+        return empty;
     }
     const reader = raw.body.getReader();
     const cancel = () =>
@@ -250,6 +275,15 @@ async function buffered(raw: Response, orphan: Orphan): Promise<Response> {
                     "server fetch orphan body cancel failed",
                 ),
             );
+    if (bodyless?.(status)) {
+        // The caller decides from the status and headers alone: the body is cancelled, never read, so a
+        // late or broken body cannot hold the answer or change it. The time is taken before the cancel,
+        // which may run the stream's teardown synchronously. The cancel is not awaited.
+        const head = new Response(null, { status, statusText, headers });
+        headTimes.set(head, Date.now());
+        void cancel();
+        return head;
+    }
     if (orphan.lost) {
         // The headers came after the deadline: nobody waits for this body.
         await cancel();
@@ -277,6 +311,8 @@ export interface FetchDeadlineOptions {
     kind: ServerFetchKind;
     /** Log label. Default: `<METHOD> <pathname>` (no query string, ids replaced by `:id`). */
     op?: string;
+    /** A status the caller decides from its status and headers alone: its body is cancelled unread. */
+    bodyless?: (status: number) => boolean;
 }
 
 /** INNER layer: `fetch` plus the full body read, under one race. */
@@ -294,10 +330,24 @@ export async function fetchWithDeadline(
     try {
         let response: Response;
         const orphan: Orphan = { lost: false };
-        const work = fetch(input, init).then((raw) => buffered(raw, orphan));
+        const work = fetch(input, init).then((raw) => buffered(raw, orphan, options.bodyless));
         work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
         try {
             response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+            // A bodyless answer resolves the moment its headers arrive, so a head that came at or after
+            // the deadline could win the race against a timer the event loop has not run yet. It is
+            // judged by the time its headers arrived; every other answer keeps the timer's verdict.
+            const head = headTimes.get(response);
+            const innerMs = limitMs(options.kind);
+            if (head !== undefined && head - started >= innerMs) {
+                throw deadlineExceeded(
+                    { kind: options.kind, op, layer: "inner" },
+                    "inner",
+                    innerMs,
+                    started,
+                    innerDeadlines,
+                );
+            }
         } catch (error) {
             if (isServerDeadlineError(error)) {
                 // Lost the race: close the body read (the header wait cannot be cancelled
@@ -332,9 +382,13 @@ export async function fetchWithDeadline(
  * `fetch`-shaped function bound to a kind, so a call site changes only its head:
  * `await deadlineFetch("read")(url, init)`.
  */
-export function deadlineFetch(kind: ServerFetchKind, op?: string) {
+export function deadlineFetch(
+    kind: ServerFetchKind,
+    op?: string,
+    bodyless?: (status: number) => boolean,
+) {
     return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-        fetchWithDeadline(input, init, { kind, op });
+        fetchWithDeadline(input, init, { kind, op, bodyless });
 }
 
 /**

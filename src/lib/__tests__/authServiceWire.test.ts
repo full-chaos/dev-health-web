@@ -697,9 +697,13 @@ describe("refreshSession", () => {
         expect(await refreshSession("ref-r1", cfg())).toEqual({
             kind: "rate_limited",
             retryAfterSeconds: 900,
+            receivedAt: expect.any(Number),
         });
         route({ [REFRESH_URL]: () => json(429, {}) });
-        expect(await refreshSession("ref-r2", cfg())).toEqual({ kind: "rate_limited" });
+        expect(await refreshSession("ref-r2", cfg())).toEqual({
+            kind: "rate_limited",
+            receivedAt: expect.any(Number),
+        });
     });
 
     it("refresh 408, 425, 500, 502, 503, 504 and a thrown call are transient", async () => {

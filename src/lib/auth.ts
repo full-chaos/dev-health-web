@@ -580,8 +580,9 @@ const nextAuth = NextAuth({
                                       refreshed.retryAfterSeconds * 1000,
                                   ),
                               );
-                    // From the answer, not the request start: a slow 429 must not shorten the wait.
-                    token.expires_at = Date.now() + 5 * 60 * 1000 + delay;
+                    // From the answer's headers, not the request start or the body: a slow 429 must
+                    // neither shorten nor lengthen the wait.
+                    token.expires_at = (refreshed.receivedAt ?? Date.now()) + 5 * 60 * 1000 + delay;
                     token.error = "refresh_rate_limited";
                     return token;
                 } else {
