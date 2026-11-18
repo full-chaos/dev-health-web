@@ -35,6 +35,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     sso_failed: "Single sign-on failed. Please try again or use another sign-in method.",
     refresh_failed:
         "Your previous session expired. Please sign in again with your email and password.",
+    refresh_rate_limited: "Wait up to 15 minutes and reload the page, or sign in again.",
 };
 
 export function SocialLoginError({ error }: SocialLoginErrorProps) {

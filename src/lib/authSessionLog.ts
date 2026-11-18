@@ -10,6 +10,8 @@ const log = logger.child({ module: "auth-session" });
  * - `refresh_unavailable`   the refresh got another non-2xx answer: the access token goes,
  *                           the refresh token stays for a retry after backoff.
  * - `refresh_call_failed`   the refresh call threw (network, unreadable body): same as above.
+ * - `refresh_rate_limited`  the refresh answered 429: the access token goes, the refresh token
+ *                           stays for a retry after the answer's Retry-After.
  * - `user_invalid`          backend validation refused the session (a 2xx with `valid: false`,
  *                           or 401 / 403): both tokens go.
  * - `validate_transient`    validation got an answer that says nothing about the user (404, 400,
@@ -41,6 +43,7 @@ export type SessionBranch =
     | "refresh_failed"
     | "refresh_unavailable"
     | "refresh_call_failed"
+    | "refresh_rate_limited"
     | "user_invalid"
     | "validate_transient"
     | "validate_call_failed"
@@ -84,6 +87,8 @@ const MESSAGES: Record<SessionBranch, string> = {
     refresh_unavailable:
         "access token dropped: the refresh got no usable answer; retry after backoff",
     refresh_call_failed: "access token dropped: the refresh call failed; retry after backoff",
+    refresh_rate_limited:
+        "access token dropped: the refresh was rate limited; retry after its Retry-After",
     user_invalid: "session ended: backend validation refused the session",
     validate_transient:
         "session kept: backend validation got no usable answer; retry after backoff",

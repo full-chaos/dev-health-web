@@ -76,3 +76,13 @@ describe("SocialLoginError social refusal codes", () => {
         expect(container.textContent).toBe(GENERIC);
     });
 });
+
+// CHAOS-8441: a rate-limited session refresh lands on /auth/signin?error=refresh_rate_limited.
+describe("SocialLoginError refresh_rate_limited", () => {
+    it("says how long to wait and that signing in again works", () => {
+        const { container } = render(<SocialLoginError error="refresh_rate_limited" />);
+        expect(container.textContent).toBe(
+            "Wait up to 15 minutes and reload the page, or sign in again.",
+        );
+    });
+});

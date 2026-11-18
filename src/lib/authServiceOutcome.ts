@@ -5,7 +5,17 @@ import { createHash } from "node:crypto";
 // single-flight (CHAOS-10876, A2: not wired). The compat wire answers go-api's shape and names no
 // reason code in the body, so the decision rests on the HTTP status. Pure: no I/O, no logging.
 
-export type CallResult = { status: number; body: unknown } | { thrown: true };
+export type CallResult =
+    { status: number; body: unknown; retryAfterSeconds?: number } | { thrown: true };
+
+const RETRY_AFTER_MAX_SECONDS = 3600;
+
+// The delta-seconds form of Retry-After (RFC 9110 10.2.3), at most an hour; any other value is no value.
+export function readRetryAfter(value: string | null | undefined): number | undefined {
+    if (value == null || !/^\d+$/.test(value.trim())) return undefined;
+    const seconds = Number(value.trim());
+    return seconds > 0 ? Math.min(seconds, RETRY_AFTER_MAX_SECONDS) : undefined;
+}
 
 export interface SessionUser {
     id: string;
@@ -105,11 +115,18 @@ export type RefreshOutcome =
       }
     | { kind: "terminal"; reason: "status"; status: number }
     | { kind: "terminal"; reason: "invalid_response" }
+    | { kind: "rate_limited"; retryAfterSeconds?: number }
     | { kind: "transient"; status?: number };
 
 export function classifyRefresh(result: CallResult): RefreshOutcome {
     if ("thrown" in result) return { kind: "transient" };
     const { status, body } = result;
+    // A refused refresh spent nothing: the credential stays good after the wait the answer names.
+    if (status === 429) {
+        return result.retryAfterSeconds === undefined
+            ? { kind: "rate_limited" }
+            : { kind: "rate_limited", retryAfterSeconds: result.retryAfterSeconds };
+    }
     if (isTransientStatus(status)) return { kind: "transient", status };
     if (status < 200 || status >= 300) return { kind: "terminal", reason: "status", status };
     // The refresh credential is single use: an answer without a new one leaves only a spent one,

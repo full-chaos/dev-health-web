@@ -12,6 +12,7 @@ import {
     classifyLogin,
     classifyLogout,
     classifyRefresh,
+    readRetryAfter,
     singleFlightRefresh,
     type CallResult,
     type LogoutOutcome,
@@ -69,7 +70,14 @@ async function send(url: string, init: RequestInit): Promise<Sent> {
         } catch {
             body = undefined;
         }
-        return { result: { status: res.status, body } };
+        const retryAfterSeconds = readRetryAfter(res.headers?.get("Retry-After"));
+        return {
+            result: {
+                status: res.status,
+                body,
+                ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
+            },
+        };
     } catch (error) {
         return { result: { thrown: true }, errorName: thrownErrorName(error) };
     }
@@ -330,6 +338,7 @@ export type RefreshResult =
     | { kind: "terminal"; reason: "status"; status: number }
     | { kind: "terminal"; reason: "invalid_response" }
     | { kind: "terminal"; reason: "token_refused" }
+    | { kind: "rate_limited"; retryAfterSeconds?: number }
     | { kind: "transient"; status?: number; errorName?: string; refreshToken?: string };
 
 // The refresh credential is single use: once the answer rotated it, the new one must be stored
@@ -341,6 +350,7 @@ async function refreshOnce(refreshToken: string, cfg: WireConfig): Promise<Refre
         body: JSON.stringify({ refresh_token: refreshToken }),
     });
     const outcome = classifyRefresh(sent.result);
+    if (outcome.kind === "rate_limited") return outcome;
     if (outcome.kind === "transient") {
         return {
             kind: "transient",

@@ -164,7 +164,19 @@ describe("refresh branches name themselves in the log", () => {
         },
     );
 
-    it.each([429, 500, 503])(
+    it("refresh_rate_limited: status 429 drops the access token and keeps the refresh token", async () => {
+        backendAnswers(429);
+
+        const token = await run(refreshDueToken());
+
+        expect(token.error).toBe("refresh_rate_limited");
+        expect(token.refresh_token).toBe(REFRESH_TOKEN);
+        expect(branchLines()).toEqual([
+            { operation: "refresh", branch: "refresh_rate_limited", status: 429, failures: 1 },
+        ]);
+    });
+
+    it.each([500, 503])(
         "refresh_unavailable: status %i drops the access token and keeps the refresh token",
         async (status) => {
             backendAnswers(status);
@@ -180,12 +192,12 @@ describe("refresh branches name themselves in the log", () => {
     );
 
     it("refresh_unavailable counts consecutive failures", async () => {
-        backendAnswers(429);
+        backendAnswers(503);
 
         await run({ ...refreshDueToken(), refresh_failures: 2 });
 
         expect(branchLines()).toEqual([
-            { operation: "refresh", branch: "refresh_unavailable", status: 429, failures: 3 },
+            { operation: "refresh", branch: "refresh_unavailable", status: 503, failures: 3 },
         ]);
     });
 
@@ -429,7 +441,7 @@ describe("a logger that throws never changes what happens to the session", () =>
 
     const cases: Array<[string, () => Token, () => void, string | undefined]> = [
         ["refresh 401", refreshDueToken, () => backendAnswers(401), "refresh_failed"],
-        ["refresh 429", refreshDueToken, () => backendAnswers(429), "refresh_unavailable"],
+        ["refresh 429", refreshDueToken, () => backendAnswers(429), "refresh_rate_limited"],
         ["refresh throws", refreshDueToken, backendThrows, "refresh_unavailable"],
         [
             "refresh 200 without an access token",

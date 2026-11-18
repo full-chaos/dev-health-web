@@ -327,7 +327,12 @@ export async function proxy(request: NextRequest) {
 type ProxySession = Awaited<ReturnType<typeof auth>>;
 async function boundedProxyAuth(): Promise<{ session: ProxySession } | null> {
     try {
-        return { session: await withDeadline(auth(), { kind: "auth", op: "proxy auth" }) };
+        return {
+            session: await withDeadline(auth({ refusal: "refresh_rate_limited" }), {
+                kind: "auth",
+                op: "proxy auth",
+            }),
+        };
     } catch (error) {
         if (isServerDeadlineError(error)) return null;
         throw error;
@@ -405,6 +410,10 @@ async function handleRequest(request: NextRequest) {
         }
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
+            // The session is kept (the refresh token is unspent); the page says why there is no access.
+            if (session?.error === "refresh_rate_limited") {
+                signInUrl.searchParams.set("error", "refresh_rate_limited");
+            }
             signInUrl.searchParams.set(
                 "callbackUrl",
                 sanitizeCallbackUrl(`${pathname}${request.nextUrl.search}`),
