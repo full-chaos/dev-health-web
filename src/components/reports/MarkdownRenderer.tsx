@@ -64,24 +64,34 @@ function shiftedHeadings(look: HeadingLook): Components {
 const BODY_HEADINGS = shiftedHeadings(PROSE_SM_LOOK);
 const PROVENANCE_HEADINGS = shiftedHeadings(PROSE_LOOK);
 
+// The Provenance heading is a whole line, and the last such line wins: the renderer writes the real section
+// last, so a line of that text inside a report value (an old report) never moves the split. A line ends at
+// LF, CRLF or CR only (CommonMark); no `m` flag, because JS also ends a line at U+2028/U+2029.
+const PROVENANCE_LINE = /(?:^|\r\n|\r|\n)## Provenance[ \t]*(?=\r\n|\r|\n|$)/g;
+const PROVENANCE_HEADING_LINE = /^## Provenance[ \t]*(?:\r\n|\r|\n)?/;
+const FOOTER_RULE = /(?:\r\n|\r|\n)---(?:\r\n|\r|\n)/;
+
 function splitProvenance(md: string): {
     body: string;
     provenance: string | null;
     footer: string | null;
 } {
-    const provenanceIdx = md.indexOf("## Provenance");
+    let provenanceIdx = -1;
+    for (const match of md.matchAll(PROVENANCE_LINE)) {
+        provenanceIdx = match.index + match[0].indexOf("## Provenance");
+    }
     if (provenanceIdx === -1) return { body: md, provenance: null, footer: null };
 
     const body = md.slice(0, provenanceIdx).trimEnd();
     const rest = md.slice(provenanceIdx);
 
-    const hrIdx = rest.indexOf("\n---\n");
-    if (hrIdx === -1) return { body, provenance: rest, footer: null };
+    const rule = FOOTER_RULE.exec(rest);
+    if (!rule) return { body, provenance: rest, footer: null };
 
     return {
         body,
-        provenance: rest.slice(0, hrIdx).trimEnd(),
-        footer: rest.slice(hrIdx + 5).trim(),
+        provenance: rest.slice(0, rule.index).trimEnd(),
+        footer: rest.slice(rule.index + rule[0].length).trim(),
     };
 }
 
@@ -127,7 +137,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
                                 remarkPlugins={[remarkGfm]}
                                 components={PROVENANCE_HEADINGS}
                             >
-                                {provenance.replace("## Provenance\n", "").trim()}
+                                {provenance.replace(PROVENANCE_HEADING_LINE, "").trim()}
                             </ReactMarkdown>
                         </div>
                     )}
