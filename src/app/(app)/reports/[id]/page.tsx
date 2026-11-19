@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/reports/StatusBadge";
 import { formatDateUTC } from "@/lib/formatters";
 import { useOrgId } from "@/lib/graphql/provider";
 import { logger } from "@/lib/logger";
+import { formMetricLabel } from "@/lib/reports/formMetrics";
 import { SavedReport, ReportRun } from "@/lib/reports/types";
 import {
     fetchSavedReport,
@@ -112,7 +113,7 @@ function RenderedReportAndConfig({
                                     key={m}
                                     className="rounded-full bg-(--card-stroke) px-2.5 py-1 text-xs font-semibold"
                                 >
-                                    {m}
+                                    {formMetricLabel(m)}
                                 </span>
                             ))
                         ) : (

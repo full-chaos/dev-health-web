@@ -81,3 +81,53 @@ describe("New report form without a session org (CHAOS-8213)", () => {
         expect(createSavedReport).not.toHaveBeenCalled();
     });
 });
+
+describe("New report form metric names (CHAOS-14112)", () => {
+    it("sends registry names for the metrics that map and keeps the label for the rest", async () => {
+        createSavedReport.mockResolvedValue({ id: "new" });
+        render(<NewReportPage />);
+
+        fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
+        await act(async () => {
+            fireEvent.submit(
+                screen.getByRole("button", { name: "Create report" }).closest("form")!,
+            );
+        });
+
+        const input = createSavedReport.mock.calls[0][1] as { parameters: { metrics: string[] } };
+        expect([...input.parameters.metrics].sort()).toEqual(
+            [
+                "Deployment Frequency",
+                "Lead Time",
+                "Time to Restore",
+                "Test Coverage",
+                "change_failure_rate",
+                "success_rate",
+            ].sort(),
+        );
+    });
+
+    it("still shows the product label and sends the name of a metric that is picked alone", async () => {
+        createSavedReport.mockResolvedValue({ id: "new" });
+        render(<NewReportPage />);
+
+        for (const label of [
+            "Deployment Frequency",
+            "Lead Time",
+            "Change Failure Rate",
+            "Time to Restore",
+            "Test Coverage",
+        ]) {
+            fireEvent.click(screen.getByLabelText(label));
+        }
+        fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
+        await act(async () => {
+            fireEvent.submit(
+                screen.getByRole("button", { name: "Create report" }).closest("form")!,
+            );
+        });
+
+        const input = createSavedReport.mock.calls[0][1] as { parameters: { metrics: string[] } };
+        expect(input.parameters.metrics).toEqual(["success_rate"]);
+    });
+});

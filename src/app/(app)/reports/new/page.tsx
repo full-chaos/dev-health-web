@@ -11,6 +11,7 @@ import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useOrgId } from "@/lib/graphql/provider";
 import { createSavedReport } from "@/lib/reports/fetchers";
+import { FORM_METRICS } from "@/lib/reports/formMetrics";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
 
 const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
@@ -18,15 +19,6 @@ const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
     weekly: "0 9 * * 1",
     monthly: "0 9 1 * *",
 };
-
-const AVAILABLE_METRICS = [
-    "Deployment Frequency",
-    "Lead Time",
-    "Change Failure Rate",
-    "Time to Restore",
-    "Test Coverage",
-    "CI Success Rate",
-];
 
 export default function NewReportPage() {
     // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
@@ -39,7 +31,9 @@ export default function NewReportPage() {
     const [scope, setScope] = useState("org");
     const [dateRange, setDateRange] = useState("last_7_days");
     const [schedule, setSchedule] = useState("none");
-    const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(new Set(AVAILABLE_METRICS));
+    const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(
+        new Set(FORM_METRICS.map((metric) => metric.value)),
+    );
 
     const toggleMetric = (metric: string) => {
         setSelectedMetrics((prev) => {
@@ -161,18 +155,18 @@ export default function NewReportPage() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Metrics to Include</label>
                             <div className="grid gap-2 sm:grid-cols-2">
-                                {AVAILABLE_METRICS.map((metric) => (
+                                {FORM_METRICS.map(({ label, value }) => (
                                     <label
-                                        key={metric}
+                                        key={value}
                                         className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
                                     >
                                         <input
                                             type="checkbox"
                                             className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent-2)"
-                                            checked={selectedMetrics.has(metric)}
-                                            onChange={() => toggleMetric(metric)}
+                                            checked={selectedMetrics.has(value)}
+                                            onChange={() => toggleMetric(value)}
                                         />
-                                        <span>{metric}</span>
+                                        <span>{label}</span>
                                     </label>
                                 ))}
                             </div>

@@ -263,3 +263,20 @@ describe("Single report page without a session org (CHAOS-8213)", () => {
         orgIdRef.current = "org-session-1";
     });
 });
+
+describe("SingleReportPage metric chips (CHAOS-14112)", () => {
+    it("shows the product label of a stored registry metric name and keeps an old label as it is", async () => {
+        mockFetchSavedReport.mockResolvedValue({
+            ...REPORT,
+            reportPlan: {},
+            parameters: { metrics: ["success_rate", "change_failure_rate", "Lead Time"] },
+        } as SavedReport);
+        mockFetchReportRuns.mockResolvedValue({ items: [], total: 0 });
+        render(<SingleReportPage />);
+        expect(await screen.findByText("CI Success Rate")).toBeInTheDocument();
+        expect(screen.getByText("Change Failure Rate")).toBeInTheDocument();
+        expect(screen.getByText("Lead Time")).toBeInTheDocument();
+        expect(screen.queryByText("success_rate")).not.toBeInTheDocument();
+        expect(screen.queryByText("change_failure_rate")).not.toBeInTheDocument();
+    });
+});
