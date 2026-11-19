@@ -19,13 +19,15 @@ const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
     monthly: "0 9 1 * *",
 };
 
-const AVAILABLE_METRICS = [
-    "Deployment Frequency",
-    "Lead Time",
-    "Change Failure Rate",
-    "Time to Restore",
-    "Test Coverage",
-    "CI Success Rate",
+// `value` is what the report stores in `parameters.metrics`: the report registry metric name where the label has
+// one. A label with no product chain yet (CHAOS-14111) keeps sending the label, which ops still maps for old reports.
+const AVAILABLE_METRICS: { label: string; value: string }[] = [
+    { label: "Deployment Frequency", value: "Deployment Frequency" },
+    { label: "Lead Time", value: "Lead Time" },
+    { label: "Change Failure Rate", value: "change_failure_rate" },
+    { label: "Time to Restore", value: "Time to Restore" },
+    { label: "Test Coverage", value: "Test Coverage" },
+    { label: "CI Success Rate", value: "success_rate" },
 ];
 
 export default function NewReportPage() {
@@ -39,7 +41,9 @@ export default function NewReportPage() {
     const [scope, setScope] = useState("org");
     const [dateRange, setDateRange] = useState("last_7_days");
     const [schedule, setSchedule] = useState("none");
-    const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(new Set(AVAILABLE_METRICS));
+    const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(
+        new Set(AVAILABLE_METRICS.map((metric) => metric.value)),
+    );
 
     const toggleMetric = (metric: string) => {
         setSelectedMetrics((prev) => {
@@ -161,18 +165,18 @@ export default function NewReportPage() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Metrics to Include</label>
                             <div className="grid gap-2 sm:grid-cols-2">
-                                {AVAILABLE_METRICS.map((metric) => (
+                                {AVAILABLE_METRICS.map(({ label, value }) => (
                                     <label
-                                        key={metric}
+                                        key={value}
                                         className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
                                     >
                                         <input
                                             type="checkbox"
                                             className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent-2)"
-                                            checked={selectedMetrics.has(metric)}
-                                            onChange={() => toggleMetric(metric)}
+                                            checked={selectedMetrics.has(value)}
+                                            onChange={() => toggleMetric(value)}
                                         />
-                                        <span>{metric}</span>
+                                        <span>{label}</span>
                                     </label>
                                 ))}
                             </div>
