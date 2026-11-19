@@ -7,6 +7,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TeamForm } from "@/components/admin/teams/TeamForm";
 import { Team } from "@/components/admin/teams/TeamTable";
 import { createTeam } from "@/lib/admin/server";
+import { isTeamConflict, TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 
 export default function NewTeamPage() {
     const router = useRouter();
@@ -26,6 +27,12 @@ export default function NewTeamPage() {
         setIsLoading(false);
 
         if (result.error) {
+            if (isTeamConflict(result)) {
+                toast.error(TEAM_CHANGED_MESSAGE);
+                router.push("/org/admin/teams");
+                router.refresh();
+                return;
+            }
             toast.error(result.error);
             return;
         }

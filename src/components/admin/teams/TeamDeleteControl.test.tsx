@@ -12,6 +12,7 @@ vi.mock("@/lib/admin/server", () => ({
 }));
 
 import { TeamDeleteControl } from "./TeamDeleteControl";
+import { TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 
 function renderControl() {
     return renderWithToaster(<TeamDeleteControl teamId="custom:abc" teamName="Night Owls" />);
@@ -73,5 +74,21 @@ describe("TeamDeleteControl", () => {
         expect(await screen.findByText(shown)).toBeInTheDocument();
         expect(screen.queryByText(/Offline/)).toBeNull();
         expect(mockRefresh).not.toHaveBeenCalled();
+    });
+
+    it("on 409 team_changed_concurrently shows the authored sentence and refreshes the list", async () => {
+        mockDeleteTeam.mockResolvedValueOnce({
+            error: "team changed concurrently, retry",
+            status: 409,
+            code: "team_changed_concurrently",
+        });
+        renderControl();
+
+        await userEvent.click(screen.getByRole("button", { name: "Delete Night Owls" }));
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+        expect(await screen.findByText(TEAM_CHANGED_MESSAGE)).toBeInTheDocument();
+        expect(screen.queryByText(/retry/)).toBeNull();
+        expect(mockRefresh).toHaveBeenCalledTimes(1);
     });
 });

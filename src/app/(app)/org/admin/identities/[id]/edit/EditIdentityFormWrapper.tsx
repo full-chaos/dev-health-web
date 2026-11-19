@@ -7,6 +7,7 @@ import { IdentityForm } from "@/components/admin/identities/IdentityForm";
 import { Identity } from "@/components/admin/identities/IdentityTable";
 import { Team } from "@/components/admin/teams/TeamTable";
 import { updateIdentity } from "@/lib/admin/server";
+import { isTeamConflict, TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 import type { IdentityMapping } from "@/lib/admin/types";
 
 type EditIdentityFormWrapperProps = {
@@ -44,6 +45,11 @@ export function EditIdentityFormWrapper({ identity, teams }: EditIdentityFormWra
         setIsLoading(false);
 
         if (result.error) {
+            if (isTeamConflict(result)) {
+                toast.error(TEAM_CHANGED_MESSAGE);
+                router.refresh();
+                return;
+            }
             toast.error(result.error);
             return;
         }
@@ -54,6 +60,7 @@ export function EditIdentityFormWrapper({ identity, teams }: EditIdentityFormWra
 
     return (
         <IdentityForm
+            key={identity.updated_at}
             initialData={initialData}
             teams={teams}
             onSubmit={handleSubmit}
