@@ -7,8 +7,10 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 /**
  * Coverage baseline per repository: the answer of `coverageBaselines`.
  *
- * The baseline of a repository is its own mean coverage over the 30 days BEFORE the request's
- * `endDate` (that day is not included). It is not a set target. The two baselines are in percent
+ * The baseline of a repository is its own coverage over the 30 days BEFORE the request's
+ * `endDate` (that day is not included): the line baseline is the mean over those days, the branch
+ * baseline is pooled (the branches covered over the branches total of the stored branch counts of
+ * those days; a day with no counts is not a day with a value). It is not a set target. The two baselines are in percent
  * (0 to 100), the unit of the coverage values. Null = fewer than 7 days of the 30 hold a value:
  * there is no baseline (never 0, never the current value). One row per repository with a stored
  * coverage row in those 30 days; a repository with no row has no baseline. The web writes the
@@ -22,7 +24,7 @@ export const RepoCoverageBaselineSchema = z.object({
     /** Days of the 30 that hold a line coverage value. */
     lineDays: z.number(),
     branchBaselinePct: z.number().nullable(),
-    /** Days of the 30 that hold a branch coverage value. */
+    /** Days of the 30 that hold stored branch counts. */
     branchDays: z.number(),
 });
 
