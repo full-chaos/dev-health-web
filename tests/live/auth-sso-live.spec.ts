@@ -320,10 +320,7 @@ function recordJit(who: string, user: SessionUser | undefined): void {
 }
 
 async function startSso(page: Page, protocol: "oidc" | "saml", providerId: string) {
-    await page.goto("/auth/signin");
-    await page.getByLabel("Protocol", { exact: true }).selectOption(protocol);
-    await page.getByLabel("Provider ID", { exact: true }).fill(providerId);
-    await page.getByRole("button", { name: "Continue with single sign-on", exact: true }).click();
+    await page.goto(`/auth/sso/${protocol}/${providerId}`);
 }
 
 async function expectSignedInAs(page: Page, email: string) {
@@ -433,7 +430,7 @@ test.describe("@auth-sso single sign-on", () => {
         expect(String(saml.config?.certificate ?? "")).toMatch(/^[\s\S]{50}\.\.\.$/u);
     });
 
-    test("SAML: the sign-in page takes the provider id and signs the IdP user in", async ({
+    test("SAML: the start route takes the provider id and signs the IdP user in", async ({
         page,
     }) => {
         page.on("request", (req) => {
@@ -570,12 +567,9 @@ test.describe("@auth-sso single sign-on", () => {
         });
     });
 
-    test("a provider id that is not an id stops on the sign-in page", async ({ page }) => {
+    test("a provider id that is not an id is refused by the start route", async ({ page }) => {
         await startSso(page, "oidc", "not-an-id");
-        await expect(
-            page.getByText("Enter the provider ID your administrator shared.", { exact: true }),
-        ).toBeVisible();
-        await expect(page).toHaveURL(/\/auth\/signin(?:\?|$)/u);
+        await expectRefused(page);
     });
 
     // SAML only: an OIDC domain check runs after the code exchange, which the loopback guard refuses (see the OIDC cell above).

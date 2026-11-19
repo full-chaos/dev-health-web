@@ -55,7 +55,6 @@ vi.mock("@/components/auth/AuthCard", () => ({
     AuthCard: ({ children }: { children?: unknown }) =>
         createElement("section", null, children as never),
 }));
-vi.mock("@/components/auth/SsoEntry", () => ({ SsoEntry: () => null }));
 
 import { auth as authModuleAuth } from "@/lib/auth";
 import { ISSUER } from "@/test/eddsaAnswer";
