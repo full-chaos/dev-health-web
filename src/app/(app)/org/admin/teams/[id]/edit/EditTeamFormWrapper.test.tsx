@@ -79,10 +79,19 @@ describe("Edit Team form (CHAOS-14127)", () => {
         });
     });
 
-    it("leaves a cleared description out of the body, as before (go-api reads null as keep)", async () => {
+    it('sends description "" when the user clears it (only "" clears in go-api)', async () => {
         updateTeam.mockResolvedValue({ data: team });
         submitted = form({ name: "Platform", description: "" });
         await save();
+        await waitFor(() => expect(updateTeam).toHaveBeenCalled());
+        expect(updateTeam).toHaveBeenCalledWith("eng", { name: "Platform", description: "" });
+    });
+
+    it("omits an unchanged empty description", async () => {
+        updateTeam.mockResolvedValue({ data: { ...team, description: null } });
+        submitted = form({ name: "Platform", description: "" });
+        render(<EditTeamFormWrapper team={{ ...team, description: null }} />);
+        await userEvent.setup().click(screen.getByRole("button", { name: "save" }));
         await waitFor(() => expect(updateTeam).toHaveBeenCalled());
         expect(updateTeam).toHaveBeenCalledWith("eng", { name: "Platform" });
     });

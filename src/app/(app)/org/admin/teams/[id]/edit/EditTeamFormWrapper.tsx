@@ -21,10 +21,9 @@ const sameList = (a: string[], b: string[]) =>
 export function changedTeamFields(team: TeamMapping, data: Team): TeamMappingUpdate {
     const update: TeamMappingUpdate = {};
     if (data.name !== team.name) update.name = data.name;
-    // go-api reads an absent or null description as "keep" (only "" clears), so a cleared
-    // description is left out, as before.
-    if (data.description && data.description !== team.description) {
-        update.description = data.description;
+    // go-api reads an absent or null description as "keep"; only "" clears it.
+    if ((data.description ?? "") !== (team.description ?? "")) {
+        update.description = data.description ?? "";
     }
     if (!sameList(data.repo_patterns, team.repo_patterns)) {
         update.repo_patterns = data.repo_patterns;
