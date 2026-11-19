@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FORM_METRICS, formMetricLabel } from "./formMetrics";
+import { FORM_METRICS, formMetricLabel } from "../formMetrics";
 
 describe("formMetricLabel", () => {
     it("offers only labels that have a report metric", () => {
@@ -18,5 +18,11 @@ describe("formMetricLabel", () => {
 
     it("shows a stored label that is no longer offered as it was saved", () => {
         expect(formMetricLabel("Lead Time")).toBe("Lead Time");
+    });
+
+    it("shows a stored label that is an Object.prototype property name as it was saved", () => {
+        for (const stored of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+            expect(formMetricLabel(stored)).toBe(stored);
+        }
     });
 });

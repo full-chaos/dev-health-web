@@ -7,12 +7,12 @@ export const FORM_METRICS: { label: string; value: string }[] = [
     { label: "CI Success Rate", value: "success_rate" },
 ];
 
-const FORMER_LABELS: Record<string, string> = { "Deployment Frequency": "Deploy Frequency" };
+const FORMER_LABELS = new Map([["Deployment Frequency", "Deploy Frequency"]]);
 
 export function formMetricLabel(stored: string): string {
     return (
         FORM_METRICS.find((metric) => metric.value === stored)?.label ??
-        FORMER_LABELS[stored] ??
+        FORMER_LABELS.get(stored) ??
         stored
     );
 }
