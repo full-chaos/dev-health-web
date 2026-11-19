@@ -8,12 +8,15 @@ import { IdentityForm } from "@/components/admin/identities/IdentityForm";
 import { Identity } from "@/components/admin/identities/IdentityTable";
 import { Team } from "@/components/admin/teams/TeamTable";
 import { createIdentity, listTeams } from "@/lib/admin/server";
+import { isTeamConflict, TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 
 export default function NewIdentityPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [teams, setTeams] = useState<Team[]>([]);
     const [teamsLoading, setTeamsLoading] = useState(true);
+
+    const [teamsVersion, setTeamsVersion] = useState(0);
 
     useEffect(() => {
         listTeams().then((result) => {
@@ -30,7 +33,7 @@ export default function NewIdentityPage() {
             }
             setTeamsLoading(false);
         });
-    }, []);
+    }, [teamsVersion]);
 
     const handleSubmit = async (data: Identity) => {
         setIsLoading(true);
@@ -46,6 +49,11 @@ export default function NewIdentityPage() {
         setIsLoading(false);
 
         if (result.error) {
+            if (isTeamConflict(result)) {
+                toast.error(TEAM_CHANGED_MESSAGE);
+                setTeamsVersion((v) => v + 1);
+                return;
+            }
             toast.error(result.error);
             return;
         }

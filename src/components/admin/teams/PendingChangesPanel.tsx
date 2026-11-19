@@ -5,6 +5,7 @@ import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getPendingTeamChanges, approveTeamChanges, dismissTeamChanges } from "@/lib/admin/server";
+import { isTeamConflict, TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 import type { FlaggedChange } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -46,7 +47,13 @@ export function PendingChangesPanel() {
         startTransition(async () => {
             const result = await approveTeamChanges(teamId, [changeId]);
             if (result.error) {
-                toast.error("Failed to approve change: " + result.error);
+                if (isTeamConflict(result)) {
+                    toast.error(TEAM_CHANGED_MESSAGE);
+                    loadChanges();
+                    router.refresh();
+                } else {
+                    toast.error("Failed to approve change: " + result.error);
+                }
             } else {
                 toast.success("Change approved");
                 loadChanges();
@@ -59,7 +66,13 @@ export function PendingChangesPanel() {
         startTransition(async () => {
             const result = await dismissTeamChanges(teamId, [changeId]);
             if (result.error) {
-                toast.error("Failed to dismiss change: " + result.error);
+                if (isTeamConflict(result)) {
+                    toast.error(TEAM_CHANGED_MESSAGE);
+                    loadChanges();
+                    router.refresh();
+                } else {
+                    toast.error("Failed to dismiss change: " + result.error);
+                }
             } else {
                 toast.success("Change dismissed");
                 loadChanges();
@@ -75,17 +88,23 @@ export function PendingChangesPanel() {
         startTransition(async () => {
             let successCount = 0;
             let errorCount = 0;
+            let conflictCount = 0;
 
             await Promise.all(
                 uniqueTeamIds.map(async (teamId) => {
                     const result = await fn(teamId, undefined, true);
-                    if (result.error) errorCount++;
-                    else successCount++;
+                    if (result.error) {
+                        errorCount++;
+                        if (isTeamConflict(result)) conflictCount++;
+                    } else successCount++;
                 }),
             );
 
-            if (errorCount > 0) {
-                toast.error(`Failed to ${action} changes for ${errorCount} teams`);
+            if (conflictCount > 0) {
+                toast.error(TEAM_CHANGED_MESSAGE);
+            }
+            if (errorCount > conflictCount) {
+                toast.error(`Failed to ${action} changes for ${errorCount - conflictCount} teams`);
             }
             if (successCount > 0) {
                 toast.success(

@@ -23,12 +23,14 @@
 
 /** Discriminated union for typed error handling without exceptions. */
 export type Result<T> =
-    | { data: T; error?: never; status?: never }
+    | { data: T; error?: never; status?: never; code?: never }
     | {
           data?: never;
           error: string;
           /** HTTP status of the failed request, when the failure came from an HTTP answer. */
           status?: number;
+          /** The served closed code of a failed action (a `detail.error` or `detail.reason_code`). */
+          code?: string;
       };
 
 /**

@@ -108,3 +108,23 @@ describe("setPassword contract", () => {
         });
     });
 });
+
+describe("admin request reason_code (CHAOS-14127)", () => {
+    it("carries the served detail.reason_code of a 409 as the error code", async () => {
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 409,
+            statusText: "Conflict",
+            json: async () => ({
+                detail: {
+                    message: "team changed concurrently, retry",
+                    reason_code: "team_changed_concurrently",
+                },
+            }),
+        });
+        const error = await request("/teams/eng", { method: "PATCH", body: "{}" }).catch(
+            (e: unknown) => e,
+        );
+        expect(error).toMatchObject({ status: 409, code: "team_changed_concurrently" });
+    });
+});

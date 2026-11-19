@@ -18,8 +18,9 @@ export class AdminApiError extends Error {
 
 function errorCodeOf(raw: unknown): string | undefined {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-    const code = (raw as Record<string, unknown>).error;
-    return typeof code === "string" ? code : undefined;
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.error === "string") return obj.error;
+    return typeof obj.reason_code === "string" ? obj.reason_code : undefined;
 }
 
 /** A served `detail.purposes`: a list of ids, kept only when every entry is a string. */

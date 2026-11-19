@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { deleteTeam } from "@/lib/admin/server";
+import { isTeamConflict, TEAM_CHANGED_MESSAGE } from "@/lib/admin/teamConflict";
 import { actionFailureMessage } from "@/lib/actionFailure";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -24,7 +25,12 @@ export function TeamDeleteControl({ teamId, teamName }: TeamDeleteControlProps) 
             try {
                 const result = await deleteTeam(teamId);
                 if (result.error) {
-                    toast.error(result.error);
+                    if (isTeamConflict(result)) {
+                        toast.error(TEAM_CHANGED_MESSAGE);
+                        router.refresh();
+                    } else {
+                        toast.error(result.error);
+                    }
                     setShowConfirm(false);
                     return;
                 }
