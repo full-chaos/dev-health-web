@@ -87,6 +87,94 @@ describe("SyncJobHistory", () => {
         expect(screen.getByText("Jan 1, 2026 → Jan 3, 2026")).toBeInTheDocument();
     });
 
+    it("shows the range without a stuck unit and names the stuck unit apart (CHAOS-13703)", () => {
+        const job: SyncJob = {
+            ...SYNC_JOB_WITH_RUN,
+            sync_run: {
+                ...SYNC_JOB_WITH_RUN.sync_run,
+                requested_range: {
+                    since: "2025-12-02T12:00:00Z",
+                    before: "2026-01-01T12:00:00Z",
+                    source_ids: ["s1", "s2"],
+                    run_ids: [],
+                },
+                requested_range_split: {
+                    since: "2026-01-01T11:00:00Z",
+                    before: "2026-01-01T12:00:00Z",
+                    unit_count: 5,
+                    median_window_seconds: 3720,
+                    longer_window_unit_count: 1,
+                    longer_window_units: [
+                        {
+                            source_id: "s2",
+                            dataset_key: "work-items",
+                            since: "2025-12-02T12:00:00Z",
+                            before: "2026-01-01T12:00:00Z",
+                        },
+                    ],
+                },
+            },
+        };
+        render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+        expect(screen.getByText("Jan 1, 2026 → Jan 1, 2026")).toBeInTheDocument();
+        expect(
+            screen.getByText("1 unit asks a longer window (work-items from Dec 2, 2025)"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Dec 2, 2025 → Jan 1, 2026")).not.toBeInTheDocument();
+    });
+
+    it("counts several longer-window units and names the oldest (CHAOS-13703)", () => {
+        const job: SyncJob = {
+            ...SYNC_JOB_WITH_RUN,
+            sync_run: {
+                ...SYNC_JOB_WITH_RUN.sync_run,
+                requested_range_split: {
+                    since: "2026-01-02T00:00:00Z",
+                    before: "2026-01-03T00:00:00Z",
+                    unit_count: 13,
+                    median_window_seconds: 3600,
+                    longer_window_unit_count: 12,
+                    longer_window_units: [
+                        {
+                            source_id: "s1",
+                            dataset_key: "commits",
+                            since: "2025-12-20T00:00:00Z",
+                            before: "2026-01-03T00:00:00Z",
+                        },
+                    ],
+                },
+            },
+        };
+        render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+        expect(screen.getByText("Jan 2, 2026 → Jan 3, 2026")).toBeInTheDocument();
+        expect(
+            screen.getByText("12 units ask longer windows (oldest: commits from Dec 20, 2025)"),
+        ).toBeInTheDocument();
+    });
+
+    it("keeps the plain requested range when the split sets no unit apart (CHAOS-13703)", () => {
+        const job: SyncJob = {
+            ...SYNC_JOB_WITH_RUN,
+            sync_run: {
+                ...SYNC_JOB_WITH_RUN.sync_run,
+                requested_range_split: {
+                    since: "2026-01-02T00:00:00Z",
+                    before: "2026-01-03T00:00:00Z",
+                    unit_count: 2,
+                    median_window_seconds: 86_400,
+                    longer_window_unit_count: 0,
+                    longer_window_units: [],
+                },
+            },
+        };
+        render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+        expect(screen.getByText("Jan 1, 2026 → Jan 3, 2026")).toBeInTheDocument();
+        expect(screen.queryByText(/longer window/)).not.toBeInTheDocument();
+    });
+
     it("renders legacy rows (no sync_run block) readably with em-dashes, never a fabricated coverage result", () => {
         const legacyJob: SyncJob = {
             id: "job-legacy",

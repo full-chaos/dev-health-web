@@ -182,11 +182,36 @@ export interface SyncCoverageBackfillWindow {
     reasons?: ReadonlyArray<"gap" | "failed">;
 }
 
+/** One unit whose window is longer than twice the run's median window. */
+export interface SyncLongerWindowUnit {
+    source_id: string;
+    dataset_key: string;
+    since: string;
+    before: string;
+}
+
+/**
+ * The requested range without the run's longer-window units (a window longer
+ * than twice the run's median window), and those units apart: one stuck unit
+ * then no longer stretches the whole run's range. `longer_window_units` holds
+ * at most 10 units, earliest `since` first.
+ */
+export interface SyncRequestedRangeSplit {
+    since: string;
+    before: string;
+    unit_count: number;
+    median_window_seconds: number;
+    longer_window_unit_count: number;
+    longer_window_units: SyncLongerWindowUnit[];
+}
+
 export interface SyncRunJobEnrichment {
     mode: string;
     triggered_by: string;
     requested_range: SyncCoverageRange | null;
     covered_range: SyncCoverageRange | null;
+    /** Optional while Ops and Web roll out independently. */
+    requested_range_split?: SyncRequestedRangeSplit | null;
     total_units: number;
     completed_units: number;
     failed_units: number;
