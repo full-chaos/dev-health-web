@@ -83,7 +83,7 @@ describe("New report form without a session org (CHAOS-8213)", () => {
 });
 
 describe("New report form metric names (CHAOS-14112)", () => {
-    it("sends registry names for the metrics that map and keeps the label for the rest", async () => {
+    it("sends the registry name of each offered label", async () => {
         createSavedReport.mockResolvedValue({ id: "new" });
         render(<NewReportPage />);
 
@@ -96,28 +96,31 @@ describe("New report form metric names (CHAOS-14112)", () => {
 
         const input = createSavedReport.mock.calls[0][1] as { parameters: { metrics: string[] } };
         expect([...input.parameters.metrics].sort()).toEqual(
-            [
-                "Deployment Frequency",
-                "Lead Time",
-                "Time to Restore",
-                "Test Coverage",
-                "change_failure_rate",
-                "success_rate",
-            ].sort(),
+            ["deployments_count", "change_failure_rate", "success_rate"].sort(),
         );
+    });
+
+    it("offers only the metrics that have a product metric, and no removed label", () => {
+        render(<NewReportPage />);
+
+        for (const label of ["Deploy Frequency", "Change Failure Rate", "CI Success Rate"]) {
+            expect(screen.getByLabelText(label)).toBeTruthy();
+        }
+        for (const label of [
+            "Deployment Frequency",
+            "Lead Time",
+            "Time to Restore",
+            "Test Coverage",
+        ]) {
+            expect(screen.queryByLabelText(label)).toBeNull();
+        }
     });
 
     it("still shows the product label and sends the name of a metric that is picked alone", async () => {
         createSavedReport.mockResolvedValue({ id: "new" });
         render(<NewReportPage />);
 
-        for (const label of [
-            "Deployment Frequency",
-            "Lead Time",
-            "Change Failure Rate",
-            "Time to Restore",
-            "Test Coverage",
-        ]) {
+        for (const label of ["Deploy Frequency", "Change Failure Rate"]) {
             fireEvent.click(screen.getByLabelText(label));
         }
         fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
