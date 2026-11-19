@@ -7,10 +7,13 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 /**
  * Coverage baseline per repository: the answer of `coverageBaselines`.
  *
- * The baseline of a repository is its own mean coverage over the 30 days BEFORE the request's
+ * The baseline of a repository is its own coverage over the 30 days BEFORE the request's
  * `endDate` (that day is not included). It is not a set target. The two baselines are in percent
- * (0 to 100), the unit of the coverage values. Null = fewer than 7 days of the 30 hold a value:
- * there is no baseline (never 0, never the current value). One row per repository with a stored
+ * (0 to 100), the unit of the coverage values. The line baseline is pooled: covered lines over total
+ * lines of the counted days (a day that stores both line counts and more than 0 lines); a day with a
+ * percent but no line counts is in neither sum. Null = fewer than 7 counted days of the 30, which
+ * includes a window with no line counts at all: there is no baseline (never 0, never the current
+ * value). One row per repository with a stored
  * coverage row in those 30 days; a repository with no row has no baseline. The web writes the
  * served numbers and computes none of them.
  */
@@ -19,7 +22,7 @@ export const RepoCoverageBaselineSchema = z.object({
     /** Null = the catalogue holds no name. Never the id. */
     repoName: z.string().nullable(),
     lineBaselinePct: z.number().nullable(),
-    /** Days of the 30 that hold a line coverage value. */
+    /** Counted days of the 30: days that store both line counts and more than 0 lines. */
     lineDays: z.number(),
     branchBaselinePct: z.number().nullable(),
     /** Days of the 30 that hold a branch coverage value. */
@@ -71,14 +74,16 @@ export function baselineOf(
 }
 
 /**
- * The coverage baseline of the whole scope: the answer of `coverageScopeBaseline`. The mean, over
- * the 30 days before the request's `endDate`, of the scope's line coverage of each day: the day
- * values the Line Coverage Trend draws. Null = fewer than 7 of the 30 days hold a value: there is
- * no baseline (never 0, never the current value).
+ * The coverage baseline of the whole scope: the answer of `coverageScopeBaseline`. One pooled
+ * ratio over the 30 days before the request's `endDate`: covered lines over total lines of every
+ * counted repository day of the scope (one that stores both line counts and more than 0 lines; one
+ * with a percent but no line counts is in neither sum). Null = fewer than 7 of the 30 days have a
+ * counted repository day, which includes a window with no line counts at all: there is no baseline
+ * (never 0, never the current value).
  */
 export const ScopeCoverageBaselineSchema = z.object({
     lineBaselinePct: z.number().nullable(),
-    /** Days of the 30 on which the scope holds a line coverage value. */
+    /** Days of the 30 on which at least one repository of the scope has a counted day. */
     lineDays: z.number(),
 });
 
