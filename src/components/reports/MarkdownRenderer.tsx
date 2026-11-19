@@ -64,12 +64,17 @@ function shiftedHeadings(look: HeadingLook): Components {
 const BODY_HEADINGS = shiftedHeadings(PROSE_SM_LOOK);
 const PROVENANCE_HEADINGS = shiftedHeadings(PROSE_LOOK);
 
+// The Provenance heading is a whole line, and the last such line wins: the renderer writes the real section
+// last, so a line of that text inside a report value (an old report) never moves the split.
+const PROVENANCE_LINE = /^## Provenance[ \t\r]*$/gm;
+
 function splitProvenance(md: string): {
     body: string;
     provenance: string | null;
     footer: string | null;
 } {
-    const provenanceIdx = md.indexOf("## Provenance");
+    let provenanceIdx = -1;
+    for (const match of md.matchAll(PROVENANCE_LINE)) provenanceIdx = match.index;
     if (provenanceIdx === -1) return { body: md, provenance: null, footer: null };
 
     const body = md.slice(0, provenanceIdx).trimEnd();
@@ -127,7 +132,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
                                 remarkPlugins={[remarkGfm]}
                                 components={PROVENANCE_HEADINGS}
                             >
-                                {provenance.replace("## Provenance\n", "").trim()}
+                                {provenance.replace(/^## Provenance[ \t\r]*\n?/, "").trim()}
                             </ReactMarkdown>
                         </div>
                     )}
