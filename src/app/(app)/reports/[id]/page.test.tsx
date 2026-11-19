@@ -269,12 +269,14 @@ describe("SingleReportPage metric chips (CHAOS-14112)", () => {
         mockFetchSavedReport.mockResolvedValue({
             ...REPORT,
             reportPlan: {},
-            parameters: { metrics: ["success_rate", "Lead Time"] },
+            parameters: { metrics: ["success_rate", "change_failure_rate", "Lead Time"] },
         } as SavedReport);
         mockFetchReportRuns.mockResolvedValue({ items: [], total: 0 });
         render(<SingleReportPage />);
         expect(await screen.findByText("CI Success Rate")).toBeInTheDocument();
+        expect(screen.getByText("Change Failure Rate")).toBeInTheDocument();
         expect(screen.getByText("Lead Time")).toBeInTheDocument();
         expect(screen.queryByText("success_rate")).not.toBeInTheDocument();
+        expect(screen.queryByText("change_failure_rate")).not.toBeInTheDocument();
     });
 });
