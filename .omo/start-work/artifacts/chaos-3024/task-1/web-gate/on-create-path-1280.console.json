@@ -1,0 +1,8 @@
+{
+  "console": [
+    "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+    "log: [HMR] connected",
+    "info: [info] web-vital {metric: FCP, value: 488, rating: good}",
+    "info: [info] web-vital {metric: TTFB, value: 287.7999999523163, rating: good}"
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "id": "17-mapping-duplicate-service",
+  "priority": "P1",
+  "title": "Duplicate PagerDuty service IDs are blocked accessibly",
+  "viewport": "desktop",
+  "url": "/org/admin/sync/sync-config-pagerduty-1/edit",
+  "query_keys": [],
+  "screenshot": "17-mapping-duplicate-service-desktop.png",
+  "captured_at": "2026-11-19T20:24:03.927Z",
+  "console": [],
+  "network": {
+    "non_ok_responses": [],
+    "requestfailed": [],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/organizations",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/organizations",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": []
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": []
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": []
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": []
+      }
+    ],
+    "responses": [
+      {
+        "method": "GET",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/organizations",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/organizations",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/org/admin/sync/sync-config-pagerduty-1/edit",
+        "query_keys": [],
+        "ok": true,
+        "status": 200
+      }
+    ]
+  },
+  "toast_animations_settled": true,
+  "awaited_toast_animation_count": 0,
+  "toast_overlaps_interactive_control": false,
+  "authenticated_shell_ready": true,
+  "account_control_resolved": true,
+  "organization_control_resolved": true,
+  "saving_controls_settled": true,
+  "next_dev_overlay_excluded_from_capture": true,
+  "next_dev_portal_host_count_before_capture": 1,
+  "capture_status": "captured"
+}
