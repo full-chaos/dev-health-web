@@ -179,4 +179,21 @@ describe("MarkdownRenderer provenance split", () => {
         render(<MarkdownRenderer content={content} />);
         await expectSplitAtRealSection();
     });
+
+    it("shows an escaped hash in a table cell and in a note line as the plain character", async () => {
+        render(
+            <MarkdownRenderer
+                content={report([
+                    "| x | y |",
+                    "| --- | --- |",
+                    "| PR \\#123 | 1 |",
+                    "",
+                    "_Note: PR \\#123_",
+                ])}
+            />,
+        );
+        expect(await screen.findByRole("cell", { name: "PR #123" })).toBeInTheDocument();
+        expect(screen.getByText("Note: PR #123")).toBeInTheDocument();
+        await expectSplitAtRealSection();
+    });
 });
