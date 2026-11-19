@@ -11,6 +11,7 @@ import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useOrgId } from "@/lib/graphql/provider";
 import { createSavedReport } from "@/lib/reports/fetchers";
+import { FORM_METRICS } from "@/lib/reports/formMetrics";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
 
 const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
@@ -18,17 +19,6 @@ const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
     weekly: "0 9 * * 1",
     monthly: "0 9 1 * *",
 };
-
-// `value` is what the report stores in `parameters.metrics`: the report registry metric name where the label has
-// one. A label with no product chain yet (CHAOS-14111) keeps sending the label, which ops still maps for old reports.
-const AVAILABLE_METRICS: { label: string; value: string }[] = [
-    { label: "Deployment Frequency", value: "Deployment Frequency" },
-    { label: "Lead Time", value: "Lead Time" },
-    { label: "Change Failure Rate", value: "change_failure_rate" },
-    { label: "Time to Restore", value: "Time to Restore" },
-    { label: "Test Coverage", value: "Test Coverage" },
-    { label: "CI Success Rate", value: "success_rate" },
-];
 
 export default function NewReportPage() {
     // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
@@ -42,7 +32,7 @@ export default function NewReportPage() {
     const [dateRange, setDateRange] = useState("last_7_days");
     const [schedule, setSchedule] = useState("none");
     const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(
-        new Set(AVAILABLE_METRICS.map((metric) => metric.value)),
+        new Set(FORM_METRICS.map((metric) => metric.value)),
     );
 
     const toggleMetric = (metric: string) => {
@@ -165,7 +155,7 @@ export default function NewReportPage() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Metrics to Include</label>
                             <div className="grid gap-2 sm:grid-cols-2">
-                                {AVAILABLE_METRICS.map(({ label, value }) => (
+                                {FORM_METRICS.map(({ label, value }) => (
                                     <label
                                         key={value}
                                         className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
