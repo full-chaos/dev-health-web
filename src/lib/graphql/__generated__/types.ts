@@ -2530,6 +2530,19 @@ export type TestOpsJobFailuresResult = {
   truncated: Scalars['Boolean']['output'];
 };
 
+/** Report completeness of the runs behind the window's case counts, summed over its measured repository days (a run with counted suites on two days counts on each). A run is partial when a counted attempt, or its newest attempt, has a completeness row that names a lost report; unmarked when such an attempt has no completeness row (for example a provider that writes none); else complete. A repository day stored before these counts is not measured: it adds nothing to the sums and is counted in unmeasuredDays, never read as complete. */
+export type TestOpsReportCompleteness = {
+  __typename?: 'TestOpsReportCompleteness';
+  /** Count of runs, of reportRuns, read as partial: a report was lost, so some of their cases are not counted. */
+  partialRuns: Scalars['Int']['output'];
+  /** Count of runs with a counted test suite, summed over the measured repository days. */
+  reportRuns: Scalars['Int']['output'];
+  /** Count of runs, of reportRuns, with no completeness mark: not known to be complete. */
+  unmarkedRuns: Scalars['Int']['output'];
+  /** Count of repository days of the window with no completeness record: missing, not zero and not healthy. Such a day adds nothing to the three run counts. */
+  unmeasuredDays: Scalars['Int']['output'];
+};
+
 export type TestOpsRiskBreakdownItem = {
   __typename?: 'TestOpsRiskBreakdownItem';
   category: Scalars['String']['output'];
@@ -2626,6 +2639,8 @@ export type TestOpsTestWindowResult = {
   flakeRatePct?: Maybe<Scalars['Float']['output']>;
   /** ``passed / (passed + failed)`` over the window, as a percent (0 to 100); skipped and quarantined cases are not in the denominator. Null = no passed or failed case. */
   passRatePct?: Maybe<Scalars['Float']['output']>;
+  /** Report completeness of the runs behind ``cases``: partial and unmarked runs, and the repository days not measured. */
+  reportCompleteness: TestOpsReportCompleteness;
   sinceDate: Scalars['Date']['output'];
   untilDate: Scalars['Date']['output'];
 };
