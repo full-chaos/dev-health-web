@@ -212,9 +212,9 @@ describe("HierarchicalFlameGraph", () => {
         render(<HierarchicalFlameGraph root={tree} unit="hours" />);
         fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "review" } });
         expect(screen.queryByTitle("Other")).toBeNull();
-        expect(row("For review").style.boxShadow).toContain("#ffab66");
-        expect(row("For review").style.boxShadow).toMatch(/0 0 0 2px/u);
-        expect(row("Waiting").style.boxShadow).not.toMatch(/0 0 0 2px/u);
+        expect(row("For review").style.boxShadow).toContain("rgb(255, 171, 102)");
+        expect(row("For review").style.boxShadow).toMatch(/0(px)? 0(px)? 0(px)? 2px/u);
+        expect(row("Waiting").style.boxShadow).not.toMatch(/0(px)? 0(px)? 0(px)? 2px/u);
         fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "zzz" } });
         expect(screen.getByText(/No matches found for/u)).toBeTruthy();
     });
