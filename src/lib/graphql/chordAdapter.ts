@@ -1,4 +1,5 @@
 import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
+import { UNASSIGNED_REPO_LABEL, UNASSIGNED_TEAM_LABEL } from "@/lib/investment/transforms";
 import type { SankeyResult } from "./types";
 
 /**
@@ -24,6 +25,19 @@ const METADATA_KEY_BY_GROUPING = {
 export function stripDimensionPrefix(id: string): string {
     const separatorIndex = id.indexOf(":");
     return separatorIndex === -1 ? id : id.slice(separatorIndex + 1).trim();
+}
+
+const UNASSIGNED_LABEL_BY_GROUPING: Partial<Record<ChordGroupingDimension, string>> = {
+    team: UNASSIGNED_TEAM_LABEL,
+    repo: UNASSIGNED_REPO_LABEL,
+};
+
+function chordNodeName(
+    node: { id: string; label?: string | null },
+    grouping: ChordGroupingDimension,
+): string {
+    const name = stripDimensionPrefix(node.label || node.id);
+    return name || (UNASSIGNED_LABEL_BY_GROUPING[grouping] ?? name);
 }
 
 /**
@@ -54,16 +68,18 @@ export function adaptSankeyToChord(
             return [];
         }
 
-        const source = stripDimensionPrefix(sourceNode.label || sourceNode.id);
-        const target = stripDimensionPrefix(targetNode.label || targetNode.id);
+        const sourceLabel = chordNodeName(sourceNode, grouping);
+        const targetLabel = chordNodeName(targetNode, grouping);
 
         return [
             {
-                source,
-                target,
+                source: sourceNode.id,
+                target: targetNode.id,
+                sourceLabel,
+                targetLabel,
                 value: edge.value,
                 metadata: {
-                    [metadataKey]: source,
+                    [metadataKey]: sourceLabel,
                 },
             },
         ];

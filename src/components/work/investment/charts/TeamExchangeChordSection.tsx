@@ -67,11 +67,11 @@ export function TeamExchangeChordSection({
         if (records.some((record) => record.source !== record.target)) {
             return null;
         }
-        const names = new Set(records.map((record) => record.source));
-        if (names.size !== 1) {
+        const ids = new Set(records.map((record) => record.source));
+        if (ids.size !== 1) {
             return null;
         }
-        const [name] = [...names];
+        const name = records[0].sourceLabel ?? records[0].source;
         const units = records.reduce((sum, record) => sum + record.value, 0);
         return { name, units };
     }, [records]);
@@ -107,14 +107,6 @@ export function TeamExchangeChordSection({
         records,
     ]);
 
-    const nodeIdByLabel = useMemo(() => {
-        const map = new Map<string, string>();
-        dataset?.nodes.forEach((node) => {
-            map.set(node.label, node.id);
-        });
-        return map;
-    }, [dataset]);
-
     const highlightedLabel = useMemo(
         () => dataset?.nodes.find((node) => node.id === highlightedEntity)?.label ?? null,
         [dataset, highlightedEntity],
@@ -143,16 +135,10 @@ export function TeamExchangeChordSection({
     const handleChartClick = useCallback(
         (item: { type: "node" | "link"; name?: string; source?: string; target?: string }) => {
             const nextEntity =
-                item.type === "node"
-                    ? (nodeIdByLabel.get(item.name ?? "") ?? item.name ?? null)
-                    : (nodeIdByLabel.get(item.source ?? "") ??
-                      nodeIdByLabel.get(item.target ?? "") ??
-                      item.source ??
-                      item.target ??
-                      null);
+                item.type === "node" ? (item.name ?? null) : (item.source ?? item.target ?? null);
             setHighlightedEntity(nextEntity);
         },
-        [nodeIdByLabel],
+        [],
     );
 
     const handleRowSelect = useCallback((entityId: string) => {

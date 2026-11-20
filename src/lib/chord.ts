@@ -86,6 +86,17 @@ export function buildChordMatrix(records: ChordRecord[]): {
     }
     const ids = Array.from(idSet);
 
+    const labelById = new Map<string, string>();
+    for (const record of records) {
+        if (record.sourceLabel !== undefined && !labelById.has(record.source)) {
+            labelById.set(record.source, record.sourceLabel);
+        }
+        if (record.targetLabel !== undefined && !labelById.has(record.target)) {
+            labelById.set(record.target, record.targetLabel);
+        }
+    }
+    const labelOf = (id: string) => labelById.get(id) ?? id;
+
     const totals = new Map<string, number>();
     for (const id of ids) {
         totals.set(id, 0);
@@ -100,7 +111,7 @@ export function buildChordMatrix(records: ChordRecord[]): {
         if (diff !== 0) {
             return diff;
         }
-        return a.localeCompare(b);
+        return labelOf(a).localeCompare(labelOf(b)) || a.localeCompare(b);
     });
 
     const indexById = new Map(sortedIds.map((id, idx) => [id, idx]));
@@ -116,7 +127,7 @@ export function buildChordMatrix(records: ChordRecord[]): {
         matrix[i][j] += record.value;
     }
 
-    const nodes: ChordNode[] = sortedIds.map((id) => ({ id, label: id }));
+    const nodes: ChordNode[] = sortedIds.map((id) => ({ id, label: labelOf(id) }));
     return { nodes, matrix };
 }
 

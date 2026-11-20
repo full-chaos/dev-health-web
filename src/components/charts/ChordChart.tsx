@@ -60,6 +60,11 @@ export function ChordChart({
         [height, width, style],
     );
 
+    const labelById = useMemo(
+        () => new Map(dataset.nodes.map((node) => [node.id, node.label])),
+        [dataset.nodes],
+    );
+
     const { chartData, chartEdges, outgoingTotals, totalFlow } = useMemo(() => {
         const outgoingTotals = new Map<string, number>();
         const incomingTotals = new Map<string, number>();
@@ -72,25 +77,25 @@ export function ChordChart({
                 const val = dataset.matrix[i][j];
                 if (val > 0) {
                     chartEdges.push({
-                        source: dataset.nodes[i].label,
-                        target: dataset.nodes[j].label,
+                        source: dataset.nodes[i].id,
+                        target: dataset.nodes[j].id,
                         value: val,
                     });
                     rowSum += val;
                     incomingTotals.set(
-                        dataset.nodes[j].label,
-                        (incomingTotals.get(dataset.nodes[j].label) ?? 0) + val,
+                        dataset.nodes[j].id,
+                        (incomingTotals.get(dataset.nodes[j].id) ?? 0) + val,
                     );
                 }
             }
-            outgoingTotals.set(dataset.nodes[i].label, rowSum);
+            outgoingTotals.set(dataset.nodes[i].id, rowSum);
         }
 
         const chartData = dataset.nodes.map((node) => {
-            const rowSum = outgoingTotals.get(node.label) ?? 0;
-            const colSum = incomingTotals.get(node.label) ?? 0;
+            const rowSum = outgoingTotals.get(node.id) ?? 0;
+            const colSum = incomingTotals.get(node.id) ?? 0;
             return {
-                name: node.label,
+                name: node.id,
                 value: rowSum + colSum,
                 itemStyle: node.isOther ? { color: chartTheme.muted ?? "#94a3b8" } : undefined,
             };
@@ -150,8 +155,8 @@ export function ChordChart({
             const data = entry.data ?? {};
 
             if (entry.dataType === "edge") {
-                const sourceLabel = data.source ?? "";
-                const targetLabel = data.target ?? "";
+                const sourceLabel = labelById.get(data.source ?? "") ?? data.source ?? "";
+                const targetLabel = labelById.get(data.target ?? "") ?? data.target ?? "";
                 const totalFromSource = data.source ? (outgoingTotals.get(data.source) ?? 0) : 0;
                 const unitLabel = unit === "hours" ? "Elapsed" : "Value";
                 const shareLine =
@@ -170,7 +175,8 @@ export function ChordChart({
         `;
             }
 
-            const nodeName = data.name ?? entry.name ?? "";
+            const nodeId = data.name ?? entry.name ?? "";
+            const nodeName = labelById.get(nodeId) ?? nodeId;
             const nodeValue = typeof data.value === "number" ? data.value : 0;
             const unitLabel = unit === "hours" ? "Total Elapsed" : "Total Value";
             const shareLine =
@@ -220,6 +226,8 @@ export function ChordChart({
                         position: "outside" as const,
                         color: chartTheme.text,
                         fontSize: 11,
+                        formatter: (params: { name?: string }) =>
+                            labelById.get(params.name ?? "") ?? params.name ?? "",
                     },
                     itemStyle: { borderColor: chartTheme.grid, borderWidth: 1 },
                     lineStyle: {
@@ -237,6 +245,7 @@ export function ChordChart({
         chartTheme,
         tooltipFormatterAction,
         outgoingTotals,
+        labelById,
         totalFlow,
         dataset.grouping,
         dataset.totalFlow,
