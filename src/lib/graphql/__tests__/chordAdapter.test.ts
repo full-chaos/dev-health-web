@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { adaptSankeyToChord, stripDimensionPrefix } from "../chordAdapter";
+import { UNASSIGNED_REPO_LABEL, UNASSIGNED_TEAM_LABEL } from "@/lib/investment/transforms";
 
 describe("stripDimensionPrefix", () => {
     it("removes the leading dimension prefix", () => {
@@ -112,5 +113,48 @@ describe("adaptSankeyToChord", () => {
         );
 
         expect(result).toHaveLength(1);
+    });
+});
+
+describe("adaptSankeyToChord empty keys", () => {
+    const edgeBetween = (dimension: string, empty: string, other: string) => ({
+        nodes: [
+            { id: empty, label: empty, dimension, value: 5 },
+            { id: other, label: other, dimension, value: 7 },
+        ],
+        edges: [{ source: other, target: empty, value: 4 }],
+    });
+
+    it("names the empty REPO key as the unassigned repo label", () => {
+        const [row] = adaptSankeyToChord(edgeBetween("REPO", "REPO:", "REPO:web"), "repo");
+        expect(row?.target).toBe(UNASSIGNED_REPO_LABEL);
+        expect(row?.source).toBe("web");
+    });
+
+    it("names the empty REPO key when the node label is blank", () => {
+        const input = edgeBetween("REPO", "REPO:", "REPO:web");
+        input.nodes[0] = { id: "REPO:", label: "", dimension: "REPO", value: 5 };
+        const [row] = adaptSankeyToChord(input, "repo");
+        expect(row?.target).toBe(UNASSIGNED_REPO_LABEL);
+    });
+
+    it("names the empty TEAM key as the unassigned team label", () => {
+        const [row] = adaptSankeyToChord(edgeBetween("TEAM", "TEAM:", "TEAM:core"), "team");
+        expect(row?.target).toBe(UNASSIGNED_TEAM_LABEL);
+    });
+
+    it("keeps the unassigned label in the metadata key of the source", () => {
+        const [row] = adaptSankeyToChord(
+            {
+                nodes: [
+                    { id: "REPO:", label: "REPO:", dimension: "REPO", value: 5 },
+                    { id: "REPO:web", label: "REPO:web", dimension: "REPO", value: 7 },
+                ],
+                edges: [{ source: "REPO:", target: "REPO:web", value: 4 }],
+            },
+            "repo",
+        );
+        expect(row?.source).toBe(UNASSIGNED_REPO_LABEL);
+        expect(row?.metadata).toEqual({ repo: UNASSIGNED_REPO_LABEL });
     });
 });
