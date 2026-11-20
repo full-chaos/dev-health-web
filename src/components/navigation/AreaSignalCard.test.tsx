@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { normalizeLucideSvgs } from "@/test/lucideMarkup";
 import { cleanup, render, screen } from "@/test/utils";
 
 import { AreaSignalCard } from "./AreaSignalCard";
@@ -103,7 +104,7 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         ] as const;
         const html = kinds.map(([s, e]) => {
             const { container, unmount } = draw(s as AreaSignal, e);
-            const out = container.innerHTML;
+            const out = normalizeLucideSvgs(container.innerHTML);
             unmount();
             return out;
         });
