@@ -229,7 +229,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
     it("treemap: theme columns from the persisted mix, widths by the served values, with a legend", () => {
         view("overview", data());
         expect(screen.getByTestId("column-treemap-columns").style.gridTemplateColumns).toBe(
-            "minmax(0, 60fr) minmax(0, 40fr)",
+            "minmax(0px, 60fr) minmax(0px, 40fr)",
         );
         expect(screen.getAllByTestId("column-treemap-head").map((h) => h.textContent)).toEqual([
             "Feature Delivery60%",
