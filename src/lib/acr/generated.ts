@@ -4858,11 +4858,11 @@ export interface ContextFabricResultFeedbackV1 {
 /**
  * The caller's own submission record (CHAOS-11913): GET /api/v1/context-fabric/investigations/submissions/{submission_id}. Served to the principal that admitted the submission only; unknown other caller, and an unknown id, get the same 404 not_found. A client that lost a create response polls this and replays result_id when state is done.
  */
-export interface ContextFabricSubmissionStatusV1 {
+export type ContextFabricSubmissionStatusV1 = {
     schema_version: "context_fabric_submission_status.v1";
     submission_id: string;
     /**
-     * running: the run is live. done: result_id names the final result. done_unsaved: the answer was served but not stored, so there is nothing to replay. abandoned: the run ended without an answer, or ran past its budget plus 30 seconds. No state runs the request again.
+     * running: the run is live. done: result_id names the final result. done_unsaved: the answer was served but not stored, so there is nothing to replay; for an accept-first create (Prefer: respond-async) the answer reached no one, so ask again. abandoned: the run ended without an answer, or ran past its budget plus 30 seconds. No state runs the request again.
      */
     state: "running" | "done" | "done_unsaved" | "abandoned";
     reserved_result_id: string;
@@ -4875,7 +4875,25 @@ export interface ContextFabricSubmissionStatusV1 {
      */
     thread_id?: string;
     updated_at: string;
-}
+    /**
+     * The last stage the run started, read from its event log. Present only on a deployment with the run lease on, for a submission admitted under the lease, once a stage started.
+     */
+    last_stage?:
+        "interpreting" | "resolving_subjects" | "reading_facts" | "synthesizing" | "validating";
+    /**
+     * How a run admitted under the run lease ended, read from its event log. Absent while state is running, for a submission with no lease, on a deployment with the run lease off, and on a final record whose log does not hold its end yet (the delivery can still end in an error after the record is final; read again). A read of a running record whose lease ended takes the run over first, so it answers abandoned with error_code run_lost; a read of a final record whose lease ended with no end in its log appends the end its state implies (run_lost for abandoned), once.
+     */
+    terminal?: {
+        /**
+         * result: the run ended with a stored result (result_id). unsaved: the answer was served but not stored. error: the run ended with an error.v1 envelope; error_code is its error.code.
+         */
+        kind: "result" | "unsaved" | "error";
+        /**
+         * Present exactly when kind is error: an error.v1 error.code value; canceled when the owner canceled the run, run_lost when the replica running it stopped.
+         */
+        error_code?: string;
+    };
+};
 
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
@@ -5237,7 +5255,7 @@ export interface ACRErrorV1 {
     request_id: string;
     error: {
         /**
-         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation. canceled, run_lost and cursor_expired belong to the run lease (CHAOS-11949): canceled (409) is the terminal error of a run its owner canceled; run_lost (503) is the terminal error of a run whose service instance stopped and whose lease ended; neither is retryable under the submission id. cursor_expired (410) is the answer to an attach whose Last-Event-ID the event log cannot serve (malformed, never written, older than the kept window, or at or past the terminal): read the submission status and replay the result by id instead. access_denied, no_repository and budget_exhausted are the per-call access read's refusals of a call by a user-class credential (browser, OAuth user, native device), which re-reads the user's access live on every protected call: access_denied is the 403 when the user is not a member of the organization, is impersonating, the browser credential's session is not live, or the organization or user is unknown (one code for every reason, not retryable); no_repository is the 409 when the credential's repository grant within the organization's live repository inventory is empty (not retryable as sent); budget_exhausted is the 503 of a create-investigation request whose wait budget left after the access read is below the minimum, refused before admission with nothing run (retryable).
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off, or asks for an accept-first create (Prefer: respond-async) while the deployment runs no leased runs (run lease or stream off). It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation. canceled, run_lost and cursor_expired belong to the run lease (CHAOS-11949): canceled (409) is the terminal error of a run its owner canceled; run_lost (503) is the terminal error of a run whose service instance stopped and whose lease ended; neither is retryable under the submission id. cursor_expired (410) is the answer to an attach whose Last-Event-ID the event log cannot serve (malformed, never written, older than the kept window, or at or past the terminal): read the submission status and replay the result by id instead. access_denied, no_repository and budget_exhausted are the per-call access read's refusals of a call by a user-class credential (browser, OAuth user, native device), which re-reads the user's access live on every protected call: access_denied is the 403 when the user is not a member of the organization, is impersonating, the browser credential's session is not live, or the organization or user is unknown (one code for every reason, not retryable); no_repository is the 409 when the credential's repository grant within the organization's live repository inventory is empty (not retryable as sent); budget_exhausted is the 503 of a create-investigation request whose wait budget left after the access read is below the minimum, refused before admission with nothing run (retryable).
          */
         code:
             | "invalid_request"
