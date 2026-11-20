@@ -8,6 +8,8 @@ import type {
 } from "@/lib/types";
 
 const OTHER_ID = "__other__";
+const nodeSortKey = (node: ChordNode): string => node.sortKey ?? node.label;
+
 const DEFAULT_OTHER_LABEL = "Other";
 const DEFAULT_TOP_N = 8;
 const DEFAULT_TOP_K = 5;
@@ -96,6 +98,16 @@ export function buildChordMatrix(records: ChordRecord[]): {
         }
     }
     const labelOf = (id: string) => labelById.get(id) ?? id;
+    const sortKeyById = new Map<string, string>();
+    for (const record of records) {
+        if (record.sourceSortKey !== undefined && !sortKeyById.has(record.source)) {
+            sortKeyById.set(record.source, record.sourceSortKey);
+        }
+        if (record.targetSortKey !== undefined && !sortKeyById.has(record.target)) {
+            sortKeyById.set(record.target, record.targetSortKey);
+        }
+    }
+    const sortKeyOf = (id: string) => sortKeyById.get(id) ?? labelOf(id);
 
     const totals = new Map<string, number>();
     for (const id of ids) {
@@ -111,7 +123,7 @@ export function buildChordMatrix(records: ChordRecord[]): {
         if (diff !== 0) {
             return diff;
         }
-        return labelOf(a).localeCompare(labelOf(b)) || a.localeCompare(b);
+        return sortKeyOf(a).localeCompare(sortKeyOf(b)) || a.localeCompare(b);
     });
 
     const indexById = new Map(sortedIds.map((id, idx) => [id, idx]));
@@ -127,7 +139,12 @@ export function buildChordMatrix(records: ChordRecord[]): {
         matrix[i][j] += record.value;
     }
 
-    const nodes: ChordNode[] = sortedIds.map((id) => ({ id, label: labelOf(id) }));
+    const nodes: ChordNode[] = sortedIds.map((id) => {
+        const sortKey = sortKeyById.get(id);
+        return sortKey === undefined
+            ? { id, label: labelOf(id) }
+            : { id, label: labelOf(id), sortKey };
+    });
     return { nodes, matrix };
 }
 
@@ -297,7 +314,7 @@ export function computeChordSummary(
             if (diff !== 0) {
                 return diff;
             }
-            return a.node.label.localeCompare(b.node.label);
+            return nodeSortKey(a.node).localeCompare(nodeSortKey(b.node));
         });
 
     const exporterCandidates = nodes
@@ -308,7 +325,7 @@ export function computeChordSummary(
             if (diff !== 0) {
                 return diff;
             }
-            return a.node.label.localeCompare(b.node.label);
+            return nodeSortKey(a.node).localeCompare(nodeSortKey(b.node));
         });
 
     const topImporters = importerCandidates.slice(0, topK).map(({ idx, node }) => ({
@@ -326,8 +343,8 @@ export function computeChordSummary(
     type BilateralPair = {
         a: string;
         b: string;
-        aLabel: string;
-        bLabel: string;
+        aSortKey: string;
+        bSortKey: string;
         bilateralValue: number;
     };
     const bilateralPairs: BilateralPair[] = [];
@@ -338,8 +355,8 @@ export function computeChordSummary(
                 bilateralPairs.push({
                     a: nodes[i].id,
                     b: nodes[j].id,
-                    aLabel: nodes[i].label,
-                    bLabel: nodes[j].label,
+                    aSortKey: nodeSortKey(nodes[i]),
+                    bSortKey: nodeSortKey(nodes[j]),
                     bilateralValue: value,
                 });
             }
@@ -349,8 +366,8 @@ export function computeChordSummary(
         if (b.bilateralValue !== a.bilateralValue) {
             return b.bilateralValue - a.bilateralValue;
         }
-        const aKey = `${a.aLabel}\u0000${a.bLabel}`;
-        const bKey = `${b.aLabel}\u0000${b.bLabel}`;
+        const aKey = `${a.aSortKey}\u0000${a.bSortKey}`;
+        const bKey = `${b.aSortKey}\u0000${b.bSortKey}`;
         return aKey.localeCompare(bKey);
     });
     const strongestBilateral = bilateralPairs.slice(0, topK).map((pair) => ({

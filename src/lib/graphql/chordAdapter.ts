@@ -40,9 +40,14 @@ const UNASSIGNED_LABEL_BY_GROUPING: Partial<Record<ChordGroupingDimension, strin
 function chordNodeName(
     node: { id: string; label?: string | null },
     grouping: ChordGroupingDimension,
-): string {
+): { name: string; sortKey?: string } {
     const name = stripDimensionPrefix(node.label || node.id);
-    return name || (UNASSIGNED_LABEL_BY_GROUPING[grouping] ?? name);
+    if (name) {
+        return { name };
+    }
+    const fallback = UNASSIGNED_LABEL_BY_GROUPING[grouping] ?? name;
+    // The work type bucket keeps the sort value it had when its name was blank.
+    return grouping === "work_type" ? { name: fallback, sortKey: name } : { name: fallback };
 }
 
 /**
@@ -73,8 +78,8 @@ export function adaptSankeyToChord(
             return [];
         }
 
-        const sourceLabel = chordNodeName(sourceNode, grouping);
-        const targetLabel = chordNodeName(targetNode, grouping);
+        const { name: sourceLabel, sortKey: sourceSortKey } = chordNodeName(sourceNode, grouping);
+        const { name: targetLabel, sortKey: targetSortKey } = chordNodeName(targetNode, grouping);
 
         return [
             {
@@ -82,6 +87,8 @@ export function adaptSankeyToChord(
                 target: targetNode.id,
                 sourceLabel,
                 targetLabel,
+                ...(sourceSortKey !== undefined && { sourceSortKey }),
+                ...(targetSortKey !== undefined && { targetSortKey }),
                 value: edge.value,
                 metadata: {
                     [metadataKey]: sourceLabel,
