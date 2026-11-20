@@ -74,7 +74,7 @@ describe("InvestmentColumnTreemap (approved prototype treemapChart)", () => {
         draw();
         const grid = screen.getByTestId("column-treemap-columns");
         expect(grid.style.gridTemplateColumns).toBe(
-            "minmax(0, 120fr) minmax(0, 50fr) minmax(0, 30fr)",
+            "minmax(0px, 120fr) minmax(0px, 50fr) minmax(0px, 30fr)",
         );
         expect(columns().map((c) => Number(c.getAttribute("data-share")))).toEqual([60, 25, 15]);
     });
