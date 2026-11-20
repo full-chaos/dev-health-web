@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen, userEvent } from "@/test/utils";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { AUTOLINK_CONSTRUCTS, removeAutolinkConstructs } from "./remarkReportText";
 
 // CHAOS-14322: the stored report Markdown is written by the ops renderer (fixtures made by the real
 // renderMarkdown, see __tests__/fixtures/gen-report-markdown.go.txt) and read by the real MarkdownRenderer
@@ -89,5 +90,26 @@ describe("report Markdown from the ops renderer, read by the real MarkdownRender
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{c.md}</ReactMarkdown>,
         );
         expect(container.querySelectorAll("a").length).toBeGreaterThan(0);
+    });
+});
+
+describe("remarkReportText guard", () => {
+    // A rename of a construct on a remark-gfm upgrade would turn the literal autolinks back on without a sound:
+    // every name must be found in what remark-gfm registers, and be gone after the removal.
+    it("finds and removes each literal-autolink construct that remark-gfm registers", () => {
+        const store: { micromarkExtensions?: unknown[] } = {};
+        (remarkGfm as unknown as (this: { data: () => unknown }) => void).call({
+            data: () => store,
+        });
+        const extensions = store.micromarkExtensions as Parameters<
+            typeof removeAutolinkConstructs
+        >[0];
+        expect(extensions.length).toBeGreaterThan(0);
+        const removed = removeAutolinkConstructs(extensions);
+        expect([...new Set(removed)].sort()).toEqual([...AUTOLINK_CONSTRUCTS].sort());
+        const left = extensions.flatMap((e) =>
+            Object.values((e as { text?: Record<string, unknown> }).text ?? {}).flat(),
+        ) as { name?: string }[];
+        expect(left.filter((c) => AUTOLINK_CONSTRUCTS.has(c.name ?? ""))).toEqual([]);
     });
 });
