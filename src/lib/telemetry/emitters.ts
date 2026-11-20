@@ -7,7 +7,8 @@
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 import type { MetricFilter } from "@/lib/filters/types";
-import { closedRoutePattern, ERROR_CLASSES } from "./schema";
+import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
+import { ASK_DEV_TERMINALS, closedRoutePattern, ERROR_CLASSES } from "./schema";
 import type { TelemetryPayloadByName } from "./types";
 
 function safely(emit: () => void): void {
@@ -104,6 +105,41 @@ export function emitClientError(
             digest,
             errorClass: errorClassOf(error),
             routePattern: pathname ? routePatternForPathname(pathname) : null,
+        });
+    });
+}
+
+type AskDevPayload = TelemetryPayloadByName["ask_dev_interacted"];
+
+const ASK_DEV_TERMINAL_SET: ReadonlySet<string> = new Set(ASK_DEV_TERMINALS);
+
+/**
+ * CHAOS-11961: one Ask Dev interaction. The action, the surface (the full page or the panel, from
+ * the path), the end kind of a turn (a closed id; any other kind is `other`) and the turn count.
+ * Nothing else leaves the browser: no question or answer text, no thread, submission or request id,
+ * no URL.
+ */
+export function emitAskDevInteraction(input: {
+    readonly action: AskDevPayload["action"];
+    readonly terminal?: string;
+    readonly turnCount?: number;
+}): void {
+    safely(() => {
+        const surface =
+            typeof window !== "undefined" && window.location.pathname === ASK_DEV_FULL_PAGE_PATH
+                ? "page"
+                : "panel";
+        const terminal =
+            input.terminal === undefined
+                ? null
+                : ASK_DEV_TERMINAL_SET.has(input.terminal)
+                  ? input.terminal
+                  : "other";
+        trackTelemetryEvent("ask_dev_interacted", {
+            action: input.action,
+            surface,
+            terminal,
+            turnCount: input.turnCount ?? null,
         });
     });
 }

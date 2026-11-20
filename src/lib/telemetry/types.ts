@@ -9,7 +9,8 @@ export type TelemetryEventName =
     | "guide_opened"
     | "session_started"
     | "session_ended"
-    | "client_error";
+    | "client_error"
+    | "ask_dev_interacted";
 
 export type TelemetryPayloadByName = {
     page_viewed: {
@@ -67,6 +68,15 @@ export type TelemetryPayloadByName = {
         digest: string | null;
         errorClass: string;
         routePattern: string | null;
+    };
+    /** CHAOS-11961: closed ids and counts only; the route is the envelope's. */
+    ask_dev_interacted: {
+        action: "open" | "submit" | "expand" | "cancel" | "retry" | "terminal";
+        surface: "panel" | "page";
+        /** The turn's end kind, for `terminal` only; null for every other action. */
+        terminal: string | null;
+        /** The conversation's turn count; null for open and expand. */
+        turnCount: number | null;
     };
 };
 

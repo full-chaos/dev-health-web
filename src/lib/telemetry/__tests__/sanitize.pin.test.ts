@@ -34,6 +34,7 @@ const FIXTURES: { [Name in TelemetryEventName]: TelemetryPayloadByName[Name] } =
         errorClass: errorClassOf(new TypeError("x")),
         routePattern: route,
     },
+    ask_dev_interacted: { action: "terminal", surface: "panel", terminal: "limited", turnCount: 3 },
 };
 
 describe("sanitize accepts every real payload unchanged", () => {
@@ -52,6 +53,7 @@ describe("sanitize accepts every real payload unchanged", () => {
             "session_started",
             "session_ended",
             "client_error",
+            "ask_dev_interacted",
         ];
         expect(Object.keys(FIXTURES).sort()).toEqual([...names].sort());
     });

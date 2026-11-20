@@ -88,6 +88,17 @@ Emitted when a user opens an educational guide or help panel.
 | `guide`     | `string` | The ID of the guide.                       | `understanding_cycle_time` |
 | `surface`   | `string` | The UI surface where the guide was opened. | `metrics_page`             |
 
+### `ask_dev_interacted`
+
+Emitted when a user opens, expands, submits to, cancels, retries or finishes a turn in Ask Dev. It carries closed ids and counts only, never question text, answers, or thread, submission or request ids.
+
+| Payload Key | Type             | Purpose                                                                                      | Example Value |
+| ----------- | ---------------- | -------------------------------------------------------------------------------------------- | ------------- |
+| `action`    | `string`         | One of `open`, `submit`, `expand`, `cancel`, `retry`, `terminal`.                            | `submit`      |
+| `surface`   | `string`         | `panel` or `page` (the full Ask Dev page).                                                   | `panel`       |
+| `terminal`  | `string \| null` | End kind of the turn on `terminal` (closed set; unknown values become `other`), else `null`. | `answered`    |
+| `turnCount` | `number \| null` | Turns in the conversation when the event fired.                                              | `2`           |
+
 ### `session_started`
 
 Emitted when a new user session begins.

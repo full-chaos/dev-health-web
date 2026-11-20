@@ -302,6 +302,7 @@ describe("closed sets are pinned to the code that feeds them", () => {
         const names = Object.keys(specs).sort();
         expect(names).toEqual(
             [
+                "ask_dev_interacted",
                 "chart_interacted",
                 "client_error",
                 "feature_viewed",
