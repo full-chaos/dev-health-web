@@ -21,6 +21,7 @@ import {
     getScopeLabel,
     HEADINGS,
     PAGE_SIZE,
+    requestedRangeCell,
 } from "./SyncJobHistory.helpers";
 import { readSkippedDatasets, skippedReasonText } from "@/lib/admin/syncSkippedDatasets";
 import { appPath } from "@/lib/navigation/appPath";
@@ -131,6 +132,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                             formattedRunStarted === "—" ? "unknown time" : formattedRunStarted;
                         const coverageResult = deriveJobCoverageResult(job);
                         const sr = job.sync_run;
+                        const requested = requestedRangeCell(sr);
 
                         return (
                             <tr
@@ -149,7 +151,10 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {sr?.mode ?? "—"}
                                 </td>
                                 <td className="px-3 py-3 text-sm text-(--ink-muted)">
-                                    {formatRange(sr?.requested_range)}
+                                    {requested.range}
+                                    {requested.note ? (
+                                        <span className="block text-xs">{requested.note}</span>
+                                    ) : null}
                                 </td>
                                 <td className="px-3 py-3 text-sm text-(--ink-muted)">
                                     {formatRange(sr?.covered_range)}

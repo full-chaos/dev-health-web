@@ -171,7 +171,13 @@ async function connect(page: Page, baseURL: string | undefined): Promise<void> {
 
 async function ask(surface: Locator): Promise<Locator> {
     const input = surface.getByRole("textbox", { name: "Ask a question" });
-    await expect(input).toBeEnabled();
+    // CHAOS-14188: the composer is locked until the lazily loaded render chunk is fetched and the
+    // session resolves (`composerLocked: !ready`). On a loaded CI runner that exceeds the 5 s
+    // default, so wait on the render's mount, then give the one unlock a bounded wait.
+    await expect(surface.getByRole("region", { name: "Ask Dev conversation" })).toBeVisible({
+        timeout: 20_000,
+    });
+    await expect(input).toBeEnabled({ timeout: 20_000 });
     await input.fill(QUESTION);
     await input.press("Enter");
     const answer = surface.getByRole("article", { name: "Answer" });

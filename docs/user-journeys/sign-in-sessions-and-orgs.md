@@ -7,9 +7,8 @@ web app does today. For the technical detail of authentication, see [auth-system
 ## Sign in
 
 1. Open the sign-in page (`/auth/signin`). Enter your email and password.
-2. If your organization uses single sign-on, choose "Continue with single sign-on". The page shows
-   this option only when single sign-on is turned on for the web app. The form asks for a Protocol
-   (OpenID Connect or SAML) and a Provider ID. Your administrator shares the Provider ID.
+2. If your organization uses single sign-on, open the sign-in link that your administrator shares.
+   The sign-in page has no single sign-on form.
 3. The page can also show buttons for GitHub, Google or GitLab. It shows a button only when the
    administrator of the web app has set up that provider.
 4. After a good sign-in, the page sends you on:

@@ -26,6 +26,31 @@ export function formatRange(range: { since: string; before: string } | null | un
     return `${formatDateUTC(range.since)} → ${formatDateUTC(range.before)}`;
 }
 
+/**
+ * The Requested range cell: the run's range without its longer-window units,
+ * and a note that names them. With no split (an older Ops) or no
+ * longer-window unit, the cell is the plain requested range.
+ */
+export function requestedRangeCell(sr: SyncJob["sync_run"]): {
+    range: string;
+    note: string | null;
+} {
+    const split = sr?.requested_range_split;
+    if (!split || split.longer_window_unit_count <= 0) {
+        return { range: formatRange(sr?.requested_range), note: null };
+    }
+    const count = split.longer_window_unit_count;
+    const oldest = split.longer_window_units[0];
+    const lead =
+        count === 1
+            ? "1 unit asks a longer window"
+            : `${formatNumber(count)} units ask longer windows`;
+    const detail = oldest
+        ? ` (${count === 1 ? "" : "oldest: "}${oldest.dataset_key} from ${formatDateUTC(oldest.since)})`
+        : "";
+    return { range: formatRange(split), note: lead + detail };
+}
+
 export function getDuration(job: SyncJob): string {
     if (job.duration_seconds != null) return `${Math.round(job.duration_seconds)}s`;
     if (job.completed_at && job.started_at) {

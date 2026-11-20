@@ -456,7 +456,7 @@ sequenceDiagram
 
 Enterprise SSO signs a user in through an identity provider (IdP) that an organization administrator set up on auth-service. It is dark: every route below answers 404 and makes no backend call until `AUTH_SSO_ENABLED` is `true` or `1`. The backend aggregates `oidc` and `saml` must be on too.
 
-There is no provider lookup for a signed-out visitor. An administrator shares the provider id, and the user opens a deep link or pastes the id into the "Continue with single sign-on" form on `/auth/signin` (shown only while the switch is on):
+There is no provider lookup for a signed-out visitor. An administrator shares the provider id, and the user opens a deep link. The sign-in page has no form for the id:
 
 - `/auth/sso/oidc/<providerId>` starts OIDC.
 - `/auth/sso/saml/<providerId>` starts SAML.

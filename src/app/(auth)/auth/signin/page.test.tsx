@@ -53,7 +53,7 @@ vi.mock("@/components/auth/SocialLoginError", () => ({
 
 import SignInPage from "./page";
 
-// CHAOS-13035: the SSO entry exists only while the switch is on.
+// CHAOS-14224: the sign-in page has no raw provider id form, with the switch on or off.
 const PROVIDER_ENTRY = /provider id/i;
 
 async function renderPage(params: Record<string, string> = {}) {
@@ -133,7 +133,7 @@ describe("SignInPage", () => {
         expect(screen.getByTestId("auth-card")).toHaveAttribute("data-signup-href", "/auth/signup");
     });
 
-    it("shows no SSO entry while the switch is off", async () => {
+    it("shows no provider id field while the switch is off", async () => {
         vi.stubEnv("AUTH_SSO_ENABLED", "");
         try {
             const ui = await renderPage();
@@ -145,13 +145,15 @@ describe("SignInPage", () => {
         }
     });
 
-    it("shows the SSO entry when the switch is on", async () => {
+    it("shows no provider id field or single sign-on button while the switch is on", async () => {
         vi.stubEnv("AUTH_SSO_ENABLED", "true");
         try {
             const ui = await renderPage({ callbackUrl: "/acr/device" });
             render(ui as React.ReactElement);
-            expect(screen.getByLabelText(PROVIDER_ENTRY)).toBeVisible();
-            expect(screen.getByRole("button", { name: /single sign-on/i })).toBeVisible();
+            expect(screen.getByTestId("login-form")).toBeVisible();
+            expect(screen.queryByLabelText(PROVIDER_ENTRY)).toBeNull();
+            expect(screen.queryByLabelText(/protocol/i)).toBeNull();
+            expect(screen.queryByRole("button", { name: /single sign-on/i })).toBeNull();
         } finally {
             vi.unstubAllEnvs();
         }
