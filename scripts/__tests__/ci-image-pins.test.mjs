@@ -27,12 +27,7 @@ const digests = Object.values(pins.images).map((i) => i.digest);
 
 describe("CI image pins agree (ci/ci-images.json is the source)", () => {
     it("has the web-owned mirrored images (buildkit is ops-owned)", () => {
-        expect(Object.keys(pins.images).sort()).toEqual([
-            "node",
-            "playwright",
-            "playwright-next",
-            "traefik",
-        ]);
+        expect(Object.keys(pins.images).sort()).toEqual(["node", "playwright", "traefik"]);
     });
 
     it("the Dockerfile NODE_IMAGE default is the pinned upstream ref", () => {
@@ -59,21 +54,9 @@ describe("CI image pins agree (ci/ci-images.json is the source)", () => {
         expect(text).not.toMatch(/mirror\.gcr\.io\/\S+@sha256/);
     });
 
-    it("the staged playwright-next image is mirrored from main only and no workflow consumes it yet", () => {
-        const text = readFileSync(path.join(WORKFLOWS, "mirror-ci-images.yml"), "utf8");
-        const step = text.split("- name: Mirror the staged Playwright image")[1];
-        expect(step, "staged mirror step").toBeDefined();
-        const header = step.split("run: |")[0];
-        expect(header).toContain("github.ref == 'refs/heads/main'");
-        expect(header).toContain("github.event_name != 'pull_request'");
-        expect(step).toContain("--ref playwright-next mirror");
-        expect(text.split("playwright-next").length - 1).toBeGreaterThanOrEqual(2);
-        expect(text).toMatch(/for name in node traefik playwright; do/);
-        for (const f of workflowFiles.filter((w) => w !== "mirror-ci-images.yml")) {
-            expect(read(".github", "workflows", f), `${f} consumes playwright-next`).not.toContain(
-                "playwright-next",
-            );
-        }
+    it("the playwright image tag is the @playwright/test version (browsers must match the package)", () => {
+        const spec = JSON.parse(read("package.json")).devDependencies["@playwright/test"];
+        expect(pins.images.playwright.tag).toBe(`v${spec.replace(/^\^/, "")}-noble`);
     });
 
     it("build-docker reads the node mirror ref from the file", () => {
