@@ -1,0 +1,80 @@
+package report
+
+// Regenerate (ops checkout at the sha named in report-markdown.json):
+//   cp gen-report-markdown.go.txt <ops>/internal/jobs/report/zz_webfixture_test.go
+//   FIXTURE_OUT=<abs>/report-markdown.json OPS_SHA=<full sha> go test ./internal/jobs/report -run TestWriteWebFixture -count=1
+//   rm <ops>/internal/jobs/report/zz_webfixture_test.go
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"testing"
+	"time"
+)
+
+type webFixtureCase struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
+	// Autolink is true when a GFM literal autolink (URL, www host, e-mail) forms in the value as written.
+	Autolink bool   `json:"autolink"`
+	Md       string `json:"md"`
+	Raw      string `json:"raw"`
+}
+
+func TestWriteWebFixture(t *testing.T) {
+	values := []struct {
+		id, value string
+		autolink  bool
+	}{
+		{"https", "https://example.com/a?b=1", true},
+		{"http-upper", "HTTP://X.CO/p", true},
+		{"ftp", "ftp://host.example/file", true},
+		{"www", "www.example.com", true},
+		{"www-upper", "WWW.X.CO", true},
+		{"email", "dev@example.com", true},
+		{"mixed", "see https://x.co, www.y.co or a@b.co now", true},
+		{"at-not-email", "a @ b and @team", false},
+		{"punctuation", "*x* _y_ `z` [a](b) <i> &amp; ~s~", false},
+		{"escaped-looking", `a_b *x* \:// \. \@ \\ end`, false},
+	}
+	var cases []webFixtureCase
+	for _, v := range values {
+		plan := Plan{
+			PlanID: "plan-1", ReportType: "weekly_health", ScopeTeams: []string{v.value},
+			ConfidenceThreshold: "high", CreatedAt: time.Date(2026, 1, 8, 0, 0, 0, 0, time.UTC),
+			UnchartedMetrics: []UnchartedMetric{{Label: v.value, Reason: v.value}},
+		}
+		listed := ChartResult{
+			Spec: ChartSpec{ChartID: "c1", Metric: "failure_rate", GroupBy: "team"}, Title: v.value, Unit: "ratio", Note: v.value,
+			DataPoints: []DataPoint{{X: v.value, Y: 0.5, Group: v.value}},
+		}
+		unlisted := ChartResult{Spec: ChartSpec{ChartID: "c2", Metric: "other_metric"}, Title: "Plain title", NotApplicable: v.value}
+		narratives := []narrative{{sectionType: "s", title: v.value, body: "Body.", supportingMetrics: []string{"failure_rate"}}}
+		prov := []ProvenanceRecord{{ArtifactType: "chart", ArtifactID: v.value}}
+		md := renderMarkdown(plan, []ChartResult{listed, unlisted}, narratives, prov)
+		raw := "# Weekly Health Report — unspecified window\n\n## Summary\nAvailable evidence appears limited for this summary.\n\n" +
+			"## " + v.value + "\nBody.\n\n### Insights\nNo grounded insights for this section.\n\n### Charts\n#### " + v.value + "\n\n" +
+			"| x | y | group |\n| --- | ---: | --- |\n| " + v.value + " | 0.5 | " + v.value + " |\n\n_Note: " + v.value + "_\n\n" +
+			"## Other Charts\n#### Plain title\n\n_Not applicable: " + v.value + "_\n\n" +
+			"## Requested Metrics Without a Chart\n- " + v.value + ": " + v.value + "\n\n" +
+			"## Provenance\n\n- **chart:" + v.value + "** — sources: n/a; metrics: n/a\n\n---\n" +
+			"Generated at 2026-01-08T00:00:00+00:00 | Confidence: high | Scope: teams=" + v.value + "\n"
+		cases = append(cases, webFixtureCase{ID: v.id, Value: v.value, Autolink: v.autolink, Md: md, Raw: raw})
+	}
+	src, err := os.ReadFile("zz_webfixture_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(src)
+	out, err := json.MarshalIndent(map[string]any{
+		"opsSha": os.Getenv("OPS_SHA"), "generatorSha256": hex.EncodeToString(sum[:]), "cases": cases,
+	}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("FIXTURE_OUT"), append(out, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

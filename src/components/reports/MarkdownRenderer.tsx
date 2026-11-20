@@ -61,8 +61,17 @@ function shiftedHeadings(look: HeadingLook): Components {
     };
 }
 
-const BODY_HEADINGS = shiftedHeadings(PROSE_SM_LOOK);
-const PROVENANCE_HEADINGS = shiftedHeadings(PROSE_LOOK);
+// A report holds no link by contract: its text comes from the report plan (scope, titles, labels, notes) and a
+// URL, www host or e-mail address in it is a value to read, never a target. remark-gfm builds a literal autolink
+// from the decoded text, so a backslash escape in the stored text does not stop it; the one reliable stop is to
+// draw every link as its text. This also keeps an authored `[text](url)` from becoming a link.
+function PlainText({ children }: ComponentPropsWithoutRef<"a"> & ExtraProps) {
+    return <span>{children}</span>;
+}
+
+const BODY_COMPONENTS: Components = { ...shiftedHeadings(PROSE_SM_LOOK), a: PlainText };
+const PROVENANCE_COMPONENTS: Components = { ...shiftedHeadings(PROSE_LOOK), a: PlainText };
+const FOOTER_COMPONENTS: Components = { a: PlainText };
 
 // The Provenance heading is a whole line, and the last such line wins: the renderer writes the real section
 // last, so a line of that text inside a report value (an old report) never moves the split. A line ends at
@@ -102,7 +111,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
     return (
         <div className="space-y-4">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={BODY_HEADINGS}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={BODY_COMPONENTS}>
                     {body}
                 </ReactMarkdown>
             </div>
@@ -135,7 +144,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
                         <div className="mt-3 prose prose-xs dark:prose-invert max-w-none opacity-70">
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
-                                components={PROVENANCE_HEADINGS}
+                                components={PROVENANCE_COMPONENTS}
                             >
                                 {provenance.replace(PROVENANCE_HEADING_LINE, "").trim()}
                             </ReactMarkdown>
@@ -146,7 +155,9 @@ export function MarkdownRenderer({ content }: { content: string }) {
 
             {footer && (
                 <div className="border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted) tracking-wide">
-                    {footer}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={FOOTER_COMPONENTS}>
+                        {footer}
+                    </ReactMarkdown>
                 </div>
             )}
         </div>
