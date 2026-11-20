@@ -1,5 +1,9 @@
 import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
-import { UNASSIGNED_REPO_LABEL, UNASSIGNED_TEAM_LABEL } from "@/lib/investment/transforms";
+import {
+    UNASSIGNED_REPO_LABEL,
+    UNASSIGNED_TEAM_LABEL,
+    UNASSIGNED_WORK_TYPE_LABEL,
+} from "@/lib/investment/transforms";
 import type { SankeyResult } from "./types";
 
 /**
@@ -30,6 +34,7 @@ export function stripDimensionPrefix(id: string): string {
 const UNASSIGNED_LABEL_BY_GROUPING: Partial<Record<ChordGroupingDimension, string>> = {
     team: UNASSIGNED_TEAM_LABEL,
     repo: UNASSIGNED_REPO_LABEL,
+    work_type: UNASSIGNED_WORK_TYPE_LABEL,
 };
 
 function chordNodeName(

@@ -201,6 +201,7 @@ export const UNASSIGNED_TEAM_LABEL = "Unassigned team";
 export const UNASSIGNED_REPO_LABEL = "Unassigned repo";
 export const UNASSIGNED_THEME_LABEL = "Unassigned theme";
 export const UNASSIGNED_SUBCATEGORY_LABEL = "Unassigned subcategory";
+export const UNASSIGNED_WORK_TYPE_LABEL = "Unassigned work type";
 export const OTHER_REPOS_LABEL = "Other repos";
 export const TOP_N_REPOS = 12;
 
