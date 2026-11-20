@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { ScopeBar } from "./ScopeBar";
 import { FILTER_OPTIONS, scopeBarUrl } from "@/test/scopeBarHarness";
+import { normalizeLucideSvgs } from "@/test/lucideMarkup";
 
 /**
  * Markup of the scope bar, taken before the card was extracted into
@@ -27,7 +28,7 @@ const ALL_DIMENSIONS_F =
     "eyJob3ciOnsiYmxvY2tlZCI6dHJ1ZSwiZmxvd19zdGFnZSI6WyJyZXZpZXciXX0sInNjb3BlIjp7ImlkcyI6WyJwbGF0Zm9ybSJdLCJsZXZlbCI6InRlYW0ifSwidGltZSI6eyJjb21wYXJlX2RheXMiOjMwLCJyYW5nZV9kYXlzIjozMH0sIndoYXQiOnsiYXJ0aWZhY3RzIjpbInByIiwiaXNzdWUiXSwicmVwb3MiOlsib3JnL2FwaSIsIm9yZy93ZWIiXX0sIndobyI6eyJkZXZlbG9wZXJzIjpbImFuYUBleGFtcGxlLmNvbSIsImJvQGV4YW1wbGUuY29tIl0sInJvbGVzIjpbInJldmlld2VyIl19LCJ3aHkiOnsiaXNzdWVfdHlwZSI6WyJidWciXSwid29ya19jYXRlZ29yeSI6WyJmZWF0dXJlIl19fQ";
 
 function markup(container: HTMLElement) {
-    return container.innerHTML;
+    return normalizeLucideSvgs(container.innerHTML);
 }
 
 beforeEach(() => {

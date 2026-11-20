@@ -13,6 +13,11 @@
 # Playwright's image is published on mcr.microsoft.com only, so its entry names that registry as its
 # own source (CHAOS-12841); it is digest-pinned and verified the same way, and no Docker Hub is used.
 #
+# STAGED images (CHAOS-14350): an entry named `playwright-next` is the NEXT Playwright image, published
+# before any consumer reads it. It is mirrored ONLY from a run on main (push, schedule or dispatch of main),
+# never from a pull_request run, so no PR branch can publish it. No consumer waits for it or runs in it
+# until the change that moves `playwright` onto it.
+#
 # NO setup-buildx and NO Docker Hub login, on purpose: setup-buildx would itself pull
 # moby/buildkit from Docker Hub. `imagetools` needs no builder.
 #
@@ -105,3 +110,20 @@ jobs:
                     fi
                   done <<< "${IMAGES}"
                   exit "${failed}"
+
+            - name: Mirror the staged Playwright image (main only), preserving its digest
+              if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+              run: |
+                  set -euo pipefail
+                  src="$(node scripts/bump-ci-images.mjs --ref playwright-next source)"
+                  dest="$(node scripts/bump-ci-images.mjs --ref playwright-next mirror)"
+                  target="${dest%@*}"
+                  printf '\n=== from %s\n    to   %s\n' "${src}" "${target}"
+                  docker buildx imagetools create --tag "${target}" "${src}"
+                  want="${src##*@}"
+                  got=$(docker buildx imagetools inspect --format '{{ .Manifest.Digest }}' "${target}")
+                  if [ "${got}" != "${want}" ]; then
+                    printf 'FAIL %s mirrored=%s want=%s\n' "${dest}" "${got}" "${want}" >&2
+                    exit 1
+                  fi
+                  printf 'OK   %s %s\n' "${dest}" "${got}"
