@@ -51,7 +51,8 @@ describe("report Markdown from the ops renderer, read by the real MarkdownRender
         expect(fixture.opsSha).toMatch(/^[0-9a-f]{40}$/);
         const generator = readFileSync(path.join(FIXTURE_DIR, "gen-report-markdown.go.txt"));
         expect(createHash("sha256").update(generator).digest("hex")).toBe(fixture.generatorSha256);
-        expect(fixture.cases.filter((c) => c.autolink)).toHaveLength(7);
+        const baseline = ["https", "http-upper", "ftp", "www", "www-upper", "email", "mixed"];
+        expect(fixture.cases.map((c) => c.id)).toEqual(expect.arrayContaining(baseline));
     });
 
     it.each(fixture.cases.map((c) => [c.id, c] as const))(
@@ -61,13 +62,24 @@ describe("report Markdown from the ops renderer, read by the real MarkdownRender
         },
     );
 
+    // Not from the ops renderer (it escapes "[" and "<"): a link someone wrote into stored text stays text too.
+    it("an authored link or a bracketed autolink is drawn as its text", async () => {
+        const content =
+            "# Weekly Health Report\n\nSee [the docs](https://x.co/d) and <https://y.co> and [ref][r].\n\n[r]: https://z.co\n";
+        const { container } = render(<MarkdownRenderer content={content} />);
+        await screen.findByRole("heading", { level: 3, name: /^Weekly Health Report/ });
+        expect(container.querySelectorAll("a, [href]")).toHaveLength(0);
+        expect(container.querySelector("p")?.textContent).toBe(
+            "See the docs and https://y.co and ref.",
+        );
+    });
+
     // Mutants: the cell must be red for a fixture with the raw value, and for a reader without the fix.
-    it.each(fixture.cases.filter((c) => c.raw !== c.md).map((c) => [c.id, c] as const))(
-        "mutant %s: the unescaped value is red (inline Markdown renders)",
-        async (_id, c) => {
-            await expect(checkReport(c.raw, c.value)).rejects.toThrow();
-        },
-    );
+    it.each(
+        fixture.cases.filter((c) => !c.autolink && c.raw !== c.md).map((c) => [c.id, c] as const),
+    )("mutant %s: the unescaped value is red (inline Markdown renders)", async (_id, c) => {
+        await expect(checkReport(c.raw, c.value)).rejects.toThrow();
+    });
 
     // ftp:// is the one scheme micromark does not link (goldmark does): it has no reader-side witness.
     it.each(
