@@ -7,28 +7,51 @@ import {
     TEAM_WORK_ITEM_BREAKDOWN_QUERY,
 } from "../queries";
 
-// CHAOS-12738: ops registers InvestmentBreakdownTeam and
-// InvestmentBreakdownRepository with the InvestmentBreakdown body under their
-// own names, and the wire-parity manifest compares these exports with them.
-// The body must stay the InvestmentBreakdown body exactly; only the name moves.
+// CHAOS-12738 / CHAOS-14428: ops registers InvestmentBreakdownTeam,
+// InvestmentBreakdownRepository and TeamWorkItemBreakdown under their own
+// names, and the wire-parity manifest compares these exports with them. The
+// current ops text selects evidenceQualityStats.sizedUnitCount, which the
+// org-level InvestmentBreakdown text does not, so the scoped bodies are pinned
+// here to the ops text itself and are no longer the org body under another name.
 const PREFIX = "query InvestmentBreakdown(";
 
-function bodyAfter(query: string, name: string): string {
-    const marker = `query ${name}(`;
-    const at = query.indexOf(marker);
-    expect(at).toBeGreaterThanOrEqual(0);
-    expect(query.indexOf(marker, at + 1)).toBe(-1);
-    return query.slice(0, at) + query.slice(at + marker.length);
+function scopedText(name: string): string {
+    return `
+query ${name}($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    breakdowns {
+      dimension
+      measure
+      items {
+        key
+        value
+      }
+    }
+    evidenceQualityDistribution
+    evidenceQualityStats {
+      mean
+      stddev
+      total
+      bandCounts
+      uncategorizedCount
+      sizedUnitCount
+    }
+  }
+}
+`;
 }
 
 describe("scoped investment breakdown queries", () => {
-    it("keep the InvestmentBreakdown body under their own operation names", () => {
-        const base = bodyAfter(INVESTMENT_BREAKDOWN_QUERY, "InvestmentBreakdown");
-        expect(bodyAfter(INVESTMENT_BREAKDOWN_TEAM_QUERY, "InvestmentBreakdownTeam")).toBe(base);
-        expect(
-            bodyAfter(INVESTMENT_BREAKDOWN_REPOSITORY_QUERY, "InvestmentBreakdownRepository"),
-        ).toBe(base);
-        expect(bodyAfter(TEAM_WORK_ITEM_BREAKDOWN_QUERY, "TeamWorkItemBreakdown")).toBe(base);
+    it("are the current ops text of each operation, selecting sizedUnitCount", () => {
+        expect(INVESTMENT_BREAKDOWN_TEAM_QUERY).toBe(scopedText("InvestmentBreakdownTeam"));
+        expect(INVESTMENT_BREAKDOWN_REPOSITORY_QUERY).toBe(
+            scopedText("InvestmentBreakdownRepository"),
+        );
+        expect(TEAM_WORK_ITEM_BREAKDOWN_QUERY).toBe(scopedText("TeamWorkItemBreakdown"));
+    });
+
+    it("leave the org-level InvestmentBreakdown text without sizedUnitCount", () => {
+        expect(INVESTMENT_BREAKDOWN_QUERY).not.toContain("sizedUnitCount");
     });
 
     it("no longer carry the InvestmentBreakdown operation name", () => {
