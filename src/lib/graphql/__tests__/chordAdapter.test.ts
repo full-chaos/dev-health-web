@@ -223,10 +223,7 @@ describe("adaptSankeyToChord empty WORK_TYPE key", () => {
     });
 
     it("names a whitespace-only WORK_TYPE key as the unassigned work type label", () => {
-        const [row] = adaptSankeyToChord(
-            edgeBetween("WORK_TYPE:  ", "WORK_TYPE:Bug"),
-            "work_type",
-        );
+        const [row] = adaptSankeyToChord(edgeBetween("WORK_TYPE:  ", "WORK_TYPE:Bug"), "work_type");
         expect(row?.targetLabel).toBe(WORK_TYPE_LABEL);
     });
 
