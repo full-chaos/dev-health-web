@@ -46,8 +46,8 @@ function chordNodeName(
         return { name };
     }
     const fallback = UNASSIGNED_LABEL_BY_GROUPING[grouping] ?? name;
-    // The work type bucket keeps the sort value it had when its name was blank.
-    return grouping === "work_type" ? { name: fallback, sortKey: name } : { name: fallback };
+    // The unassigned bucket keeps the sort value it had when its name was blank.
+    return { name: fallback, sortKey: name };
 }
 
 /**
