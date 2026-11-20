@@ -201,3 +201,57 @@ describe("adaptSankeyToChord identity", () => {
         expect(records.map((r) => [r.source, r.target])).toEqual([["TEAM:t1", "TEAM:t2"]]);
     });
 });
+
+describe("adaptSankeyToChord empty WORK_TYPE key", () => {
+    const WORK_TYPE_LABEL = "Unassigned work type";
+    const edgeBetween = (empty: string, other: string) => ({
+        nodes: [
+            { id: empty, label: empty, dimension: "WORK_TYPE", value: 5 },
+            { id: other, label: other, dimension: "WORK_TYPE", value: 7 },
+        ],
+        edges: [{ source: other, target: empty, value: 4 }],
+    });
+
+    it("names the empty WORK_TYPE key as the unassigned work type label", () => {
+        const [row] = adaptSankeyToChord(edgeBetween("WORK_TYPE:", "WORK_TYPE:Bug"), "work_type");
+        expect(row).toMatchObject({
+            source: "WORK_TYPE:Bug",
+            target: "WORK_TYPE:",
+            sourceLabel: "Bug",
+            targetLabel: WORK_TYPE_LABEL,
+        });
+    });
+
+    it("names a whitespace-only WORK_TYPE key as the unassigned work type label", () => {
+        const [row] = adaptSankeyToChord(edgeBetween("WORK_TYPE:  ", "WORK_TYPE:Bug"), "work_type");
+        expect(row?.targetLabel).toBe(WORK_TYPE_LABEL);
+    });
+
+    it("names the empty WORK_TYPE key when the node label is blank", () => {
+        const input = edgeBetween("WORK_TYPE:", "WORK_TYPE:Bug");
+        input.nodes[0] = { id: "WORK_TYPE:", label: "", dimension: "WORK_TYPE", value: 5 };
+        const [row] = adaptSankeyToChord(input, "work_type");
+        expect(row?.targetLabel).toBe(WORK_TYPE_LABEL);
+    });
+
+    it("puts the unassigned work type label in the metadata key of the source", () => {
+        const [row] = adaptSankeyToChord(
+            {
+                ...edgeBetween("WORK_TYPE:", "WORK_TYPE:Bug"),
+                edges: [{ source: "WORK_TYPE:", target: "WORK_TYPE:Bug", value: 4 }],
+            },
+            "work_type",
+        );
+        expect(row?.metadata).toEqual({ workType: WORK_TYPE_LABEL });
+    });
+
+    it("keeps a real work type named like the unassigned label distinct from the empty bucket", () => {
+        const records = adaptSankeyToChord(
+            edgeBetween("WORK_TYPE:", `WORK_TYPE:${WORK_TYPE_LABEL}`),
+            "work_type",
+        );
+        expect(records).toHaveLength(1);
+        expect(records[0]?.source).not.toBe(records[0]?.target);
+        expect(records[0]?.sourceLabel).toBe(records[0]?.targetLabel);
+    });
+});
