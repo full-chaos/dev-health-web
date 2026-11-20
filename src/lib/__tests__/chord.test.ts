@@ -305,3 +305,49 @@ describe("buildChordDataset", () => {
         expect(exporters).toContain("A");
     });
 });
+
+describe("chord identity", () => {
+    const records: ChordRecord[] = [
+        {
+            source: "TEAM:",
+            target: "TEAM:Unassigned team",
+            sourceLabel: "Unassigned team",
+            targetLabel: "Unassigned team",
+            value: 4,
+        },
+        {
+            source: "TEAM:core",
+            target: "TEAM:",
+            sourceLabel: "core",
+            targetLabel: "Unassigned team",
+            value: 2,
+        },
+    ];
+
+    it("keeps same-label nodes distinct and their exchange (no self-link)", () => {
+        const normalized = normalizeChordRecords(records);
+        expect(normalized).toHaveLength(2);
+        const { nodes, matrix } = buildChordMatrix(normalized);
+        expect(nodes.map((n) => n.id).sort()).toEqual([
+            "TEAM:",
+            "TEAM:Unassigned team",
+            "TEAM:core",
+        ]);
+        const i = nodes.findIndex((n) => n.id === "TEAM:");
+        const j = nodes.findIndex((n) => n.id === "TEAM:Unassigned team");
+        expect(matrix[i][j]).toBe(4);
+        expect(nodes[i].label).toBe("Unassigned team");
+        expect(nodes[j].label).toBe("Unassigned team");
+    });
+
+    it("a genuine self-link (same id) is still dropped", () => {
+        expect(normalizeChordRecords([{ source: "TEAM:a", target: "TEAM:a", value: 3 }])).toEqual(
+            [],
+        );
+    });
+
+    it("records without labels keep id as label", () => {
+        const { nodes } = buildChordMatrix([edge("A", "B", 1)]);
+        expect(nodes.map((n) => n.label).sort()).toEqual(["A", "B"]);
+    });
+});

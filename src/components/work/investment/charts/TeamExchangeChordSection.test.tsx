@@ -19,18 +19,28 @@ vi.mock("@/lib/graphql/hooks/useChordFlow", () => ({
 vi.mock("@/components/charts/ChordChart", () => ({
     ChordChart: ({
         dataset,
-        onItemClick,
+        onItemClickAction,
     }: {
-        dataset: { nodes: Array<{ label: string }> };
-        onItemClick?: (item: { type: "node"; name: string }) => void;
+        dataset: { nodes: Array<{ id: string; label: string }> };
+        onItemClickAction?: (item: { type: "node"; name: string }) => void;
     }) => (
         <div data-testid="mock-chord-chart">
             <span>nodes:{dataset.nodes.length}</span>
             <button
                 type="button"
-                onClick={() => onItemClick?.({ type: "node", name: dataset.nodes[0]?.label ?? "" })}
+                onClick={() =>
+                    onItemClickAction?.({ type: "node", name: dataset.nodes[0]?.id ?? "" })
+                }
             >
                 click-chart
+            </button>
+            <button
+                type="button"
+                onClick={() =>
+                    onItemClickAction?.({ type: "node", name: dataset.nodes.at(-1)?.id ?? "" })
+                }
+            >
+                click-last-node
             </button>
         </div>
     ),
@@ -146,6 +156,49 @@ describe("TeamExchangeChordSection", () => {
             "data-highlighted-entity",
             "team-b",
         );
+    });
+
+    it("selects the clicked node by id when two nodes share a label", async () => {
+        mockUseChordFlow.mockReturnValue({
+            data: [
+                {
+                    source: "TEAM:",
+                    target: "TEAM:Unassigned team",
+                    sourceLabel: "Unassigned team",
+                    targetLabel: "Unassigned team",
+                    value: 4,
+                },
+            ],
+            fetching: false,
+            error: null,
+        });
+        const user = userEvent.setup();
+
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={{
+                    scope: { level: "org", ids: ["org-123"] },
+                    time: { range_days: 30, compare_days: 30 },
+                    who: { developers: [] },
+                    what: { repos: [] },
+                    why: { work_category: [] },
+                    how: {},
+                }}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="hours"
+            />,
+        );
+
+        expect(screen.getByText("nodes:2")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /click-last-node/i }));
+        const chart = screen.getByTestId("team-exchange-chord-chart");
+        expect(["TEAM:", "TEAM:Unassigned team"]).toContain(
+            chart.getAttribute("data-highlighted-entity"),
+        );
+        const first = chart.getAttribute("data-highlighted-entity");
+        await user.click(screen.getByRole("button", { name: /click-chart/i }));
+        expect(chart.getAttribute("data-highlighted-entity")).not.toBe(first);
     });
 
     it("shows skeleton loading state", () => {

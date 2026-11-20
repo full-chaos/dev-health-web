@@ -68,16 +68,18 @@ export function adaptSankeyToChord(
             return [];
         }
 
-        const source = chordNodeName(sourceNode, grouping);
-        const target = chordNodeName(targetNode, grouping);
+        const sourceLabel = chordNodeName(sourceNode, grouping);
+        const targetLabel = chordNodeName(targetNode, grouping);
 
         return [
             {
-                source,
-                target,
+                source: sourceNode.id,
+                target: targetNode.id,
+                sourceLabel,
+                targetLabel,
                 value: edge.value,
                 metadata: {
-                    [metadataKey]: source,
+                    [metadataKey]: sourceLabel,
                 },
             },
         ];

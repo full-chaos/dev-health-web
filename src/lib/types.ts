@@ -769,8 +769,12 @@ export type ChordGroupingDimension = "team" | "repo" | "work_type";
  * backend data (e.g. `analytics.sankey` edges) into this shape.
  */
 export type ChordRecord = {
+    /** Node identity (the GraphQL node id); never shown when a label is set. */
     source: string;
     target: string;
+    /** Display names; fall back to `source` / `target` when absent. */
+    sourceLabel?: string;
+    targetLabel?: string;
     value: number;
     /** Optional per-record directionality hint. Interpretation happens at dataset level. */
     direction?: "in" | "out" | "bidirectional";

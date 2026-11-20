@@ -37,8 +37,10 @@ describe("adaptSankeyToChord", () => {
 
         expect(result).toEqual([
             {
-                source: "Engineering",
-                target: "Platform",
+                source: "team:Engineering",
+                target: "team:Platform",
+                sourceLabel: "Engineering",
+                targetLabel: "Platform",
                 value: 3,
                 metadata: { team: "Engineering" },
             },
@@ -127,23 +129,27 @@ describe("adaptSankeyToChord empty keys", () => {
 
     it("names the empty REPO key as the unassigned repo label", () => {
         const [row] = adaptSankeyToChord(edgeBetween("REPO", "REPO:", "REPO:web"), "repo");
-        expect(row?.target).toBe(UNASSIGNED_REPO_LABEL);
-        expect(row?.source).toBe("web");
+        expect(row).toMatchObject({
+            source: "REPO:web",
+            target: "REPO:",
+            sourceLabel: "web",
+            targetLabel: UNASSIGNED_REPO_LABEL,
+        });
     });
 
     it("names the empty REPO key when the node label is blank", () => {
         const input = edgeBetween("REPO", "REPO:", "REPO:web");
         input.nodes[0] = { id: "REPO:", label: "", dimension: "REPO", value: 5 };
         const [row] = adaptSankeyToChord(input, "repo");
-        expect(row?.target).toBe(UNASSIGNED_REPO_LABEL);
+        expect(row?.targetLabel).toBe(UNASSIGNED_REPO_LABEL);
     });
 
     it("names the empty TEAM key as the unassigned team label", () => {
         const [row] = adaptSankeyToChord(edgeBetween("TEAM", "TEAM:", "TEAM:core"), "team");
-        expect(row?.target).toBe(UNASSIGNED_TEAM_LABEL);
+        expect(row?.targetLabel).toBe(UNASSIGNED_TEAM_LABEL);
     });
 
-    it("keeps the unassigned label in the metadata key of the source", () => {
+    it("puts the unassigned label in the metadata key of the source", () => {
         const [row] = adaptSankeyToChord(
             {
                 nodes: [
@@ -154,7 +160,44 @@ describe("adaptSankeyToChord empty keys", () => {
             },
             "repo",
         );
-        expect(row?.source).toBe(UNASSIGNED_REPO_LABEL);
+        expect(row?.sourceLabel).toBe(UNASSIGNED_REPO_LABEL);
         expect(row?.metadata).toEqual({ repo: UNASSIGNED_REPO_LABEL });
+    });
+});
+
+describe("adaptSankeyToChord identity", () => {
+    it("keeps a real team named like the unassigned label distinct from the empty bucket", () => {
+        const records = adaptSankeyToChord(
+            {
+                nodes: [
+                    { id: "TEAM:", label: "TEAM:", dimension: "TEAM", value: 5 },
+                    {
+                        id: `TEAM:${UNASSIGNED_TEAM_LABEL}`,
+                        label: `TEAM:${UNASSIGNED_TEAM_LABEL}`,
+                        dimension: "TEAM",
+                        value: 7,
+                    },
+                ],
+                edges: [{ source: "TEAM:", target: `TEAM:${UNASSIGNED_TEAM_LABEL}`, value: 4 }],
+            },
+            "team",
+        );
+        expect(records).toHaveLength(1);
+        expect(records[0]?.source).not.toBe(records[0]?.target);
+        expect(records[0]?.sourceLabel).toBe(records[0]?.targetLabel);
+    });
+
+    it("keeps two real teams with the same name distinct", () => {
+        const records = adaptSankeyToChord(
+            {
+                nodes: [
+                    { id: "TEAM:t1", label: "Core", dimension: "TEAM", value: 5 },
+                    { id: "TEAM:t2", label: "Core", dimension: "TEAM", value: 7 },
+                ],
+                edges: [{ source: "TEAM:t1", target: "TEAM:t2", value: 4 }],
+            },
+            "team",
+        );
+        expect(records.map((r) => [r.source, r.target])).toEqual([["TEAM:t1", "TEAM:t2"]]);
     });
 });
