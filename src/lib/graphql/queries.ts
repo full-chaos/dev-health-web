@@ -31,26 +31,34 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
 
 // Not sent by web. The ACR service uses these for team/repository scope
 // (CHAOS-12698); they live here so the ops wire-parity gate has a live binding.
-// Derived from INVESTMENT_BREAKDOWN_QUERY so the bodies cannot drift, except
-// for the one line ops's scoped texts add: evidenceQualityStats.sizedUnitCount
-// (CHAOS-12999). The org-level InvestmentBreakdown text does not select it.
-const INVESTMENT_BREAKDOWN_OPERATION_PREFIX = "query InvestmentBreakdown(";
-const UNCATEGORIZED_COUNT_LINE = "      uncategorizedCount\n";
-
+// Each is the text of the ops registered document of its operation. It is the
+// org-level InvestmentBreakdown body plus evidenceQualityStats.sizedUnitCount
+// (CHAOS-12999), which the org-level text does not select. The text is written
+// out, not derived, so a change to INVESTMENT_BREAKDOWN_QUERY cannot move it.
 function scopedInvestmentBreakdownQuery(operationName: string): string {
-    const parts = INVESTMENT_BREAKDOWN_QUERY.split(INVESTMENT_BREAKDOWN_OPERATION_PREFIX);
-    if (parts.length !== 2) {
-        throw new Error(
-            `INVESTMENT_BREAKDOWN_QUERY must contain "${INVESTMENT_BREAKDOWN_OPERATION_PREFIX}" exactly once`,
-        );
+    return `
+query ${operationName}($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    breakdowns {
+      dimension
+      measure
+      items {
+        key
+        value
+      }
     }
-    const sized = parts[1].split(UNCATEGORIZED_COUNT_LINE);
-    if (sized.length !== 2) {
-        throw new Error(
-            "INVESTMENT_BREAKDOWN_QUERY must contain the uncategorizedCount line exactly once",
-        );
+    evidenceQualityDistribution
+    evidenceQualityStats {
+      mean
+      stddev
+      total
+      bandCounts
+      uncategorizedCount
+      sizedUnitCount
     }
-    return `${parts[0]}query ${operationName}(${sized[0]}${UNCATEGORIZED_COUNT_LINE}      sizedUnitCount\n${sized[1]}`;
+  }
+}
+`;
 }
 
 export const INVESTMENT_BREAKDOWN_TEAM_QUERY =
