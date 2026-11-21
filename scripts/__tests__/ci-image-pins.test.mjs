@@ -54,6 +54,11 @@ describe("CI image pins agree (ci/ci-images.json is the source)", () => {
         expect(text).not.toMatch(/mirror\.gcr\.io\/\S+@sha256/);
     });
 
+    it("the playwright image tag is the @playwright/test version (browsers must match the package)", () => {
+        const spec = JSON.parse(read("package.json")).devDependencies["@playwright/test"];
+        expect(pins.images.playwright.tag).toBe(`v${spec.replace(/^\^/, "")}-noble`);
+    });
+
     it("build-docker reads the node mirror ref from the file", () => {
         const text = readFileSync(path.join(WORKFLOWS, "build-docker.yml"), "utf8");
         expect(text).toContain("--ref node mirror");

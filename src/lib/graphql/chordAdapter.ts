@@ -1,4 +1,9 @@
 import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
+import {
+    UNASSIGNED_REPO_LABEL,
+    UNASSIGNED_TEAM_LABEL,
+    UNASSIGNED_WORK_TYPE_LABEL,
+} from "@/lib/investment/transforms";
 import type { SankeyResult } from "./types";
 
 /**
@@ -24,6 +29,25 @@ const METADATA_KEY_BY_GROUPING = {
 export function stripDimensionPrefix(id: string): string {
     const separatorIndex = id.indexOf(":");
     return separatorIndex === -1 ? id : id.slice(separatorIndex + 1).trim();
+}
+
+const UNASSIGNED_LABEL_BY_GROUPING: Partial<Record<ChordGroupingDimension, string>> = {
+    team: UNASSIGNED_TEAM_LABEL,
+    repo: UNASSIGNED_REPO_LABEL,
+    work_type: UNASSIGNED_WORK_TYPE_LABEL,
+};
+
+function chordNodeName(
+    node: { id: string; label?: string | null },
+    grouping: ChordGroupingDimension,
+): { name: string; sortKey?: string } {
+    const name = stripDimensionPrefix(node.label || node.id);
+    if (name) {
+        return { name };
+    }
+    const fallback = UNASSIGNED_LABEL_BY_GROUPING[grouping] ?? name;
+    // The unassigned bucket keeps the sort value it had when its name was blank.
+    return { name: fallback, sortKey: name };
 }
 
 /**
@@ -54,16 +78,20 @@ export function adaptSankeyToChord(
             return [];
         }
 
-        const source = stripDimensionPrefix(sourceNode.label || sourceNode.id);
-        const target = stripDimensionPrefix(targetNode.label || targetNode.id);
+        const { name: sourceLabel, sortKey: sourceSortKey } = chordNodeName(sourceNode, grouping);
+        const { name: targetLabel, sortKey: targetSortKey } = chordNodeName(targetNode, grouping);
 
         return [
             {
-                source,
-                target,
+                source: sourceNode.id,
+                target: targetNode.id,
+                sourceLabel,
+                targetLabel,
+                ...(sourceSortKey !== undefined && { sourceSortKey }),
+                ...(targetSortKey !== undefined && { targetSortKey }),
                 value: edge.value,
                 metadata: {
-                    [metadataKey]: source,
+                    [metadataKey]: sourceLabel,
                 },
             },
         ];

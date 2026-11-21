@@ -2,9 +2,10 @@
 
 import { type ComponentPropsWithoutRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { Components, ExtraProps } from "react-markdown";
+import type { Components, ExtraProps, Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { remarkReportText } from "./remarkReportText";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), {
     ssr: false,
@@ -63,6 +64,7 @@ function shiftedHeadings(look: HeadingLook): Components {
 
 const BODY_HEADINGS = shiftedHeadings(PROSE_SM_LOOK);
 const PROVENANCE_HEADINGS = shiftedHeadings(PROSE_LOOK);
+const REPORT_PLUGINS: Options["remarkPlugins"] = [remarkGfm, remarkReportText];
 
 // The Provenance heading is a whole line, and the last such line wins: the renderer writes the real section
 // last, so a line of that text inside a report value (an old report) never moves the split. A line ends at
@@ -102,7 +104,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
     return (
         <div className="space-y-4">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={BODY_HEADINGS}>
+                <ReactMarkdown remarkPlugins={REPORT_PLUGINS} components={BODY_HEADINGS}>
                     {body}
                 </ReactMarkdown>
             </div>
@@ -134,7 +136,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
                     {showProvenance && (
                         <div className="mt-3 prose prose-xs dark:prose-invert max-w-none opacity-70">
                             <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
+                                remarkPlugins={REPORT_PLUGINS}
                                 components={PROVENANCE_HEADINGS}
                             >
                                 {provenance.replace(PROVENANCE_HEADING_LINE, "").trim()}
@@ -146,7 +148,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
 
             {footer && (
                 <div className="border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted) tracking-wide">
-                    {footer}
+                    <ReactMarkdown remarkPlugins={REPORT_PLUGINS}>{footer}</ReactMarkdown>
                 </div>
             )}
         </div>

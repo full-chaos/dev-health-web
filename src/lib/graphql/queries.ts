@@ -31,17 +31,34 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
 
 // Not sent by web. The ACR service uses these for team/repository scope
 // (CHAOS-12698); they live here so the ops wire-parity gate has a live binding.
-// Derived from INVESTMENT_BREAKDOWN_QUERY so the bodies can never drift.
-const INVESTMENT_BREAKDOWN_OPERATION_PREFIX = "query InvestmentBreakdown(";
-
+// Each is the text of the ops registered document of its operation. It is the
+// org-level InvestmentBreakdown body plus evidenceQualityStats.sizedUnitCount
+// (CHAOS-12999), which the org-level text does not select. The text is written
+// out, not derived, so a change to INVESTMENT_BREAKDOWN_QUERY cannot move it.
 function scopedInvestmentBreakdownQuery(operationName: string): string {
-    const parts = INVESTMENT_BREAKDOWN_QUERY.split(INVESTMENT_BREAKDOWN_OPERATION_PREFIX);
-    if (parts.length !== 2) {
-        throw new Error(
-            `INVESTMENT_BREAKDOWN_QUERY must contain "${INVESTMENT_BREAKDOWN_OPERATION_PREFIX}" exactly once`,
-        );
+    return `
+query ${operationName}($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    breakdowns {
+      dimension
+      measure
+      items {
+        key
+        value
+      }
     }
-    return `${parts[0]}query ${operationName}(${parts[1]}`;
+    evidenceQualityDistribution
+    evidenceQualityStats {
+      mean
+      stddev
+      total
+      bandCounts
+      uncategorizedCount
+      sizedUnitCount
+    }
+  }
+}
+`;
 }
 
 export const INVESTMENT_BREAKDOWN_TEAM_QUERY =

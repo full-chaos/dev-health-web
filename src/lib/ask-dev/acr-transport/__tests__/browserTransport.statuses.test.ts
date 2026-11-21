@@ -65,6 +65,7 @@ const TABLE: Readonly<Record<string, Entry>> = {
         source: 'path: "/investigations"',
         statuses: {
             "200": "event stream",
+            "202": "never asked: the transport sends no Prefer: respond-async",
             "400": STREAM_REFUSAL,
             "401": AUTH,
             "403": STREAM_REFUSAL,
