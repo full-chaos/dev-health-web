@@ -11,9 +11,10 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
  * `endDate` (that day is not included). It is not a set target. The two baselines are in percent
  * (0 to 100), the unit of the coverage values. The line baseline is pooled: covered lines over total
  * lines of the counted days (a day that stores both line counts and more than 0 lines); a day with a
- * percent but no line counts is in neither sum. Null = fewer than 7 counted days of the 30, which
- * includes a window with no line counts at all: there is no baseline (never 0, never the current
- * value). One row per repository with a stored
+ * percent but no line counts is in neither sum. The branch baseline is pooled the same way over the
+ * stored branch counts (a day with no branch counts is not a day with a value). Null = fewer than 7
+ * counted days of the 30, which includes a window with no counts at all: there is no baseline (never
+ * 0, never the current value). One row per repository with a stored
  * coverage row in those 30 days; a repository with no row has no baseline. The web writes the
  * served numbers and computes none of them.
  */
@@ -25,7 +26,7 @@ export const RepoCoverageBaselineSchema = z.object({
     /** Counted days of the 30: days that store both line counts and more than 0 lines. */
     lineDays: z.number(),
     branchBaselinePct: z.number().nullable(),
-    /** Days of the 30 that hold a branch coverage value. */
+    /** Days of the 30 that hold stored branch counts. */
     branchDays: z.number(),
 });
 

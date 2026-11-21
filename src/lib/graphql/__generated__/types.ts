@@ -2103,9 +2103,9 @@ export type RepoBusFactor = {
 
 export type RepoCoverageBaseline = {
   __typename?: 'RepoCoverageBaseline';
-  /** Mean branch coverage, in percent, over the days of the 30 that hold a value. Null = fewer than 7 such days (``branchDays``). Never 0 for "none", never the current value. */
+  /** Pooled branch coverage, in percent (0 to 100): the branches covered over the branches total of the repository's stored branch counts, over the 30 days. A day with no stored branch counts, or with no branches, is in neither sum and is not a day with a value. Null = fewer than 7 such days (``branchDays``), or none. Never 0 for "none", never the current value. */
   branchBaselinePct?: Maybe<Scalars['Float']['output']>;
-  /** Days of the 30 that hold a branch coverage value. */
+  /** Days of the 30 that store branch counts and more than 0 branches. */
   branchDays: Scalars['Int']['output'];
   /** Line coverage, in percent (0 to 100), pooled over the counted days of the 30: covered lines over total lines. A counted day stores both line counts and more than 0 lines; a day with a percent but no line counts is in neither sum. Null = fewer than 7 counted days (``lineDays``): then there is no baseline. Never 0 for "none", never the current value. */
   lineBaselinePct?: Maybe<Scalars['Float']['output']>;
@@ -2290,9 +2290,9 @@ export type SavedReportType = {
 
 export type ScopeCoverageBaseline = {
   __typename?: 'ScopeCoverageBaseline';
-  /** Mean, in percent, of the scope's branch coverage of each day that holds a value (the mean over its repositories), over the 30 days. Null = fewer than 7 such days (``branchDays``). Never 0 for "none", never the current value. */
+  /** Pooled branch coverage, in percent (0 to 100): the branches covered over the branches total of the stored branch counts of every repository and day of the scope in the 30 days, not the mean of the day values. A repository-day with no stored branch counts, or with no branches, is in neither sum. Null = fewer than 7 days with a value (``branchDays``), or none. Never 0 for "none", never the current value. */
   branchBaselinePct?: Maybe<Scalars['Float']['output']>;
-  /** Days of the 30 on which at least one repository of the scope holds a branch coverage value. */
+  /** Days of the 30 on which at least one repository of the scope has stored branch counts and more than 0 branches. */
   branchDays: Scalars['Int']['output'];
   /** Line coverage of the scope, in percent (0 to 100): one ratio, covered lines over total lines of every counted repository day of the scope in the 30 days. A counted repository day stores both line counts and more than 0 lines; one with a percent but no line counts is in neither sum. Null = fewer than 7 days with a counted repository day (``lineDays``): then there is no baseline. Never 0 for "none", never the current value. */
   lineBaselinePct?: Maybe<Scalars['Float']['output']>;
