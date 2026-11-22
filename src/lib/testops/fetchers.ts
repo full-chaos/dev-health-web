@@ -164,10 +164,14 @@ export async function fetchCoverageMetrics(
     }
 }
 
+/** The scope of `testopsRisk`: the repositories, and the repositories these teams own. Unset = the organization. */
+export type RiskScope = { repoIds?: string[]; teamIds?: string[] };
+
 export async function fetchRiskMetrics(
     batch: AnalyticsRequestInput,
     isTestMode: boolean = false,
     orgIdOverride?: string,
+    scope: RiskScope = {},
 ): Promise<RiskMetricsResult | null> {
     if (isTestMode) {
         return SAMPLE_RISK_DATA;
@@ -183,7 +187,12 @@ export async function fetchRiskMetrics(
 
         const res = await graphqlFetch<{ testopsRisk: unknown }>(TESTOPS_RISK_QUERY, {
             orgId,
-            input: dateRange,
+            input: {
+                ...dateRange,
+                // A scope is sent only when it is set: an empty list would narrow to nothing.
+                ...(scope.repoIds?.length ? { repoIds: scope.repoIds } : {}),
+                ...(scope.teamIds?.length ? { teamIds: scope.teamIds } : {}),
+            },
         });
         const risk = mapRiskMetricsPayload(res.testopsRisk);
         if (!risk) {
