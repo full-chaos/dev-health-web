@@ -842,7 +842,10 @@ jobs:
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
                   name: playwright-report-live${{ matrix.tier != 'live' && format('-{0}', matrix.tier) || '' }}
-                  path: playwright-report
+                  # CHAOS-14496: the tier's JUnit files ride in the report artifact (no extra artifact against the sync's 25 per run).
+                  path: |
+                      playwright-report
+                      live-junit
 
             - name: Upload API logs on failure
               if: failure()

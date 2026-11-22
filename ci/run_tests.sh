@@ -438,9 +438,10 @@ run_e2e_context_fabric() {
 run_live_e2e() {
   install_playwright_browser
   local json="${LIVE_E2E_JSON:-playwright-report/live-results.json}"
-  rm -f "${json}"
+  local junit="live-junit/${LIVE_E2E_LABEL:-default}.xml"
+  rm -f "${json}" "${junit}"
   local status=0
-  LIVE_E2E_JSON="${json}" run_pnpm_script test:e2e:live || status=$?
+  LIVE_E2E_JSON="${json}" LIVE_E2E_JUNIT="${junit}" run_pnpm_script test:e2e:live || status=$?
   node ci/live-e2e-skip-gate.mjs "${json}" "${LIVE_E2E_LABEL:-default}" || status=$?
   return "${status}"
 }
