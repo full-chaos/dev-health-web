@@ -111,6 +111,12 @@ describe("fetchRiskMetrics", () => {
             });
         });
 
+        it("answers null, never the refusal text, when the server refuses the scope (a caller under a repository ceiling)", async () => {
+            vi.mocked(graphqlFetch).mockRejectedValue(new Error("Not authorized"));
+            const result = await fetchRiskMetrics(batch, false, undefined, { teamIds: ["t1"] });
+            expect(result).toBeNull();
+        });
+
         it("sends the window alone with no scope or an empty one: an empty list would narrow to nothing", async () => {
             await fetchRiskMetrics(batch, false, undefined, { repoIds: [], teamIds: undefined });
             expect(sentInput()).toEqual({ startDate: "2026-05-19", endDate: "2026-05-20" });
