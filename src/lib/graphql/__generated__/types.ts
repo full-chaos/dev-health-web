@@ -2551,7 +2551,10 @@ export type TestOpsRiskBreakdownItem = {
 
 export type TestOpsRiskInput = {
   endDate: Scalars['Date']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
   startDate: Scalars['Date']['input'];
+  /** Team ids. Narrows to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 export type TestOpsRiskQuadrantPoint = {
