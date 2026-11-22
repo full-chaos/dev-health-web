@@ -1,7 +1,7 @@
 /**
  * Bottlenecks with an `f` that names a service id that does not exist. The review wait heatmap
  * answers empty with filter_empty_reason service_not_found; the Review Load × Review Latency
- * quadrant must not plot an org-wide point under that scope (CHAOS-14489).
+ * quadrant must answer the same: no point, reason service_not_found (CHAOS-14489).
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -87,10 +87,10 @@ describe("Bottlenecks: unknown service scope (CHAOS-14489)", () => {
 
         const requested = quadrantRequests.map((request) => request.scope_type);
         const data = quadrantSpy.mock.calls.at(-1)?.[0]?.data as
-            { points?: unknown[] } | null | undefined;
+            { points?: unknown[]; filter_empty_reason?: string | null } | null | undefined;
         expect(
-            data?.points?.length ?? 0,
-            `unknown service scope plotted quadrant points; quadrant scope_type sent: ${requested.join(",")}`,
-        ).toBe(0);
+            { points: data?.points?.length ?? 0, reason: data?.filter_empty_reason ?? null },
+            `quadrant under an unknown service scope; scope_type sent: ${requested.join(",")}`,
+        ).toEqual({ points: 0, reason: "service_not_found" });
     });
 });
