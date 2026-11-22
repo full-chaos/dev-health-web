@@ -43,6 +43,9 @@ type FilterBarStateProps = Pick<
     writeDefaultFilter?: boolean;
 };
 
+export const SERVICE_SCOPE_RESET_NOTICE =
+    "The selected service was not found; the filter was reset.";
+
 const filterFromQuery = (query: string) =>
     filterFromQueryParams(Object.fromEntries(new URLSearchParams(query)));
 
@@ -71,6 +74,7 @@ export function useFilterBarState({
     );
     const [filters, setFilters] = useState<MetricFilter>(initialFilters);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [scopeResetNotice, setScopeResetNotice] = useState<string | null>(null);
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const barRef = useRef<HTMLElement | null>(null);
     const didSetDefaultRef = useRef(false);
@@ -142,6 +146,7 @@ export function useFilterBarState({
     const updateFilters = useCallback(
         (nextFilters: MetricFilter) => {
             emitFilterChanges(view ?? "unknown", filters, nextFilters);
+            setScopeResetNotice(null);
             setFilters(nextFilters);
             updateUrl(nextFilters);
         },
@@ -178,6 +183,7 @@ export function useFilterBarState({
             const params = new URLSearchParams(searchParams.toString());
             params.delete("q");
             params.set("f", encodeFilterParam(defaultMetricFilter));
+            setScopeResetNotice(null);
             setFilters(defaultMetricFilter);
             setPeopleQuery("");
             router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -230,6 +236,11 @@ export function useFilterBarState({
         };
         // eslint-disable-next-line react-hooks/set-state-in-effect -- scope lock enforces URL/filter consistency.
         setFilters(nextFilters);
+        // Services have no option source (the filter options answer `services: []`), so a named
+        // service id is never found: its reset is said, never silent (CHAOS-14489).
+        if (filters.scope.level === "service" && filters.scope.ids.length > 0) {
+            setScopeResetNotice(SERVICE_SCOPE_RESET_NOTICE);
+        }
         updateUrl(nextFilters);
     }, [filters, scopeLock, updateUrl]);
 
@@ -298,6 +309,7 @@ export function useFilterBarState({
         scopeLevel,
         scopeLock,
         scopeOptions,
+        scopeResetNotice,
         scopeValue,
         setOpenMenu,
         setShowAdvanced,

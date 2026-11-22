@@ -11,6 +11,7 @@ import {
     teamScopeLabels,
     toggleValue,
 } from "@/components/filters/filterBarUtils";
+import { DataNote } from "@/components/charts/DataNote";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
@@ -79,6 +80,7 @@ export function ScopeBarClient({
         peopleQuery,
         repos,
         resetFilters,
+        scopeResetNotice,
         selectRepos,
         selectTeams,
         setOpenMenu,
@@ -339,6 +341,12 @@ export function ScopeBarClient({
             onReset={resetFilters}
             footer={
                 <>
+                    {scopeResetNotice ? (
+                        <div role="status">
+                            <DataNote data-testid="scope-reset-notice">{scopeResetNotice}</DataNote>
+                        </div>
+                    ) : null}
+
                     {activeFilterCount > 0 || repos.length > 0 ? (
                         <div className="mt-3">
                             <ActiveFilterPills
