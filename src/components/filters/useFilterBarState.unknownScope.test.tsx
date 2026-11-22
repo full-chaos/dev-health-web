@@ -1,8 +1,8 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { encodeFilterParam } from "@/lib/filters/encode";
+import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 
 const replace = vi.hoisted(() => vi.fn());
@@ -18,36 +18,52 @@ vi.mock("./useFilterOptions", () => ({
 
 import { useFilterBarState } from "./useFilterBarState";
 
-// A link whose `f` names a service or developer that does not exist. The server render answers
-// the empty state with its reason (service_not_found / developer_not_found); the bar must not
-// then swap the URL to the default team filter, which renders org-wide data with no notice.
-describe("useFilterBarState: unknown scope in f (CHAOS-14489)", () => {
-    afterEach(() => {
-        replace.mockClear();
-        vi.restoreAllMocks();
+const NOTICE = "The selected service was not found; the filter was reset.";
+
+const renderWith = (filter: MetricFilter) => {
+    search.query = `f=${encodeFilterParam(filter)}`;
+    return renderHook(() =>
+        useFilterBarState({ view: "work", resolvedScopeLock: "team", writeDefaultFilter: true }),
+    );
+};
+
+const replacedFilter = () => {
+    const url = replace.mock.calls.at(-1)?.[0] as string | undefined;
+    return decodeFilter(new URLSearchParams(url?.split("?")[1] ?? "").get("f"));
+};
+
+// A link whose `f` names a service that does not exist, on a team-locked view. The lock resets the
+// scope to the default team filter; the reset is said with a notice, never silent (CHAOS-14489).
+describe("useFilterBarState: unknown service scope in f (CHAOS-14489)", () => {
+    afterEach(() => replace.mockClear());
+
+    it("resets the scope to {team, []} and shows the notice", () => {
+        const { result } = renderWith({
+            ...defaultMetricFilter,
+            scope: { level: "service", ids: ["service-does-not-exist"] },
+        });
+
+        expect(result.current.filters.scope).toEqual({ level: "team", ids: [] });
+        expect(replacedFilter().scope).toEqual({ level: "team", ids: [] });
+        expect(result.current.scopeResetNotice).toBe(NOTICE);
     });
 
-    it.each(["service", "developer"] as const)(
-        "keeps a %s scope with an unknown id: no URL rewrite to the default filter",
-        (level) => {
-            const unknownScope: MetricFilter = {
-                ...defaultMetricFilter,
-                scope: { level, ids: [`${level}-does-not-exist`] },
-            };
-            search.query = `f=${encodeFilterParam(unknownScope)}`;
-            const historyReplace = vi.spyOn(window.history, "replaceState");
+    it("a user filter change clears the notice", () => {
+        const { result } = renderWith({
+            ...defaultMetricFilter,
+            scope: { level: "service", ids: ["service-does-not-exist"] },
+        });
+        act(() => result.current.updateFilters({ ...defaultMetricFilter }));
+        expect(result.current.scopeResetNotice).toBeNull();
+    });
 
-            const { result } = renderHook(() =>
-                useFilterBarState({
-                    view: "work",
-                    resolvedScopeLock: "team",
-                    writeDefaultFilter: true,
-                }),
-            );
-
-            expect(result.current.filters.scope).toEqual(unknownScope.scope);
-            expect(replace).not.toHaveBeenCalled();
-            expect(historyReplace).not.toHaveBeenCalled();
-        },
-    );
+    it("no notice for a team scope or a service level with no id", () => {
+        expect(renderWith(defaultMetricFilter).result.current.scopeResetNotice).toBeNull();
+        const { result } = renderWith({
+            ...defaultMetricFilter,
+            scope: { level: "service", ids: [] },
+        });
+        expect(result.current.filters.scope).toEqual({ level: "team", ids: [] });
+        expect(result.current.scopeResetNotice).toBeNull();
+    });
 });
