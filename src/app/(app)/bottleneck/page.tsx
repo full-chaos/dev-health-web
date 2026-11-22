@@ -39,6 +39,21 @@ import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 import { RepoLinkPageNote } from "@/components/shared/RepoLinkPageNote";
 import { BottleneckTiles } from "./BottleneckTiles";
 import { BOTTLENECK_TILES } from "./tiles";
+import type { QuadrantResponse } from "@/lib/types";
+
+const NO_AXIS = { metric: "", label: "", unit: "" };
+
+/**
+ * The quadrant has no service filter (CHAOS-13736: its scope_type=service is the team grain) and
+ * no service id is ever found (services have no source). Under a named service scope the quadrant
+ * is not read: it answers empty with the served reason the heatmap gives (CHAOS-14489).
+ */
+const SERVICE_SCOPE_QUADRANT: QuadrantResponse = {
+    axes: { x: NO_AXIS, y: NO_AXIS },
+    points: [],
+    annotations: [],
+    filter_empty_reason: "service_not_found",
+};
 
 type BottleneckPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -56,6 +71,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
     const filters = filtersFromPageParams(encodedFilter, params, { view: "work" });
 
     const scopeId = filters.scope.ids[0] ?? "";
+    const namedServiceScope = filters.scope.level === "service" && filters.scope.ids.length > 0;
     const quadrantScope: "org" | "team" | "repo" | "developer" =
         filters.scope.level === "developer"
             ? "developer"
@@ -71,19 +87,21 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 getExplainData({ metric: "wip_saturation", filters }),
                 "bottleneck/explain-wip_saturation",
             ),
-            fetchOrNull(
-                getQuadrant({
-                    type: "review_load_latency",
-                    scope_type: quadrantScope,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    bucket: "week",
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                    filters,
-                }),
-                "bottleneck/review-load-latency-quadrant",
-            ),
+            namedServiceScope
+                ? SERVICE_SCOPE_QUADRANT
+                : fetchOrNull(
+                      getQuadrant({
+                          type: "review_load_latency",
+                          scope_type: quadrantScope,
+                          scope_id: scopeId,
+                          range_days: filters.time.range_days,
+                          bucket: "week",
+                          start_date: filters.time.start_date,
+                          end_date: filters.time.end_date,
+                          filters,
+                      }),
+                      "bottleneck/review-load-latency-quadrant",
+                  ),
             fetchOrNull(
                 getHeatmap({
                     type: "temporal_load",

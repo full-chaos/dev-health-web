@@ -78,7 +78,7 @@ vi.mock("@/lib/api/visuals", () => ({
 import BottleneckPage from "./page";
 
 describe("Bottlenecks: unknown service scope (CHAOS-14489)", () => {
-    it("the Review Load × Review Latency quadrant plots no org-wide point", async () => {
+    it("the Review Load × Review Latency quadrant is empty with service_not_found, not read as org", async () => {
         const f = encodeFilterParam({
             ...defaultMetricFilter,
             scope: { level: "service", ids: ["service-does-not-exist"] },
@@ -92,5 +92,6 @@ describe("Bottlenecks: unknown service scope (CHAOS-14489)", () => {
             { points: data?.points?.length ?? 0, reason: data?.filter_empty_reason ?? null },
             `quadrant under an unknown service scope; scope_type sent: ${requested.join(",")}`,
         ).toEqual({ points: 0, reason: "service_not_found" });
+        expect(requested, "the quadrant is not read under a named service scope").toEqual([]);
     });
 });
