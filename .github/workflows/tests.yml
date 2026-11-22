@@ -835,7 +835,7 @@ jobs:
                   key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
             # CHAOS-14495: every suite runs after an earlier one failed, and each keeps its own results and report root
             # (run_tests.sh empties the root at the start of a suite, so a shared root keeps only the last suite's JUnit).
-            - run: bash ci/run_tests.sh e2e-customer-push && exit 1
+            - run: bash ci/run_tests.sh e2e-customer-push
               if: ${{ !cancelled() }}
               env:
                   PLAYWRIGHT_RESULTS_DIR: test-results/playwright-customer-push
