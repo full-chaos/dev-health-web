@@ -87,9 +87,7 @@ describe("Bottlenecks: unknown service scope (CHAOS-14489)", () => {
 
         const requested = quadrantRequests.map((request) => request.scope_type);
         const data = quadrantSpy.mock.calls.at(-1)?.[0]?.data as
-            | { points?: unknown[] }
-            | null
-            | undefined;
+            { points?: unknown[] } | null | undefined;
         expect(
             data?.points?.length ?? 0,
             `unknown service scope plotted quadrant points; quadrant scope_type sent: ${requested.join(",")}`,
