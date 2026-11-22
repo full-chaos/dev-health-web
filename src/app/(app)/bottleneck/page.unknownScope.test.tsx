@@ -1,7 +1,7 @@
 /**
- * Bottlenecks with an `f` that names a service id that does not exist. The review wait heatmap
- * answers empty with filter_empty_reason service_not_found; the Review Load × Review Latency
- * quadrant must answer the same: no point, reason service_not_found (CHAOS-14489).
+ * Bottlenecks with an `f` that names a service id. The Review Load × Review Latency quadrant is
+ * not read (it has no service filter): it is empty and carries the reason the review wait heatmap
+ * serves for the same request, or none when the heatmap serves none (CHAOS-14489).
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,9 +9,10 @@ import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
 
-const { quadrantSpy, quadrantRequests } = vi.hoisted(() => ({
+const { quadrantSpy, quadrantRequests, heatmapReason } = vi.hoisted(() => ({
     quadrantSpy: vi.fn(),
     quadrantRequests: [] as Array<Record<string, unknown>>,
+    heatmapReason: { value: null as string | null },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -44,7 +45,8 @@ vi.mock("@/lib/ask-dev/load-page-scope-entities", () => ({
     loadScopePageEntities: async () => [],
 }));
 // The query API as it answers today: the quadrant has no service filter (an org request, or the
-// team grain for scope_type=service), so it plots the org's team point; the heatmap is empty.
+// team grain for scope_type=service), so it plots the org's team point. The heatmap reason is set
+// per case.
 vi.mock("@/lib/api/visuals", () => ({
     getQuadrant: async (request: Record<string, unknown>) => {
         quadrantRequests.push(request);
@@ -71,27 +73,41 @@ vi.mock("@/lib/api/visuals", () => ({
     getHeatmap: async () => ({
         axes: { x: { buckets: [] }, y: { buckets: [] } },
         cells: [],
-        filter_empty_reason: "service_not_found",
+        filter_empty_reason: heatmapReason.value,
     }),
 }));
 
 import BottleneckPage from "./page";
 
-describe("Bottlenecks: unknown service scope (CHAOS-14489)", () => {
-    it("the Review Load × Review Latency quadrant is empty with service_not_found, not read as org", async () => {
-        const f = encodeFilterParam({
-            ...defaultMetricFilter,
-            scope: { level: "service", ids: ["service-does-not-exist"] },
-        });
-        render(await BottleneckPage({ searchParams: Promise.resolve({ f }) }));
+const drawServiceScope = async () => {
+    quadrantSpy.mockClear();
+    quadrantRequests.length = 0;
+    const f = encodeFilterParam({
+        ...defaultMetricFilter,
+        scope: { level: "service", ids: ["service-does-not-exist"] },
+    });
+    render(await BottleneckPage({ searchParams: Promise.resolve({ f }) }));
+    const data = quadrantSpy.mock.calls.at(-1)?.[0]?.data as
+        { points?: unknown[]; filter_empty_reason?: string | null } | null | undefined;
+    return {
+        requested: quadrantRequests.map((request) => request.scope_type),
+        points: data?.points?.length ?? 0,
+        reason: data?.filter_empty_reason,
+    };
+};
 
-        const requested = quadrantRequests.map((request) => request.scope_type);
-        const data = quadrantSpy.mock.calls.at(-1)?.[0]?.data as
-            { points?: unknown[]; filter_empty_reason?: string | null } | null | undefined;
-        expect(
-            { points: data?.points?.length ?? 0, reason: data?.filter_empty_reason ?? null },
-            `quadrant under an unknown service scope; scope_type sent: ${requested.join(",")}`,
-        ).toEqual({ points: 0, reason: "service_not_found" });
-        expect(requested, "the quadrant is not read under a named service scope").toEqual([]);
+describe("Bottlenecks: named service scope (CHAOS-14489)", () => {
+    it("the heatmap serves service_not_found: the quadrant shows it and is not read", async () => {
+        heatmapReason.value = "service_not_found";
+        expect(await drawServiceScope()).toEqual({
+            requested: [],
+            points: 0,
+            reason: "service_not_found",
+        });
+    });
+
+    it("the heatmap serves no reason: the quadrant is empty with no reason", async () => {
+        heatmapReason.value = null;
+        expect(await drawServiceScope()).toEqual({ requested: [], points: 0, reason: undefined });
     });
 });

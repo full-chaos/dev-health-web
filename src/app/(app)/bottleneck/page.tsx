@@ -39,21 +39,21 @@ import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 import { RepoLinkPageNote } from "@/components/shared/RepoLinkPageNote";
 import { BottleneckTiles } from "./BottleneckTiles";
 import { BOTTLENECK_TILES } from "./tiles";
-import type { QuadrantResponse } from "@/lib/types";
+import type { HeatmapResponse, QuadrantResponse } from "@/lib/types";
 
 const NO_AXIS = { metric: "", label: "", unit: "" };
 
 /**
- * The quadrant has no service filter (CHAOS-13736: its scope_type=service is the team grain) and
- * no service id is ever found (services have no source). Under a named service scope the quadrant
- * is not read: it answers empty with the served reason the heatmap gives (CHAOS-14489).
+ * The quadrant has no service filter (CHAOS-13736: its scope_type=service is the team grain), so
+ * under a named service scope it is not read (CHAOS-14489). It is empty, and it carries the reason
+ * the heatmap of the same request serves: none when the heatmap serves none. Web makes no reason.
  */
-const SERVICE_SCOPE_QUADRANT: QuadrantResponse = {
+const serviceScopeQuadrant = (heatmap: HeatmapResponse | null): QuadrantResponse => ({
     axes: { x: NO_AXIS, y: NO_AXIS },
     points: [],
     annotations: [],
-    filter_empty_reason: "service_not_found",
-};
+    filter_empty_reason: heatmap?.filter_empty_reason ?? undefined,
+});
 
 type BottleneckPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -79,7 +79,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
               ? filters.scope.level
               : "org";
 
-    const [health, home, wipExplain, reviewQuadrant, reviewHeatmap, scopeEntities] =
+    const [health, home, wipExplain, servedQuadrant, reviewHeatmap, scopeEntities] =
         await Promise.all([
             checkApiHealth(),
             fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
@@ -88,7 +88,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 "bottleneck/explain-wip_saturation",
             ),
             namedServiceScope
-                ? SERVICE_SCOPE_QUADRANT
+                ? null
                 : fetchOrNull(
                       getQuadrant({
                           type: "review_load_latency",
@@ -121,6 +121,8 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
     }
+
+    const reviewQuadrant = namedServiceScope ? serviceScopeQuadrant(reviewHeatmap) : servedQuadrant;
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
     const placeholderDeltas = !home?.deltas?.length;
