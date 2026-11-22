@@ -875,6 +875,16 @@ jobs:
                       test-results/playwright-context-fabric/
                   if-no-files-found: warn
                   retention-days: 90
+            # CHAOS-14495: the raw results artifact is over the product sync's 100 MiB artifact limit (traces and videos), so the
+            # sync skips it whole; the four junit.xml files also go up alone, a few KB.
+            - name: Upload the onboarding JUnit files alone
+              if: always()
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+              with:
+                  name: playwright-junit-onboarding-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: test-results/playwright-*/*/junit.xml
+                  if-no-files-found: warn
+                  retention-days: 14
 
     visual-image:
         # CHAOS-12841: the image the `visual` job runs in, read from ci/ci-images.json (the one source

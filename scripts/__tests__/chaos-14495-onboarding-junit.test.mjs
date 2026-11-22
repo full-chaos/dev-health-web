@@ -58,4 +58,16 @@ describe("CHAOS-14495 e2e-onboarding JUnit", () => {
         }
         expect(results).not.toMatch(/path: test-results\/playwright\/$/mu);
     });
+
+    it("also uploads the four junit.xml files alone, always, as a small artifact the sync can read", () => {
+        const block = step(onboarding(), "Upload the onboarding JUnit files alone");
+        expect(block).toMatch(/^ {14}if: always\(\)$/mu);
+        expect(block).toMatch(
+            /name: playwright-junit-onboarding-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}$/mu,
+        );
+        expect(block).toMatch(/path: test-results\/playwright-\*\/\*\/junit\.xml$/mu);
+        // the raw results artifact is over the sync's 100 MiB per-artifact limit and is skipped whole; the sync's
+        // excluded name prefixes are go-images-, go-test-timings-, go-junit-part-
+        expect(block).not.toMatch(/name: (go-images-|go-test-timings-|go-junit-part-)/u);
+    });
 });
