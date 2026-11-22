@@ -833,16 +833,34 @@ jobs:
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
                   key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+            # CHAOS-14495: every suite runs after an earlier one failed, and each keeps its own results and report root
+            # (run_tests.sh empties the root at the start of a suite, so a shared root keeps only the last suite's JUnit).
             - run: bash ci/run_tests.sh e2e-customer-push
+              if: ${{ !cancelled() }}
+              env:
+                  PLAYWRIGHT_RESULTS_DIR: test-results/playwright-customer-push
             - run: bash ci/run_tests.sh e2e-navigation
+              if: ${{ !cancelled() }}
+              env:
+                  PLAYWRIGHT_RESULTS_DIR: test-results/playwright-navigation
             - run: bash ci/run_tests.sh e2e-onboarding
+              if: ${{ !cancelled() }}
+              env:
+                  PLAYWRIGHT_RESULTS_DIR: test-results/playwright-onboarding
             - run: bash ci/run_tests.sh e2e-context-fabric
+              if: ${{ !cancelled() }}
+              env:
+                  PLAYWRIGHT_RESULTS_DIR: test-results/playwright-context-fabric
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-report-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright-html/
+                  path: |
+                      test-results/playwright-customer-push-html/
+                      test-results/playwright-navigation-html/
+                      test-results/playwright-onboarding-html/
+                      test-results/playwright-context-fabric-html/
                   if-no-files-found: warn
                   retention-days: 90
             - name: Upload Playwright raw results and JUnit
@@ -850,7 +868,11 @@ jobs:
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-results-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright/
+                  path: |
+                      test-results/playwright-customer-push/
+                      test-results/playwright-navigation/
+                      test-results/playwright-onboarding/
+                      test-results/playwright-context-fabric/
                   if-no-files-found: warn
                   retention-days: 90
 

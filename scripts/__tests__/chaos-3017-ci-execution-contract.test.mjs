@@ -223,7 +223,8 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             const workflowJob = job(workflow, jobId);
             expect(workflowJob).not.toContain("continue-on-error:");
             expect(workflowJob).toMatch(/^        if: needs\.changes\.outputs\.e2e == 'true'$/mu);
-            expect(runStep(workflowJob, workflowCommand)).toBe(
+            // CHAOS-14495: the four suites of the onboarding job carry if/env keys under the run line.
+            expect(runStep(workflowJob, workflowCommand).split("\n")[0]).toBe(
                 `            - run: ${workflowCommand}`,
             );
         }
@@ -231,7 +232,14 @@ describe("CHAOS-3017 executable CI boundaries", () => {
         // Context Fabric runs as the fourth step of the onboarding job.
         expect(
             runStep(job(workflow, "e2e-onboarding"), "bash ci/run_tests.sh e2e-context-fabric"),
-        ).toBe("            - run: bash ci/run_tests.sh e2e-context-fabric");
+        ).toBe(
+            [
+                "            - run: bash ci/run_tests.sh e2e-context-fabric",
+                "              if: ${{ !cancelled() }}",
+                "              env:",
+                "                  PLAYWRIGHT_RESULTS_DIR: test-results/playwright-context-fabric",
+            ].join("\n"),
+        );
     });
 
     it.each(E2E_HARNESS_CASES)(
