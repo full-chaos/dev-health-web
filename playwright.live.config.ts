@@ -69,6 +69,9 @@ export default defineConfig({
             "json",
             { outputFile: process.env.LIVE_E2E_JSON ?? "playwright-report/live-results.json" },
         ],
+        // CHAOS-14496: outside playwright-report (the html reporter empties it at the start of every pass), one file per pass
+        // (ci/run_tests.sh run_live_e2e names it by the pass label), uploaded with the tier's report.
+        ["junit", { outputFile: process.env.LIVE_E2E_JUNIT ?? "live-junit/junit.xml" }],
     ],
     // Two passes: the default backend auto-creates an org on register, the guided pass runs the
     // orgless journey (tests tagged @guided) against a backend started with
