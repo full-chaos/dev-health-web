@@ -584,7 +584,12 @@ export type CapacityDistributionBin = {
 
 export type CapacityForecast = {
   __typename?: 'CapacityForecast';
+  /** The oldest of the newest work-item days that backlogSize is read from. Null when backlogState is NO_ROWS or null. */
+  backlogAsOfDay?: Maybe<Scalars['Date']['output']>;
+  /** The sum of the WIP on each work-item key's (provider, work scope, team) newest day. It is not bounded by historyDays: a key whose newest day is before the window start still adds its WIP, and backlogState says so. */
   backlogSize: Scalars['Int']['output'];
+  /** How backlogSize was found against the window start (the forecast day minus historyDays days): MEASURED, STALE or NO_ROWS (see NewestDayState). Null on a stored forecast (capacityForecasts), which keeps no read state. */
+  backlogState?: Maybe<NewestDayState>;
   /**
    * The Monte Carlo distribution the p50 / p85 / p95 above were taken from, as
    * histograms (CHAOS-7624). Null = no distribution: a forecast stored before it
@@ -1412,6 +1417,12 @@ export type MutationUpdateSavedReportArgs = {
   orgId: Scalars['String']['input'];
   reportId: Scalars['String']['input'];
 };
+
+/** How a value read from each key's newest day stands against the request window. A key is (provider, work scope, team), and each key gives its OWN newest day, not one day for the whole scope. MEASURED: the newest day of every key the value is read from is on or after the window start. STALE: the newest day of at least one key is before the window start; the value still holds that key's row, and the asOfDay field beside the state names the oldest of the newest days. NO_ROWS: no key was read, so a 0 is not a measured zero. */
+export type NewestDayState =
+  | 'MEASURED'
+  | 'NO_ROWS'
+  | 'STALE';
 
 export type OperatingReview = {
   __typename?: 'OperatingReview';
@@ -2656,13 +2667,18 @@ export type ThroughputBacklogState =
   | 'STALE'
   | 'SUPPLIED';
 
+/** Estimate coverage of the scope, read from each coverage grain's (provider, work scope, team) own newest row: per grain, not one newest day for the scope, and not bounded by the window. Never null: with no coverage row it is the zero object. */
 export type ThroughputEstimateCoverage = {
   __typename?: 'ThroughputEstimateCoverage';
+  /** The oldest of the newest days of the grains the counts are read from. Null when state is NO_ROWS. */
+  asOfDay?: Maybe<Scalars['Date']['output']>;
   backlogSize: Scalars['Int']['output'];
   estimatedCount: Scalars['Int']['output'];
   /** The number of coverage grains (provider, work scope, team) the counts are read from. 0: the scope has no coverage row, and the zero counts and ratio 0 are not a measurement. */
   grainCount: Scalars['Int']['output'];
   ratio?: Maybe<Scalars['Float']['output']>;
+  /** How the newest days of the grains stand against the window start (the forecast day minus historyWeeks weeks): MEASURED, STALE, or NO_ROWS when grainCount is 0 (see NewestDayState). */
+  state: NewestDayState;
   unestimatedCount: Scalars['Int']['output'];
 };
 
@@ -2689,7 +2705,14 @@ export type ThroughputForecast = {
   rollingWindows: Array<ThroughputRollingWindow>;
   staleWip?: Maybe<ThroughputStaleWip>;
   teamId?: Maybe<Scalars['String']['output']>;
+  /** value: the current WIP (the sum of each work-item key's newest row INSIDE the window) over the window's average daily WIP. The current WIP is as of wipCongestionAsOfDay, not as of the forecast day. */
   wipCongestion: ThroughputRiskOverlay;
+  /** The oldest of the keys' newest days inside the window that the current WIP of wipCongestion is read from. Null when wipCongestionState is NO_ROWS. */
+  wipCongestionAsOfDay?: Maybe<Scalars['Date']['output']>;
+  /** The number of measured work-item keys (provider, work scope, team) the current WIP of wipCongestion sums. */
+  wipCongestionGrainCount: Scalars['Int']['output'];
+  /** How the current WIP of wipCongestion was read: MEASURED (at least one measured key inside the window) or NO_ROWS (no measured key inside the window, or no throughput history, so the value 0 is not a measurement). Never STALE: the read is bounded to the window (see NewestDayState). */
+  wipCongestionState: NewestDayState;
   workScopeId?: Maybe<Scalars['String']['output']>;
 };
 
@@ -2720,8 +2743,16 @@ export type ThroughputRollingWindow = {
 
 export type ThroughputStaleWip = {
   __typename?: 'ThroughputStaleWip';
+  /** The oldest of the newest days of the keys the ages are read from. */
+  asOfDay: Scalars['Date']['output'];
+  /** The number of work-item keys (provider, work scope, team) whose newest-day ages are averaged. */
+  grainCount: Scalars['Int']['output'];
+  /** The average wip_age_p50_hours over the keys below, each on its own newest day. Not bounded by the window: a key whose newest day is before the window start counts, and state says so. */
   p50AgeHours?: Maybe<Scalars['Float']['output']>;
+  /** The average wip_age_p90_hours over the keys below, each on its own newest day. Not bounded by the window: a key whose newest day is before the window start counts, and state says so. */
   p90AgeHours?: Maybe<Scalars['Float']['output']>;
+  /** How the newest days of the keys stand against the window start (the forecast day minus historyWeeks weeks): MEASURED or STALE (see NewestDayState). Never NO_ROWS: staleWip is null when no key has an age. */
+  state: NewestDayState;
 };
 
 export type TimeGranularity =
