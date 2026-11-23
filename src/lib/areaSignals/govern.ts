@@ -289,7 +289,8 @@ export async function getGovernSignals(
                   )
                 : Promise.resolve(undefined),
             orgId
-                ? safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk", failedSources)
+                ? // The governance page has no scope bar of its own: Delivery Risk stays organization-wide.
+                  safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk", failedSources)
                 : Promise.resolve(undefined),
             safe(
                 () =>

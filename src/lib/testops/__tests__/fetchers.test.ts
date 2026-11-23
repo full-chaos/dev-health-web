@@ -81,6 +81,51 @@ describe("fetchRiskMetrics", () => {
         expect(result!.timeseries).toEqual([]);
     });
 
+    describe("the scope of the read (CHAOS-13815)", () => {
+        const batch = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    measure: "PIPELINE_SUCCESS_RATE",
+                    interval: "DAY",
+                    dateRange: { startDate: "2026-05-19", endDate: "2026-05-20" },
+                },
+            ],
+            breakdowns: [],
+        } as never;
+        const sentInput = () =>
+            (vi.mocked(graphqlFetch).mock.calls[0]![1] as { input: Record<string, unknown> }).input;
+
+        beforeEach(() => {
+            mockAuth({ user: { org_id: "org-1" } });
+            vi.mocked(graphqlFetch).mockResolvedValue({ testopsRisk: null });
+        });
+
+        it("sends the repositories and the teams with the window", async () => {
+            await fetchRiskMetrics(batch, false, undefined, { repoIds: ["r1"], teamIds: ["t1"] });
+            expect(sentInput()).toEqual({
+                startDate: "2026-05-19",
+                endDate: "2026-05-20",
+                repoIds: ["r1"],
+                teamIds: ["t1"],
+            });
+        });
+
+        it("answers null, never the refusal text, when the server refuses the scope (a caller under a repository ceiling)", async () => {
+            vi.mocked(graphqlFetch).mockRejectedValue(new Error("Not authorized"));
+            const result = await fetchRiskMetrics(batch, false, undefined, { teamIds: ["t1"] });
+            expect(result).toBeNull();
+        });
+
+        it("sends the window alone with no scope or an empty one: an empty list would narrow to nothing", async () => {
+            await fetchRiskMetrics(batch, false, undefined, { repoIds: [], teamIds: undefined });
+            expect(sentInput()).toEqual({ startDate: "2026-05-19", endDate: "2026-05-20" });
+            vi.mocked(graphqlFetch).mockClear();
+            await fetchRiskMetrics(batch, false);
+            expect(sentInput()).toEqual({ startDate: "2026-05-19", endDate: "2026-05-20" });
+        });
+    });
+
     it("sample data includes sparkline and delta fields for KPI cards", () => {
         expect(SAMPLE_RISK_DATA.confidence_spark.length).toBeGreaterThan(1);
         expect(SAMPLE_RISK_DATA.drag_spark.length).toBeGreaterThan(1);

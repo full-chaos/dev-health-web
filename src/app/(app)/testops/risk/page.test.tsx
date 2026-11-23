@@ -212,32 +212,37 @@ describe("RiskPage org scope (CHAOS-8272)", () => {
     });
 });
 
-describe("Delivery Risk says the scope bar's team and repository do not apply", () => {
-    const NOTICE =
-        "Delivery Risk shows the whole organization. The team and repository selection does not apply on this tab.";
+describe("Delivery Risk sends the scope bar's team and repository to the read (CHAOS-13815)", () => {
     const f = (filter: Record<string, unknown>) => ({
         f: Buffer.from(
             JSON.stringify({ time: { range_days: 14 }, who: {}, why: {}, how: {}, ...filter }),
             "utf8",
         ).toString("base64url"),
     });
+    const NOTICE_TEXT = /The team and repository selection does not apply on this tab/;
     const renderWith = async (searchParams: Record<string, string>) => {
+        mockFetchRiskMetrics.mockClear();
         mockFetchRiskMetrics.mockResolvedValue(risk([]));
         render(await RiskPage({ searchParams: Promise.resolve(searchParams) }));
+        return mockFetchRiskMetrics.mock.calls[0]!;
     };
 
-    it("shows the notice when a team is picked", async () => {
-        await renderWith(f({ scope: { level: "team", ids: ["t1"] }, what: {} }));
-        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+    it("sends the picked team and shows no notice", async () => {
+        const call = await renderWith(f({ scope: { level: "team", ids: ["t1"] }, what: {} }));
+        expect(call[3]).toEqual({ repoIds: undefined, teamIds: ["t1"] });
+        expect(screen.queryByText(NOTICE_TEXT)).toBeNull();
+        expect(screen.queryByTestId("delivery-risk-scope-notice")).toBeNull();
     });
 
-    it("shows the notice when a repository is picked", async () => {
-        await renderWith(f({ scope: { level: "org", ids: [] }, what: { repos: ["r1"] } }));
-        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+    it("sends the picked repository", async () => {
+        const call = await renderWith(
+            f({ scope: { level: "org", ids: [] }, what: { repos: ["r1"] } }),
+        );
+        expect(call[3]).toEqual({ repoIds: ["r1"], teamIds: undefined });
     });
 
-    it("shows no notice when nothing is picked", async () => {
-        await renderWith({});
-        expect(screen.queryByText(NOTICE)).toBeNull();
+    it("sends no ids when nothing is picked", async () => {
+        const call = await renderWith({});
+        expect(call[3]).toEqual({ repoIds: undefined, teamIds: undefined });
     });
 });

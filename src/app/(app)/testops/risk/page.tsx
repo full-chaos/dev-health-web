@@ -11,7 +11,6 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { DataState } from "@/components/ui/DataState";
-import { Notice } from "@/components/ui/Notice";
 import { checkApiHealth } from "@/lib/api/system";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { testOpsScopeFromFilters } from "@/lib/testops/scope";
@@ -43,9 +42,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
-    // The risk read takes the window only: a team or repository pick does not narrow it yet.
     const { repoIds, teamIds } = testOpsScopeFromFilters(filters);
-    const scopeIgnored = Boolean(repoIds?.length || teamIds?.length);
 
     const [health, riskData] = await Promise.all([
         checkApiHealth(),
@@ -81,6 +78,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                 ],
             },
             isTestMode,
+            undefined,
+            { repoIds, teamIds },
         ),
     ]);
 
@@ -165,13 +164,6 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
             ></PageHeader>
 
             <ScopeBar view="testops" />
-            {scopeIgnored ? (
-                // Static guidance, not a status update: no live region.
-                <Notice variant="info" live={false} data-testid="delivery-risk-scope-notice">
-                    Delivery Risk shows the whole organization. The team and repository selection
-                    does not apply on this tab.
-                </Notice>
-            ) : null}
             <MetricStrip data-testid="delivery-risk-tiles">
                 <MetricCard
                     label="Release Confidence"

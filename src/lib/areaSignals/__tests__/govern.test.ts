@@ -274,6 +274,16 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         expect(signals.risk).toMatchObject({ state: "medium", value: "62%" });
     });
 
+    it("keeps Delivery Risk on the organization answer when the filters name a team (CHAOS-13815)", async () => {
+        await getGovernSignals({
+            ...defaultMetricFilter,
+            scope: { level: "team", ids: ["t1"] },
+            what: { repos: ["r1"] },
+        });
+        expect(mockRisk).toHaveBeenCalledTimes(1);
+        expect(mockRisk.mock.calls[0]).toHaveLength(2);
+    });
+
     it("maps the WORST compounding-risk row severity (HIGH → critical)", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals["risk-compounding"]).toMatchObject({ state: "critical" });
