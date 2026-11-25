@@ -679,11 +679,24 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=alice&active_only=false");
+        expect(url).toContain("/api/v1/admin/users?q=alice&active_only=true");
         expect(options?.headers).toMatchObject({
             Authorization: "Bearer test-token",
             "X-Org-Id": "org-1",
         });
+        fetchSpy.mockRestore();
+    });
+
+    it("listUsers (the organization admin list) asks for active users only, with or without a query", async () => {
+        mockSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+        await listUsers();
+
+        const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(new URL(url).searchParams.get("active_only")).toBe("true");
         fetchSpy.mockRestore();
     });
 
