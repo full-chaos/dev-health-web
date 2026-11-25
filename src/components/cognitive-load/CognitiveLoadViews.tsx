@@ -279,12 +279,14 @@ export function contextSpreadSummary(trend: TrendPoint[]): {
     latest: number | null;
     peak: number | null;
 } {
-    // A null value is a gap (a NO_ROWS day); only measured days count.
-    const values = orderTimeseriesPoints(trend).values.filter((v): v is number => v !== null);
+    // A null value is a gap (a NO_ROWS day). Latest is the chronologically last day: null when
+    // that day is a gap. The peak is over measured days only.
+    const ordered = orderTimeseriesPoints(trend).values;
+    const values = ordered.filter((v): v is number => v !== null);
     const hasData = values.length > 0;
     return {
         hasData,
-        latest: hasData ? values[values.length - 1] : null,
+        latest: hasData ? (ordered[ordered.length - 1] ?? null) : null,
         peak: hasData ? Math.max(...values) : null,
     };
 }
@@ -306,11 +308,11 @@ export function ContextSwitchingView({
             title={title}
             interpretation="Distinct repos, PRs, reviews, and touched file areas the team moved across each day. Higher spread means attention is split over more surfaces."
             threshold={
-                latest != null
+                hasData
                     ? {
                           label: "Latest",
-                          value: String(latest),
-                          tone: latest > 6 ? "caution" : "default",
+                          value: latest != null ? String(latest) : "—",
+                          tone: latest != null && latest > 6 ? "caution" : "default",
                       }
                     : undefined
             }
