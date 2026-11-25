@@ -150,7 +150,7 @@ describe("a platform admin who does not impersonate keeps the same backend reque
             "listPlatformUsers",
             PLATFORM_ACTIONS[0]![1],
             "GET",
-            "/api/v1/admin/users?q=bob",
+            "/api/v1/admin/users?q=bob&active_only=false",
             undefined,
         ],
         ["getPlatformUser", PLATFORM_ACTIONS[1]![1], "GET", "/api/v1/admin/users/u-2", "org-admin"],
