@@ -90,7 +90,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                 {loading ? (
                     <p className="text-sm text-(--ink-muted)">Loading trend…</p>
                 ) : trend.days.length > 0 ? (
-                    <Chart option={option} />
+                    <Chart option={option} className="h-full" />
                 ) : (
                     <p className="text-sm text-(--ink-muted)">
                         No daily review amplification points appear in this range.
