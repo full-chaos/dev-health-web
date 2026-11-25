@@ -701,7 +701,7 @@ describe("admin/server user list actions", () => {
     });
 
     it("listPlatformUsers omits org header and supports q query", async () => {
-        mockSession();
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
         const fetchSpy = vi
             .spyOn(global, "fetch")
             .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));

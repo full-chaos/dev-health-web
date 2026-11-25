@@ -47,7 +47,6 @@ import {
     getImpersonationStatus,
     inviteCurrentOrgMember,
     listUsers,
-    setUserPassword,
     stopImpersonation,
     updateCurrentOrg,
     updateOrgProfile,
@@ -78,7 +77,6 @@ const ORG_WRITES: ReadonlyArray<[string, () => Promise<ActionResult<unknown>>]> 
     ],
     ["updateUser (members.update)", () => updateUser("u-2", { role: "admin" } as never)],
     ["deleteUser (members.manage)", () => deleteUser("u-2")],
-    ["setUserPassword (members.manage)", () => setUserPassword("u-2", "p1", "p0")],
 ];
 
 async function signIn(over: Record<string, unknown> = {}, delegated = true) {

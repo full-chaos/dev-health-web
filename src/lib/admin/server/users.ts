@@ -3,7 +3,7 @@
 import { adminApi } from "../api";
 import type { ActionResult } from "@/lib/result";
 import type { User, UserCreate, UserUpdate } from "../types";
-import { getSessionContext, getToken, requireSuperuserToken, withErrorHandling } from "./_shared";
+import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
 
 export async function listUsers(query?: string): Promise<ActionResult<User[]>> {
     return withErrorHandling(async () => {
@@ -14,7 +14,10 @@ export async function listUsers(query?: string): Promise<ActionResult<User[]>> {
 
 export async function listPlatformUsers(query?: string): Promise<ActionResult<User[]>> {
     return withErrorHandling(async () => {
-        const token = await getToken();
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
         return adminApi.users.list(token, undefined, query);
     });
 }
@@ -46,8 +49,48 @@ export async function setUserPassword(
     adminPassword: string,
 ): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext({ write: "members.manage" });
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
+        const { orgId } = await getSessionContext();
         return adminApi.users.setPassword(userId, password, adminPassword, token, orgId);
+    });
+}
+
+export async function getPlatformUser(userId: string): Promise<ActionResult<User>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
+        const { orgId } = await getSessionContext();
+        return adminApi.users.get(userId, token, orgId);
+    });
+}
+
+export async function updatePlatformUser(
+    userId: string,
+    data: UserUpdate,
+): Promise<ActionResult<User>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
+        const { orgId } = await getSessionContext();
+        return adminApi.users.update(userId, data, token, orgId);
+    });
+}
+
+export async function deletePlatformUser(userId: string): Promise<ActionResult<void>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken({
+            action: "admin.users",
+            guard: "platform.users",
+        });
+        const { orgId } = await getSessionContext();
+        return adminApi.users.delete(userId, token, orgId);
     });
 }
 

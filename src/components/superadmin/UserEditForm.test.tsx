@@ -3,9 +3,9 @@ import { render, screen, waitFor, userEvent } from "@/test/utils";
 import { UserEditForm } from "./UserEditForm";
 import type { User } from "@/lib/admin/types";
 
-const updateUser = vi.hoisted(() => vi.fn());
+const updatePlatformUser = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/admin/server", () => ({ updateUser }));
+vi.mock("@/lib/admin/server", () => ({ updatePlatformUser }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const baseUser: User = {
@@ -26,11 +26,11 @@ const baseUser: User = {
 
 describe("UserEditForm", () => {
     beforeEach(() => {
-        updateUser.mockReset();
+        updatePlatformUser.mockReset();
     });
 
     it("shows the saved Verified and Superuser state after save without a reload", async () => {
-        updateUser.mockResolvedValue({
+        updatePlatformUser.mockResolvedValue({
             data: { ...baseUser, is_verified: true, is_superuser: true },
         });
         const user = userEvent.setup();
@@ -40,8 +40,8 @@ describe("UserEditForm", () => {
         await user.click(screen.getByLabelText("Superuser"));
         await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
-        await waitFor(() => expect(updateUser).toHaveBeenCalledTimes(1));
-        expect(updateUser.mock.calls[0][1]).toMatchObject({
+        await waitFor(() => expect(updatePlatformUser).toHaveBeenCalledTimes(1));
+        expect(updatePlatformUser.mock.calls[0][1]).toMatchObject({
             is_verified: true,
             is_superuser: true,
         });
@@ -53,14 +53,14 @@ describe("UserEditForm", () => {
     });
 
     it("keeps the entered state when the save fails", async () => {
-        updateUser.mockResolvedValue({ error: "nope" });
+        updatePlatformUser.mockResolvedValue({ error: "nope" });
         const user = userEvent.setup();
         render(<UserEditForm user={baseUser} />);
 
         await user.click(screen.getByLabelText("Verified"));
         await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
-        await waitFor(() => expect(updateUser).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(updatePlatformUser).toHaveBeenCalledTimes(1));
         expect(screen.getByLabelText("Verified")).toBeChecked();
     });
 });
