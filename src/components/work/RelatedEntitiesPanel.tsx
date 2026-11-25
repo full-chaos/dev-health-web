@@ -83,7 +83,13 @@ function otherEnd(
     rootId: string,
     edge: AIWorkflowGraphEdge,
 ): { type: string; id: string } {
-    return sameType(edge.targetType, rootType) && edge.targetId === rootId
+    if (sameType(edge.targetType, rootType) && edge.targetId === rootId) {
+        return { type: edge.sourceType, id: edge.sourceId };
+    }
+    if (sameType(edge.sourceType, rootType) && edge.sourceId === rootId) {
+        return { type: edge.targetType, id: edge.targetId };
+    }
+    return sameType(edge.sourceType, edge.targetType)
         ? { type: edge.sourceType, id: edge.sourceId }
         : { type: edge.targetType, id: edge.targetId };
 }
