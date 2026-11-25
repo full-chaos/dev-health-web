@@ -41,7 +41,7 @@ function entityHref(type: string, id: string, repoId?: string | null): string {
         case "PR":
             return `/prs/${encodeURIComponent(id)}`;
         case "DEPLOYMENT":
-            return `/deployments/${encodeURIComponent(repoId ? `${repoId}:${id}` : id)}`;
+            return `/deployments/${repoId ? `${encodeURIComponent(repoId)}:${encodeURIComponent(id)}` : encodeURIComponent(id)}`;
         case "COMMIT":
             return `/code?commit=${encodeURIComponent(id)}`;
         case "INCIDENT":
@@ -78,6 +78,16 @@ function collectRelatedEdges(
     return rootConnected ? edges : [];
 }
 
+function otherEnd(
+    rootType: AIWorkflowRootTypeInput,
+    rootId: string,
+    edge: AIWorkflowGraphEdge,
+): { type: string; id: string } {
+    return sameType(edge.targetType, rootType) && edge.targetId === rootId
+        ? { type: edge.sourceType, id: edge.sourceId }
+        : { type: edge.targetType, id: edge.targetId };
+}
+
 function groupEdgesByRelatedType(
     rootType: AIWorkflowRootTypeInput,
     rootId: string,
@@ -85,11 +95,7 @@ function groupEdgesByRelatedType(
 ): Map<string, AIWorkflowGraphEdge[]> {
     const grouped = new Map<string, AIWorkflowGraphEdge[]>();
     for (const edge of edges) {
-        const type = normType(
-            sameType(edge.targetType, rootType) && edge.targetId === rootId
-                ? edge.sourceType
-                : edge.targetType,
-        );
+        const type = normType(otherEnd(rootType, rootId, edge).type);
         grouped.set(type, [...(grouped.get(type) ?? []), edge]);
     }
     return grouped;
@@ -155,7 +161,10 @@ export function RelatedEntitiesPanel({
                 </div>
             ) : (
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                    {entityOrder.map((type) => {
+                    {[
+                        ...entityOrder,
+                        ...[...grouped.keys()].filter((type) => !entityOrder.includes(type)),
+                    ].map((type) => {
                         const edges = grouped.get(type) ?? [];
                         if (edges.length === 0) return null;
                         return (
@@ -168,13 +177,11 @@ export function RelatedEntitiesPanel({
                                 </h3>
                                 <div className="mt-4 space-y-3">
                                     {edges.map((edge) => {
-                                        const sourceIsType = normType(edge.sourceType) === type;
-                                        const linkedType = sourceIsType
-                                            ? edge.sourceType
-                                            : edge.targetType;
-                                        const linkedId = sourceIsType
-                                            ? edge.sourceId
-                                            : edge.targetId;
+                                        const { type: linkedType, id: linkedId } = otherEnd(
+                                            rootType,
+                                            rootId,
+                                            edge,
+                                        );
                                         return (
                                             <article
                                                 key={edge.edgeId}
