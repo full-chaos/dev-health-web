@@ -205,9 +205,9 @@ describe("PrDetailPage", () => {
             edges: [
                 {
                     edgeId: "edge-1",
-                    sourceType: "PR",
+                    sourceType: "pr",
                     sourceId: prId,
-                    targetType: "COMMIT",
+                    targetType: "commit",
                     targetId: "abcdef1234567890",
                     edgeType: "CONTAINS",
                     confidence: 0.99,
