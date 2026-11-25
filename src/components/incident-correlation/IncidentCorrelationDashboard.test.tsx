@@ -737,12 +737,11 @@ describe("IncidentCorrelationDashboard", () => {
     it("does not repeat the metric label as the tile caption", () => {
         const deltas = [
             { metric: "change_failure_rate", label: "Change Failure Rate" },
-            { metric: "deployment_frequency", label: "Deployment Frequency" },
-            { metric: "mttr", label: "MTTR" },
+            { metric: "deploy_freq", label: "Deploy Frequency" },
         ].map((m) => ({ ...m, value: 1, unit: "", delta_pct: 0, spark: [] }));
         renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={deltas} />);
         const cards = screen.getAllByTestId("metric-card");
-        expect(cards).toHaveLength(3);
+        expect(cards).toHaveLength(2);
         for (const card of cards) {
             expect(card).toHaveAttribute("data-caption", "");
         }
@@ -759,7 +758,7 @@ describe("IncidentCorrelationDashboard", () => {
         };
         renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
         const cards = screen.getAllByTestId("metric-card");
-        // Only 1 card — not 3 (deployment_frequency + mttr are absent from deltas)
+        // Only 1 card — not 2 (deploy_freq is absent from deltas)
         expect(cards).toHaveLength(1);
         expect(cards[0]).toHaveTextContent("Change Failure Rate");
     });

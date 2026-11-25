@@ -81,13 +81,10 @@ describe("DORA tile change tone follows polarity", () => {
         expect(el).not.toHaveClass(GOOD);
     });
 
-    // The page draws the served DORA keys `deployment_frequency` and `mttr`; the catalog lists
-    // them as polarity-only keys (the home catalog key for the first is `deploy_freq`).
+    // The page draws the served Home key `deploy_freq`; its direction is the catalog entry's.
     it.each([
-        ["deployment_frequency", 3, GOOD, BAD],
-        ["deployment_frequency", -3, BAD, GOOD],
-        ["mttr", -3, GOOD, BAD],
-        ["mttr", 3, BAD, GOOD],
+        ["deploy_freq", 3, GOOD, BAD],
+        ["deploy_freq", -3, BAD, GOOD],
     ])("%s at %s takes its direction from the catalog", (metric, d, has, hasNot) => {
         const el = toneOf(metric as string, d as number);
         expect(el).toHaveClass(has as string);
