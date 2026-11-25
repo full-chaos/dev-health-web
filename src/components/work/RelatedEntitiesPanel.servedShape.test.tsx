@@ -47,6 +47,32 @@ describe("RelatedEntitiesPanel on the node types ops serves", () => {
         expect(screen.getByText("Deployments")).toBeInTheDocument();
     });
 
+    it("links a related deployment with the repo-prefixed id the flame route needs (flame.go:170-184)", () => {
+        render(
+            <RelatedEntitiesPanel
+                rootType="PR"
+                rootId="repo-1:7"
+                investment={investment}
+                drilldown={drilldown([
+                    {
+                        edgeId: "pr_deployment:2",
+                        sourceType: "pr",
+                        sourceId: "repo-1:7",
+                        targetType: "deployment",
+                        targetId: "dep-1",
+                        edgeType: "deploys",
+                        confidence: 0.9,
+                        source: "synthetic",
+                        evidence: "synthetic evidence",
+                        repoId: "repo-1",
+                    },
+                ])}
+            />,
+        );
+        const link = screen.getByRole("link", { name: /dep-1/ });
+        expect(decodeURIComponent(link.getAttribute("href") ?? "")).toBe("/deployments/repo-1:dep-1");
+    });
+
     it("control: no edges keeps the empty state", () => {
         render(
             <RelatedEntitiesPanel
