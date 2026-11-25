@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("urql", () => ({ useQuery: vi.fn() }));
+vi.mock("../../provider", () => ({ useOrgId: () => "org-synthetic" }));
 
 import type { AiGovernanceSummary } from "@/lib/graphql/__generated__/types";
 
