@@ -2699,12 +2699,16 @@ export type ThroughputForecast = {
   forecastId: Scalars['String']['output'];
   historyWeeks: Scalars['Int']['output'];
   incidentLoad: ThroughputRiskOverlay;
+  /** How the incident rate of incidentLoad was read: MEASURED (at least one live repository-day in the window) or NO_ROWS (none, or no throughput history, so the value 0 is not a measurement). Never STALE: the read keeps no newest day (see NewestDayState). */
+  incidentLoadState: NewestDayState;
   insufficientHistory: Scalars['Boolean']['output'];
   p50Weeks?: Maybe<Scalars['Int']['output']>;
   p75Weeks?: Maybe<Scalars['Int']['output']>;
   p90Weeks?: Maybe<Scalars['Int']['output']>;
   primaryRisk: ThroughputRiskOverlay;
   reviewBottleneck: ThroughputRiskOverlay;
+  /** How the review latency of reviewBottleneck was read: MEASURED (at least one repository-day in the window carries a first-review latency) or NO_ROWS (none does, or no throughput history, so the value 0 is not a measurement). Never STALE: the read keeps no newest day (see NewestDayState). */
+  reviewBottleneckState: NewestDayState;
   rollingWindows: Array<ThroughputRollingWindow>;
   staleWip?: Maybe<ThroughputStaleWip>;
   teamId?: Maybe<Scalars['String']['output']>;

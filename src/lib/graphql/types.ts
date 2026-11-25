@@ -506,6 +506,9 @@ export interface ThroughputEstimateCoverage {
 /** How backlogSize was found (ops ThroughputBacklogState). */
 export type ThroughputBacklogState = "MEASURED" | "STALE" | "NO_ROWS" | "SUPPLIED";
 
+/** How an overlay input was read (ops NewestDayState). NO_ROWS: the read found no row, so the served value 0 is not a measurement. */
+export type ThroughputOverlayState = "MEASURED" | "STALE" | "NO_ROWS";
+
 export interface ThroughputForecast {
     forecastId: string;
     computedAt: string;
@@ -525,7 +528,11 @@ export interface ThroughputForecast {
     staleWip?: ThroughputStaleWip | null;
     estimateCoverage?: ThroughputEstimateCoverage | null;
     reviewBottleneck: ThroughputRiskOverlay;
+    /** Absent from a query-api that predates the field. */
+    reviewBottleneckState?: ThroughputOverlayState | null;
     incidentLoad: ThroughputRiskOverlay;
+    /** Absent from a query-api that predates the field. */
+    incidentLoadState?: ThroughputOverlayState | null;
     insufficientHistory: boolean;
 }
 
