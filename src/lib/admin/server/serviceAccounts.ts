@@ -4,6 +4,7 @@ import { adminApi } from "../api";
 import type { ActionResult } from "@/lib/result";
 import type { ServiceAccount } from "../types";
 import { requireSuperuserToken, withErrorHandling } from "./_shared";
+import { ACTION_FAILED_MESSAGE } from "@/lib/actionFailure";
 import { SERVICE_ACCOUNT_EXISTS_MESSAGE, validateServiceAccountName } from "../serviceAccount";
 
 /**
@@ -36,5 +37,6 @@ export async function createServiceAccount(input: {
     if (result.error && /already exists|name is taken/iu.test(result.error)) {
         return { error: SERVICE_ACCOUNT_EXISTS_MESSAGE };
     }
+    if (result.error && result.status === 404) return { error: ACTION_FAILED_MESSAGE };
     return result;
 }

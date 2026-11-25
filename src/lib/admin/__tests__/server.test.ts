@@ -1384,6 +1384,19 @@ describe("createServiceAccount (CHAOS-8966)", () => {
         fetchSpy.mockRestore();
     });
 
+    it("maps a 404 (route not mounted) to the existing action sentence, not the raw text", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(json({ detail: "Not Found" }, 404));
+
+        const result = await createServiceAccount({ name: "x", ...PICK });
+
+        expect(result.data).toBeUndefined();
+        expect(result.error).toBe("The change was not saved. Try again.");
+        fetchSpy.mockRestore();
+    });
+
     it("shows a plain sentence for a duplicate and a generic one for a server fault", async () => {
         mockAuth({ user: { id: "u-1", is_superuser: true } });
         const fetchSpy = vi

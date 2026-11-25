@@ -8686,7 +8686,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/serviceAccounts.ts",
-                "line": 14
+                "line": 15
             },
             "classification": "protected",
             "public_rationale": null,
@@ -8727,9 +8727,9 @@
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "Superuser check at src/lib/admin/server/users.ts:68 (CHAOS-8967, defense in depth); ops remains the authority on the request body.",
-                "action: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "action: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
