@@ -42,7 +42,7 @@ export function normalizeDeletionResult(raw: DeletionResultRaw): DeletionPlan {
 
 export const orgsApi = {
     list: (token?: string, headerOrgId?: string) =>
-        request<Organization[]>("/orgs", {}, token, headerOrgId),
+        request<Organization[]>("/orgs?active_only=false", {}, token, headerOrgId),
 
     get: (orgId: string, token?: string, headerOrgId?: string) =>
         request<Organization>(`/orgs/${orgId}`, {}, token, headerOrgId),
