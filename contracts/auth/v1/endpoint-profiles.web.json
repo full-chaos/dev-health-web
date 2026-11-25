@@ -8686,13 +8686,13 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/serviceAccounts.ts",
-                "line": 19
+                "line": 14
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:27-36) throws AdminApiError(401) with no session and AdminApiError(403) unless session.user.is_superuser; only then is POST /api/v1/admin/users sent, without X-Org-Id (platform user, no org membership). Ops re-checks the caller independently.",
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:27-36) throws AdminApiError(401) with no session and AdminApiError(403) unless session.user.is_superuser; only then is POST /api/v1/admin/service-accounts sent, without X-Org-Id. Ops re-checks the caller independently.",
                 "anchor": {
                     "path": "src/lib/admin/server/_shared.ts",
                     "line": 39,
@@ -8727,9 +8727,9 @@
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "Superuser check at src/lib/admin/server/users.ts:68 (CHAOS-8967, defense in depth); ops remains the authority on the request body.",
-                "action: searched the source from src/lib/admin/server/serviceAccounts.ts:19 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:19 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:19 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "action: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:14 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",

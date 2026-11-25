@@ -30,7 +30,7 @@ describe("createServiceAccount calls the served service-account route", () => {
             name: "ci-bot",
             organization_id: ORG,
             owner_principal_id: OWNER,
-        } as Parameters<typeof createServiceAccount>[0]);
+        });
 
         expect(mockRequest).toHaveBeenCalledOnce();
         const [path, options] = mockRequest.mock.calls[0];
@@ -40,7 +40,11 @@ describe("createServiceAccount calls the served service-account route", () => {
     });
 
     it("control: an invalid name makes no request", async () => {
-        const result = await createServiceAccount({ name: "Bad Name" });
+        const result = await createServiceAccount({
+            name: "Bad Name",
+            organization_id: ORG,
+            owner_principal_id: OWNER,
+        });
         expect(result.error).toBeTruthy();
         expect(mockRequest).not.toHaveBeenCalled();
     });

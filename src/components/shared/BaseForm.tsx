@@ -23,6 +23,7 @@ type BaseFormProps = {
     onSubmitAction: (event: SyntheticEvent<HTMLFormElement>) => void;
     onCancelAction?: () => void;
     isLoading?: boolean;
+    submitDisabled?: boolean;
     submitLabel: string;
     cancelLabel?: string;
     className?: string;
@@ -37,6 +38,7 @@ export function BaseForm({
     onSubmitAction,
     onCancelAction,
     isLoading = false,
+    submitDisabled = false,
     submitLabel,
     cancelLabel = "Cancel",
     className = "space-y-6",
@@ -64,7 +66,7 @@ export function BaseForm({
                 {hideSubmit ? null : (
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || submitDisabled}
                         className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--accent)/90 disabled:opacity-50"
                     >
                         {submitLabel}
