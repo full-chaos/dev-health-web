@@ -1330,6 +1330,13 @@ function homeRestFixture() {
                 delta_pct: -5,
             },
             { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
+            {
+                metric: "deploy_freq",
+                label: "Deploy Frequency",
+                unit: "deploys",
+                value: 42,
+                delta_pct: 10,
+            },
             // CHAOS-2163: pr_rework_ratio replaces legacy rework_ratio on the Investment/Quality rework card.
             // value is already a 0-100 percentage (ops emits value * 100).
             {
