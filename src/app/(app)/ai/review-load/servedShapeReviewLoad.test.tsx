@@ -24,7 +24,11 @@ vi.mock("@/components/charts/chartTheme", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/components/charts/chartTheme")>()),
     useChartTheme: () => fallbackTheme,
 }));
-vi.mock("@/components/charts/Chart", () => ({ Chart: () => <div data-testid="chart" /> }));
+vi.mock("@/components/charts/Chart", () => ({
+    Chart: ({ className }: { className?: string }) => (
+        <div data-testid="chart" data-class={className ?? ""} />
+    ),
+}));
 vi.mock("@/components/ai/AIEvidenceExplorer", () => ({
     AIEvidenceExplorer: () => <div data-testid="explorer-stub" />,
 }));
@@ -79,6 +83,17 @@ describe("AIReviewLoadDashboard served shape (AIReviewLoadRow serves day)", () =
         const card = screen.getByTestId("ai-review-amplification-trend");
         expect(card).not.toHaveTextContent("No daily review amplification points appear");
         expect(screen.getByTestId("chart")).toBeInTheDocument();
+    });
+
+    it("the trend chart fills its h-72 card: Chart gets h-full (its own div has no height)", () => {
+        mockUseAIReviewLoad.mockReturnValue(
+            served([
+                servedRow("ai_assisted", 1.4, "2026-04-01"),
+                servedRow("human", 1.1, "2026-04-01"),
+            ]),
+        );
+        render(<AIReviewLoadDashboard filter={filter} />);
+        expect(screen.getByTestId("chart").getAttribute("data-class")).toContain("h-full");
     });
 
     it("rows without a day (ops not rolled yet) show the existing empty state, no error", () => {
