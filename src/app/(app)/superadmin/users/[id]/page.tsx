@@ -5,7 +5,7 @@ import { UserEditForm } from "@/components/superadmin/UserEditForm";
 import { UserSetPasswordForm } from "@/components/superadmin/UserSetPasswordForm";
 import { UserDeleteSection } from "@/components/superadmin/UserDeleteSection";
 import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserButton";
-import { getUser } from "@/lib/admin/server";
+import { getPlatformUser } from "@/lib/admin/server";
 import { requireSuperuser } from "@/lib/auth";
 import { schedulePlatformShadow } from "@/lib/auth/platform/shadow";
 import { appPath } from "@/lib/navigation/appPath";
@@ -21,7 +21,7 @@ export default async function UserDetailPage({ params }: PageProps) {
         "page:/superadmin/users/[id]",
     );
     schedulePlatformShadow(session, ["control:ImpersonateUserButton"]);
-    const { data: user, error } = await getUser(id);
+    const { data: user, error } = await getPlatformUser(id);
 
     if (error || !user) {
         notFound();

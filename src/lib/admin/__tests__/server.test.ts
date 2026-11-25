@@ -679,7 +679,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=alice");
+        expect(url).toContain("/api/v1/admin/users?q=alice&active_only=true");
         expect(options?.headers).toMatchObject({
             Authorization: "Bearer test-token",
             "X-Org-Id": "org-1",
@@ -687,8 +687,21 @@ describe("admin/server user list actions", () => {
         fetchSpy.mockRestore();
     });
 
-    it("listPlatformUsers omits org header and supports q query", async () => {
+    it("listUsers (the organization admin list) asks for active users only, with or without a query", async () => {
         mockSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+        await listUsers();
+
+        const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(new URL(url).searchParams.get("active_only")).toBe("true");
+        fetchSpy.mockRestore();
+    });
+
+    it("listPlatformUsers omits org header and supports q query", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
         const fetchSpy = vi
             .spyOn(global, "fetch")
             .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
@@ -698,7 +711,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=bob");
+        expect(url).toContain("/api/v1/admin/users?q=bob&active_only=false");
         const headers = options?.headers as Record<string, string>;
         expect(headers.Authorization).toBe("Bearer test-token");
         expect(headers["X-Org-Id"]).toBeUndefined();
@@ -785,7 +798,7 @@ describe("org membership actions (CHAOS-8994)", () => {
 
         expect(result.error).toBeUndefined();
         const [lookupUrl] = fetchSpy.mock.calls[0] as [string];
-        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co");
+        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co&active_only=true");
         const [url, options] = fetchSpy.mock.calls[1] as [string, RequestInit];
         expect(url).toContain("/api/v1/admin/orgs/org-9/members");
         expect(options.method).toBe("POST");

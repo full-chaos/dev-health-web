@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { deleteUser } from "@/lib/admin/server";
+import { deletePlatformUser } from "@/lib/admin/server";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 
 type UserDeleteSectionProps = {
@@ -20,7 +20,7 @@ export function UserDeleteSection({ userId, userEmail }: UserDeleteSectionProps)
         if (confirmEmail !== userEmail) return;
 
         setIsDeleting(true);
-        const result = await deleteUser(userId);
+        const result = await deletePlatformUser(userId);
 
         if (result.error) {
             toast.error(result.error);
