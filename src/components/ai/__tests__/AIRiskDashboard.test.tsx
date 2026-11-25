@@ -137,7 +137,7 @@ describe("AIRiskDashboard", () => {
                         {
                             ruleId: "scan",
                             severity: "medium",
-                            subjectType: "pr",
+                            subjectType: "pull_request",
                             subjectId: "44",
                             observedAt: "2026-05-01T00:00:00Z",
                             evidence: "Scan missing",
