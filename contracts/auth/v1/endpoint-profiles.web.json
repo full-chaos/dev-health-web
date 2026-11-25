@@ -8724,7 +8724,7 @@
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "unknown",
             "entitlement_requirement": null,
-            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; ops's error detail text is passed through, except: a 404 returns the generic \"The change was not saved. Try again.\" sentence (serviceAccounts.ts:40), and a detail matching \"already exists\" or \"name is taken\" returns the duplicate-name sentence (serviceAccounts.ts:37-39).",
             "gaps": [
                 "Superuser check at src/lib/admin/server/users.ts:68 (CHAOS-8967, defense in depth); ops remains the authority on the request body.",
                 "action: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
