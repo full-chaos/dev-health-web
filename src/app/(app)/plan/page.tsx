@@ -77,6 +77,18 @@ function isUnmeasured(state: ThroughputOverlayState | null | undefined) {
     return state === "NO_ROWS";
 }
 
+/**
+ * Whether any check the calm summary names has no rows. STALE is not NO_ROWS: a stale read is still a measurement, and
+ * the page shows it as it always did.
+ */
+function hasUnmeasuredCheck(forecast: ThroughputForecast) {
+    return [
+        forecast.wipCongestionState,
+        forecast.reviewBottleneckState,
+        forecast.incidentLoadState,
+    ].some(isUnmeasured);
+}
+
 function RiskFact({
     risk,
     state,
@@ -124,6 +136,8 @@ function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
             </Inset>
         );
     }
+    // "No elevated risk" says every named check is healthy: it is not said while one of them has no rows.
+    if (hasUnmeasuredCheck(forecast)) return null;
     const [wip, review, incident] = risks.map((risk) => thresholdText(risk) ?? "not reported");
     return (
         <Inset title="No elevated risk" data-testid="risk-inset">

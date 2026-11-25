@@ -525,6 +525,8 @@ export interface ThroughputForecast {
     rollingWindows: ThroughputRollingWindow[];
     primaryRisk: ThroughputRiskOverlay;
     wipCongestion: ThroughputRiskOverlay;
+    /** Absent from a query-api that predates the field. */
+    wipCongestionState?: ThroughputOverlayState | null;
     staleWip?: ThroughputStaleWip | null;
     estimateCoverage?: ThroughputEstimateCoverage | null;
     reviewBottleneck: ThroughputRiskOverlay;
