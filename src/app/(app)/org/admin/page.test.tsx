@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 
 import type { SyncConfig, User } from "@/lib/admin/types";
 import {
@@ -109,6 +109,22 @@ describe("AdminDashboardPage", () => {
             "/org/admin/sync",
         );
         expect(screen.getAllByText("Attention")).toHaveLength(1);
+    });
+
+    it("counts only active users on the roster tile (the list also carries deactivated rows)", async () => {
+        vi.mocked(listUsers).mockResolvedValue({
+            data: [
+                { id: "u1", is_active: true, is_verified: true },
+                { id: "u2", is_active: true, is_verified: false },
+                { id: "u3", is_active: false, is_verified: false },
+            ] as unknown as User[],
+        });
+
+        render(await AdminDashboardPage());
+
+        const roster = screen.getByText("Organization roster").closest("section") as HTMLElement;
+        expect(within(roster).getByText("2")).toBeInTheDocument();
+        expect(within(roster).getByText("1 invited")).toBeInTheDocument();
     });
 
     it("has no Attention pill when nothing needs attention", async () => {
