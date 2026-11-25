@@ -228,6 +228,18 @@ export const PLATFORM_SURFACES: readonly PlatformSurface[] = [
         symbol: "setUserPassword",
         serverMapped: false,
     }),
+    row("fn:getPlatformUser", "fn", USERS, "admin.users", {
+        symbol: "getPlatformUser",
+        serverMapped: false,
+    }),
+    row("fn:updatePlatformUser", "fn", USERS, "admin.users", {
+        symbol: "updatePlatformUser",
+        serverMapped: false,
+    }),
+    row("fn:deletePlatformUser", "fn", USERS, "admin.users", {
+        symbol: "deletePlatformUser",
+        serverMapped: false,
+    }),
     row("fn:getOrgEntitlements", "fn", BILLING, "admin.flags", { symbol: "getOrgEntitlements" }),
     row("fn:listFeatureOverrides", "fn", BILLING, "admin.flags", {
         symbol: "listFeatureOverrides",

@@ -19,11 +19,9 @@ const GUARDED_FILES = [
 // Functions whose guard call is not requireSuperuserToken (they use the session org).
 const NOT_HOOKED_FN = new Map<string, string>([
     ["getCurrentOrg", "session-scoped read, no platform action"],
-    ["getUser", "no guard call today (CHAOS-11847)"],
-    ["updateUser", "no guard call today (CHAOS-11847)"],
-    ["deleteUser", "no guard call today (CHAOS-11847)"],
-    ["setUserPassword", "no guard call today (CHAOS-11847)"],
-    ["listPlatformUsers", "no guard call today (CHAOS-11847)"],
+    ["getUser", "org admin action; the platform twin is guarded"],
+    ["updateUser", "org admin action; the platform twin is guarded"],
+    ["deleteUser", "org admin action; the platform twin is guarded"],
     ["getAuditLog", "audit actions file: no requireSuperuserToken call"],
     ["getAuditEntry", "audit actions file: no requireSuperuserToken call"],
     ["resolveAuditMismatch", "audit actions file: no requireSuperuserToken call"],
