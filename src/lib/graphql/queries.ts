@@ -889,6 +889,7 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       postFirstReviewPushesPerPr
       pickupLatencyHours
       reviewCommentsPerLoc
+      day
     }
     reviewerConcentration {
       dataAvailable
