@@ -727,6 +727,8 @@ export type CognitiveLoadSignal = {
   afterHoursCommitRatio?: Maybe<Scalars['Float']['output']>;
   contextSpreadCount: Scalars['Float']['output'];
   day: Scalars['Date']['output'];
+  /** How the three developer fields of this day (prInterruptionLoad, contextSpreadCount, reviewRequestLoad) were read: MEASURED (at least one developer row that day, so a 0 is a measured 0) or NO_ROWS (the day has team rows only, so the 0 values are not a measurement). STALE is not used for this field: the day is the day of the row. See NewestDayState. */
+  developerState: NewestDayState;
   prInterruptionLoad: Scalars['Float']['output'];
   reviewRequestLoad: Scalars['Float']['output'];
   weekendCommitRatio?: Maybe<Scalars['Float']['output']>;
