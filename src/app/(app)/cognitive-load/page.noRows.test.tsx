@@ -54,7 +54,6 @@ async function renderTab(signals: ReturnType<typeof day>[], tab?: string) {
     return render(ui as React.ReactElement);
 }
 
-
 beforeEach(() => {
     charts.calls.length = 0;
 });

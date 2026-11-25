@@ -28,7 +28,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
-export type TrendPoint = { day: string; value: number; label?: string };
+export type TrendPoint = { day: string; value: number | null; label?: string };
 
 export type LoadDriver = { label: string; value: number };
 
@@ -279,8 +279,7 @@ export function contextSpreadSummary(trend: TrendPoint[]): {
     latest: number | null;
     peak: number | null;
 } {
-    // TrendPoint values are always numbers; the filter only narrows the shared
-    // chart type (which allows null gaps) back to number.
+    // A null value is a gap (a NO_ROWS day); only measured days count.
     const values = orderTimeseriesPoints(trend).values.filter((v): v is number => v !== null);
     const hasData = values.length > 0;
     return {
@@ -330,6 +329,8 @@ export function ContextSwitchingView({
 // Focus Pressure — PR interruption load + review request load, per day.
 // ---------------------------------------------------------------------------
 
+const hasTrendValue = (trend: TrendPoint[]) => trend.some((point) => point.value !== null);
+
 export function FocusPressureView({
     interruption,
     reviewRequest,
@@ -344,7 +345,7 @@ export function FocusPressureView({
             <ChartFrame
                 title="PR interruption load"
                 interpretation="Reviews, first-review events, and review feedback interrupting focused delivery, per day."
-                isEmpty={interruption.length === 0}
+                isEmpty={!hasTrendValue(interruption)}
                 stateTitle="No interruption data"
                 stateDescription={emptyDescription(
                     window,
@@ -357,7 +358,7 @@ export function FocusPressureView({
             <ChartFrame
                 title="Review request load"
                 interpretation="Aggregate review requests the team absorbed per day — never a person-level queue ranking."
-                isEmpty={reviewRequest.length === 0}
+                isEmpty={!hasTrendValue(reviewRequest)}
                 stateTitle="No review-request data"
                 stateDescription={emptyDescription(
                     window,
