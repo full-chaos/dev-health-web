@@ -142,6 +142,13 @@ describe("superadmin surfaces are denied while impersonating", () => {
         expect(backendCalls).toEqual([]);
     });
 
+    it("the org list, whose request carries active_only=false, is refused while impersonating", async () => {
+        const listed = await listOrganizations();
+        expect(listed.data).toBeUndefined();
+        expect(listed.error).toBeDefined();
+        expect(backendCalls.filter((c) => c.includes("/api/v1/admin/orgs"))).toEqual([]);
+    });
+
     it("start impersonation is refused while already impersonating (no nesting)", async () => {
         const r = await startImpersonation("target-2");
         expect(r.error).toBeDefined();
