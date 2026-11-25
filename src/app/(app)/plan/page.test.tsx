@@ -337,6 +337,76 @@ describe("Plan overview — what the page shows (pins)", () => {
     });
 });
 
+describe("Plan overview — an overlay with no rows (CHAOS-14632)", () => {
+    // ops serves value 0 for an overlay whose read found no row; its state says whether that 0 is a measurement.
+    const factOf = (label: string) =>
+        within(screen.getByTestId("risk-facts"))
+            .getAllByTestId("evidence-fact")
+            .find((row) => row.querySelector("dt")?.textContent === label);
+
+    it.each([
+        ["Incident burden", "incidentLoadState", "incident_load", 10, "0/week"],
+        ["Review bottleneck", "reviewBottleneckState", "review", 48, "0h"],
+    ])(
+        "%s: NO_ROWS shows the page's no-data state, not a zero and a check",
+        async (label, stateKey, kind, threshold, zero) => {
+            const key = kind === "review" ? "reviewBottleneck" : "incidentLoad";
+            mockForecast.mockResolvedValue(
+                forecast({ [key]: overlay(kind, label, 0, threshold), [stateKey]: "NO_ROWS" }),
+            );
+            await renderPage();
+
+            const row = factOf(label);
+            expect(row).toHaveAttribute("data-reported", "false");
+            expect(row?.querySelector("dd")?.textContent).toBe("Unknown");
+            expect(row?.textContent).not.toContain(zero);
+            expect(row?.textContent).not.toContain("Normal");
+            // The other two checks keep their rows.
+            expect(screen.getAllByTestId("risk-row")).toHaveLength(2);
+            // The evidence drawer states no value either.
+            const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+            const drawerRow = within(drawer.container)
+                .getAllByTestId("evidence-fact")
+                .find((r) => r.querySelector("dt")?.textContent === label);
+            expect(drawerRow?.querySelector("dd")?.textContent).toBe("Unknown");
+        },
+    );
+
+    it.each([
+        ["Incident burden", "incidentLoadState", "incident_load", 10, "0/weekNormal"],
+        ["Review bottleneck", "reviewBottleneckState", "review", 48, "0hNormal"],
+    ])(
+        "%s: MEASURED with a real 0 still shows the zero and Normal",
+        async (label, stateKey, kind, threshold, shown) => {
+            const key = kind === "review" ? "reviewBottleneck" : "incidentLoad";
+            mockForecast.mockResolvedValue(
+                forecast({ [key]: overlay(kind, label, 0, threshold), [stateKey]: "MEASURED" }),
+            );
+            await renderPage();
+
+            const row = factOf(label);
+            expect(row).toHaveAttribute("data-reported", "true");
+            expect(row).toHaveTextContent(shown);
+            expect(screen.getAllByTestId("risk-row")).toHaveLength(3);
+        },
+    );
+
+    it("a populated overlay is unchanged whatever its state field says", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                reviewBottleneck: overlay("review", "Review bottleneck", 6.2, 48),
+                reviewBottleneckState: "MEASURED",
+                incidentLoad: overlay("incident_load", "Incident burden", 3, 10),
+                incidentLoadState: "MEASURED",
+            }),
+        );
+        await renderPage();
+
+        expect(factOf("Review bottleneck")).toHaveTextContent("6.2hNormal");
+        expect(factOf("Incident burden")).toHaveTextContent("3/weekNormal");
+    });
+});
+
 describe("Plan overview — View evidence", () => {
     it("adds a View evidence action whose subject lists the page's served values, 'Not reported' for a missing one", async () => {
         mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
