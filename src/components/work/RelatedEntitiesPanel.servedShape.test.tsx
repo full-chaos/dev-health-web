@@ -70,7 +70,9 @@ describe("RelatedEntitiesPanel on the node types ops serves", () => {
             />,
         );
         const link = screen.getByRole("link", { name: /dep-1/ });
-        expect(decodeURIComponent(link.getAttribute("href") ?? "")).toBe("/deployments/repo-1:dep-1");
+        expect(decodeURIComponent(link.getAttribute("href") ?? "")).toBe(
+            "/deployments/repo-1:dep-1",
+        );
     });
 
     it("control: no edges keeps the empty state", () => {

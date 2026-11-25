@@ -32,14 +32,16 @@ const entityLabels: Record<string, string> = {
 
 const entityOrder = ["ISSUE", "PR", "REVIEW_OUTCOME", "COMMIT", "FILE", "DEPLOYMENT", "INCIDENT"];
 
-function entityHref(type: string, id: string): string {
-    switch (type) {
+const normType = (type: string) => type.toUpperCase();
+
+function entityHref(type: string, id: string, repoId?: string | null): string {
+    switch (normType(type)) {
         case "ISSUE":
             return `/issues/${encodeURIComponent(id)}`;
         case "PR":
             return `/prs/${encodeURIComponent(id)}`;
         case "DEPLOYMENT":
-            return `/deployments/${encodeURIComponent(id)}`;
+            return `/deployments/${encodeURIComponent(repoId ? `${repoId}:${id}` : id)}`;
         case "COMMIT":
             return `/code?commit=${encodeURIComponent(id)}`;
         case "INCIDENT":
@@ -61,6 +63,8 @@ function topDistributionEntry(distribution: Record<string, number | undefined>) 
         .sort((a, b) => b[1] - a[1])[0];
 }
 
+const sameType = (a: string, b: string) => normType(a) === normType(b);
+
 function collectRelatedEdges(
     rootType: AIWorkflowRootTypeInput,
     rootId: string,
@@ -68,8 +72,8 @@ function collectRelatedEdges(
 ) {
     const rootConnected = edges.some(
         (edge) =>
-            (edge.sourceType === rootType && edge.sourceId === rootId) ||
-            (edge.targetType === rootType && edge.targetId === rootId),
+            (sameType(edge.sourceType, rootType) && edge.sourceId === rootId) ||
+            (sameType(edge.targetType, rootType) && edge.targetId === rootId),
     );
     return rootConnected ? edges : [];
 }
@@ -81,10 +85,11 @@ function groupEdgesByRelatedType(
 ): Map<string, AIWorkflowGraphEdge[]> {
     const grouped = new Map<string, AIWorkflowGraphEdge[]>();
     for (const edge of edges) {
-        const type =
-            edge.targetType === rootType && edge.targetId === rootId
+        const type = normType(
+            sameType(edge.targetType, rootType) && edge.targetId === rootId
                 ? edge.sourceType
-                : edge.targetType;
+                : edge.targetType,
+        );
         grouped.set(type, [...(grouped.get(type) ?? []), edge]);
     }
     return grouped;
@@ -163,14 +168,13 @@ export function RelatedEntitiesPanel({
                                 </h3>
                                 <div className="mt-4 space-y-3">
                                     {edges.map((edge) => {
-                                        const linkedType =
-                                            edge.sourceType === type
-                                                ? edge.sourceType
-                                                : edge.targetType;
-                                        const linkedId =
-                                            edge.sourceType === type
-                                                ? edge.sourceId
-                                                : edge.targetId;
+                                        const sourceIsType = normType(edge.sourceType) === type;
+                                        const linkedType = sourceIsType
+                                            ? edge.sourceType
+                                            : edge.targetType;
+                                        const linkedId = sourceIsType
+                                            ? edge.sourceId
+                                            : edge.targetId;
                                         return (
                                             <article
                                                 key={edge.edgeId}
@@ -178,7 +182,11 @@ export function RelatedEntitiesPanel({
                                             >
                                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                                     <Link
-                                                        href={entityHref(linkedType, linkedId)}
+                                                        href={entityHref(
+                                                            linkedType,
+                                                            linkedId,
+                                                            edge.repoId,
+                                                        )}
                                                         className="font-medium underline-offset-4 hover:underline"
                                                     >
                                                         {linkedType.toLowerCase() === "commit"
