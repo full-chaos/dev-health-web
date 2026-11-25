@@ -304,6 +304,7 @@ export type AiReviewLoadRow = {
   __typename?: 'AIReviewLoadRow';
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  day?: Maybe<Scalars['String']['output']>;
   pickupLatencyHours?: Maybe<Scalars['Float']['output']>;
   postFirstReviewPushesCount: Scalars['Float']['output'];
   postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
