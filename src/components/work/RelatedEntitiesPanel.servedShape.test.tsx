@@ -101,6 +101,68 @@ describe("RelatedEntitiesPanel on the node types ops serves", () => {
         );
     });
 
+    it("lists both ends of a direct and an indirect issue edge, none twice", () => {
+        const edge = (
+            edgeId: string,
+            sourceType: string,
+            sourceId: string,
+            targetType: string,
+            targetId: string,
+        ) => ({
+            edgeId,
+            sourceType,
+            sourceId,
+            targetType,
+            targetId,
+            edgeType: "fixes",
+            confidence: 0.9,
+            source: "synthetic",
+            evidence: edgeId,
+        });
+        render(
+            <RelatedEntitiesPanel
+                rootType="PR"
+                rootId="PR-201"
+                investment={investment}
+                drilldown={drilldown([
+                    edge("direct", "issue", "PROJ-101", "pr", "PR-201"),
+                    edge("indirect", "issue", "PROJ-102", "issue", "PROJ-101"),
+                ])}
+            />,
+        );
+        const hrefs = screen
+            .getAllByRole("link")
+            .map((link) => link.getAttribute("href"))
+            .filter((href) => href?.startsWith("/issues/"));
+        expect(hrefs.sort()).toEqual(["/issues/PROJ-101", "/issues/PROJ-102"]);
+    });
+
+    it("control: a direct issue edge lists its issue once", () => {
+        render(
+            <RelatedEntitiesPanel
+                rootType="PR"
+                rootId="PR-201"
+                investment={investment}
+                drilldown={drilldown([
+                    {
+                        edgeId: "direct",
+                        sourceType: "issue",
+                        sourceId: "PROJ-101",
+                        targetType: "pr",
+                        targetId: "PR-201",
+                        edgeType: "fixes",
+                        confidence: 0.9,
+                        source: "synthetic",
+                        evidence: "direct",
+                    },
+                ])}
+            />,
+        );
+        expect(screen.getByRole("link", { name: /PROJ-101/ }).getAttribute("href")).toBe(
+            "/issues/PROJ-101",
+        );
+    });
+
     it("keeps an edge whose related type has no named section", () => {
         render(
             <RelatedEntitiesPanel
