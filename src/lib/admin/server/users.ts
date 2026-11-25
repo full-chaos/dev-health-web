@@ -8,7 +8,7 @@ import { getSessionContext, getToken, requireSuperuserToken, withErrorHandling }
 export async function listUsers(query?: string): Promise<ActionResult<User[]>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.users.list(token, orgId, query);
+        return adminApi.users.list(token, orgId, query, true);
     });
 }
 

@@ -95,7 +95,7 @@ export default async function AdminDashboardPage() {
         listSyncConfigs(),
         getPendingTeamChanges(),
     ]);
-    const users = asList(usersResult.data);
+    const users = asList(usersResult.data).filter((adminUser) => adminUser.is_active);
     const teams = asList(teamsResult.data);
     const identities = asList(identitiesResult.data);
     const credentials = asList(credentialsResult.data);
