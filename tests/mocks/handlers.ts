@@ -3634,20 +3634,16 @@ export const handlers = [
             ],
             narrative: [{ text: "This person appears to maintain a steady delivery pace." }],
             sections: {
-                work_mix: {
-                    themes: {
-                        feature_delivery: 0.6,
-                        maintenance: 0.25,
-                        operational: 0.15,
-                    },
-                    evidence_count: 24,
-                },
-                flow_breakdown: {
-                    coding_pct: 0.4,
-                    review_pct: 0.25,
-                    waiting_pct: 0.2,
-                    meeting_pct: 0.15,
-                },
+                // The served shape of GET /api/v1/people/{person_id}/summary: arrays.
+                work_mix: [
+                    { key: "feature", name: "Feature", value: 12 },
+                    { key: "bug", name: "Bug", value: 5 },
+                    { key: "chore", name: "Chore", value: 3 },
+                ],
+                flow_breakdown: [
+                    { stage: "Active", value: 18.5, unit: "hours" },
+                    { stage: "Waiting", value: 6.25, unit: "hours" },
+                ],
                 collaboration: {
                     reviewers: [
                         {
