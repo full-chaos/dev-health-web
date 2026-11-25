@@ -221,9 +221,14 @@ export const PLATFORM_SURFACES: readonly PlatformSurface[] = [
         },
     ),
     row("fn:getCurrentOrg", "fn", ORGS, "org.read", { symbol: "getCurrentOrg" }),
-    row("fn:getUser", "fn", USERS, "admin.users", { symbol: "getUser", serverMapped: false }),
-    row("fn:updateUser", "fn", USERS, "admin.users", { symbol: "updateUser", serverMapped: false }),
-    row("fn:deleteUser", "fn", USERS, "admin.users", { symbol: "deleteUser", serverMapped: false }),
+    row("fn:updateUser", "fn", USERS, "members.update", {
+        symbol: "updateUser",
+        serverMapped: false,
+    }),
+    row("fn:deleteUser", "fn", USERS, "members.manage", {
+        symbol: "deleteUser",
+        serverMapped: false,
+    }),
     row("fn:setUserPassword", "fn", USERS, "admin.users", {
         symbol: "setUserPassword",
         serverMapped: false,
