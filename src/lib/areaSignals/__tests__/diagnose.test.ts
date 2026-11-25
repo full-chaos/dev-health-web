@@ -172,6 +172,7 @@ beforeEach(() => {
                 prInterruptionLoad: 16,
                 contextSpreadCount: 60,
                 reviewRequestLoad: 2,
+                developerState: "MEASURED",
                 afterHoursCommitRatio: 0.38,
                 weekendCommitRatio: 0.25,
             },
@@ -180,6 +181,7 @@ beforeEach(() => {
                 prInterruptionLoad: 16,
                 contextSpreadCount: 60,
                 reviewRequestLoad: 2,
+                developerState: "MEASURED",
                 afterHoursCommitRatio: 0.38,
                 weekendCommitRatio: 0.25,
             },
@@ -500,6 +502,55 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 state: "high",
                 value: "16",
             });
+        });
+
+        it("Cognitive Load interruption average skips a NO_ROWS day (its 0 is not a measurement)", async () => {
+            mockGetCognitiveLoad.mockResolvedValue({
+                orgId: "org-test",
+                teamId: null,
+                totalDays: 2,
+                signals: [
+                    {
+                        day: "2026-06-06",
+                        prInterruptionLoad: 16,
+                        contextSpreadCount: 60,
+                        reviewRequestLoad: 2,
+                        developerState: "MEASURED",
+                        afterHoursCommitRatio: 0.38,
+                        weekendCommitRatio: 0.25,
+                    },
+                    {
+                        day: "2026-06-07",
+                        prInterruptionLoad: 0,
+                        contextSpreadCount: 0,
+                        reviewRequestLoad: 0,
+                        developerState: "NO_ROWS",
+                        afterHoursCommitRatio: 0.38,
+                        weekendCommitRatio: 0.25,
+                    },
+                ],
+            });
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({ state: "high", value: "16" });
+        });
+
+        it("Cognitive Load interruption average keeps a MEASURED day with value 0", async () => {
+            mockGetCognitiveLoad.mockResolvedValue({
+                orgId: "org-test",
+                teamId: null,
+                totalDays: 2,
+                signals: [16, 0].map((load, i) => ({
+                    day: `2026-06-0${6 + i}`,
+                    prInterruptionLoad: load,
+                    contextSpreadCount: 0,
+                    reviewRequestLoad: 0,
+                    developerState: "MEASURED" as const,
+                    afterHoursCommitRatio: 0.38,
+                    weekendCommitRatio: 0.25,
+                })),
+            });
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({ state: "medium", value: "8" });
         });
 
         it("Cognitive Load is unavailable when no cognitiveLoad signals are returned", async () => {
