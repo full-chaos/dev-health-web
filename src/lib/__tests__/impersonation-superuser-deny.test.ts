@@ -181,6 +181,6 @@ describe("superadmin surfaces are denied while impersonating", () => {
         await expect(requireRole(["admin", "owner"])).resolves.toBeTruthy();
         const listed = await listOrganizations();
         expect(listed.error).toBeUndefined();
-        expect(backendCalls).toEqual(["GET /api/v1/admin/orgs"]);
+        expect(backendCalls).toEqual(["GET /api/v1/admin/orgs?active_only=false"]);
     });
 });
