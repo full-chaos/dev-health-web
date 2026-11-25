@@ -1330,6 +1330,13 @@ function homeRestFixture() {
                 delta_pct: -5,
             },
             { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
+            {
+                metric: "deploy_freq",
+                label: "Deploy Frequency",
+                unit: "deploys",
+                value: 42,
+                delta_pct: 10,
+            },
             // CHAOS-2163: pr_rework_ratio replaces legacy rework_ratio on the Investment/Quality rework card.
             // value is already a 0-100 percentage (ops emits value * 100).
             {
@@ -3627,20 +3634,16 @@ export const handlers = [
             ],
             narrative: [{ text: "This person appears to maintain a steady delivery pace." }],
             sections: {
-                work_mix: {
-                    themes: {
-                        feature_delivery: 0.6,
-                        maintenance: 0.25,
-                        operational: 0.15,
-                    },
-                    evidence_count: 24,
-                },
-                flow_breakdown: {
-                    coding_pct: 0.4,
-                    review_pct: 0.25,
-                    waiting_pct: 0.2,
-                    meeting_pct: 0.15,
-                },
+                // The served shape of GET /api/v1/people/{person_id}/summary: arrays.
+                work_mix: [
+                    { key: "feature", name: "Feature", value: 12 },
+                    { key: "bug", name: "Bug", value: 5 },
+                    { key: "chore", name: "Chore", value: 3 },
+                ],
+                flow_breakdown: [
+                    { stage: "Active", value: 18.5, unit: "hours" },
+                    { stage: "Waiting", value: 6.25, unit: "hours" },
+                ],
                 collaboration: {
                     reviewers: [
                         {
@@ -3749,9 +3752,41 @@ export const handlers = [
     }),
 
     // ---- Drilldown ----
-    http.post("*/api/v1/drilldown/prs", () => HttpResponse.json({ items: [], total: 0 })),
+    // Served ops shape: drilldown/prs.go PRItem, drilldown/issues.go IssueItem (no title on non-blocked rows).
+    http.post("*/api/v1/drilldown/prs", () =>
+        HttpResponse.json({
+            items: [
+                {
+                    repo_id: "repo-1",
+                    number: 12,
+                    title: "Synthetic PR",
+                    author_name: "Synthetic Author",
+                    created_at: "2026-05-01T00:00:00Z",
+                    merged_at: "2026-05-02T00:00:00Z",
+                    first_review_at: "2026-05-01T06:00:00Z",
+                    review_latency_hours: 6,
+                },
+            ],
+        }),
+    ),
 
-    http.post("*/api/v1/drilldown/issues", () => HttpResponse.json({ items: [], total: 0 })),
+    http.post("*/api/v1/drilldown/issues", () =>
+        HttpResponse.json({
+            items: [
+                {
+                    work_item_id: "wi-1",
+                    provider: "github",
+                    status: "in_progress",
+                    team_id: "team-1",
+                    team_name: "Synthetic Team",
+                    cycle_time_hours: null,
+                    lead_time_hours: null,
+                    started_at: "2026-05-01T00:00:00Z",
+                    completed_at: null,
+                },
+            ],
+        }),
+    ),
 
     // ---- Opportunities ----
     http.post("*/api/v1/opportunities", () =>

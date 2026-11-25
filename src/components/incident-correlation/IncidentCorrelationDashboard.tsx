@@ -130,7 +130,7 @@ export type IncidentCorrelationDashboardProps = {
 // ---------------------------------------------------------------------------
 
 /** DORA metric keys we recognise — tiles rendered only when present in home.deltas. */
-const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"] as const;
+const DORA_METRIC_KEYS = ["change_failure_rate", "deploy_freq"] as const;
 
 /** Card-head text link (prototype `.link`): sentence case in the action color, the arrow after the text. */
 const CARD_LINK = "text-xs text-(--accent-2) hover:underline";

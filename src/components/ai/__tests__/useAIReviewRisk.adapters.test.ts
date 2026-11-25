@@ -79,7 +79,7 @@ describe("useAIReviewRisk adapters", () => {
                 {
                     ruleId: "a",
                     severity: "high",
-                    subjectType: "pr",
+                    subjectType: "pull_request",
                     subjectId: "1",
                     observedAt: "2026-05-01T00:00:00Z",
                     evidence: "PR issue",
