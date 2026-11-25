@@ -407,6 +407,60 @@ describe("Plan overview — an overlay with no rows (CHAOS-14632)", () => {
     });
 });
 
+describe("Plan overview — the summary while a check has no rows (CHAOS-14632)", () => {
+    it.each([["wipCongestionState"], ["reviewBottleneckState"], ["incidentLoadState"]])(
+        "%s NO_ROWS with no active risk: no 'No elevated risk' summary",
+        async (stateKey) => {
+            mockForecast.mockResolvedValue(
+                forecast({
+                    wipCongestionState: "MEASURED",
+                    reviewBottleneckState: "MEASURED",
+                    incidentLoadState: "MEASURED",
+                    [stateKey]: "NO_ROWS",
+                }),
+            );
+            await renderPage();
+
+            expect(screen.queryByTestId("risk-inset")).toBeNull();
+            expect(screen.queryByText("No elevated risk")).toBeNull();
+            // The rows stay: the card is the three rows only.
+            expect(screen.getByTestId("risk-facts")).toBeInTheDocument();
+        },
+    );
+
+    it("every check MEASURED and calm: the summary is as before", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                wipCongestionState: "MEASURED",
+                reviewBottleneckState: "MEASURED",
+                incidentLoadState: "MEASURED",
+            }),
+        );
+        await renderPage();
+
+        const inset = screen.getByTestId("risk-inset");
+        expect(
+            within(inset).getByRole("heading", { name: "No elevated risk" }),
+        ).toBeInTheDocument();
+        expect(inset).toHaveTextContent("Checks: WIP threshold 1.25×");
+    });
+
+    it("an active risk wins over a check with no rows: the active summary is unchanged", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                wipCongestion: overlay("wip", "WIP congestion", 1.5, 1.25, true),
+                primaryRisk: overlay("wip", "WIP congestion", 1.5, 1.25, true),
+                incidentLoadState: "NO_ROWS",
+            }),
+        );
+        await renderPage();
+
+        const inset = screen.getByTestId("risk-inset");
+        expect(within(inset).getByRole("heading", { name: "WIP congestion" })).toBeInTheDocument();
+        expect(inset).toHaveTextContent("most elevated current overlay");
+    });
+});
+
 describe("Plan overview — View evidence", () => {
     it("adds a View evidence action whose subject lists the page's served values, 'Not reported' for a missing one", async () => {
         mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
