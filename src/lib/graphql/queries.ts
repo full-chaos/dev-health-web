@@ -1173,6 +1173,7 @@ query CognitiveLoad($input: CognitiveLoadInput!) {
       prInterruptionLoad
       contextSpreadCount
       reviewRequestLoad
+      developerState
       afterHoursCommitRatio
       weekendCommitRatio
     }

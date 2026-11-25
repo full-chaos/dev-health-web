@@ -18,6 +18,7 @@ export interface CognitiveLoadSignal {
     prInterruptionLoad: number;
     contextSpreadCount: number;
     reviewRequestLoad: number;
+    developerState: "MEASURED" | "NO_ROWS" | "STALE";
     afterHoursCommitRatio: number | null | undefined;
     weekendCommitRatio: number | null | undefined;
 }

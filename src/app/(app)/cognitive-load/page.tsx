@@ -155,9 +155,12 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const avg = (values: number[]) =>
         values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
-    const avgPrInterruptionLoad = avg(rawSignals.map((s) => s.prInterruptionLoad));
-    const avgContextSpread = avg(rawSignals.map((s) => s.contextSpreadCount));
-    const avgReviewRequestLoad = avg(rawSignals.map((s) => s.reviewRequestLoad));
+    // A NO_ROWS day has team rows only: its developer fields are 0 but not a measurement.
+    // A MEASURED day with value 0 is data and still counts.
+    const developerSignals = rawSignals.filter((s) => s.developerState !== "NO_ROWS");
+    const avgPrInterruptionLoad = avg(developerSignals.map((s) => s.prInterruptionLoad));
+    const avgContextSpread = avg(developerSignals.map((s) => s.contextSpreadCount));
+    const avgReviewRequestLoad = avg(developerSignals.map((s) => s.reviewRequestLoad));
 
     // after_hours / weekend ratios are nullable (team-scoped only; null when no team filter).
     const afterHoursValues = rawSignals
@@ -249,7 +252,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     // January before December); `label` carries the compact "MM-DD" form for the axis.
     // A real zero is plotted (zero is data); only a genuinely empty window is empty.
     const toTrend = (pick: (s: (typeof rawSignals)[number]) => number): TrendPoint[] =>
-        rawSignals
+        developerSignals
             .map((s) => ({
                 day: s.day,
                 label: s.day.slice(5),
