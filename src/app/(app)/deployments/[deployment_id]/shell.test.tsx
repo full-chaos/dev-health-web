@@ -6,6 +6,8 @@ import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
 
+import { getFlame } from "@/lib/api/visuals";
+
 import DeploymentDetailPage from "./page";
 
 // The deployment detail page inside the shared app shell. Diagnose owns the
@@ -59,6 +61,18 @@ async function renderPage() {
 
 beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+});
+
+describe("Deployment detail route param", () => {
+    it("decodes the encoded repo_id:suffix param before it asks for the flame", async () => {
+        await DeploymentDetailPage({
+            params: Promise.resolve({ deployment_id: "repo-1%3Adep-1" }),
+        });
+        expect(getFlame).toHaveBeenCalledWith({
+            entity_type: "deployment",
+            entity_id: "repo-1:dep-1",
+        });
+    });
 });
 
 describe("Deployment detail in the shared app shell", () => {

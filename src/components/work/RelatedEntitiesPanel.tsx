@@ -41,7 +41,7 @@ function entityHref(type: string, id: string, repoId?: string | null): string {
         case "PR":
             return `/prs/${encodeURIComponent(id)}`;
         case "DEPLOYMENT":
-            return `/deployments/${repoId ? `${encodeURIComponent(repoId)}:${encodeURIComponent(id)}` : encodeURIComponent(id)}`;
+            return `/deployments/${encodeURIComponent(repoId ? `${repoId}:${id}` : id)}`;
         case "COMMIT":
             return `/code?commit=${encodeURIComponent(id)}`;
         case "INCIDENT":
