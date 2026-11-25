@@ -249,7 +249,7 @@ export async function addOrgMemberByEmail(
             if (!wanted) {
                 throw new AdminApiError(422, "Unprocessable Entity", "Email is required");
             }
-            const candidates = await adminApi.users.list(token, undefined, wanted);
+            const candidates = await adminApi.users.list(token, undefined, wanted, true);
             const user = candidates.find((u) => u.email.toLowerCase() === wanted);
             if (!user) {
                 throw new UserFacingActionError(404, `No user with email ${email.trim()}`);

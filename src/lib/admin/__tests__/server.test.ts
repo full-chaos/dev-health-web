@@ -679,7 +679,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=alice");
+        expect(url).toContain("/api/v1/admin/users?q=alice&active_only=false");
         expect(options?.headers).toMatchObject({
             Authorization: "Bearer test-token",
             "X-Org-Id": "org-1",
@@ -698,7 +698,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=bob");
+        expect(url).toContain("/api/v1/admin/users?q=bob&active_only=false");
         const headers = options?.headers as Record<string, string>;
         expect(headers.Authorization).toBe("Bearer test-token");
         expect(headers["X-Org-Id"]).toBeUndefined();
@@ -785,7 +785,7 @@ describe("org membership actions (CHAOS-8994)", () => {
 
         expect(result.error).toBeUndefined();
         const [lookupUrl] = fetchSpy.mock.calls[0] as [string];
-        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co");
+        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co&active_only=true");
         const [url, options] = fetchSpy.mock.calls[1] as [string, RequestInit];
         expect(url).toContain("/api/v1/admin/orgs/org-9/members");
         expect(options.method).toBe("POST");
