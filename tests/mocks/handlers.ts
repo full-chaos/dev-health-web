@@ -3749,9 +3749,41 @@ export const handlers = [
     }),
 
     // ---- Drilldown ----
-    http.post("*/api/v1/drilldown/prs", () => HttpResponse.json({ items: [], total: 0 })),
+    // Served ops shape: drilldown/prs.go PRItem, drilldown/issues.go IssueItem (no title on non-blocked rows).
+    http.post("*/api/v1/drilldown/prs", () =>
+        HttpResponse.json({
+            items: [
+                {
+                    repo_id: "repo-1",
+                    number: 12,
+                    title: "Synthetic PR",
+                    author_name: "Synthetic Author",
+                    created_at: "2026-05-01T00:00:00Z",
+                    merged_at: "2026-05-02T00:00:00Z",
+                    first_review_at: "2026-05-01T06:00:00Z",
+                    review_latency_hours: 6,
+                },
+            ],
+        }),
+    ),
 
-    http.post("*/api/v1/drilldown/issues", () => HttpResponse.json({ items: [], total: 0 })),
+    http.post("*/api/v1/drilldown/issues", () =>
+        HttpResponse.json({
+            items: [
+                {
+                    work_item_id: "wi-1",
+                    provider: "github",
+                    status: "in_progress",
+                    team_id: "team-1",
+                    team_name: "Synthetic Team",
+                    cycle_time_hours: null,
+                    lead_time_hours: null,
+                    started_at: "2026-05-01T00:00:00Z",
+                    completed_at: null,
+                },
+            ],
+        }),
+    ),
 
     // ---- Opportunities ----
     http.post("*/api/v1/opportunities", () =>
