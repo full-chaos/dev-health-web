@@ -1909,7 +1909,7 @@ export type QueryCoverageScopeBaselineArgs = {
 
 
 export type QueryDataHealthArgs = {
-  team: Scalars['ID']['input'];
+  team?: InputMaybe<Scalars['ID']['input']>;
 };
 
 
