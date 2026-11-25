@@ -8722,7 +8722,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
@@ -8779,7 +8779,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
@@ -8823,11 +8823,11 @@
             },
             "reachable_validators": [
                 {
-                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 487-509: boundedProxyAuth at :488, in the branch for a pathname that isPublicPath at 124-128 does not accept) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
                     "anchor": {
                         "path": "src/proxy.ts",
-                        "line": 447,
-                        "line_end": 466
+                        "line": 487,
+                        "line_end": 509
                     },
                     "earlier_auth_gate": true,
                     "foreign_class_validator": false,
@@ -8838,7 +8838,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "subject_to_impersonation_override",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
@@ -8940,11 +8940,11 @@
             },
             "reachable_validators": [
                 {
-                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 487-509: boundedProxyAuth at :488, in the branch for a pathname that isPublicPath at 124-128 does not accept) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
                     "anchor": {
                         "path": "src/proxy.ts",
-                        "line": 447,
-                        "line_end": 466
+                        "line": 487,
+                        "line_end": 509
                     },
                     "earlier_auth_gate": true,
                     "foreign_class_validator": false,
@@ -8955,7 +8955,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "subject_to_impersonation_override",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
@@ -9072,7 +9072,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
@@ -9232,11 +9232,11 @@
             },
             "reachable_validators": [
                 {
-                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 487-509: boundedProxyAuth at :488, in the branch for a pathname that isPublicPath at 124-128 does not accept) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
                     "anchor": {
                         "path": "src/proxy.ts",
-                        "line": 447,
-                        "line_end": 466
+                        "line": 487,
+                        "line_end": 509
                     },
                     "earlier_auth_gate": true,
                     "foreign_class_validator": false,
@@ -9247,7 +9247,7 @@
             "resource_resolver": null,
             "tenant_requirement": "unknown",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
-            "impersonation_policy": "unknown",
+            "impersonation_policy": "subject_to_impersonation_override",
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
