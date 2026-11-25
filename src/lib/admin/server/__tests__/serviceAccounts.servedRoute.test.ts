@@ -25,7 +25,7 @@ const OWNER = "00000000-0000-4000-8000-0000000000c1";
 beforeEach(() => mockRequest.mockClear());
 
 describe("createServiceAccount calls the served service-account route", () => {
-    it("posts to /users/service-accounts with organization_id, owner_principal_id and name", async () => {
+    it("posts to /service-accounts with organization_id, owner_principal_id and name", async () => {
         await createServiceAccount({
             name: "ci-bot",
             organization_id: ORG,
@@ -34,7 +34,7 @@ describe("createServiceAccount calls the served service-account route", () => {
 
         expect(mockRequest).toHaveBeenCalledOnce();
         const [path, options] = mockRequest.mock.calls[0];
-        expect(path).toBe("/users/service-accounts");
+        expect(path).toBe("/service-accounts");
         const body = JSON.parse((options as RequestInit).body as string);
         expect(body).toEqual({ organization_id: ORG, owner_principal_id: OWNER, name: "ci-bot" });
     });
