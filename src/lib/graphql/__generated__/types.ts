@@ -304,6 +304,7 @@ export type AiReviewLoadRow = {
   __typename?: 'AIReviewLoadRow';
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  day?: Maybe<Scalars['String']['output']>;
   pickupLatencyHours?: Maybe<Scalars['Float']['output']>;
   postFirstReviewPushesCount: Scalars['Float']['output'];
   postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
@@ -727,6 +728,8 @@ export type CognitiveLoadSignal = {
   afterHoursCommitRatio?: Maybe<Scalars['Float']['output']>;
   contextSpreadCount: Scalars['Float']['output'];
   day: Scalars['Date']['output'];
+  /** How the three developer fields of this day (prInterruptionLoad, contextSpreadCount, reviewRequestLoad) were read: MEASURED (at least one developer row that day, so a 0 is a measured 0) or NO_ROWS (the day has team rows only, so the 0 values are not a measurement). STALE is not used for this field: the day is the day of the row. See NewestDayState. */
+  developerState: NewestDayState;
   prInterruptionLoad: Scalars['Float']['output'];
   reviewRequestLoad: Scalars['Float']['output'];
   weekendCommitRatio?: Maybe<Scalars['Float']['output']>;
@@ -2699,12 +2702,16 @@ export type ThroughputForecast = {
   forecastId: Scalars['String']['output'];
   historyWeeks: Scalars['Int']['output'];
   incidentLoad: ThroughputRiskOverlay;
+  /** How the incident rate of incidentLoad was read: MEASURED (at least one live repository-day in the window) or NO_ROWS (none, or no throughput history, so the value 0 is not a measurement). Never STALE: the read keeps no newest day (see NewestDayState). */
+  incidentLoadState: NewestDayState;
   insufficientHistory: Scalars['Boolean']['output'];
   p50Weeks?: Maybe<Scalars['Int']['output']>;
   p75Weeks?: Maybe<Scalars['Int']['output']>;
   p90Weeks?: Maybe<Scalars['Int']['output']>;
   primaryRisk: ThroughputRiskOverlay;
   reviewBottleneck: ThroughputRiskOverlay;
+  /** How the review latency of reviewBottleneck was read: MEASURED (at least one repository-day in the window carries a first-review latency) or NO_ROWS (none does, or no throughput history, so the value 0 is not a measurement). Never STALE: the read keeps no newest day (see NewestDayState). */
+  reviewBottleneckState: NewestDayState;
   rollingWindows: Array<ThroughputRollingWindow>;
   staleWip?: Maybe<ThroughputStaleWip>;
   teamId?: Maybe<Scalars['String']['output']>;

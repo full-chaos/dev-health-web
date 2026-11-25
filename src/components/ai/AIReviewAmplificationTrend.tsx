@@ -9,7 +9,7 @@ import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/ch
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { bucketLabel, formatReviewTrendDay } from "./utils";
 
-type DailyRow = AiReviewLoadRow & { day?: string };
+type DailyRow = AiReviewLoadRow & { day?: string | null };
 
 type AIReviewAmplificationTrendProps = {
     daily: DailyRow[];
