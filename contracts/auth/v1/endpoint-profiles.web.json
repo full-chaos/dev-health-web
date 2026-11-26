@@ -8686,13 +8686,13 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/serviceAccounts.ts",
-                "line": 19
+                "line": 15
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:41-65) throws AdminApiError(401) with no session, AdminApiError(403) while the session impersonates and AdminApiError(403) unless the platform guard (platform.users) allows; only then is POST /api/v1/admin/users sent, without X-Org-Id (service account, no org membership). Ops re-checks the caller independently.",
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:41-65) throws AdminApiError(401) with no session, AdminApiError(403) while the session impersonates and AdminApiError(403) unless the platform guard (platform.users) allows; only then is POST /api/v1/admin/service-accounts sent, without X-Org-Id. Ops re-checks the caller independently.",
                 "anchor": {
                     "path": "src/lib/admin/server/_shared.ts",
                     "line": 41,
@@ -8724,10 +8724,10 @@
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:74-86) catches a thrown AdminApiError and returns {error: detail-or-message}; ops's error detail text is passed through, except: a 404 returns the generic \"The change was not saved. Try again.\" sentence (serviceAccounts.ts:40), and a detail matching \"already exists\" or \"name is taken\" returns the duplicate-name sentence (serviceAccounts.ts:37-39).",
             "gaps": [
-                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:19 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:19 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/serviceAccounts.ts:15 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
