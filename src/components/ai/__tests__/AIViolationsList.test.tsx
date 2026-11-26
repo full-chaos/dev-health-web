@@ -6,7 +6,7 @@ import type { AiGovernanceViolationRow } from "@/lib/graphql/__generated__/types
 const violation: AiGovernanceViolationRow = {
     ruleId: "human-review-required",
     severity: "high",
-    subjectType: "pr",
+    subjectType: "pull_request",
     subjectId: "123",
     teamId: "team-a",
     repoId: "repo-a",

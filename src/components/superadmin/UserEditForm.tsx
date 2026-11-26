@@ -2,7 +2,7 @@
 
 import { useState, type SyntheticEvent } from "react";
 import { toast } from "sonner";
-import { updateUser } from "@/lib/admin/server";
+import { updatePlatformUser } from "@/lib/admin/server";
 import type { User } from "@/lib/admin/types";
 
 type UserEditFormProps = {
@@ -36,7 +36,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
     async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
-        const result = await updateUser(user.id, {
+        const result = await updatePlatformUser(user.id, {
             email: values.email,
             username: values.username || null,
             full_name: values.full_name || null,

@@ -151,7 +151,7 @@ export function SyncConfigForm({
     const [serviceRepositoryMappingsValidity, setServiceRepositoryMappingsValidity] =
         useState<PagerDutyMappingValidity>({ valid: true });
     const { tier, minSyncIntervalHours, limits } = useAdminTier();
-    const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
+    const maxRepos = (limits?.max_repos as number | null | undefined) ?? undefined;
     const [syncAllRepos, setSyncAllRepos] = useState(
         initialRepositorySelection?.sync_all_repos ??
             ((initialData?.sync_options?.all_repos as boolean | undefined) || false),

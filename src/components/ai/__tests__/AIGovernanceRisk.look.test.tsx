@@ -34,7 +34,7 @@ describe("Governance Risk look (CHAOS-7771)", () => {
                     {
                         ruleId: "human-review-required",
                         severity: "high",
-                        subjectType: "pr",
+                        subjectType: "pull_request",
                         subjectId: "123",
                         teamId: "t",
                         repoId: "r",

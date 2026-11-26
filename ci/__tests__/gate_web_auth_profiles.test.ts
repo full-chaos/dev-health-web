@@ -287,12 +287,12 @@ describe("gate_web_auth_profiles: reachable_validators flags", () => {
         expect(v.some((x) => x.detail.includes("not the intended validator"))).toBe(true);
     });
 
-    it("the real inventory holds the rule: 177 entries, each an earlier auth gate", () => {
+    it("the real inventory holds the rule: 180 entries, each an earlier auth gate", () => {
         const doc = JSON.parse(
             readFileSync(resolve(WEB_ROOT, "contracts/auth/v1/endpoint-profiles.web.json"), "utf8"),
         ) as { rows: { reachable_validators?: Record<string, unknown>[] }[] };
         const entries = doc.rows.flatMap((r) => r.reachable_validators ?? []);
-        expect(entries.length).toBe(177);
+        expect(entries.length).toBe(180);
         for (const e of entries) {
             expect(e.earlier_auth_gate).toBe(true);
             expect(e.foreign_class_validator).toBe(false);

@@ -841,6 +841,60 @@ describe("SyncConfigForm", () => {
             expect(mockCreateSyncConfig).not.toHaveBeenCalled();
         });
 
+        it("shows the served repository limit (limits.max_repos) beside the repo count", async () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: {},
+                limits: { max_users: 20, max_repos: 10 },
+                minSyncIntervalHours: 6,
+            });
+            mockListReposForCredential.mockResolvedValue({
+                data: { provider: "github", owner: "myorg", repos: [sampleRepo], total: 1 },
+            });
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+            await screen.findByLabelText("repo-a");
+
+            expect(screen.getByText(/\(limit: 10\)/)).toBeInTheDocument();
+        });
+
+        it("shows no limit hint when the entitlement has no max_repos (enterprise, null)", async () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "enterprise",
+                features: {},
+                limits: { max_repos: null },
+                minSyncIntervalHours: 0.25,
+            });
+            mockListReposForCredential.mockResolvedValue({
+                data: { provider: "github", owner: "myorg", repos: [sampleRepo], total: 1 },
+            });
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+            await screen.findByLabelText("repo-a");
+
+            expect(screen.queryByText(/\(limit:/)).not.toBeInTheDocument();
+        });
+
         it("clears selected repos when owner changes on the scope step", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
             mockListReposForCredential.mockResolvedValue({

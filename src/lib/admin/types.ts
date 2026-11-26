@@ -723,6 +723,20 @@ export interface UserCreate {
     role?: UserCreateRole;
 }
 
+export interface ServiceAccountCreate {
+    organization_id: string;
+    owner_principal_id: string;
+    name: string;
+}
+
+export interface ServiceAccount {
+    service_account_id: string;
+    organization_id: string;
+    name: string;
+    status: string;
+    owner_principal_id: string;
+}
+
 export const USER_CREATE_ROLES = ["member", "admin", "viewer"] as const;
 export type UserCreateRole = (typeof USER_CREATE_ROLES)[number];
 

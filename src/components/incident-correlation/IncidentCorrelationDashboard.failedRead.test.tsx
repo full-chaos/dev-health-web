@@ -60,18 +60,19 @@ const cfr = {
 };
 
 describe("IncidentCorrelationDashboard DORA tiles when the Home read fails (CHAOS-9189)", () => {
-    it("failed read: three DORA tiles say 'Could not be read', and no empty-state panel is drawn", () => {
+    it("failed read: two DORA tiles say 'Could not be read', and no empty-state panel is drawn", () => {
         renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard {...base} deltas={[]} homeReadFailed />,
         );
 
         const section = screen.getByTestId("dora-read-failed");
         const values = within(section).getAllByTestId("metric-value");
-        expect(values).toHaveLength(3);
+        expect(values).toHaveLength(2);
         for (const value of values) {
             expect(value).toHaveTextContent(/^Could not be read$/);
         }
         expect(within(section).getByText("Change Failure Rate")).toBeInTheDocument();
+        expect(within(section).getByText("Deploy Frequency")).toBeInTheDocument();
         expect(section.textContent).not.toMatch(/Not reported|No data for this window/);
         expect(screen.queryByTestId("empty-state")).toBeNull();
         expect(screen.queryByText("No incident-correlation evidence in this window.")).toBeNull();
