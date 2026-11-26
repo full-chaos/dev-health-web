@@ -31,12 +31,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const entitlements = orgId ? await getOrgEntitlements(orgId) : null;
     const tier = entitlements?.data?.tier ?? "community";
     const features = entitlements?.data?.features ?? {};
+    const limits = entitlements?.data?.limits;
 
     // Rendered inside the shared app shell: the shell owns the navigation, the page padding and
     // the `<main>` landmark. Each page's header brings the tab row of its Admin destination.
     // The platform admin flag for the tab rows comes from the authed app layout (one source).
     return (
-        <AdminTierProvider tier={tier} features={features}>
+        <AdminTierProvider tier={tier} features={features} limits={limits}>
             <div className="flex min-w-0 flex-1 flex-col gap-10">{children}</div>
         </AdminTierProvider>
     );
