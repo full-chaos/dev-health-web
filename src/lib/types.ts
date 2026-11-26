@@ -547,10 +547,14 @@ export type PersonNarrative = {
     evidence_link: string;
 };
 
-export type PersonWorkMix = {
-    categories: Array<{ key: string; name: string; value: number }>;
-    subtypes?: Array<{ name: string; value: number; parentKey: string }>;
+// The summary API serves sections.work_mix and sections.flow_breakdown as arrays.
+export type PersonWorkMixItem = {
+    key: string;
+    name: string;
+    value: number;
 };
+
+export type PersonWorkMix = PersonWorkMixItem[];
 
 export type PersonFlowStage = {
     stage: string;
@@ -558,10 +562,7 @@ export type PersonFlowStage = {
     unit?: string;
 };
 
-export type PersonFlowBreakdown = {
-    stages?: PersonFlowStage[];
-    by_stage?: PersonFlowStage[];
-};
+export type PersonFlowBreakdown = PersonFlowStage[];
 
 export type PersonCollaborationStat = {
     label: string;

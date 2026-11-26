@@ -17,7 +17,8 @@ export default async function DeploymentDetailPage({ params }: DeploymentDetailP
         return <ServiceUnavailable landmark={false} />;
     }
 
-    const { deployment_id: deploymentId } = await params;
+    const { deployment_id: encodedDeploymentId } = await params;
+    const deploymentId = decodeURIComponent(encodedDeploymentId);
     const flame = await fetchOrNull(
         getFlame({ entity_type: "deployment", entity_id: deploymentId }),
         `deployments/${deploymentId}/flame`,

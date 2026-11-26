@@ -679,7 +679,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=alice");
+        expect(url).toContain("/api/v1/admin/users?q=alice&active_only=true");
         expect(options?.headers).toMatchObject({
             Authorization: "Bearer test-token",
             "X-Org-Id": "org-1",
@@ -687,8 +687,21 @@ describe("admin/server user list actions", () => {
         fetchSpy.mockRestore();
     });
 
-    it("listPlatformUsers omits org header and supports q query", async () => {
+    it("listUsers (the organization admin list) asks for active users only, with or without a query", async () => {
         mockSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+        await listUsers();
+
+        const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(new URL(url).searchParams.get("active_only")).toBe("true");
+        fetchSpy.mockRestore();
+    });
+
+    it("listPlatformUsers omits org header and supports q query", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
         const fetchSpy = vi
             .spyOn(global, "fetch")
             .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
@@ -698,7 +711,7 @@ describe("admin/server user list actions", () => {
         expect(result.error).toBeUndefined();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
-        expect(url).toContain("/api/v1/admin/users?q=bob");
+        expect(url).toContain("/api/v1/admin/users?q=bob&active_only=false");
         const headers = options?.headers as Record<string, string>;
         expect(headers.Authorization).toBe("Bearer test-token");
         expect(headers["X-Org-Id"]).toBeUndefined();
@@ -785,7 +798,7 @@ describe("org membership actions (CHAOS-8994)", () => {
 
         expect(result.error).toBeUndefined();
         const [lookupUrl] = fetchSpy.mock.calls[0] as [string];
-        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co");
+        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co&active_only=true");
         const [url, options] = fetchSpy.mock.calls[1] as [string, RequestInit];
         expect(url).toContain("/api/v1/admin/orgs/org-9/members");
         expect(options.method).toBe("POST");
@@ -1306,6 +1319,10 @@ describe("admin/server team drift-review actions", () => {
 });
 
 describe("createServiceAccount (CHAOS-8966)", () => {
+    const PICK = {
+        organization_id: "00000000-0000-4000-8000-0000000000b1",
+        owner_principal_id: "00000000-0000-4000-8000-0000000000c1",
+    };
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
     beforeEach(() => {
@@ -1317,7 +1334,7 @@ describe("createServiceAccount (CHAOS-8966)", () => {
         mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: false } });
         const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}, 201));
 
-        const result = await createServiceAccount({ name: "ci-reporter" });
+        const result = await createServiceAccount({ name: "ci-reporter", ...PICK });
 
         expect(result.error).toBeDefined();
         expect(result.data).toBeUndefined();
@@ -1329,31 +1346,67 @@ describe("createServiceAccount (CHAOS-8966)", () => {
         mockAuth({ user: { id: "u-1", is_superuser: true } });
         const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}, 201));
 
-        const result = await createServiceAccount({ name: "Bad Name@x" });
+        const result = await createServiceAccount({ name: "Bad Name@x", ...PICK });
 
         expect(result.error).toBeDefined();
         expect(fetchSpy).not.toHaveBeenCalled();
         fetchSpy.mockRestore();
     });
 
-    it("sends the service marker, the made address, no password and no org", async () => {
+    it("posts the served route with the picked org, owner and trimmed name", async () => {
         mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
         const fetchSpy = vi
             .spyOn(global, "fetch")
             .mockResolvedValue(
-                json({ id: "u-2", email: "ci-reporter@service.dev-health.invalid" }, 201),
+                json({ service_account_id: "u-2", name: "ci-reporter", status: "active" }, 200),
             );
 
-        const result = await createServiceAccount({ name: " ci-reporter ", description: "CI" });
+        const result = await createServiceAccount({ name: " ci-reporter ", ...PICK });
 
         expect(result.error).toBeUndefined();
-        const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
-        expect(JSON.parse(options.body as string)).toEqual({
-            email: "ci-reporter@service.dev-health.invalid",
-            auth_provider: "service",
-            full_name: "CI",
-        });
+        const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+        expect(url).toContain("/api/v1/admin/service-accounts");
+        expect(JSON.parse(options.body as string)).toEqual({ ...PICK, name: "ci-reporter" });
         expect((options.headers as Record<string, string>)["X-Org-Id"]).toBeUndefined();
+        fetchSpy.mockRestore();
+    });
+
+    it("shows the served owner_invalid sentence and returns no account", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(json({ detail: "Owner must be an active user" }, 409));
+
+        const result = await createServiceAccount({ name: "x", ...PICK });
+
+        expect(result.data).toBeUndefined();
+        expect(result.error).toBe("Owner must be an active user");
+        fetchSpy.mockRestore();
+    });
+
+    it("shows the served owner_not_member sentence and returns no account", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(json({ detail: "Owner is not a member of the organization" }, 409));
+
+        const result = await createServiceAccount({ name: "x", ...PICK });
+
+        expect(result.data).toBeUndefined();
+        expect(result.error).toBe("Owner is not a member of the organization");
+        fetchSpy.mockRestore();
+    });
+
+    it("maps a 404 (route not mounted) to the existing action sentence, not the raw text", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(json({ detail: "Not Found" }, 404));
+
+        const result = await createServiceAccount({ name: "x", ...PICK });
+
+        expect(result.data).toBeUndefined();
+        expect(result.error).toBe("The change was not saved. Try again.");
         fetchSpy.mockRestore();
     });
 
@@ -1361,16 +1414,11 @@ describe("createServiceAccount (CHAOS-8966)", () => {
         mockAuth({ user: { id: "u-1", is_superuser: true } });
         const fetchSpy = vi
             .spyOn(global, "fetch")
-            .mockResolvedValueOnce(
-                json(
-                    { detail: "User with email x@service.dev-health.invalid already exists" },
-                    400,
-                ),
-            )
+            .mockResolvedValueOnce(json({ detail: "Service account name is taken" }, 409))
             .mockResolvedValueOnce(json({ detail: "pgx: connection refused" }, 500));
 
-        const dup = await createServiceAccount({ name: "x" });
-        const fault = await createServiceAccount({ name: "x" });
+        const dup = await createServiceAccount({ name: "x", ...PICK });
+        const fault = await createServiceAccount({ name: "x", ...PICK });
 
         expect(dup.error).toBe("A service account with this name already exists.");
         expect(fault.error).toBe("The change was not saved. Try again.");

@@ -686,7 +686,7 @@ export function aiGovernanceSummaryResponse(
             {
                 ruleId: "ai-declaration-required",
                 severity: "MEDIUM",
-                subjectType: "PR",
+                subjectType: "pull_request",
                 subjectId: "pr-7001",
                 teamId: "team-platform",
                 repoId: "repo-1",
@@ -696,7 +696,7 @@ export function aiGovernanceSummaryResponse(
             {
                 ruleId: "human-review-required",
                 severity: "HIGH",
-                subjectType: "PR",
+                subjectType: "pull_request",
                 subjectId: "pr-7002",
                 teamId: "team-platform",
                 repoId: "repo-2",

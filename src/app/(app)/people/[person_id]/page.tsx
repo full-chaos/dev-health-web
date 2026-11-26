@@ -119,19 +119,17 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     const placeholderDeltas = !summary?.deltas?.length;
     const person = summary?.person;
     const narrative = summary?.narrative ?? [];
-    const workMix = summary?.sections?.work_mix;
-    const flowBreakdown = summary?.sections?.flow_breakdown;
+    const workMix = summary?.sections?.work_mix ?? [];
+    const flowStages = summary?.sections?.flow_breakdown ?? [];
     const collaboration = summary?.sections?.collaboration;
     const collaborationStats = [
         ...collectStats(collaboration?.review_load),
         ...collectStats(collaboration?.handoff_points),
     ];
-    const flowStages = flowBreakdown?.stages ?? flowBreakdown?.by_stage ?? [];
-    const workMixData =
-        workMix?.categories?.map((category) => ({
-            name: category.name,
-            value: category.value,
-        })) ?? [];
+    const workMixData = workMix.map((category) => ({
+        name: category.name,
+        value: category.value,
+    }));
 
     const defaultMetric = deltas[0]?.metric ?? "cycle_time";
     const identityCoverageRaw = summary?.identity_coverage_pct;
@@ -313,7 +311,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                         )}
                     </div>
                     <div className="mt-4 space-y-2 text-sm">
-                        {(workMix?.categories ?? []).map((category) => (
+                        {workMix.map((category) => (
                             <div
                                 key={category.key}
                                 className="flex items-center justify-between rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) px-3 py-2"

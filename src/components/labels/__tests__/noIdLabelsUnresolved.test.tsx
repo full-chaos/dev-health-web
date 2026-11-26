@@ -132,7 +132,7 @@ describe.each(IDS)("unresolved surfaces never show a raw id (%s)", (id) => {
                     {
                         ruleId: id,
                         subjectId: id,
-                        subjectType: "pr",
+                        subjectType: "pull_request",
                         severity: "high",
                         evidence: "e",
                         observedAt: "2026-04-15T00:00:00Z",

@@ -1,15 +1,14 @@
 import { request } from "./_request";
-import type { User, UserCreate, UserUpdate } from "../types";
+import type { ServiceAccount, ServiceAccountCreate, User, UserCreate, UserUpdate } from "../types";
 
 export const usersApi = {
-    list: (token?: string, orgId?: string, q?: string) => {
+    list: (token?: string, orgId?: string, q?: string, activeOnly = false) => {
         const params = new URLSearchParams();
         if (q && q.trim().length > 0) {
             params.set("q", q.trim());
         }
-        const query = params.toString();
-        const path = query ? `/users?${query}` : "/users";
-        return request<User[]>(path, {}, token, orgId);
+        params.set("active_only", String(activeOnly));
+        return request<User[]>(`/users?${params.toString()}`, {}, token, orgId);
     },
 
     get: (userId: string, token?: string, orgId?: string) =>
@@ -17,6 +16,14 @@ export const usersApi = {
 
     create: (data: UserCreate, token?: string, orgId?: string) =>
         request<User>("/users", { method: "POST", body: JSON.stringify(data) }, token, orgId),
+
+    createServiceAccount: (data: ServiceAccountCreate, token?: string, orgId?: string) =>
+        request<ServiceAccount>(
+            "/service-accounts",
+            { method: "POST", body: JSON.stringify(data) },
+            token,
+            orgId,
+        ),
 
     update: (userId: string, data: UserUpdate, token?: string, orgId?: string) =>
         request<User>(

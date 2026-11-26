@@ -137,7 +137,7 @@ export function approvalFriction(
 
 export function prViolationRows(summary: AiGovernanceSummary | undefined) {
     return (summary?.recentViolations ?? []).filter(
-        (violation) => violation.subjectType.toLowerCase() === "pr",
+        (violation) => violation.subjectType.toLowerCase() === "pull_request",
     );
 }
 
