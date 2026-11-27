@@ -116,8 +116,18 @@ describe("Backlog condition: backlog state caption", () => {
 describe("THROUGHPUT_FORECAST_QUERY", () => {
     it("selects backlogState and backlogAsOfDay after backlogSize, and grainCount on estimateCoverage", () => {
         expect(THROUGHPUT_FORECAST_QUERY).toMatch(
-            /backlogSize\n\s+backlogState\n\s+backlogAsOfDay\n\s+historyWeeks/,
+            /backlogSize\n\s+backlogState\n\s+backlogAsOfDay\n\s+degradedReason\n\s+historyWeeks/,
         );
-        expect(THROUGHPUT_FORECAST_QUERY).toMatch(/backlogSize\n\s+grainCount\n\s+\}/);
+        expect(THROUGHPUT_FORECAST_QUERY).toMatch(
+            /backlogSize\n\s+grainCount\n\s+state\n\s+asOfDay\n\s+\}/,
+        );
+    });
+
+    // CHAOS-14632: the text is the one ops registers (digest-matched), so it carries every selection of it.
+    it("selects the review bottleneck and incident load states after their overlays", () => {
+        expect(THROUGHPUT_FORECAST_QUERY).toMatch(
+            /reviewBottleneck \{[^}]+\}\n\s+reviewBottleneckState\n/,
+        );
+        expect(THROUGHPUT_FORECAST_QUERY).toMatch(/incidentLoad \{[^}]+\}\n\s+incidentLoadState\n/);
     });
 });

@@ -12,6 +12,7 @@ import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type {
     ThroughputForecast,
+    ThroughputOverlayState,
     ThroughputRiskOverlay,
     ThroughputRollingWindow,
 } from "@/lib/graphql/types";
@@ -71,7 +72,35 @@ function thresholdText(risk: ThroughputRiskOverlay) {
     return n;
 }
 
-function RiskFact({ risk }: { risk: ThroughputRiskOverlay }) {
+/** NO_ROWS: the read found no row, so the served 0 is not a measurement and the page states no value. */
+function isUnmeasured(state: ThroughputOverlayState | null | undefined) {
+    return state === "NO_ROWS";
+}
+
+/**
+ * Whether any check the calm summary names has no rows. STALE is not NO_ROWS: a stale read is still a measurement, and
+ * the page shows it as it always did.
+ */
+function hasUnmeasuredCheck(forecast: ThroughputForecast) {
+    return [
+        forecast.wipCongestionState,
+        forecast.reviewBottleneckState,
+        forecast.incidentLoadState,
+    ].some(isUnmeasured);
+}
+
+function RiskFact({
+    risk,
+    state,
+}: {
+    risk: ThroughputRiskOverlay;
+    state?: ThroughputOverlayState | null;
+}) {
+    if (isUnmeasured(state)) {
+        return (
+            <EvidenceFact label={risk.kind === "incident_load" ? "Incident burden" : risk.label} />
+        );
+    }
     const Icon = risk.active ? TriangleAlert : CircleCheck;
     return (
         <EvidenceFact
@@ -107,6 +136,8 @@ function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
             </Inset>
         );
     }
+    // "No elevated risk" says every named check is healthy: it is not said while one of them has no rows.
+    if (hasUnmeasuredCheck(forecast)) return null;
     const [wip, review, incident] = risks.map((risk) => thresholdText(risk) ?? "not reported");
     return (
         <Inset title="No elevated risk" data-testid="risk-inset">
@@ -117,8 +148,8 @@ function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
 
 /** The page's served values for the evidence drawer, as the page shows them. No new number. */
 function overviewFacts(forecast: ThroughputForecast): PageFact[] {
-    const risk = (r: ThroughputRiskOverlay) =>
-        `${riskValue(r)} · ${r.active ? "Elevated" : "Normal"}`;
+    const risk = (r: ThroughputRiskOverlay, state?: ThroughputOverlayState | null) =>
+        isUnmeasured(state) ? undefined : `${riskValue(r)} · ${r.active ? "Elevated" : "Normal"}`;
     const weeks = (v: number | null | undefined) =>
         typeof v === "number" ? formatWeeks(v) : undefined;
     return [
@@ -134,8 +165,14 @@ function overviewFacts(forecast: ThroughputForecast): PageFact[] {
                 : `${formatNumber(window.meanWeeklyThroughput, { maximumFractionDigits: 1 })} items/week`,
         })),
         { label: "WIP congestion", value: risk(forecast.wipCongestion) },
-        { label: "Review bottleneck", value: risk(forecast.reviewBottleneck) },
-        { label: "Incident burden", value: risk(forecast.incidentLoad) },
+        {
+            label: "Review bottleneck",
+            value: risk(forecast.reviewBottleneck, forecast.reviewBottleneckState),
+        },
+        {
+            label: "Incident burden",
+            value: risk(forecast.incidentLoad, forecast.incidentLoadState),
+        },
         {
             label: "History",
             // The served flag as a word; "Not reported" only when the field is absent.
@@ -359,8 +396,14 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                         <Section data-testid="plan-risk-checks" title="Risk checks">
                             <EvidenceFactList aria-label="Risk checks" testId="risk-facts">
                                 <RiskFact risk={forecast.wipCongestion} />
-                                <RiskFact risk={forecast.reviewBottleneck} />
-                                <RiskFact risk={forecast.incidentLoad} />
+                                <RiskFact
+                                    risk={forecast.reviewBottleneck}
+                                    state={forecast.reviewBottleneckState}
+                                />
+                                <RiskFact
+                                    risk={forecast.incidentLoad}
+                                    state={forecast.incidentLoadState}
+                                />
                             </EvidenceFactList>
                             <RiskInset forecast={forecast} />
                         </Section>

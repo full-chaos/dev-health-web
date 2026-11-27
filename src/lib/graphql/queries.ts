@@ -349,6 +349,7 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
     backlogSize
     backlogState
     backlogAsOfDay
+    degradedReason
     historyWeeks
     p50Weeks
     p75Weeks
@@ -376,9 +377,15 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       threshold
       active
     }
+    wipCongestionState
+    wipCongestionAsOfDay
+    wipCongestionGrainCount
     staleWip {
       p50AgeHours
       p90AgeHours
+      state
+      asOfDay
+      grainCount
     }
     estimateCoverage {
       ratio
@@ -386,6 +393,8 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       unestimatedCount
       backlogSize
       grainCount
+      state
+      asOfDay
     }
     reviewBottleneck {
       kind
@@ -395,6 +404,7 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       threshold
       active
     }
+    reviewBottleneckState
     incidentLoad {
       kind
       score
@@ -403,6 +413,7 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       threshold
       active
     }
+    incidentLoadState
   }
 }
 `;
