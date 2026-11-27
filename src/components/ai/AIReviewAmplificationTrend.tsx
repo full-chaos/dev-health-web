@@ -9,15 +9,15 @@ import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/ch
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { bucketLabel, formatReviewTrendDay } from "./utils";
 
-type DailyRow = AiReviewLoadRow & { day?: string | null };
-
 type AIReviewAmplificationTrendProps = {
-    daily: DailyRow[];
+    daily: AiReviewLoadRow[];
     loading?: boolean;
 };
 
-export function reviewAmplificationTrendRows(daily: DailyRow[]) {
-    const datedRows = daily.filter((row): row is DailyRow & { day: string } => Boolean(row.day));
+export function reviewAmplificationTrendRows(daily: AiReviewLoadRow[]) {
+    const datedRows = daily.filter((row): row is AiReviewLoadRow & { day: string } =>
+        Boolean(row.day),
+    );
     const days = Array.from(new Set(datedRows.map((row) => row.day))).sort((left, right) =>
         left.localeCompare(right),
     );
@@ -90,7 +90,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                 {loading ? (
                     <p className="text-sm text-(--ink-muted)">Loading trend…</p>
                 ) : trend.days.length > 0 ? (
-                    <Chart option={option} />
+                    <Chart option={option} className="h-full" />
                 ) : (
                     <p className="text-sm text-(--ink-muted)">
                         No daily review amplification points appear in this range.
