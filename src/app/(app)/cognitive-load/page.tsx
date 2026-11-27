@@ -155,9 +155,13 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const avg = (values: number[]) =>
         values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
-    const avgPrInterruptionLoad = avg(rawSignals.map((s) => s.prInterruptionLoad));
-    const avgContextSpread = avg(rawSignals.map((s) => s.contextSpreadCount));
-    const avgReviewRequestLoad = avg(rawSignals.map((s) => s.reviewRequestLoad));
+    // A NO_ROWS day has team rows only: its developer fields are 0 but not a measurement.
+    // A MEASURED day with value 0 is data and still counts.
+    const developerSignals = rawSignals.filter((s) => s.developerState !== "NO_ROWS");
+    const hasDeveloperData = developerSignals.length > 0;
+    const avgPrInterruptionLoad = avg(developerSignals.map((s) => s.prInterruptionLoad));
+    const avgContextSpread = avg(developerSignals.map((s) => s.contextSpreadCount));
+    const avgReviewRequestLoad = avg(developerSignals.map((s) => s.reviewRequestLoad));
 
     // after_hours / weekend ratios are nullable (team-scoped only; null when no team filter).
     const afterHoursValues = rawSignals
@@ -176,38 +180,44 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
         ? [
               {
                   label: "PR interruption load",
-                  value: formatLoad(avgPrInterruptionLoad),
+                  value: hasDeveloperData ? formatLoad(avgPrInterruptionLoad) : "—",
                   delta: `${sinceDate} – ${untilDate}`,
                   deltaTone: "text-(--ink-muted)",
-                  interpretation:
-                      avgPrInterruptionLoad > 15
-                          ? "Rising"
-                          : avgPrInterruptionLoad > 8
-                            ? "Watch"
-                            : "Easing",
+                  interpretation: !hasDeveloperData
+                      ? "N/A"
+                      : avgPrInterruptionLoad > 15
+                        ? "Rising"
+                        : avgPrInterruptionLoad > 8
+                          ? "Watch"
+                          : "Easing",
                   description:
                       "Reviews, first-review events, and review feedback interrupting focused delivery.",
               },
               {
                   label: "Context spread",
-                  value: formatLoad(avgContextSpread),
+                  value: hasDeveloperData ? formatLoad(avgContextSpread) : "—",
                   delta: `avg over ${cognitiveLoadData?.totalDays ?? rawSignals.length} days`,
                   deltaTone: avgContextSpread > 6 ? "text-(--caution)" : "text-(--ink-muted)",
-                  interpretation: avgContextSpread > 6 ? "Watch" : "Stable",
+                  interpretation: !hasDeveloperData
+                      ? "N/A"
+                      : avgContextSpread > 6
+                        ? "Watch"
+                        : "Stable",
                   description:
                       "Distinct repos, PRs, reviews, and touched file areas in the selected team scope.",
               },
               {
                   label: "Review request load",
-                  value: formatLoad(avgReviewRequestLoad),
+                  value: hasDeveloperData ? formatLoad(avgReviewRequestLoad) : "—",
                   delta: `avg over ${cognitiveLoadData?.totalDays ?? rawSignals.length} days`,
                   deltaTone: avgReviewRequestLoad > 10 ? "text-(--negative)" : "text-(--ink-muted)",
-                  interpretation:
-                      avgReviewRequestLoad > 10
-                          ? "Rising"
-                          : avgReviewRequestLoad > 5
-                            ? "Watch"
-                            : "Low",
+                  interpretation: !hasDeveloperData
+                      ? "N/A"
+                      : avgReviewRequestLoad > 10
+                        ? "Rising"
+                        : avgReviewRequestLoad > 5
+                          ? "Watch"
+                          : "Low",
                   description:
                       "Aggregate review requests handled by the team, never a person-level queue ranking.",
               },
@@ -253,7 +263,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             .map((s) => ({
                 day: s.day,
                 label: s.day.slice(5),
-                value: Math.round(pick(s)),
+                value: s.developerState === "NO_ROWS" ? null : Math.round(pick(s)),
             }))
             .sort((a, b) => a.day.localeCompare(b.day));
     const contextSpreadTrend = toTrend((s) => s.contextSpreadCount);
@@ -276,7 +286,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             label: signal.label,
             value: `${signal.value} · ${signal.interpretation}`,
         })),
-        ...(hasData
+        ...(hasDeveloperData
             ? loadDrivers.map((driver) => ({
                   label: `${driver.label} (avg per day)`,
                   value: String(Math.round(driver.value * 10) / 10),
@@ -340,7 +350,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                     ) : activeTab === "load-drivers" ? (
                         <LoadDriversView
                             drivers={loadDrivers}
-                            hasData={hasData}
+                            hasData={hasDeveloperData}
                             window={windowLabel}
                         />
                     ) : (

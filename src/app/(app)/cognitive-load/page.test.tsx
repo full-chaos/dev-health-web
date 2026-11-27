@@ -32,8 +32,9 @@ vi.mock("@/lib/graphql/cognitiveLoadFetchers", () => ({
 
 import CognitiveLoadPage from "./page";
 
-const day = (d: string, over: Record<string, number | null> = {}) => ({
+const day = (d: string, over: Record<string, number | string | null> = {}) => ({
     day: d,
+    developerState: "MEASURED",
     prInterruptionLoad: 6,
     contextSpreadCount: 12,
     reviewRequestLoad: 4,
@@ -87,5 +88,46 @@ describe("Cognitive Load page header", () => {
         expect(follows(screen.getByTestId("view-set"), privacy)).toBe(true);
         // Nothing but the privacy block sits between the tab row and the tab content.
         expect(screen.getByTestId("view-set").nextElementSibling).toBe(privacy);
+    });
+});
+
+describe("Cognitive Load developer averages and developerState", () => {
+    const factValue = async (label: string) => {
+        await userEvent.click(
+            within(screen.getByTestId("page-header")).getByRole("button", {
+                name: "View evidence",
+            }),
+        );
+        const row = within(await screen.findByTestId("page-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .find((r) => r.querySelector("dt")?.textContent === label);
+        return row?.querySelector("dd")?.textContent;
+    };
+    const zero = { prInterruptionLoad: 0, contextSpreadCount: 0, reviewRequestLoad: 0 };
+
+    it("a NO_ROWS day does not move the developer averages", async () => {
+        cognitive.mockResolvedValue({
+            signals: [
+                day("2026-05-01", { prInterruptionLoad: 10 }),
+                day("2026-05-02", { ...zero, developerState: "NO_ROWS" }),
+            ],
+        });
+        const ui = await CognitiveLoadPage({ searchParams: Promise.resolve({}) });
+        render(ui as React.ReactElement);
+
+        expect(await factValue("PR interruption (avg per day)")).toBe("10");
+    });
+
+    it("a MEASURED day with value 0 still counts in the developer averages", async () => {
+        cognitive.mockResolvedValue({
+            signals: [
+                day("2026-05-01", { prInterruptionLoad: 10 }),
+                day("2026-05-02", { ...zero, developerState: "MEASURED" }),
+            ],
+        });
+        const ui = await CognitiveLoadPage({ searchParams: Promise.resolve({}) });
+        render(ui as React.ReactElement);
+
+        expect(await factValue("PR interruption (avg per day)")).toBe("5");
     });
 });

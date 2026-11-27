@@ -199,6 +199,7 @@ function avgInterruptionLoad(result: CognitiveLoadResult | undefined): number | 
     const signals = result?.signals ?? [];
     if (signals.length === 0) return undefined;
     const values = signals
+        .filter((s) => s.developerState !== "NO_ROWS")
         .map((s) => s.prInterruptionLoad)
         .filter((v): v is number => typeof v === "number" && !isNaN(v));
     if (values.length === 0) return undefined;

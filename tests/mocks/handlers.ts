@@ -2551,6 +2551,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 prInterruptionLoad: 12 + (i % 3),
                 contextSpreadCount: 7 + (i % 4),
                 reviewRequestLoad: 9 + (i % 2),
+                developerState: "MEASURED",
                 afterHoursCommitRatio: 0.18,
                 weekendCommitRatio: 0.12,
             };
